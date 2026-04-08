@@ -1,5 +1,6 @@
 using BlocksTemplate.Api;
 using BlocksTemplate.DomainService;
+using BlocksTemplate.DomainService.Utilities;
 using Blocks.Genesis;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
@@ -21,9 +22,10 @@ var services = builder.Services;
 
 services.AddHealthChecks();
 
-builder.Services.AddDomainServices();
+var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
+builder.Services.AddDomainServices(localizationSecret);
 builder.Services.AddFluentValidationAutoValidation();
-ApplicationConfigurations.ConfigureServices(services, new MessageConfiguration { });
+ApplicationConfigurations.ConfigureServices(services, Constants.GetMessageConfiguration(secret.MessageConnectionString));
 ApplicationConfigurations.ConfigureApi(services);
 
 builder.Services.Configure<MvcOptions>(options =>
