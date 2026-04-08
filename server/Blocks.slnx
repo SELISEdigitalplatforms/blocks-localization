@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Api/Api.csproj" />
+  <Project Path="DomainService/DomainService.csproj" />
+  <Project Path="Worker/Worker.csproj" />
+</Solution>
