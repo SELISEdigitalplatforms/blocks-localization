@@ -151,6 +151,8 @@ server/DomainService/bin/
 server/DomainService/obj/
 server/Worker/bin/
 server/Worker/obj/
+server/XUnitTest/bin/
+server/XUnitTest/obj/
 **/bin/
 **/obj/
 

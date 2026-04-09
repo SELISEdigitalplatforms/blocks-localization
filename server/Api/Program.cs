@@ -2,9 +2,9 @@ using BlocksTemplate.Api;
 using BlocksTemplate.DomainService;
 using BlocksTemplate.DomainService.Utilities;
 using Blocks.Genesis;
-using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation.AspNetCore;
 
 var serviceName = "blocks-template-api";
 var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
