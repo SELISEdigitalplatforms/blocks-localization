@@ -6,13 +6,15 @@ ASP.NET Core 10 + React (Vite, TypeScript) starter. The **API and the built SPA 
 
 ```
 blocks-template/
-├── client/                      # React + Vite + TypeScript (source only at runtime)
-│   ├── app/                     # Application code (main.tsx, router, pages, components, api)
+├── client/                      # React + Vite + TypeScript (UILM SPA; source only at runtime)
+│   ├── src/                     # Application code (app/, features/, layouts/, platform/, routing/)
 │   ├── public/                  # Static assets copied as-is by Vite
+│   ├── scripts/                 # Optional sync/verify helpers for platform UI + assets
 │   ├── index.html
-│   ├── vite.config.ts           # build.outDir → ../server/Api/wwwroot
+│   ├── vite.config.ts           # build.outDir → ../server/Api/wwwroot, envPrefix BLOCKS_
 │   ├── package.json
-│   └── .env.example             # Copy to .env for BLOCKS_X_BLOCKS_KEY (see below)
+│   └── .env.example             # BLOCKS_* keys (see below)
+├── uilm-react/                  # Stub README only (sources moved to client/)
 ├── server/
 │   ├── Api/                     # Web host (Kestrel, Genesis, controllers)
 │   │   ├── Controllers/         # API controllers ([Route] uses /api prefix via convention)
@@ -58,11 +60,12 @@ Open the URL from **`launchSettings.json`** (default: **`http://localhost:5000`*
 
 ### Client environment (Genesis)
 
-API calls expect an **`x-blocks-key`** header when your Blocks/Genesis setup requires it. At **build** time, Vite inlines values from `client/.env`:
+The SPA reads **`BLOCKS_*`** variables (see **`client/vite.config.ts`** `envPrefix`). **`envDir`** is the **repository root**, so you can set keys in a root **`.env`** or copy **`client/.env.example`** → **`client/.env`**.
 
-1. Copy **`client/.env.example`** → **`client/.env`**.
-2. Set **`BLOCKS_X_BLOCKS_KEY`** to match your environment.
-3. Run **`npm run build`** in **`client/`** (or **`./run.sh`**) so the client bundle is rebuilt.
+1. Set **`BLOCKS_X_BLOCKS_KEY`** (and other **`BLOCKS_*`** keys from the example) to match your environment.
+2. Run **`npm run build`** in **`client/`** (or **`./run.sh`**) so the client bundle is rebuilt.
+
+The former **`uilm-react/`** package has been merged into **`client/`**; the **`uilm-react/`** directory is a stub — see **`uilm-react/README.md`**.
 
 ### Optional: Vite dev server (UI only)
 
