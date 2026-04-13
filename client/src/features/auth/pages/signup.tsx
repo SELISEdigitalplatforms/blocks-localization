@@ -28,7 +28,7 @@ export function Signup() {
     );
   }
 
-  if (!loginOption || loginOption.allowedGrantTypes.length < 1) return null;
+  if (!loginOption?.allowedGrantTypes?.length) return null;
 
   return (
     <SignupForm

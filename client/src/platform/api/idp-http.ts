@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/features/auth/model/auth-store";
+import { AUTH_ENDPOINTS } from "@/features/auth/services/endpoints";
 import { env } from "@/config/env";
 import { getQueryClient } from "@/platform/query/query-client-holder";
 
@@ -71,11 +72,10 @@ export function resetIdpHttpStateForTests(): void {
 
 /** Matches `src/lib/http-client.ts` refresh body for backend parity. */
 async function refreshAccessToken(): Promise<boolean> {
-  const base = env.apiBaseUrl.replace(/\/$/, "");
   const formData = new URLSearchParams();
   formData.append("grant_type", "refresh_token");
   formData.append("refresh_token", `""`);
-  const url = `${base}/idp/v1/Authentication/Token`;
+  const url = joinBase(AUTH_ENDPOINTS.TOKEN);
   const headers: Record<string, string> = {
     "Content-Type": "application/x-www-form-urlencoded",
   };

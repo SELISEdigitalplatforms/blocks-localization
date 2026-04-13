@@ -47,7 +47,9 @@ export function Signin() {
     );
   }
 
-  if (!loginOption || loginOption.allowedGrantTypes?.length < 1) return null;
+  if (!loginOption?.allowedGrantTypes?.length) return null;
+
+  const grantTypes = loginOption.allowedGrantTypes ?? [];
 
   const showSignUp =
     signUpSetting?.isEmailPasswordSignUpEnabled || signUpSetting?.isSSoSignUpEnabled;
@@ -60,15 +62,15 @@ export function Signin() {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between">
         <div className="flex flex-1 flex-col justify-center">
-          {loginOption.allowedGrantTypes.includes(GRANT_TYPES.password) && <SigninForm />}
-          {loginOption.allowedGrantTypes.includes(GRANT_TYPES.password) && (
+          {grantTypes.includes(GRANT_TYPES.password) && <SigninForm />}
+          {grantTypes.includes(GRANT_TYPES.password) && (
             <div className="my-2 mt-4 flex items-center">
               <hr className="grow border" />
               <span className="text-muted-foreground mx-2 text-xs">OR</span>
               <hr className="grow border" />
             </div>
           )}
-          {loginOption.allowedGrantTypes.includes(GRANT_TYPES.social) && (
+          {grantTypes.includes(GRANT_TYPES.social) && (
             <SsoSignin loginOption={loginOption} />
           )}
         </div>
