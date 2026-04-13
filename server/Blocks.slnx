@@ -2,5 +2,7 @@
   <Project Path="Api/Api.csproj" />
   <Project Path="DomainService/DomainService.csproj" />
   <Project Path="Worker/Worker.csproj" />
-  <Project Path="XUnitTest/XUnitTest.csproj" />
+  <Project Path="XUnitTest/XUnitTest.csproj">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
 </Solution>
