@@ -1,25 +1,22 @@
-const V1 = "/idp/v1";
+/** Same host as the SPA (e.g. `http://localhost:5000/Api/...`) — ASP.NET-style routes. */
+const API = "/Api";
 
 export const AUTH_ENDPOINTS = {
-  TOKEN: `${V1}/Authentication/Token`,
-  GET_SOCIAL_LOGIN_ENDPOINT: `${V1}/Authentication/GetSocialLogInEndPoint`,
-  GET_LOGIN_OPTIONS: `${V1}/Authentication/GetLoginOptions`,
+  TOKEN: `${API}/Authentication/Token`,
+  GET_SOCIAL_LOGIN_ENDPOINT: `${API}/Authentication/GetSocialLogInEndPoint`,
+  GET_LOGIN_OPTIONS: `${API}/Authentication/GetLoginOptions`,
 } as const;
 
-/** Matches `idp/mfa/constants/endpoint.constant.ts` (`RESEND_OTP` on IDP base). */
 export const MFA_ENDPOINTS = {
-  RESEND_OTP: `${V1}/Mfa/ResendOtp`,
+  RESEND_OTP: `${API}/Mfa/ResendOtp`,
 } as const;
 
-/** Matches `idp/iam/constants/endpoint.constant.ts` (`IAM_SUBPATH = "/Iam"`). */
 export const IAM_ENDPOINTS = {
-  GET_SIGNUP_SETTING: `${V1}/Iam/GetSignUpSetting`,
+  GET_SIGNUP_SETTING: `${API}/Iam/GetSignUpSetting`,
   /** Current session user (profile image, name, etc.) — same as `@blocks-idp/iam` `getUser()`. */
-  GET_USER: `${V1}/Iam/GetUser`,
+  GET_USER: `${API}/Iam/GetUser`,
 } as const;
-
-const ID_V1 = "/identifier/v1";
 
 export const IDENTIFIER_ENDPOINTS = {
-  SIGNUP: `${ID_V1}/People/Signup`,
+  SIGNUP: `${API}/People/Signup`,
 } as const;
