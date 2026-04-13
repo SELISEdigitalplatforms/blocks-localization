@@ -71,7 +71,8 @@ export function ProfileMfaMethodSelectList() {
     showVerifyModal(t);
   };
 
-  const activeType = userData?.data.userMfaType.toString() ?? "";
+  const mfaType = userData?.data.userMfaType;
+  const activeType = mfaType !== undefined && mfaType !== null ? String(mfaType) : "";
 
   return (
     <>

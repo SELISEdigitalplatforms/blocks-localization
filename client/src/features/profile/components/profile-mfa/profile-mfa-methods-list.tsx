@@ -19,8 +19,9 @@ export function ProfileMFAMethodList({ selected, setSelected }: UserMFAMethodLis
   const { isLoading, isFetching, data } = useProfileMfaConfig({ projectKey });
   const { data: userData } = useProfileUserById({ id: userId, projectKey });
   const availableMFaMethod = useMemo(() => {
-    if (!data?.userMfaType.length) return [];
-    return MFA_Provider_Data.filter((item) => data.userMfaType.includes(item.type));
+    const types = data?.userMfaType;
+    if (!types?.length) return [];
+    return MFA_Provider_Data.filter((item) => types.includes(item.type));
   }, [data?.userMfaType]);
 
   return (
