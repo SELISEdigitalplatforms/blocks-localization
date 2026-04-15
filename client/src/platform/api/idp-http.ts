@@ -1,5 +1,10 @@
 import { useAuthStore } from "@/features/auth/model/auth-store";
 import { env } from "@/config/env";
+import {
+  getLocalApiBearerToken,
+  isRequestToLocalApiBase,
+  persistLocalApiBearerFromOAuthBody,
+} from "@/platform/api/local-api-bearer";
 import { getQueryClient } from "@/platform/query/query-client-holder";
 
 export class HttpError extends Error {
@@ -89,7 +94,14 @@ async function refreshAccessToken(): Promise<boolean> {
     headers,
     credentials: "include",
   });
-  return response.ok;
+  if (!response.ok) return false;
+  try {
+    const text = await response.text();
+    if (text) persistLocalApiBearerFromOAuthBody(JSON.parse(text) as unknown);
+  } catch {
+    /* ignore non-JSON refresh bodies */
+  }
+  return true;
 }
 
 function handleRefreshFailure(): void {
@@ -134,6 +146,12 @@ async function idpRequestInner<T>(
   const headers = new Headers(init.headers);
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
   if (env.xBlocksKey) headers.set("X-Blocks-Key", env.xBlocksKey);
+  if (isRequestToLocalApiBase(options.baseUrl)) {
+    const bearer = getLocalApiBearerToken();
+    if (bearer && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${bearer}`);
+    }
+  }
 
   const res = await fetch(joinBase(path, options.baseUrl), {
     ...init,
