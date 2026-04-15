@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class WebHookServiceTests
     {

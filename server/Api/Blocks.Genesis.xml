@@ -224,6 +224,17 @@
         <member name="M:BlocksTemplate.Api.GlobalApiRoutePrefixConvention.#ctor(System.String)">
             <summary>Prepends a segment (e.g. <c>api</c>) to every controller’s attribute route template.</summary>
         </member>
+        <member name="T:Api.ServiceRegistry">
+            <summary>
+            A static class responsible for registering application services and validators.
+            </summary>
+        </member>
+        <member name="M:Api.ServiceRegistry.RegisterApplicationServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,BlocksTemplate.DomainService.Shared.Entities.ILocalizationSecret)">
+            <summary>
+            Registers services and validators related to modules, languages, and keys.
+            </summary>
+            <param name="services">The collection of services to which dependencies are registered.</param>
+        </member>
         <member name="T:Program">
             <summary>
             Auto-generated public partial Program class for top-level statement apps.

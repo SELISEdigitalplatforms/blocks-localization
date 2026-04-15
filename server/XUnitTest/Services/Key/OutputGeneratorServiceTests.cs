@@ -10,7 +10,7 @@ using BlocksLanguageModule = BlocksTemplate.DomainService.Repositories.BlocksLan
 using BlocksLanguageKey = BlocksTemplate.DomainService.Repositories.BlocksLanguageKey;
 using Resource = BlocksTemplate.DomainService.Services.Resource;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class JsonOutputGeneratorServiceTests
     {

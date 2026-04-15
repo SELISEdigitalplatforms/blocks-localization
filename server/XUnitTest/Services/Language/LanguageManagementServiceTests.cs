@@ -8,7 +8,7 @@ using Xunit;
 using BlocksLanguage = BlocksTemplate.DomainService.Repositories.BlocksLanguage;
 using LanguageModel = BlocksTemplate.DomainService.Services.Language;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class LanguageManagementServiceTests
     {

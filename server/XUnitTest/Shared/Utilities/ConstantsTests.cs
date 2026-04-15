@@ -1,7 +1,7 @@
 using BlocksTemplate.DomainService.Utilities;
 using FluentAssertions;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class ConstantsTests
     {

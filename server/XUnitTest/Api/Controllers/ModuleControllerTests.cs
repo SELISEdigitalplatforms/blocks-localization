@@ -1,4 +1,4 @@
-using BlocksTemplate.Api.Controllers;
+using Api.Controllers;
 using Blocks.Genesis;
 using BlocksTemplate.DomainService.Repositories;
 using BlocksTemplate.DomainService.Services;
@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class ModuleControllerTests
     {

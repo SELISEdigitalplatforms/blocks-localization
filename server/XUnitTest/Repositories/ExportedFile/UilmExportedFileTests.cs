@@ -2,7 +2,7 @@ using BlocksTemplate.DomainService.Repositories;
 using FluentAssertions;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class UilmExportedFileTests
     {

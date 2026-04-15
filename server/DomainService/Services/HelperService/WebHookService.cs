@@ -34,7 +34,7 @@ namespace BlocksTemplate.DomainService.Services.HelperService
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksWebhook {errorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError("Error while saving BlocksWebhook {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
                 return new ApiResponse(ex.Message);
             }
 

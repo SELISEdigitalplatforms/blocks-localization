@@ -8,7 +8,7 @@ using StorageDriver;
 using System.Net;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class StorageHelperTests
     {

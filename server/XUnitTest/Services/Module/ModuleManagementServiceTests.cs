@@ -8,7 +8,7 @@ using Xunit;
 using BlocksLanguageModule = BlocksTemplate.DomainService.Repositories.BlocksLanguageModule;
 using ModuleModel = BlocksTemplate.DomainService.Services.Module;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class ModuleManagementServiceTests
     {

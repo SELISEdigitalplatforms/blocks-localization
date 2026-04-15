@@ -1,5 +1,4 @@
 using BlocksTemplate.Api;
-using BlocksTemplate.DomainService;
 using Blocks.Genesis;
 using BlocksTemplate.DomainService.Repositories;
 using BlocksTemplate.DomainService.Services;
@@ -11,8 +10,9 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
+using Worker;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class ApiServiceRegistryTests
     {
@@ -26,7 +26,7 @@ namespace BlocksTemplate.XUnitTest
                 ChatGptEncryptionKey = "key"
             };
 
-            services.AddDomainServices(localizationSecret);
+            services.RegisterApplicationServices(localizationSecret);
 
             AssertRegistration<ILocalizationSecret>(services, ServiceLifetime.Singleton, implementationInstance: localizationSecret);
 

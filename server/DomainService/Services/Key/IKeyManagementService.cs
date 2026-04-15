@@ -17,6 +17,7 @@ namespace BlocksTemplate.DomainService.Services
         Task<string> GetUilmFile(GetUilmFileRequest request);
         Task<Key?> GetAsync(GetKeyRequest request);
         Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request);
+        Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request);
         Task SendTranslateAllEvent(TranslateAllRequest request);
         Task SendTranslateBlocksLanguageKeyEvent(TranslateBlocksLanguageKeyRequest request);
         Task SendUilmImportEvent(UilmImportRequest request);

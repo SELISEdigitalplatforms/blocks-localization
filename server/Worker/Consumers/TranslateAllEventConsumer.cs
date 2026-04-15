@@ -3,7 +3,7 @@ using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Services.HelperService;
 using BlocksTemplate.DomainService.Shared.Events;
 
-namespace BlocksTemplate.Worker.Consumers
+namespace Worker.Consumers
 {
     public class TranslateAllEventConsumer : IConsumer<TranslateAllEvent>
     {
