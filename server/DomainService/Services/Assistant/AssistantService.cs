@@ -62,7 +62,7 @@ namespace BlocksTemplate.DomainService.Services
             return output;
         }
 
-        public string GenerateSuggestTranslationContext(SuggestLanguageRequest request)
+        public static string GenerateSuggestTranslationContext(SuggestLanguageRequest request)
         {
             var context = !string.IsNullOrWhiteSpace(request.ElementDetailContext) ? request.ElementDetailContext :
                 $"The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
@@ -70,7 +70,7 @@ namespace BlocksTemplate.DomainService.Services
             return context;
         }
 
-        public string FormatAiTextForSuggestTranslation(string aiText)
+        public static string FormatAiTextForSuggestTranslation(string aiText)
         {
             if (string.IsNullOrWhiteSpace(aiText))
             {

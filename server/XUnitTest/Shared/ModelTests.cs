@@ -6,7 +6,7 @@ using BlocksTemplate.DomainService.Shared.Entities;
 using FluentAssertions;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class KeyModelTests
     {

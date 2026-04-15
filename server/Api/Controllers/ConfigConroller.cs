@@ -4,7 +4,7 @@ using BlocksTemplate.DomainService.Shared;
 using BlocksTemplate.DomainService.Shared.Entities;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlocksTemplate.Api.Controllers
+namespace Api.Controllers
 {
     /// <summary>
     /// Handles operations related to language configuration settings.

@@ -182,7 +182,7 @@ namespace BlocksTemplate.DomainService.Repositories
         /// - If a culture only exists in new resources, it is added.
         /// - All remaining existing resources (cultures not in new) are kept.
         /// </summary>
-        private Resource[] MergeResources(Resource[] existingResources, Resource[] newResources)
+        private static Resource[] MergeResources(Resource[] existingResources, Resource[] newResources)
         {
             var newResourcesByCulture = newResources.ToDictionary(r => r.Culture, r => r);
             var mergedResources = new List<Resource>();

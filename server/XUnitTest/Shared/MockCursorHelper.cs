@@ -1,7 +1,7 @@
 using MongoDB.Driver;
 using Moq;
 
-namespace BlocksTemplate.XUnitTest.Shared
+namespace XUnitTest.Shared
 {
     public static class MockCursorHelper
     {

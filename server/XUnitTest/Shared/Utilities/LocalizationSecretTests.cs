@@ -2,7 +2,7 @@ using Blocks.Genesis;
 using BlocksTemplate.DomainService.Shared.Entities;
 using FluentAssertions;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class LocalizationSecretTests
     {

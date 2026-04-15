@@ -21,6 +21,7 @@ namespace BlocksTemplate.DomainService.Repositories
         Task<BlocksLanguageKey> GetUilmResourceKey(Expression<Func<BlocksLanguageKey, bool>> expression, string tenantId);
         Task InsertUilmResourceKeys(IEnumerable<BlocksLanguageKey> entities);
         Task InsertUilmResourceKeys(IEnumerable<BlocksLanguageKey> entities, string tenantId);
+        Task<(long upsertedCount, long modifiedCount)> UpsertResourceKeysWithMergeAsync(IEnumerable<BlocksLanguageKey> entities, string? tenantId = null);
         Task UpdateBulkUilmApplications(List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string organizationId, bool isExternal, string clientTenantId);
         Task<bool> UpdateKeysCountOfAppAsync(string appId, bool isExternal, string tenantId, string organizationId);    
         Task InsertUilmApplications(List<BlocksLanguageModule> uilmApplicationsToBeInserted, string clientTenantId);

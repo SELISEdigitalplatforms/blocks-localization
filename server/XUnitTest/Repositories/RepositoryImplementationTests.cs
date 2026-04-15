@@ -9,7 +9,7 @@ using MongoDB.Driver;
 using Xunit;
 using KeyTimelineModel = BlocksTemplate.DomainService.Services.KeyTimeline;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class RepositoryImplementationTests
     {
