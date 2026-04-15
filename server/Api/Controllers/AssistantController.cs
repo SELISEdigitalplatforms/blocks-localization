@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
-namespace Api.Controllers
+namespace BlocksTemplate.Api.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
