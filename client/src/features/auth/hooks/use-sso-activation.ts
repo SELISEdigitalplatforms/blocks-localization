@@ -5,6 +5,7 @@ import { signinBySso } from "@/features/auth/services/auth-api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { isMfaRequired } from "@/features/auth/model/types";
+import { persistLocalApiBearerFromOAuthBody } from "@/platform/api/local-api-bearer";
 
 const SSO_GUARD_PREFIX = "sso_activated_";
 
@@ -99,6 +100,7 @@ export function useSsoActivation() {
           return;
         }
 
+        persistLocalApiBearerFromOAuthBody(res);
         setAuthenticated();
         navigate("/console", { replace: true });
       } catch (error) {
