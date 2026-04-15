@@ -21,6 +21,7 @@ import { showErrorToast } from "@/platform/ui/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { isMfaRequired } from "@/features/auth/model/types";
 import { HttpError } from "@/platform/api/idp-http";
+import { persistLocalApiBearerFromOAuthBody } from "@/platform/api/local-api-bearer";
 
 export function SigninForm() {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ export function SigninForm() {
         navigate(`/mfa-check?mfa_id=${encodeURIComponent(res.mfaId)}&mfa_type=${res.mfaType}`);
         return;
       }
+      persistLocalApiBearerFromOAuthBody(res);
       setAuthenticated();
       navigate("/console");
     } catch (error: unknown) {

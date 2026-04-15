@@ -4,6 +4,9 @@
 interface ImportMetaEnv {
   readonly BLOCKS_APP_URL?: string;
   readonly BLOCKS_API_BASE_URL?: string;
+  readonly BLOCKS_API_BASE_URL_LOCAL?: string;
+  /** Dev: optional JWT; sent as Bearer to local API when `BLOCKS_API_BASE_URL_LOCAL` is used (see `local-api-bearer.ts`). */
+  readonly BLOCKS_LOCAL_API_BEARER?: string;
   readonly BLOCKS_X_BLOCKS_KEY?: string;
   readonly BLOCKS_CONSTRUCT_URL?: string;
   readonly BLOCKS_PROJECT_DEFAULT_API_BASE_URL?: string;

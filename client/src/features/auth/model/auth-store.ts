@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { clearLocalApiBearerSession } from "@/platform/api/local-api-bearer";
 
 export type AuthUser = {
   itemId?: string;
@@ -22,7 +23,10 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set((state) => ({ ...state, user })),
       setAuthenticated: () => set((state) => ({ ...state, isAuthenticated: true })),
       setUnAuthenticated: () => set((state) => ({ ...state, isAuthenticated: false, user: null })),
-      reset: () => set({ isAuthenticated: false, user: null }),
+      reset: () => {
+        clearLocalApiBearerSession();
+        set({ isAuthenticated: false, user: null });
+      },
     }),
     { name: "auth-storage" },
   ),
