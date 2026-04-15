@@ -15,7 +15,7 @@ using BlocksLanguageKey = BlocksTemplate.DomainService.Repositories.BlocksLangua
 using KeyModel = BlocksTemplate.DomainService.Services.Key;
 using KeyTimeline = BlocksTemplate.DomainService.Services.KeyTimeline;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class KeyManagementServiceGenerateTimelineTests
     {
@@ -61,7 +61,8 @@ namespace BlocksTemplate.XUnitTest
                 _storageDriverServiceMock.Object,
                 storageHelper,
                 Mock.Of<IServiceProvider>(),
-                _notificationServiceMock.Object
+                _notificationServiceMock.Object,
+                Mock.Of<IGlossaryRepository>()
             );
         }
 

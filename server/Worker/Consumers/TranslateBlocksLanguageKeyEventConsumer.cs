@@ -2,7 +2,7 @@ using Blocks.Genesis;
 using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Shared.Events;
 
-namespace BlocksTemplate.Worker.Consumers
+namespace Worker.Consumers
 {
     public class TranslateBlocksLanguageKeyEventConsumer : IConsumer<TranslateBlocksLanguageKeyEvent>
     {

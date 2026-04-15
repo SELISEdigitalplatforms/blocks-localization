@@ -13,7 +13,7 @@ using StorageDriver;
 using Xunit;
 using KeyModel = BlocksTemplate.DomainService.Services.Key;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class KeyManagementServiceUtilityTests
     {
@@ -48,7 +48,8 @@ namespace BlocksTemplate.XUnitTest
                 storageDriverServiceMock.Object,
                 storageHelper,
                 Mock.Of<IServiceProvider>(),
-                notificationServiceMock.Object
+                notificationServiceMock.Object,
+                Mock.Of<IGlossaryRepository>()
             );
         }
 

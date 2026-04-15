@@ -7,6 +7,8 @@ namespace BlocksTemplate.DomainService.Services.HelperService
 {
     public class NotificationService : INotificationService
     {
+        private const string RootTenantIdKey = "RootTenantId";
+
         private readonly ICryptoService _cryptoService;
         private readonly ITenants _tenants;
         private readonly IConfiguration _configuration;
@@ -47,8 +49,8 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 ResponseValue = response.ToString(),
 			};
 
-            var blocksKey = _configuration["RootTenantId"];
-            var rootTenantId = _configuration["RootTenantId"];
+            var blocksKey = _configuration[RootTenantIdKey];
+            var rootTenantId = _configuration[RootTenantIdKey];
             var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
             var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 
@@ -59,10 +61,10 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 { "Secret", actulalSecret}
             };
 
-            var (result1, result2) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
+            var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
                  requestData, url, headers);
-
-            return result1 == null ? false : result1.isSuccess;
+    
+            return result1 != null && result1.isSuccess;
         }
 
         public async Task<bool> NotifyTranslateAllEvent(bool response, string? messageCoRelationId)
@@ -85,8 +87,8 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 ResponseValue = "Successfully translated all keys"
             };
 
-            var blocksKey = _configuration["RootTenantId"];
-            var rootTenantId = _configuration["RootTenantId"];
+            var blocksKey = _configuration[RootTenantIdKey];
+            var rootTenantId = _configuration[RootTenantIdKey];
             var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
             var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 
@@ -97,10 +99,10 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 { "Secret", actulalSecret}
             };
 
-            var (result1, result2) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
+            var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
                  requestData, url, headers);
 
-            return result1 == null ? false : result1.isSuccess;
+            return result1 != null && result1.isSuccess;
         }
 
         public async Task<bool> NotifyTranslateBlocksLanguageKeyEvent(bool response, string? messageCoRelationId)
@@ -123,8 +125,8 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 ResponseValue = "Successfully translated language key"
             };
 
-            var blocksKey = _configuration["RootTenantId"];
-            var rootTenantId = _configuration["RootTenantId"];
+            var blocksKey = _configuration[RootTenantIdKey];
+            var rootTenantId = _configuration[RootTenantIdKey];
             var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
             var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 
@@ -135,10 +137,10 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 { "Secret", actulalSecret}
             };
 
-            var (result1, result2) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
+            var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
                  requestData, url, headers);
 
-            return result1 == null ? false : result1.isSuccess;
+            return result1 != null && result1.isSuccess;
         }
 
         public async Task<bool> NotifyEnvironmentDataMigrationEvent(bool response, string? messageCoRelationId, string projectKey, string targetedProjectKey)
@@ -163,8 +165,8 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 ResponseValue = response ? "Migration completed" : "Migration failed"
             };
 
-            var blocksKey = _configuration["RootTenantId"];
-            var rootTenantId = _configuration["RootTenantId"];
+            var blocksKey = _configuration[RootTenantIdKey];
+            var rootTenantId = _configuration[RootTenantIdKey];
             var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
             var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 
@@ -175,10 +177,10 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 { "Secret", actulalSecret}
             };
 
-            var (result1, result2) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
+            var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
                  requestData, url, headers);
 
-            return result1 == null ? false : result1.isSuccess;
+            return result1 != null && result1.isSuccess;
         }
 
         public async Task<bool> NotifyExtensionEvent(bool response, string projectKey) {
@@ -213,10 +215,10 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                 { "Secret", actulalSecret}
             };
 
-            var (result1, result2) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
+            var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
                  requestData, url, headers);
 
-            return result1 == null ? false : result1.isSuccess;
+            return result1 != null && result1.isSuccess;
         }
     }
 }

@@ -7,9 +7,9 @@ using BlocksTemplate.DomainService.Shared.Events;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using BlocksTemplate.Worker.Consumers;
+using Worker.Consumers;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class WorkerConsumersTests
     {
@@ -17,9 +17,11 @@ namespace BlocksTemplate.XUnitTest
         public async Task GenerateUilmFilesConsumer_Consume_CallsGenerateAsync()
         {
             var keyManagementService = new Mock<IKeyManagementService>();
+            var webHookService = new Mock<IWebHookService>();
             keyManagementService.Setup(x => x.GenerateAsync(It.IsAny<GenerateUilmFilesEvent>())).ReturnsAsync(true);
+            webHookService.Setup(x => x.CallWebhook(It.IsAny<object>())).ReturnsAsync(true);
 
-            var consumer = new GenerateUilmFilesConsumer(keyManagementService.Object);
+            var consumer = new GenerateUilmFilesConsumer(keyManagementService.Object, webHookService.Object);
             var @event = new GenerateUilmFilesEvent { Guid = "g-1", ModuleId = "m-1", ProjectKey = "tenant-1" };
 
             await consumer.Consume(@event);

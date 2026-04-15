@@ -10,7 +10,7 @@ using System.Net.Http;
 using System.Text;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class AssistantServiceTests
     {
@@ -73,7 +73,7 @@ namespace BlocksTemplate.XUnitTest
                 CurrentLanguage = "en"
             };
 
-            var result = _assistantService.GenerateSuggestTranslationContext(request);
+            var result = AssistantService.GenerateSuggestTranslationContext(request);
 
             result.Should().Contain("submit");
             result.Should().Contain("Translate the following from en to es: 'Submit'");
@@ -90,7 +90,7 @@ namespace BlocksTemplate.XUnitTest
                 CurrentLanguage = "en"
             };
 
-            var result = _assistantService.GenerateSuggestTranslationContext(request);
+            var result = AssistantService.GenerateSuggestTranslationContext(request);
 
             result.Should().Contain("translate a user interface element", because: "default context should be used");
             result.Should().Contain("Translate the following from en to fr: 'Welcome'");
@@ -107,7 +107,7 @@ namespace BlocksTemplate.XUnitTest
                 CurrentLanguage = "en"
             };
 
-            var result = _assistantService.GenerateSuggestTranslationContext(request);
+            var result = AssistantService.GenerateSuggestTranslationContext(request);
 
             result.Should().Contain("translate a user interface element");
             result.Should().Contain("Translate the following from en to de: 'Hello'");
@@ -124,7 +124,7 @@ namespace BlocksTemplate.XUnitTest
                 CurrentLanguage = "en"
             };
 
-            var result = _assistantService.GenerateSuggestTranslationContext(request);
+            var result = AssistantService.GenerateSuggestTranslationContext(request);
 
             result.Should().Contain("Button for form submission");
             result.Should().Contain("Translate the following from en to ja: 'Save Changes'");
@@ -139,7 +139,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "\"Translated: Enviar\"";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("Enviar");
         }
@@ -149,7 +149,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "\"Bienvenue\"";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("Bienvenue");
         }
@@ -159,7 +159,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "'Hello World'";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("Hello World");
         }
@@ -169,7 +169,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "  \n\tBonjour\t\n  ";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("Bonjour");
         }
@@ -179,7 +179,7 @@ namespace BlocksTemplate.XUnitTest
         {
             string? aiText = null;
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().BeEmpty();
         }
@@ -189,7 +189,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().BeEmpty();
         }
@@ -199,7 +199,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "   ";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().BeEmpty();
         }
@@ -209,7 +209,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "Translation: Hello: World";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("Hello");
         }
@@ -219,7 +219,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "Translation:";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().BeEmpty();
         }
@@ -229,7 +229,7 @@ namespace BlocksTemplate.XUnitTest
         {
             var aiText = "\"Test'Value\"";
 
-            var result = _assistantService.FormatAiTextForSuggestTranslation(aiText);
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
             result.Should().Be("TestValue");
         }

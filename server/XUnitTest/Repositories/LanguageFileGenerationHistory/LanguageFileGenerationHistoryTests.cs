@@ -5,9 +5,9 @@ using FluentAssertions;
 using Moq;
 using MongoDB.Driver;
 using Xunit;
-using BlocksTemplate.XUnitTest.Shared;
+using XUnitTest.Shared;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class LanguageFileGenerationHistoryRepositoryTests
     {

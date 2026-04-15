@@ -36,9 +36,11 @@ namespace BlocksTemplate.DomainService.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly StorageHelper _storageHelperService;
         private readonly INotificationService _notificationService;
+        private readonly IGlossaryRepository _glossaryRepository;
 
-        private readonly string _tenantId = BlocksContext.GetContext()?.TenantId ?? "";
         private BaseBlocksCommand _blocksBaseCommand;
+        private readonly string _tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+        private const string DateTimeFormat = "yyyyMMddHHmmss";
 
         public KeyManagementService(
             IKeyRepository keyRepository,
@@ -53,7 +55,8 @@ namespace BlocksTemplate.DomainService.Services
             IStorageDriverService storageDriverService,
             StorageHelper storageHelperService,
             IServiceProvider serviceProvider,
-            INotificationService notificationService
+            INotificationService notificationService,
+            IGlossaryRepository glossaryRepository
             )
         {
             _keyRepository = keyRepository;
@@ -69,6 +72,7 @@ namespace BlocksTemplate.DomainService.Services
             _storageHelperService = storageHelperService;
             _serviceProvider = serviceProvider;
             _notificationService = notificationService;
+            _glossaryRepository = glossaryRepository;
         }
 
         public async Task<ApiResponse> SaveKeyAsync(Key key)
@@ -84,7 +88,7 @@ namespace BlocksTemplate.DomainService.Services
                 var existingRepoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
                 BlocksLanguageKey? previousKey = null;
                 bool isNewKey = existingRepoKey == null;
-                
+
                 if (!isNewKey && existingRepoKey != null)
                 {
                     previousKey = existingRepoKey;
@@ -118,7 +122,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguage {errorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError("Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
                 return new ApiResponse(ex.Message);
             }
 
@@ -153,7 +157,7 @@ namespace BlocksTemplate.DomainService.Services
                     var existingRepoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
                     BlocksLanguageKey? previousKey = null;
                     bool isNewKey = existingRepoKey == null;
-                    
+
                     if (!isNewKey && existingRepoKey != null)
                     {
                         previousKey = existingRepoKey;
@@ -199,7 +203,7 @@ namespace BlocksTemplate.DomainService.Services
 
             if (errors.Any())
             {
-                var errorMessage = $"Bulk save completed with {errors.Count} errors out of {keys.Count} keys:\n" + string.Join("\n", errors);
+                var errorMessage = string.Format("Bulk save completed with {0} errors out of {1} keys:\n{2}", errors.Count, keys.Count, string.Join("\n", errors));
                 return new ApiResponse(errorMessage);
             }
 
@@ -219,6 +223,7 @@ namespace BlocksTemplate.DomainService.Services
             repoKey.Resources = key.Resources;
             repoKey.IsPartiallyTranslated = key.IsPartiallyTranslated;
             repoKey.Routes = key.Routes;
+            repoKey.GlossaryIds = key.GlossaryIds;
             repoKey.Context = key.Context;
 
             return repoKey;
@@ -272,6 +277,70 @@ namespace BlocksTemplate.DomainService.Services
         {
             var key = await _keyRepository.GetByIdAsync(request.ItemId);
             return key;
+        }
+
+        public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request)
+        {
+            var response = new GetSuggestedGlossariesResponse();
+
+            var key = await _keyRepository.GetByIdAsync(request.ItemId);
+            if (key?.Resources == null || key.Resources.Length == 0)
+                return response;
+
+            var resourceValues = key.Resources
+                .Where(r => !string.IsNullOrWhiteSpace(r.Value))
+                .Select(r => r.Value)
+                .ToList();
+
+            if (resourceValues.Count == 0)
+                return response;
+
+            var glossariesRequest = new GetGlossariesRequest
+            {
+                PageNumber = 0,
+                PageSize = 100
+            };
+            var glossariesResult = await _glossaryRepository.GetAllAsync(glossariesRequest);
+
+            if (glossariesResult?.Items == null || glossariesResult.Items.Count == 0)
+                return response;
+
+            var matched = new List<Glossary>();
+
+            foreach (var glossary in glossariesResult.Items)
+            {
+                if (matched.Count >= request.MaxResults)
+                    break;
+
+                var isMatch = false;
+
+                foreach (var resourceValue in resourceValues)
+                {
+                    if (!string.IsNullOrWhiteSpace(glossary.Name) &&
+                        System.Text.RegularExpressions.Regex.IsMatch(
+                            resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Name),
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        isMatch = true;
+                        break;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(glossary.Context) &&
+                        System.Text.RegularExpressions.Regex.IsMatch(
+                            resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Context),
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        isMatch = true;
+                        break;
+                    }
+                }
+
+                if (isMatch)
+                    matched.Add(glossary);
+            }
+
+            response.SuggestedGlossaries = matched;
+            return response;
         }
 
         public async Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request)
@@ -374,7 +443,7 @@ namespace BlocksTemplate.DomainService.Services
 
                 // Get the specific key by ID
                 var resourceKey = await _keyRepository.GetUilmResourceKey(
-                    x => x.ItemId == request.KeyId, 
+                    x => x.ItemId == request.KeyId,
                     BlocksContext.GetContext()?.TenantId ?? ""
                 );
 
@@ -386,7 +455,7 @@ namespace BlocksTemplate.DomainService.Services
 
                 // Create deep copy for timeline tracking
                 var originalKey = JsonConvert.DeserializeObject<BlocksLanguageKey>(JsonConvert.SerializeObject(resourceKey));
-                
+
                 var uilmResourceKeyList = new List<BlocksLanguageKey>();
 
                 // Convert event to TranslateAllEvent format for reusing existing logic
@@ -407,7 +476,7 @@ namespace BlocksTemplate.DomainService.Services
                     {
                         originalResourceKeys[resourceKey.ItemId] = originalKey;
                     }
-                    
+
                     await UpdateResourceKey(uilmResourceKeyList, translateAllEvent, originalResourceKeys, null, LogFromConstants.TranslateKey);
                 }
 
@@ -493,7 +562,7 @@ namespace BlocksTemplate.DomainService.Services
 
             if (string.IsNullOrEmpty(languageName))
             {
-                _logger.LogError("ChangeAll: No language name found for languageCode {misssingResourceCulture}", missingResource.Culture);
+                _logger.LogError("ChangeAll: No language name found for languageCode {MisssingResourceCulture}", missingResource.Culture);
                 return;
             }
 
@@ -557,7 +626,7 @@ namespace BlocksTemplate.DomainService.Services
                     {
                         previousKey = originalResourceKeys[resourceKey.ItemId];
                     }
-                    
+
                     await CreateKeyTimelineEntryAsync(previousKey, resourceKey, logFrom, translateAllOperationId);
                 }
                 catch (Exception ex)
@@ -566,7 +635,7 @@ namespace BlocksTemplate.DomainService.Services
                 }
             }
 
-            _logger.LogInformation($"ChangeAll: Uilm Resource key updated: {updateCount}");
+            _logger.LogInformation("ChangeAll: Uilm Resource key updated: {UpdateCount}", updateCount);
         }
 
         public async Task<bool> GenerateAsync(GenerateUilmFilesEvent command)
@@ -604,17 +673,17 @@ namespace BlocksTemplate.DomainService.Services
                     failedKeys.AddRange(resourceKeys);
                 }
             }
-             // Create history entry for this generation
+            // Create history entry for this generation
             var latestHistory = await _languageFileGenerationHistoryRepository.GetLatestLanguageFileGenerationHistory(command.ProjectKey ?? "");
             var newVersion = (latestHistory?.Version ?? 0) + 1;
 
             var historyEntry = new LanguageFileGenerationHistory
             {
-                    ItemId = Guid.NewGuid().ToString(),
-                    CreateDate = DateTime.UtcNow,
-                    Version = newVersion,
-                    ModuleId = command.ModuleId,
-                    ProjectKey = command.ProjectKey ?? ""
+                ItemId = Guid.NewGuid().ToString(),
+                CreateDate = DateTime.UtcNow,
+                Version = newVersion,
+                ModuleId = command.ModuleId,
+                ProjectKey = command.ProjectKey ?? ""
             };
 
             await _languageFileGenerationHistoryRepository.SaveAsync(historyEntry);
@@ -622,7 +691,7 @@ namespace BlocksTemplate.DomainService.Services
 
             _logger.LogInformation("++JsonOutputGeneratorService: GenerateAsync execution successful!");
 
-            if(!string.IsNullOrWhiteSpace(command.ModuleId))
+            if (!string.IsNullOrWhiteSpace(command.ModuleId))
             {
                 await _notificationService.NotifyExtensionEvent(true, command.ProjectKey);
             }
@@ -681,7 +750,7 @@ namespace BlocksTemplate.DomainService.Services
                 Dictionary<string, object> dictionary = new Dictionary<string, object>();
                 if (language.LanguageCode == "key")
                 {
-                    AssignResourceKeysToDictionaryForKeyMode(resourceKeys, keyLang, dictionary);
+                    AssignResourceKeysToDictionaryForKeyMode(resourceKeys, dictionary);
                 }
                 else
                 {
@@ -700,7 +769,7 @@ namespace BlocksTemplate.DomainService.Services
             return uilmfiles;
         }
 
-        private void AssignResourceKeysToDictionary(
+        private static void AssignResourceKeysToDictionary(
            List<Key> resourceKeys,
            Language language,
            Dictionary<string, object> dictionary)
@@ -714,9 +783,9 @@ namespace BlocksTemplate.DomainService.Services
                 dictionary[reosurceKey.KeyName] = resourceValue;
             });
         }
+
         private void AssignResourceKeysToDictionaryForKeyMode(
            List<Key> resourceKeys,
-           Language language,
            Dictionary<string, object> dictionary)
         {
             resourceKeys.ForEach((Key resourceKey) =>
@@ -754,7 +823,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error in AssignToDictionary, keyPath: {keyPath},  exception: {ex}", keyPath, JsonConvert.SerializeObject(ex));
+                _logger.LogError("Error in AssignToDictionary, keyPath: {KeyPath},  exception: {Ex}", keyPath, JsonConvert.SerializeObject(ex));
             }
         }
 
@@ -822,9 +891,9 @@ namespace BlocksTemplate.DomainService.Services
 
         public async Task SendUilmExportEvent(UilmExportRequest request)
         {
-			var exportFileId = Guid.NewGuid().ToString();
+            var exportFileId = Guid.NewGuid().ToString();
 
-			await _messageClient.SendToConsumerAsync(
+            await _messageClient.SendToConsumerAsync(
                 new ConsumerMessage<UilmExportEvent>
                 {
                     ConsumerName = Utilities.Constants.UilmImportExportQueue,
@@ -898,12 +967,12 @@ namespace BlocksTemplate.DomainService.Services
                 var dbApplications = await GetLanguageApplications(null);
                 await ProcessJsonFile(dbApplications, languageJsonModels);
 
-                _logger.LogInformation("ImportCsvFile: Successfully imported FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogInformation("ImportCsvFile: Successfully imported FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ImportCsvFile: Failed to import FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogError(ex, "ImportCsvFile: Failed to import FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return false;
             }
         }
@@ -949,7 +1018,7 @@ namespace BlocksTemplate.DomainService.Services
                     {
                         string? characterLengthColumn = null;
                         var expectedCharLengthColumn = $"{culture}_CharacterLength";
-                        
+
                         // Look for the character length column
                         for (int i = 4; i < fields.Length; i++)
                         {
@@ -1025,13 +1094,13 @@ namespace BlocksTemplate.DomainService.Services
                 var dbApplications = await GetLanguageApplications(null);
                 await ProcessJsonFile(dbApplications, languageJsonModels);
 
-                _logger.LogInformation("ImportJsonFile: Successfully imported FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogInformation("ImportJsonFile: Successfully imported FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ImportJsonFile: Failed to import FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogError(ex, "ImportJsonFile: Failed to import FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return false;
             }
         }
@@ -1053,7 +1122,7 @@ namespace BlocksTemplate.DomainService.Services
                 var moduleName = languageJsonModel?.Module;
                 var keyName = languageJsonModel.KeyName;
 
-                appId = HandleUilmApplication(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, appId, 
+                appId = HandleUilmApplication(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, appId,
                     isPartiallyTranslated, moduleName);
 
                 var olduilmResourceKey = await GetUilmResourceKey(appId, keyName);
@@ -1106,7 +1175,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             else
             {
-                applications = await _keyRepository.GetUilmApplications<BlocksLanguageModule>(x => true );
+                applications = await _keyRepository.GetUilmApplications<BlocksLanguageModule>(x => true);
             }
 
             return applications;
@@ -1142,14 +1211,14 @@ namespace BlocksTemplate.DomainService.Services
             });
             if (fileData is null)
             {
-                _logger.LogError("ImportUilmFile: File data is null with the file Id: {id}", fileId);
+                _logger.LogError("ImportUilmFile: File data is null with the file Id: {Id}", fileId);
                 return (null, null);
             }
 
             var stream = await GetFileStream(fileData);
             if (stream is null)
             {
-                _logger.LogError("ImportUilmFile: File stream is null with the file Id: {id}", fileId);
+                _logger.LogError("ImportUilmFile: File stream is null with the file Id: {Id}", fileId);
                 return (null, null);
             }
 
@@ -1158,7 +1227,7 @@ namespace BlocksTemplate.DomainService.Services
             return (fileData, stream);
         }
 
-        private async Task<Stream> GetFileStream(FileResponse fileData)
+        private static async Task<Stream> GetFileStream(FileResponse fileData)
         {
 
             using var httpClient = new HttpClient();
@@ -1211,7 +1280,7 @@ namespace BlocksTemplate.DomainService.Services
 
                 if (columns.Count == 0)
                 {
-                    _logger.LogError("ImportExcelFile: No column found in the excel FileId: {id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                    _logger.LogError("ImportExcelFile: No column found in the excel FileId: {Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                     return false;
                 }
 
@@ -1223,19 +1292,19 @@ namespace BlocksTemplate.DomainService.Services
                 var missingColumns = requiredColumns.Where(col => !columns.ContainsKey(col)).ToList();
                 if (missingColumns.Any())
                 {
-                    _logger.LogError("ImportExcelFile: Missing required columns {MissingColumns} in FileId: {id}, FileName: {name}", string.Join(", ", missingColumns), fileData.ItemId, fileData.Name);
+                    _logger.LogError("ImportExcelFile: Missing required columns {MissingColumns} in FileId: {Id}, FileName: {Name}", string.Join(", ", missingColumns), fileData.ItemId, fileData.Name);
                     return false;
                 }
 
                 await ProcessExcelCells(worksheet, columns, languages, blocksLanguageKeys);
 
-                _logger.LogInformation("ImportExcelFile: Successfully imported FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogInformation("ImportExcelFile: Successfully imported FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ImportExcelFile: Failed to import FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogError(ex, "ImportExcelFile: Failed to import FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return false;
             }
         }
@@ -1261,30 +1330,30 @@ namespace BlocksTemplate.DomainService.Services
                     mappedLanguageCode = MapToDbLanguageCode(extractedLanguageCode, dbLanguages);
                     if (mappedLanguageCode == null)
                     {
-                        _logger.LogWarning("ImportXlfFile: No matching language found in database for language code '{LanguageCode}' from file {FileName}. Ignoring file.", 
+                        _logger.LogWarning("ImportXlfFile: No matching language found in database for language code '{LanguageCode}' from file {FileName}. Ignoring file.",
                             extractedLanguageCode, fileData.Name);
                         return false;
                     }
                     else
                     {
-                        _logger.LogInformation("ImportXlfFile: Mapped language code '{OriginalCode}' to '{MappedCode}'", 
+                        _logger.LogInformation("ImportXlfFile: Mapped language code '{OriginalCode}' to '{MappedCode}'",
                             extractedLanguageCode, mappedLanguageCode);
                     }
                 }
 
-                _logger.LogInformation("ImportXlfFile: Processing file {FileName}, IsBaseFile: {IsBaseFile}, TargetLanguage: {TargetLanguage}", 
+                _logger.LogInformation("ImportXlfFile: Processing file {FileName}, IsBaseFile: {IsBaseFile}, TargetLanguage: {TargetLanguage}",
                     fileData.Name, isBaseFile, mappedLanguageCode ?? "N/A");
 
                 var languageJsonModels = ExtractModelsFromXlf(stream, mappedLanguageCode, isBaseFile, dbLanguages);
                 var dbApplications = await GetLanguageApplications(null);
-                await ProcessJsonFile(dbApplications, languageJsonModels);
+                await ProcessXlfFile(dbApplications, languageJsonModels);
 
-                _logger.LogInformation("ImportXlfFile: Successfully imported FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogInformation("ImportXlfFile: Successfully imported FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ImportXlfFile: Failed to import FileId:{id}, FileName: {name}", fileData.ItemId, fileData.Name);
+                _logger.LogError(ex, "ImportXlfFile: Failed to import FileId:{Id}, FileName: {Name}", fileData.ItemId, fileData.Name);
                 return false;
             }
         }
@@ -1305,14 +1374,14 @@ namespace BlocksTemplate.DomainService.Services
                 return null;
 
             // First, try exact match (case-insensitive)
-            var exactMatch = dbLanguages.FirstOrDefault(l => 
+            var exactMatch = dbLanguages.FirstOrDefault(l =>
                 string.Equals(l.LanguageCode, fileLanguageCode, StringComparison.OrdinalIgnoreCase));
             if (exactMatch != null)
                 return exactMatch.LanguageCode;
 
             // Second, try prefix match (e.g., "de" matches "de-DE")
-            var prefixMatch = dbLanguages.FirstOrDefault(l => 
-                l.LanguageCode != null && 
+            var prefixMatch = dbLanguages.FirstOrDefault(l =>
+                l.LanguageCode != null &&
                 l.LanguageCode.StartsWith(fileLanguageCode + "-", StringComparison.OrdinalIgnoreCase));
             if (prefixMatch != null)
                 return prefixMatch.LanguageCode;
@@ -1402,13 +1471,9 @@ namespace BlocksTemplate.DomainService.Services
 
             foreach (var fileElement in fileElements)
             {
-                var sourceLanguageFromXml = fileElement.Attribute("source-language")?.Value;
-                // Map source language to database language code
-                var sourceLanguage = MapToDbLanguageCode(sourceLanguageFromXml, dbLanguages) ?? sourceLanguageFromXml;
-
                 // Use target language from filename if provided (already mapped), otherwise fall back to XML attribute and map it
-                var targetLanguage = targetLanguageFromFileName ?? 
-                    MapToDbLanguageCode(fileElement.Attribute("target-language")?.Value, dbLanguages) ?? 
+                var targetLanguage = targetLanguageFromFileName ??
+                    MapToDbLanguageCode(fileElement.Attribute("target-language")?.Value, dbLanguages) ??
                     fileElement.Attribute("target-language")?.Value;
                 var moduleName = fileElement.Attribute("original")?.Value;
 
@@ -1426,16 +1491,13 @@ namespace BlocksTemplate.DomainService.Services
 
                     // Extract ItemId from trans-unit id (format: ItemId_Culture)
 
-                    var sourceElement = transUnit.Element(ns + "source");
                     var targetElement = transUnit.Element(ns + "target");
                     var noteElements = transUnit.Elements(ns + "note");
 
-                    var sourceValue = sourceElement?.Value;
                     var targetValue = targetElement?.Value;
                     var targetState = targetElement?.Attribute("state")?.Value;
 
                     // Extract metadata from notes
-                    string moduleId = null;
                     var routes = new List<string>();
                     int characterLength = 0;
 
@@ -1516,12 +1578,147 @@ namespace BlocksTemplate.DomainService.Services
             return languageJsonModels.Values.ToList();
         }
 
+        /// <summary>
+        /// Processes XLF file data using atomic upsert operations for concurrent import safety.
+        /// This is a separate function from ProcessJsonFile to handle XLF-specific requirements.
+        /// </summary>
+        private async Task ProcessXlfFile(List<BlocksLanguageModule> dbApplications, List<LanguageJsonModel> languageJsonModels)
+        {
+            var uilmApplicationsToBeInserted = new List<BlocksLanguageModule>();
+            var uilmApplicationsToBeUpdated = new List<BlocksLanguageModule>();
+
+            // Collect all keys to be upserted - we don't need to separate insert/update anymore
+            // The upsert operation handles both cases atomically with resource merging
+            var allResourceKeys = new List<BlocksLanguageKey>();
+            var resourceKeysWithoutId = new List<BlocksLanguageKey>();
+            var uilmResourceKeys = new List<BlocksLanguageKey>();
+            var oldUilmResourceKeys = new List<BlocksLanguageKey>();
+
+            // Batch fetch existing keys to reduce DB round trips
+            var keyIdentifiers = languageJsonModels
+                .Select(m => new { ModuleId = m.ModuleId, KeyName = m.KeyName })
+                .Distinct()
+                .ToList();
+
+            // Get all existing keys in one query for timeline tracking
+            var existingKeysDict = new Dictionary<string, BlocksLanguageKey>();
+            if (keyIdentifiers.Any())
+            {
+                var moduleIds = keyIdentifiers.Select(k => k.ModuleId).Distinct().ToList();
+                var existingKeys = await _keyRepository.GetUilmResourceKeys(
+                    x => moduleIds.Contains(x.ModuleId),
+                    _blocksBaseCommand?.ClientTenantId);
+
+                foreach (var key in existingKeys)
+                {
+                    var lookupKey = $"{key.ModuleId}|{key.KeyName}";
+                    existingKeysDict.TryAdd(lookupKey, key);
+                }
+            }
+
+            foreach (var languageJsonModel in languageJsonModels)
+            {
+                var id = languageJsonModel._id;
+                var appId = languageJsonModel.ModuleId;
+                var isPartiallyTranslated = languageJsonModel.IsPartiallyTranslated;
+                var moduleName = languageJsonModel?.Module;
+                var keyName = languageJsonModel.KeyName;
+
+                appId = HandleUilmApplication(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, appId, isPartiallyTranslated,
+                    moduleName);
+
+                // Look up existing key from pre-fetched dictionary
+                var lookupKey = $"{appId}|{keyName}";
+                existingKeysDict.TryGetValue(lookupKey, out var olduilmResourceKey);
+
+                // Build the resource key - resources will be merged atomically by the upsert
+                // We pass the new resources only; the DB-level merge handles combining with existing
+                BlocksLanguageKey uilmResourceKey = new()
+                {
+                    KeyName = keyName,
+                    Resources = languageJsonModel.Resources, // Don't merge here - let upsert handle it atomically
+                    ItemId = olduilmResourceKey?.ItemId ?? id ?? Guid.NewGuid().ToString(),
+                    ModuleId = appId,
+                    IsPartiallyTranslated = isPartiallyTranslated,
+                    CreateDate = olduilmResourceKey?.CreateDate ?? DateTime.UtcNow,
+                    LastUpdateDate = DateTime.UtcNow,
+                    Value = string.Empty,
+                    Routes = languageJsonModel.Routes ?? olduilmResourceKey?.Routes,
+                    TenantId = _tenantId
+                };
+
+                allResourceKeys.Add(uilmResourceKey);
+
+                // Track for timeline - separate into existing vs new for proper logging
+                if (olduilmResourceKey == null)
+                {
+                    resourceKeysWithoutId.Add(uilmResourceKey);
+                }
+                else
+                {
+                    oldUilmResourceKeys.Add(olduilmResourceKey);
+                    uilmResourceKeys.Add(uilmResourceKey);
+                }
+            }
+
+            await SaveXlfResourceKeys(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
+
+            var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
+            var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
+            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
+        }
+
+        /// <summary>
+        /// Saves XLF resource keys using atomic upsert operations for concurrent import safety.
+        /// This is a separate function from SaveUilmResourceKey to handle XLF-specific requirements.
+        /// </summary>
+        private async Task SaveXlfResourceKeys(List<BlocksLanguageKey> uilmResourceKeys, List<BlocksLanguageKey> resourceKeysWithoutId, List<BlocksLanguageKey> oldUilmResourceKeys = null)
+        {
+            var importOperationId = Guid.NewGuid().ToString();
+
+            // Combine all keys and use upsert with merge to handle concurrent imports safely
+            var allKeys = new List<BlocksLanguageKey>();
+            allKeys.AddRange(uilmResourceKeys);
+            allKeys.AddRange(resourceKeysWithoutId);
+
+            if (allKeys.Any())
+            {
+                // Use upsert with resource merging - this is atomic and handles concurrent imports
+                var (upsertedCount, modifiedCount) = await _keyRepository.UpsertResourceKeysWithMergeAsync(allKeys, _blocksBaseCommand?.ClientTenantId);
+
+                // Create timeline entries for all keys
+                foreach (var resourceKey in uilmResourceKeys)
+                {
+                    try
+                    {
+                        await CreateKeyTimelineEntryAsync(oldUilmResourceKeys?.FirstOrDefault(x => x.ItemId == resourceKey.ItemId), resourceKey, LogFromConstants.UilmImportUpdate, importOperationId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Failed to create timeline entry for updated Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                    }
+                }
+
+                foreach (var resourceKey in resourceKeysWithoutId)
+                {
+                    try
+                    {
+                        await CreateKeyTimelineEntryAsync(null, resourceKey, LogFromConstants.UilmImportInsert, importOperationId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Failed to create timeline entry for new Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                    }
+                }
+
+                _logger.LogInformation("SaveXlfResourceKeys: Upserted {UpsertedCount} keys, Modified {ModifiedCount} keys", upsertedCount, modifiedCount);
+            }
+        }
+
         private async Task ProcessExcelCells(IXLWorksheet worksheet, Dictionary<string, string> columns, Dictionary<string, string> languages,
             List<BlocksLanguageKey> uilmResourceKeys)
         {
-            //List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
             List<BlocksLanguageKey> oldUilmResourceKeys = new List<BlocksLanguageKey>();
-
             List<BlocksLanguageModule> dbApplications = await _moduleManagementService.GetModulesAsync();
 
             var uilmApplicationsToBeInserted = new List<BlocksLanguageModule>();
@@ -1529,13 +1726,9 @@ namespace BlocksTemplate.DomainService.Services
 
             var resourceKeysWithoutId = new List<BlocksLanguageKey>();
             var cultures = languages.Where(x => !x.Key.Contains("_CharacterLength")).ToDictionary(x => x.Key, y => y.Value);
-
             var excelRows = worksheet.RowsUsed().Count();
 
             _logger.LogInformation("ImportExcelFile: {Excelrows} UilmResourceKeys Found!", excelRows - 1);
-
-            //var uilmAppTimeLines = new List<BlocksLanguageManagerTimeline>();
-            //var uilmResourceKeyTimeLines = new List<BlocksLanguageManagerTimeline>();
 
             for (int i = 2; i <= excelRows; i++)
             {
@@ -1562,13 +1755,7 @@ namespace BlocksTemplate.DomainService.Services
                 {
                     string resourceValue = worksheet.Cell(i, lang.Value).Value.ToString();
                     int characterLength = 0;
-
-                    var key = lang.Key + "_CharacterLength";
-                    //if (lang.Key != defaultLanguage && languages.ContainsKey(key))
-                    //{
-                    //    characterLength = AssignCharacterLengthValue(worksheet, languages, i, key);
-                    //}
-
+                    
                     uilmResourceKey.Resources[j++] = (new Resource() { Culture = lang.Key, Value = resourceValue, CharacterLength = characterLength });
                 }
 
@@ -1598,18 +1785,18 @@ namespace BlocksTemplate.DomainService.Services
         {
             if (string.IsNullOrWhiteSpace(appId))
             {
-                appId = HandleApplicationWithoutAppId(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, isPartiallyTranslated, moduleName);
+                appId = HandleApplicationWithoutAppId(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, moduleName);
             }
             else
             {
-                HandleApplicationWithAppId(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, appId, isPartiallyTranslated, moduleName);
+                HandleApplicationWithAppId(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, appId, moduleName);
             }
 
             return appId;
         }
 
         private string HandleApplicationWithoutAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
-            List<BlocksLanguageModule> uilmApplicationsToBeUpdated, bool isPartiallyTranslated, string moduleName, string? targetedProjectKey = null)
+            List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string moduleName)
         {
             string appId;
             var application = dbApplications?.FirstOrDefault(x => x.ModuleName == moduleName);
@@ -1648,7 +1835,7 @@ namespace BlocksTemplate.DomainService.Services
         }
 
         private void HandleApplicationWithAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted, List<BlocksLanguageModule> uilmApplicationsToBeUpdated,
-            string appId, bool isPartiallyTranslated, string moduleName)
+            string appId, string moduleName)
         {
             var application = dbApplications?.FirstOrDefault(x => x.ItemId == appId);
             if (application != null)
@@ -1752,7 +1939,7 @@ namespace BlocksTemplate.DomainService.Services
                     }
                 }
 
-                _logger.LogInformation("SaveUilmResourceKey: Updated UilmResourceKeys:{count}", updateCount);
+                _logger.LogInformation("SaveUilmResourceKey: Updated UilmResourceKeys:{Count}", updateCount);
             }
             if (resourceKeysWithoutId.Any())
             {
@@ -1771,7 +1958,7 @@ namespace BlocksTemplate.DomainService.Services
                     }
                 }
 
-                _logger.LogInformation("SaveUilmResourceKey: Inserted UilmResourceKeys:{count}", resourceKeysWithoutId.Count);
+                _logger.LogInformation("SaveUilmResourceKey: Inserted UilmResourceKeys:{Count}", resourceKeysWithoutId.Count);
             }
         }
 
@@ -1821,7 +2008,7 @@ namespace BlocksTemplate.DomainService.Services
         {
             var languageSettings = await GetLanguageSetting();
             var languageApplications = await GetLanguageApplications(request.AppIds);
-            var languageResourceKeys = await GetLanguageResourceKeys(request.AppIds, request.StartDate, request.EndDate);
+            var languageResourceKeys = await GetLanguageResourceKeys(request.AppIds);
 
             switch (request.OutputType)
             {
@@ -1869,7 +2056,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             var xlsxStream = new MemoryStream();
             workBook.SaveAs(xlsxStream);
-            var fileName = "uilm_xlsx_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xlsx";
+            var fileName = "uilm_xlsx_" + DateTime.Now.ToString(DateTimeFormat) + ".xlsx";
             return await SaveUilmFile(fileId, fileName, xlsxStream);
         }
 
@@ -1885,7 +2072,7 @@ namespace BlocksTemplate.DomainService.Services
             if (result)
             {
                 _logger.LogInformation("SaveUilmFile: Uploaded fileName={FileName}, fileId={NewFileId}", fileName, fileId);
-                
+
                 // Create UilmExportedFile entry in DB after successful storage
                 await CreateUilmExportedFileEntryAsync(fileId, fileName);
             }
@@ -1908,7 +2095,7 @@ namespace BlocksTemplate.DomainService.Services
                     CreateDate = DateTime.UtcNow,
                     CreatedBy = BlocksContext.GetContext()?.UserId ?? "System"
                 };
-                
+
                 await _keyRepository.SaveUilmExportedFileAsync(exportedFile);
                 _logger.LogInformation("SaveUilmFile: Created UilmExportedFile entry for fileId={FileId}", fileId);
             }
@@ -1941,7 +2128,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             var fileBytes = Encoding.UTF8.GetBytes(jsonString);
             var jsonStream = new MemoryStream(fileBytes.ToArray());
-            var JsonFileName = "uilm_json_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".json";
+            var JsonFileName = "uilm_json_" + DateTime.Now.ToString(DateTimeFormat) + ".json";
             return await SaveUilmFile(fileId, JsonFileName, jsonStream);
         }
 
@@ -1965,7 +2152,7 @@ namespace BlocksTemplate.DomainService.Services
                 _logger.LogError("GenerateAndWriteFile: Csv Stream is null");
                 return false;
             }
-            var csvFileName = "uilm_csv_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".csv";
+            var csvFileName = "uilm_csv_" + DateTime.Now.ToString(DateTimeFormat) + ".csv";
             return await SaveUilmFile(fileId, csvFileName, stream);
         }
 
@@ -1994,7 +2181,7 @@ namespace BlocksTemplate.DomainService.Services
                 var exportStreamFileMap = await GetLanguageStreamMapFromTemplate(languages, stream, resourceKeys);
 
                 var zipStream = CreateZipStream(exportStreamFileMap);
-                var xlfZipFileName = "uilm_xlf_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".zip";
+                var xlfZipFileName = "uilm_xlf_" + DateTime.Now.ToString(DateTimeFormat) + ".zip";
 
                 return await SaveUilmFile(fileId, xlfZipFileName, zipStream);
             }
@@ -2108,7 +2295,7 @@ namespace BlocksTemplate.DomainService.Services
                             {
                                 // Create target element if it doesn't exist
                                 var sourceElement = transUnit.Element(ns + "source");
-                                sourceElement?.AddAfterSelf(new XElement(ns + "target",value));
+                                sourceElement?.AddAfterSelf(new XElement(ns + "target", value));
                             }
                             matchedCount++;
                         }
@@ -2161,7 +2348,7 @@ namespace BlocksTemplate.DomainService.Services
         }
 
 
-        private async Task<List<BlocksLanguageKey>> GetLanguageResourceKeys(List<string> appIds = null, DateTime startDate = default, DateTime endDate = default)
+        private async Task<List<BlocksLanguageKey>> GetLanguageResourceKeys(List<string> appIds = null)
         {
             List<BlocksLanguageKey> resourceKeys = null;
 
@@ -2192,7 +2379,7 @@ namespace BlocksTemplate.DomainService.Services
                 _logger.LogError("Notification: sending failed messageCoRelationId: {MessageCoRelationId}, fileId={FileId}", messageCoRelationId, fileId);
             }
         }
-        
+
         public async Task PublishTranslateAllNotification(bool response, string? messageCoRelationId)
         {
             var result = await _notificationService.NotifyTranslateAllEvent(response, messageCoRelationId);
@@ -2224,12 +2411,12 @@ namespace BlocksTemplate.DomainService.Services
             var result = await _notificationService.NotifyEnvironmentDataMigrationEvent(response, messageCoRelationId, projectKey, targetedProjectKey);
             if (result)
             {
-                _logger.LogInformation("Notification: sent successfully for EnvironmentDataMigrationEvent with messageCoRelationId: {MessageCoRelationId}, ProjectKey: {ProjectKey}, TargetedProjectKey: {TargetedProjectKey}", 
+                _logger.LogInformation("Notification: sent successfully for EnvironmentDataMigrationEvent with messageCoRelationId: {MessageCoRelationId}, ProjectKey: {ProjectKey}, TargetedProjectKey: {TargetedProjectKey}",
                     messageCoRelationId, projectKey, targetedProjectKey);
             }
             else
             {
-                _logger.LogError("Notification: sending failed for EnvironmentDataMigrationEvent with messageCoRelationId: {MessageCoRelationId}, ProjectKey: {ProjectKey}, TargetedProjectKey: {TargetedProjectKey}", 
+                _logger.LogError("Notification: sending failed for EnvironmentDataMigrationEvent with messageCoRelationId: {MessageCoRelationId}, ProjectKey: {ProjectKey}, TargetedProjectKey: {TargetedProjectKey}",
                     messageCoRelationId, projectKey, targetedProjectKey);
             }
         }
@@ -2270,13 +2457,13 @@ namespace BlocksTemplate.DomainService.Services
             try
             {
                 var deleteResults = await _keyRepository.DeleteCollectionsAsync(request.Collections);
-                
+
                 var totalDeleted = deleteResults.Values.Sum();
-                _logger.LogInformation("Delete collections operation completed successfully. Collections: {Collections}, Total records deleted: {TotalDeleted}", 
+                _logger.LogInformation("Delete collections operation completed successfully. Collections: {Collections}, Total records deleted: {TotalDeleted}",
                     string.Join(", ", request.Collections), totalDeleted);
 
-                return new BaseMutationResponse 
-                { 
+                return new BaseMutationResponse
+                {
                     IsSuccess = true
                 };
             }
@@ -2496,23 +2683,6 @@ namespace BlocksTemplate.DomainService.Services
             {
                 _logger.LogError("Failed to create no-change publish timeline entry: {Error}", ex.Message);
             }
-        }
-
-        private Key MapBlocksLanguageKeyToKey(BlocksLanguageKey blocksKey, string? projectKey = null)
-        {
-            return new Key
-            {
-                ItemId = blocksKey.ItemId,
-                KeyName = blocksKey.KeyName,
-                ModuleId = blocksKey.ModuleId,
-                Resources = blocksKey.Resources,
-                Routes = blocksKey.Routes,
-                IsPartiallyTranslated = blocksKey.IsPartiallyTranslated,
-                IsNewKey = false, // Will be set appropriately in calling context
-                LastUpdateDate = blocksKey.LastUpdateDate,
-                CreateDate = blocksKey.CreateDate,
-                ProjectKey = projectKey
-            };
         }
 
         private BlocksLanguageKey MapKeyToBlocksLanguageKey(Key key)

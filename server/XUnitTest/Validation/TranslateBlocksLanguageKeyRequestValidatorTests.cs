@@ -2,7 +2,7 @@ using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Validation;
 using FluentAssertions;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class TranslateBlocksLanguageKeyRequestValidatorTests
     {

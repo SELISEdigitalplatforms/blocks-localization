@@ -28,7 +28,6 @@ namespace BlocksTemplate.DomainService.Services.HelperService
             try
             {
                 Console.WriteLine($"Making GET request to: {url}");
-                HttpMethod httpMethod = new HttpMethod("GET");
                 var (data, rawResponse) = await _httpService.Get<T>(url, headers);
                 return (data, rawResponse);
             }
@@ -124,18 +123,18 @@ namespace BlocksTemplate.DomainService.Services.HelperService
                         if (response.IsSuccessStatusCode)
                         {
                             var result = response.Content.ReadAsStringAsync().Result;
-                            _logger.LogInformation("Result:  {result}", JsonSerializer.Serialize(result));
+                            _logger.LogInformation("Result:  {Result}", JsonSerializer.Serialize(result));
                             return true;
                         }
                         else
                         {
-                            _logger.LogError("Error: {response}", JsonSerializer.Serialize(response));
+                            _logger.LogError("Error: {Response}", JsonSerializer.Serialize(response));
                             return false;
                         }
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError("Error: {error}", JsonSerializer.Serialize(e));
+                        _logger.LogError("Error: {Error}", JsonSerializer.Serialize(e));
                         return false;
                     }
                 }

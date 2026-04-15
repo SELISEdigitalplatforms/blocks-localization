@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using Moq;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     internal static class TestChangeControllerContextFactory
     {

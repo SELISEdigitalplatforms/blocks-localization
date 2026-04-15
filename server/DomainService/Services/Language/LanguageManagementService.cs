@@ -37,7 +37,7 @@ namespace BlocksTemplate.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguage {errorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError("Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
                 return new ApiResponse(ex.Message);
             }
 

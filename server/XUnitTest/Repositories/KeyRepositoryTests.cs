@@ -12,9 +12,9 @@ using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Xunit;
-using BlocksTemplate.XUnitTest.Shared;
+using XUnitTest.Shared;
 
-namespace BlocksTemplate.XUnitTest.Repositories
+namespace XUnitTest.Repositories
 {
     public class KeyRepositoryTests
     {

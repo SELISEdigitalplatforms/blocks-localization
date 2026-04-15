@@ -1,11 +1,11 @@
-using BlocksTemplate.Api.Controllers;
+using Api.Controllers;
 using BlocksTemplate.DomainService.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System.Net;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class AssistantControllerTests
     {

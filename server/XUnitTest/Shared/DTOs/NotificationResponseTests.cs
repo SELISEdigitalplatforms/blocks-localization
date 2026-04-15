@@ -1,7 +1,7 @@
 using BlocksTemplate.DomainService.Shared.DTOs;
 using FluentAssertions;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class NotificationResponseTests
     {
