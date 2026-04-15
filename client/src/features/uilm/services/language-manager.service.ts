@@ -1,3 +1,4 @@
+import { uilmIdpOptions } from "@/features/uilm/lib/uilm-api-base";
 import { idpDelete, idpGet, idpPostJson } from "@/platform/api/idp-http";
 import { LANGUAGE_ASSISTANT_ENDPOINTS, LANGUAGE_ENDPOINTS, LANGUAGE_KEY_ENDPOINTS, LANGUAGE_MODULE_ENDPOINTS } from "@/features/uilm/constants/endpoints";
 import type {
@@ -51,39 +52,39 @@ function stripEmptyRanges<T extends FetchKeysRequest>(request: T): Omit<T, never
 
 class LanguageManagerService {
   fetchBlocksLanguageKey = (request: FetchKeysRequest): Promise<{ totalCount: number; keys: IBlocksLanguageKey[] }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.GETS, stripEmptyRanges(request));
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.GETS, stripEmptyRanges(request), uilmIdpOptions());
   };
 
   fetchBlocksLanguageKeyById = (request: { projectKey: string; itemId: string }): Promise<IBlocksLanguageKey> => {
     const q = `projectKey=${encodeURIComponent(request.projectKey)}&itemId=${encodeURIComponent(request.itemId)}`;
-    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET}?${q}`);
+    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET}?${q}`, uilmIdpOptions());
   };
 
   fetchBlocksLanguageModules = (projectKey: string): Promise<ILanguageModule[]> => {
-    return idpGet(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${encodeURIComponent(projectKey)}`);
+    return idpGet(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${encodeURIComponent(projectKey)}`, uilmIdpOptions());
   };
 
   fetchBlocksLanguages = (projectKey: string): Promise<ILanguageConfig[]> => {
-    return idpGet(`${LANGUAGE_ENDPOINTS.GETS}?projectKey=${encodeURIComponent(projectKey)}`);
+    return idpGet(`${LANGUAGE_ENDPOINTS.GETS}?projectKey=${encodeURIComponent(projectKey)}`, uilmIdpOptions());
   };
 
   saveBlocksLanguageKey = (
     payload: SaveKeyPayload,
   ): Promise<{ success: boolean; errorMessage: string; validationErrors: IValidationError[] }> => {
     const body = { ...payload, isNewKey: payload.isNewKey ?? false };
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.SAVE, body);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.SAVE, body, uilmIdpOptions());
   };
 
   deleteLanguageKey = (payload: { itemId: string; projectKey: string }): Promise<{ errors: unknown; isSuccess: boolean }> => {
     const url = `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=${encodeURIComponent(payload.itemId)}&projectKey=${encodeURIComponent(payload.projectKey)}`;
-    return idpDelete(url);
+    return idpDelete(url, uilmIdpOptions());
   };
 
   saveLanguageModule = (payload: {
     moduleName: string;
     projectKey: string;
   }): Promise<{ errorMessage: null | unknown; success: boolean; validationErrors: IValidationError[] | null }> => {
-    return idpPostJson(LANGUAGE_MODULE_ENDPOINTS.SAVE, payload);
+    return idpPostJson(LANGUAGE_MODULE_ENDPOINTS.SAVE, payload, uilmIdpOptions());
   };
 
   saveLanguage = (payload: {
@@ -91,19 +92,19 @@ class LanguageManagerService {
     languageCode: string;
     projectKey: string;
   }): Promise<{ errorMessage: null | unknown; success: boolean }> => {
-    return idpPostJson(LANGUAGE_ENDPOINTS.SAVE, payload);
+    return idpPostJson(LANGUAGE_ENDPOINTS.SAVE, payload, uilmIdpOptions());
   };
 
   deleteLanguage = (payload: { languageName: string; projectKey: string }): Promise<{ errors: unknown; isSuccess: boolean }> => {
     const url = `${LANGUAGE_ENDPOINTS.DELETE}?languageName=${encodeURIComponent(payload.languageName)}&projectKey=${encodeURIComponent(payload.projectKey)}`;
-    return idpDelete(url);
+    return idpDelete(url, uilmIdpOptions());
   };
 
   setDefault = (payload: {
     languageName: string;
     projectKey: string;
   }): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_ENDPOINTS.SET_DEFAULT, payload);
+    return idpPostJson(LANGUAGE_ENDPOINTS.SET_DEFAULT, payload, uilmIdpOptions());
   };
 
   getExportHistory = (payload: {
@@ -121,22 +122,22 @@ class LanguageManagerService {
     if (filters?.searchText) params.append("SearchText", filters.searchText);
     if (filters?.startDate) params.append("CreateDateRange.StartDate", filters.startDate);
     if (filters?.endDate) params.append("CreateDateRange.EndDate", filters.endDate);
-    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_EXPORT_HISTORY}?${params.toString()}`);
+    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_EXPORT_HISTORY}?${params.toString()}`, uilmIdpOptions());
   };
 
   generateUilmFile = (payload: {
     guid: string;
     projectKey: string;
   }): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.GENERATE_UILM_FILE, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.GENERATE_UILM_FILE, payload, uilmIdpOptions());
   };
 
   importLanguageFile = (payload: IImportFile): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.UILM_IMPORT, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.UILM_IMPORT, payload, uilmIdpOptions());
   };
 
   saveLanguageKeyUilmExport = (payload: IKeyUilmExport): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT, payload, uilmIdpOptions());
   };
 
   getLocalizationTimeline = (payload: {
@@ -164,7 +165,7 @@ class LanguageManagerService {
     if (payload.createDateRange?.endDate) {
       params.append("CreateDateRange.EndDate", payload.createDateRange.endDate);
     }
-    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_LOCALIZATION_TIMELINE}?${params.toString()}`);
+    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_LOCALIZATION_TIMELINE}?${params.toString()}`, uilmIdpOptions());
   };
 
   getTimelineByOperationId = (payload: {
@@ -179,11 +180,11 @@ class LanguageManagerService {
       PageNumber: String(payload.pageNumber),
       ProjectKey: payload.projectKey,
     });
-    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE_BY_OPERATION_ID}?${params.toString()}`);
+    return idpGet(`${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE_BY_OPERATION_ID}?${params.toString()}`, uilmIdpOptions());
   };
 
   revertKeyTimeline = (payload: { itemId: string; projectKey: string }): Promise<IRollbackResponse> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.ROLLBACK, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.ROLLBACK, payload, uilmIdpOptions());
   };
 
   getTranslationSuggestion = (payload: {
@@ -193,7 +194,7 @@ class LanguageManagerService {
     temperature: number;
     elementDetailContext: string;
   }): Promise<{ content: string; errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION, payload);
+    return idpPostJson(LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION, payload, uilmIdpOptions());
   };
 
   translateAll = (payload: {
@@ -202,7 +203,7 @@ class LanguageManagerService {
     defaultLanguage: string;
     moduleId?: string;
   }): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_ALL, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_ALL, payload, uilmIdpOptions());
   };
 
   translateKey = (payload: {
@@ -211,7 +212,7 @@ class LanguageManagerService {
     defaultLanguage: string;
     messageCoRelationId: string;
   }): Promise<{ errors: null | unknown; isSuccess: boolean }> => {
-    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEY, payload);
+    return idpPostJson(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEY, payload, uilmIdpOptions());
   };
 
   getKeysTimeline = (payload: {
@@ -221,7 +222,7 @@ class LanguageManagerService {
     projectKey: string;
   }): Promise<IGetTimelineResponse> => {
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE}?pageSize=${payload.pageSize}&pageNumber=${payload.pageNumber}&projectKey=${encodeURIComponent(payload.projectKey)}&EntityId=${encodeURIComponent(payload.keyId)}`;
-    return idpGet(url);
+    return idpGet(url, uilmIdpOptions());
   };
 }
 
