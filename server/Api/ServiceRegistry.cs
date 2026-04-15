@@ -1,10 +1,11 @@
 ﻿using Blocks.Extension.DependencyInjection;
+using BlocksTemplate.DomainService;
 using BlocksTemplate.DomainService.Repositories;
 using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Services.HelperService;
 using BlocksTemplate.DomainService.Shared.Entities;
-using DomainService.Storage;
 using BlocksTemplate.DomainService.Validation;
+using DomainService.Storage;
 using FluentValidation;
 using Storage.DomainService.Shared.Services;
 using Storage.DomainService.Storage;
@@ -64,6 +65,9 @@ namespace Api
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
+            services.AddSingleton<IEventService, EventService>();
+            services.AddValidatorsFromAssembly(typeof(IEventService).Assembly);
+
 
         }
     }
