@@ -5,7 +5,7 @@ using BlocksTemplate.DomainService.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Controllers
+namespace BlocksTemplate.Api.Controllers
 {
     /// <summary>
     /// Handles operations related to managing modules, such as saving and retrieving module data.
