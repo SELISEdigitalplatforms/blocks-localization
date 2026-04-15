@@ -1,4 +1,4 @@
-const UILM = "/uilm/v1";
+const UILM = "/Api";
 
 const KEY = `${UILM}/Key`;
 const MODULE = `${UILM}/Module`;

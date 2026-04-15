@@ -1,5 +1,5 @@
 /**
- * Client env: `envDir` is the monolith root (see `vite.config.ts`).
+ * Client env: `envDir` is `client/` (see `vite.config.ts`); use `client/.env`.
  * Vite exposes only `BLOCKS_*` (see `envPrefix` in vite.config).
  */
 function firstDefined(...values: (string | undefined)[]): string {
@@ -18,6 +18,8 @@ export function getApiBaseSource(): "BLOCKS_API_BASE_URL" | "none" {
 export const env = {
   appUrl: firstDefined(import.meta.env.BLOCKS_APP_URL),
   apiBaseUrl: firstDefined(import.meta.env.BLOCKS_API_BASE_URL),
+  /** When set, UILM feature HTTP uses this host only (see `uilmIdpOptions` / `getUilmApiBaseUrl`). */
+  apiBaseUrlLocal: firstDefined(import.meta.env.BLOCKS_API_BASE_URL_LOCAL),
   xBlocksKey: firstDefined(import.meta.env.BLOCKS_X_BLOCKS_KEY),
   constructUrl: firstDefined(import.meta.env.BLOCKS_CONSTRUCT_URL),
   projectDefaultApiBaseUrl: firstDefined(import.meta.env.BLOCKS_PROJECT_DEFAULT_API_BASE_URL),
@@ -38,9 +40,10 @@ export const env = {
 } as const;
 
 if (import.meta.env.DEV) {
-  console.info("[client] env from repo-root .env (envDir + BLOCKS_ prefix)", {
+  console.info("[client] env from client/.env (envDir + BLOCKS_ prefix)", {
     mode: import.meta.env.MODE,
     apiBaseUrl: env.apiBaseUrl || "(missing)",
     apiBaseSource: getApiBaseSource(),
+    uilmLocalBase: env.apiBaseUrlLocal ? "(set)" : "(unset)",
   });
 }

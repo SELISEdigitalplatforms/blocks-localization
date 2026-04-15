@@ -42,6 +42,10 @@ export function NewKeyPage() {
   const navigate = useNavigate();
   const { data: modules, isLoading: mLoading } = useUilmLanguageModules();
   const { data: languages, isLoading: lLoading } = useUilmLanguages();
+  const safeModules = useMemo(
+    () => (Array.isArray(modules) ? modules : []),
+    [modules],
+  );
   const save = useUilmSaveLanguageKey();
   const { mutateAsync: autoTranslateAsync } = useUilmGetTranslationSuggestion();
 
@@ -54,7 +58,7 @@ export function NewKeyPage() {
   const [loadingTranslateIndex, setLoadingTranslateIndex] = useState<number | null>(null);
 
   const sortedLanguages = useMemo(() => {
-    const list = [...(languages ?? [])];
+    const list = Array.isArray(languages) ? [...languages] : [];
     list.sort((a, b) => {
       if (a.isDefault && !b.isDefault) return -1;
       if (!a.isDefault && b.isDefault) return 1;
@@ -77,7 +81,7 @@ export function NewKeyPage() {
     });
   }, [sortedLanguages]);
 
-  const selectedModule = modules?.find((m) => m.itemId === moduleId);
+  const selectedModule = safeModules.find((m) => m.itemId === moduleId);
   const defaultValueText = values[defaultCode] ?? "";
 
   const isFormValid =
@@ -287,7 +291,7 @@ export function NewKeyPage() {
                               <span>New Module</span>
                             </button>
                             <h3 className="py-2 pl-8 font-semibold text-foreground">Modules</h3>
-                            {(modules ?? []).map((module) => {
+                            {safeModules.map((module) => {
                               const moduleSearchValue = [module.moduleName, module.itemId]
                                 .filter(Boolean)
                                 .join(" ")
