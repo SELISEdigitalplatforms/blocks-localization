@@ -273,7 +273,8 @@ function moduleNameMap(
   modules: { itemId: string; moduleName: string }[] | undefined,
 ): Map<string, string> {
   const m = new Map<string, string>();
-  for (const mod of modules ?? []) m.set(mod.itemId, mod.moduleName);
+  const list = Array.isArray(modules) ? modules : [];
+  for (const mod of list) m.set(mod.itemId, mod.moduleName);
   return m;
 }
 
@@ -358,6 +359,15 @@ export function LanguageKeysPanel() {
   const { data: languages } = useUilmLanguages();
   const { data: modules, isLoading: isModulesLoading } =
     useUilmLanguageModules();
+
+  const safeLanguages = useMemo(
+    () => (Array.isArray(languages) ? languages : []),
+    [languages],
+  );
+  const safeModules = useMemo(
+    () => (Array.isArray(modules) ? modules : []),
+    [modules],
+  );
   const {
     selectedLanguages,
     setSelectedLanguages,
@@ -366,7 +376,7 @@ export function LanguageKeysPanel() {
   const selectedLanguagesRef = useRef(selectedLanguages);
   selectedLanguagesRef.current = selectedLanguages;
 
-  const modMap = useMemo(() => moduleNameMap(modules), [modules]);
+  const modMap = useMemo(() => moduleNameMap(safeModules), [safeModules]);
 
   const createApi = useMemo(() => toApiDateRange(createRange), [createRange]);
   const lastUpdateApi = useMemo(
@@ -398,21 +408,21 @@ export function LanguageKeysPanel() {
 
   // ---- Sync selected languages when language list loads ----
   useEffect(() => {
-    if (!languages?.length) return;
+    if (!safeLanguages.length) return;
     const current = selectedLanguagesRef.current;
     if (current.length === 0) {
-      const defaults = languages
+      const defaults = safeLanguages
         .filter((l) => l.isDefault)
         .map((l) => l.languageCode);
       setSelectedLanguages(
-        defaults.length ? defaults : [languages[0].languageCode],
+        defaults.length ? defaults : [safeLanguages[0].languageCode],
       );
     } else {
-      const codes = new Set(languages.map((l) => l.languageCode));
+      const codes = new Set(safeLanguages.map((l) => l.languageCode));
       const next = current.filter((c) => codes.has(c));
       if (next.length !== current.length) setSelectedLanguages(next);
     }
-  }, [languages, setSelectedLanguages]);
+  }, [safeLanguages, setSelectedLanguages]);
 
   // ---- Navigation ----
   const handleRowClick = useCallback(
@@ -519,8 +529,7 @@ export function LanguageKeysPanel() {
                 const translatedLanguages = resources.map(
                   (resource) => resource.culture,
                 );
-                const allLanguages =
-                  languages?.map((lang) => lang.languageCode) || [];
+                const allLanguages = safeLanguages.map((lang) => lang.languageCode);
                 const isComplete = allLanguages.every((lang) =>
                   translatedLanguages.includes(lang),
                 );
@@ -535,10 +544,10 @@ export function LanguageKeysPanel() {
         header: () => (
           <div className="w-[300px] md:w-[200px]">
             <div className="font-bold text-medium-emphasis">
-              {languages?.find(
+              {safeLanguages.find(
                 (language) => language.languageCode === lang,
               )?.languageName ?? lang}{" "}
-              {languages?.find(
+              {safeLanguages.find(
                 (language) => language.languageCode === lang,
               )?.isDefault
                 ? "(Default)"
@@ -626,7 +635,7 @@ export function LanguageKeysPanel() {
     ],
     [
       handleRowClick,
-      languages,
+      safeLanguages,
       modMap,
       selectedLanguages,
       selectedOptionalColumns,
@@ -636,7 +645,8 @@ export function LanguageKeysPanel() {
   );
 
   const tableData = useMemo(() => {
-    return blocksLanguageKeyData?.keys || [];
+    const keys = blocksLanguageKeyData?.keys;
+    return Array.isArray(keys) ? keys : [];
   }, [blocksLanguageKeyData]);
 
   const table = useReactTable({
@@ -681,8 +691,8 @@ export function LanguageKeysPanel() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
             Translations
-            {languages && languages.length > 0 && (
-              <LanguageViewMenu languages={languages} />
+            {safeLanguages.length > 0 && (
+              <LanguageViewMenu languages={safeLanguages} />
             )}
           </CardTitle>
         </CardHeader>
@@ -691,7 +701,7 @@ export function LanguageKeysPanel() {
             <Skeleton className="h-12 w-full rounded" />
           ) : (
             <LanguageTableToolbar
-              modules={modules ?? []}
+              modules={safeModules}
               moduleIds={moduleIds}
               onToggleModule={toggleModule}
               createRange={createRange}

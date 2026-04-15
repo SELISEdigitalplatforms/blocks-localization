@@ -17,10 +17,13 @@ export class HttpError extends Error {
 export type IdpRequestOptions = {
   /** When true, a 401 is not treated as “try refresh”; use for pre-session TOKEN grants (password / SSO). */
   skipTokenRotation?: boolean;
+  /** When set, this origin replaces `env.apiBaseUrl` for the request (e.g. UILM against a local API). */
+  baseUrl?: string;
 };
 
-function joinBase(path: string): string {
-  const base = env.apiBaseUrl.replace(/\/$/, "");
+function joinBase(path: string, baseOverride?: string): string {
+  const raw = baseOverride?.trim() ? baseOverride : env.apiBaseUrl;
+  const base = raw.replace(/\/$/, "");
   if (path.startsWith("http")) return path;
   const p = path.startsWith("/") ? path : `/${path}`;
   return `${base}${p}`;
@@ -132,7 +135,7 @@ async function idpRequestInner<T>(
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
   if (env.xBlocksKey) headers.set("X-Blocks-Key", env.xBlocksKey);
 
-  const res = await fetch(joinBase(path), {
+  const res = await fetch(joinBase(path, options.baseUrl), {
     ...init,
     headers,
     credentials: "include",
