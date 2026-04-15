@@ -121,7 +121,12 @@ function ViewDetails({ keyDetails }: { keyDetails: IBlocksLanguageKey }) {
   } = useUilmLanguages();
   const [isEditRoutesDialogOpen, setIsEditRoutesDialogOpen] = useState(false);
 
-  if (isLanguageListLoading || isLanguageListLoadingFetching || !languageListData) {
+  if (
+    isLanguageListLoading ||
+    isLanguageListLoadingFetching ||
+    !Array.isArray(languageListData) ||
+    languageListData.length === 0
+  ) {
     return (
       <div>
         <Skeleton className="h-64 w-full" />
@@ -209,10 +214,10 @@ function ViewDetails({ keyDetails }: { keyDetails: IBlocksLanguageKey }) {
               <div className="grid gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">Module</h3>
                 <p className="text-base font-normal text-high-emphasis">
-                  {
-                    languageModules?.find((module) => module.itemId === keyDetails.moduleId)
-                      ?.moduleName
-                  }
+                  {Array.isArray(languageModules)
+                    ? languageModules.find((module) => module.itemId === keyDetails.moduleId)
+                        ?.moduleName
+                    : undefined}
                 </p>
               </div>
               <div className="grid gap-1">

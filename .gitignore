@@ -159,3 +159,9 @@ server/XUnitTest/obj/
 # SPA production output (see client/vite.config.ts)
 server/Api/wwwroot/**
 !server/Api/wwwroot/.gitkeep
+
+docs/
+change.md
+
+client/.cursor
+client/scripts/
