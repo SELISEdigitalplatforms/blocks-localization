@@ -51,7 +51,8 @@ function ModulesMultiSelect({
   moduleIds: string[];
   onToggleModule: (moduleId: string, checked: boolean) => void;
 }) {
-  const options = modules.map((m) => ({ label: m.moduleName, value: m.itemId }));
+  const moduleList = Array.isArray(modules) ? modules : [];
+  const options = moduleList.map((m) => ({ label: m.moduleName, value: m.itemId }));
 
   const onSelectHandler = (value: string) => {
     const isSelected = moduleIds.includes(value);
