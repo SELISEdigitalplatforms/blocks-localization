@@ -20,6 +20,8 @@ export const env = {
   apiBaseUrl: firstDefined(import.meta.env.BLOCKS_API_BASE_URL),
   /** When set, UILM feature HTTP uses this host only (see `uilmIdpOptions` / `getUilmApiBaseUrl`). */
   apiBaseUrlLocal: firstDefined(import.meta.env.BLOCKS_API_BASE_URL_LOCAL),
+  /** Optional dev-only JWT for `Authorization: Bearer` when calling `apiBaseUrlLocal` (cookies do not cross origins). */
+  localApiBearer: firstDefined(import.meta.env.BLOCKS_LOCAL_API_BEARER),
   xBlocksKey: firstDefined(import.meta.env.BLOCKS_X_BLOCKS_KEY),
   constructUrl: firstDefined(import.meta.env.BLOCKS_CONSTRUCT_URL),
   projectDefaultApiBaseUrl: firstDefined(import.meta.env.BLOCKS_PROJECT_DEFAULT_API_BASE_URL),

@@ -3,6 +3,7 @@ import { useAuthStore } from "@/features/auth/model/auth-store";
 import { useResendMfaOtp } from "@/features/auth/hooks/use-resend-mfa-otp";
 import { isErrorWithErrors } from "@/lib/error";
 import { HttpError } from "@/platform/api/idp-http";
+import { persistLocalApiBearerFromOAuthBody } from "@/platform/api/local-api-bearer";
 import { Button } from "@/platform/ui/components/button/button";
 import {
   Form,
@@ -61,7 +62,8 @@ export function MfaCheckForm() {
 
   const submitHandler = async ({ code }: { code: string }) => {
     try {
-      await mutateAsync(code);
+      const tokenRes = await mutateAsync(code);
+      persistLocalApiBearerFromOAuthBody(tokenRes);
       setAuthenticated();
       navigate("/console");
     } catch (error: unknown) {
