@@ -7,7 +7,7 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 
-var serviceName = "blocks-template-api";
+var serviceName = "blocks-localization-api";
 var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +25,7 @@ services.AddHealthChecks();
 
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
 builder.Services.RegisterApplicationServices(localizationSecret);
-builder.Services.AddFluentValidationAutoValidation();
+//builder.Services.AddFluentValidationAutoValidation();
 ApplicationConfigurations.ConfigureServices(services, Constants.GetMessageConfiguration(secret.MessageConnectionString));
 ApplicationConfigurations.ConfigureApi(services);
 
