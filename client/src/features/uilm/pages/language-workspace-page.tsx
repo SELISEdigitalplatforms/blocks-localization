@@ -1,8 +1,8 @@
-import { env } from "@/config/env";
 import { LanguageKeysOverflowMenu } from "@/features/uilm/components/language-keys-overflow-menu";
 import { LanguageKeysPanel } from "@/features/uilm/components/language-keys-panel";
 import { LocalizationTimelinePanel } from "@/features/uilm/components/localization-timeline-panel";
 import { useUilmGenerateUilmFile, useUilmProjectKey } from "@/features/uilm/hooks/use-uilm-queries";
+import { getUilmApiBaseUrl } from "@/features/uilm/lib/uilm-api-base";
 import { Button } from "@/platform/ui/components/button/button";
 import {
   Dialog,
@@ -29,7 +29,7 @@ export function LanguageWorkspacePage() {
   const [tab, setTab] = useState<"keys" | "history">("keys");
   const [publishOpen, setPublishOpen] = useState(false);
 
-  const swaggerUrl = `${env.apiBaseUrl.replace(/\/$/, "")}/uilm/v1/swagger/index.html`;
+  const swaggerUrl = `${getUilmApiBaseUrl()}/uilm/v1/swagger/index.html`;
 
   async function onConfirmPublish() {
     if (!projectKey) return;

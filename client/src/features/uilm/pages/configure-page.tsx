@@ -147,7 +147,7 @@ export function ConfigurePage() {
   );
 
   const table = useReactTable({
-    data: langs ?? [],
+    data: Array.isArray(langs) ? langs : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -232,7 +232,9 @@ export function ConfigurePage() {
         open={isNewLangOpen}
         onOpenChange={setIsNewLangOpen}
         projectKey={projectKey}
-        existingLanguageCodes={langs?.map((l) => l.languageCode) ?? []}
+        existingLanguageCodes={
+          Array.isArray(langs) ? langs.map((l) => l.languageCode) : []
+        }
       />
 
       {/* Make Default Confirmation */}

@@ -22,17 +22,19 @@ const OPTIONAL_LABELS: Record<OptionalColumnId, string> = {
 };
 
 type LanguageViewMenuProps = {
-  languages: ILanguageConfig[];
+  /** UILM `/Api/Language/Gets` must return an array; bad hosts may return HTML/object — we coerce to []. */
+  languages?: ILanguageConfig[] | null;
 };
 
 export function LanguageViewMenu({ languages }: LanguageViewMenuProps) {
+  const list = Array.isArray(languages) ? languages : [];
   const selectedLanguages = useLanguageViewStore((s) => s.selectedLanguages);
   const toggleLanguage = useLanguageViewStore((s) => s.toggleLanguage);
   const setSelectedLanguages = useLanguageViewStore((s) => s.setSelectedLanguages);
   const selectedOptionalColumns = useLanguageViewStore((s) => s.selectedOptionalColumns);
   const toggleOptionalColumn = useLanguageViewStore((s) => s.toggleOptionalColumn);
 
-  const allSelected = languages.length > 0 && selectedLanguages.length === languages.length;
+  const allSelected = list.length > 0 && selectedLanguages.length === list.length;
 
   return (
     <DropdownMenu>
@@ -50,7 +52,7 @@ export function LanguageViewMenu({ languages }: LanguageViewMenuProps) {
               checked={allSelected}
               onCheckedChange={() => {
                 setSelectedLanguages(
-                  allSelected ? [] : languages.map((l) => l.languageCode),
+                  allSelected ? [] : list.map((l) => l.languageCode),
                 );
               }}
             />
@@ -58,7 +60,7 @@ export function LanguageViewMenu({ languages }: LanguageViewMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {languages.map((lang) => (
+        {list.map((lang) => (
           <DropdownMenuCheckboxItem
             key={lang.languageCode}
             checked={selectedLanguages.includes(lang.languageCode)}

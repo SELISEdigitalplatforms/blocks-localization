@@ -60,6 +60,8 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
   const callerTenantId = useConsoleProjectStore((s) => s.selectedProject?.itemId ?? "");
   const { data: languageModules } = useUilmLanguageModules();
   const { data: availableLanguages } = useUilmLanguages();
+  const safeLanguageModules = Array.isArray(languageModules) ? languageModules : [];
+  const safeAvailableLanguages = Array.isArray(availableLanguages) ? availableLanguages : [];
   const { mutateAsync: exportAsync } = useUilmSaveLanguageKeyUilmExport();
   const { mutateAsync: getPresignedUrl } = useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFileMutate } = useUploadFileToBlob();
@@ -147,8 +149,8 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
         languages:
           selectedOutputType === 5
             ? selectedLanguages
-            : availableLanguages
-              ? availableLanguages.map((lang) => lang.languageCode)
+            : safeAvailableLanguages.length > 0
+              ? safeAvailableLanguages.map((lang) => lang.languageCode)
               : ["en-US"],
         referenceFileId: exportReferenceFileId,
         callerTenantId,
@@ -206,18 +208,18 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
                 render={({ field }) => (
                   <FormItem>
                     <div className="mb-6">
-                      {languageModules && languageModules.length > 0 ? (
+                      {safeLanguageModules.length > 0 ? (
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox
                               id="select-all"
                               checked={
-                                field.value?.length === languageModules.length &&
-                                languageModules.length > 0
+                                field.value?.length === safeLanguageModules.length &&
+                                safeLanguageModules.length > 0
                               }
                               onCheckedChange={(checked) => {
                                 if (checked) {
-                                  field.onChange(languageModules.map((item) => item.itemId));
+                                  field.onChange(safeLanguageModules.map((item) => item.itemId));
                                 } else {
                                   field.onChange([]);
                                 }
@@ -232,8 +234,7 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
                     </div>
                     <div className="max-h-80 overflow-y-auto pr-2">
                       <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                        {languageModules &&
-                          languageModules.map((item) => (
+                        {safeLanguageModules.map((item) => (
                             <FormField
                               key={item.itemId}
                               control={form.control}
@@ -338,19 +339,19 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
                     <p className="text-xs text-muted-foreground">
                       Choose one or more languages to export.
                     </p>
-                    {availableLanguages && availableLanguages.length > 0 ? (
+                    {safeAvailableLanguages.length > 0 ? (
                       <div className="mt-2 space-y-3">
                         <div className="flex items-start space-x-3">
                           <Checkbox
                             id="select-all-languages"
                             checked={
-                              selectedLanguages.length === availableLanguages.length &&
-                              availableLanguages.length > 0
+                              selectedLanguages.length === safeAvailableLanguages.length &&
+                              safeAvailableLanguages.length > 0
                             }
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 setSelectedLanguages(
-                                  availableLanguages.map((lang) => lang.languageCode),
+                                  safeAvailableLanguages.map((lang) => lang.languageCode),
                                 );
                               } else {
                                 setSelectedLanguages([]);
@@ -362,7 +363,7 @@ export function ExportKeysModal({ onClose }: ExportKeysModalProps) {
                           </Label>
                         </div>
                         <div className="max-h-40 space-y-3 overflow-y-auto pl-6">
-                          {availableLanguages.map((lang) => (
+                          {safeAvailableLanguages.map((lang) => (
                             <div key={lang.itemId} className="flex items-start space-x-3">
                               <Checkbox
                                 id={`lang-${lang.languageCode}`}
