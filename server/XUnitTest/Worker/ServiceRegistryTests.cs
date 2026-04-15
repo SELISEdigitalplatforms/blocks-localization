@@ -1,5 +1,4 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService;
 using BlocksTemplate.DomainService.Repositories;
 using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Services.HelperService;
@@ -11,11 +10,10 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
-using BlocksTemplate.Worker;
-using BlocksTemplate.Worker.Consumers;
-using Storage.DomainService.Utilities;
+using Worker;
+using Worker.Consumers;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class ServiceRegistryTests
     {
@@ -65,6 +63,10 @@ namespace BlocksTemplate.XUnitTest
 
             AssertRegistration<IAssistantService, AssistantService>(services, ServiceLifetime.Singleton);
 
+            AssertRegistration<IGlossaryManagementService, GlossaryManagementService>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IGlossaryRepository, GlossaryRepository>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IValidator<Glossary>, GlossaryValidator>(services, ServiceLifetime.Singleton);
+
             AssertRegistration<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>(services, ServiceLifetime.Transient);
 
             AssertRegistration<INotificationService, NotificationService>(services, ServiceLifetime.Singleton);
@@ -86,9 +88,9 @@ namespace BlocksTemplate.XUnitTest
         }
 
         private static void AssertRegistration<TService>(
-           IServiceCollection services,
-           ServiceLifetime expectedLifetime,
-           object implementationInstance)
+            IServiceCollection services,
+            ServiceLifetime expectedLifetime,
+            object implementationInstance)
         {
             var descriptor = services.FirstOrDefault(d =>
                 d.ServiceType == typeof(TService) &&

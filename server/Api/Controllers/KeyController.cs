@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlocksTemplate.Api.Controllers
+namespace Api.Controllers
 {
     /// <summary>
     /// API Controller for managing Key operations.
@@ -174,6 +174,15 @@ namespace BlocksTemplate.Api.Controllers
             }
 
             return result;
+        }
+
+        [HttpGet]
+        [ProtectedEndPoint]
+        public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
+        {
+            if (request == null) BadRequest(new BaseMutationResponse());
+            _changeControllerContext.ChangeContext(request);
+            return await _keyManagementService.GetSuggestedGlossariesAsync(request);
         }
 
         /// <summary>

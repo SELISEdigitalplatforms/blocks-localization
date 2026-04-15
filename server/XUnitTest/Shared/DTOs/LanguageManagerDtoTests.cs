@@ -4,7 +4,7 @@ using BlocksTemplate.DomainService.Shared.DTOs;
 using FluentAssertions;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class LanguageManagerDtoTests
     {

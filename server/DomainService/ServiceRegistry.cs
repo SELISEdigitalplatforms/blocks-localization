@@ -11,6 +11,7 @@ using Storage.DomainService.Shared.Services;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
 
+
 namespace BlocksTemplate.DomainService;
 
 public static class ServiceRegistry

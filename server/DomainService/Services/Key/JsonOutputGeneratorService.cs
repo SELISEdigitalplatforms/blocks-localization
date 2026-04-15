@@ -11,25 +11,19 @@ namespace BlocksTemplate.DomainService.Services
 
         public JsonOutputGeneratorService()
         {
-
         }
+
         public JsonOutputGeneratorService(ILogger<XlsxOutputGeneratorService> logger)
         {
             _logger = logger;
         }
+
         public override Task<T> GenerateAsync<T>(List<BlocksLanguage> languageSettings, List<BlocksLanguageModule> applications,
             List<BlocksLanguageKey> resourceKeys, string defaultLanguage)
         {
             try
             {
                 // Use all language codes from BlocksLanguage collection
-                var identifiers = languageSettings
-                    .Select(x => x.LanguageCode)
-                    .Where(x => !string.IsNullOrEmpty(x))
-                    .Distinct()
-                    .OrderBy(x => x)
-                    .ToArray();
-
                 var jsonOutputModels = new List<LanguageJsonModel>();
 
                 foreach (BlocksLanguageKey resourceKey in resourceKeys)

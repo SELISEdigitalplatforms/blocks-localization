@@ -1,7 +1,7 @@
 using BlocksTemplate.DomainService;
 using FluentValidation;
 
-namespace BlocksTemplate.DomainService.Validation;
+namespace BlocksTemplate.BlocksTemplate.DomainService.Validation;
 
 public sealed class UpdateEventRequestValidator : AbstractValidator<UpdateEventRequest>
 {

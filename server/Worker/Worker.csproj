@@ -1,11 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
   <PropertyGroup>
-    <UserSecretsId>dotnet-Worker-efc71451-7bf3-4197-b3d2-7b21a5a01fd0</UserSecretsId>
+	  <UserSecretsId>dotnet-Worker-efc71451-7bf3-4197-b3d2-7b21a5a01fd0</UserSecretsId>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DomainService\DomainService.csproj" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+	</ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.dev.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

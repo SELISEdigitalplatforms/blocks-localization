@@ -7,7 +7,7 @@ using Xunit;
 using BlocksLanguageKey = BlocksTemplate.DomainService.Repositories.BlocksLanguageKey;
 using BlocksLanguageModule = BlocksTemplate.DomainService.Repositories.BlocksLanguageModule;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class KeyValidatorTests
     {

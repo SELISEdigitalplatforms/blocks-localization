@@ -3,7 +3,7 @@ using BlocksTemplate.DomainService.Services;
 using BlocksTemplate.DomainService.Shared;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlocksTemplate.Api.Controllers
+namespace Api.Controllers
 {
     /// <summary>
     /// API Controller for managing language-related operations.

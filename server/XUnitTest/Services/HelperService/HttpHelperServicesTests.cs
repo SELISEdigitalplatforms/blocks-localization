@@ -10,7 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using Xunit;
 
-namespace BlocksTemplate.XUnitTest
+namespace XUnitTest
 {
     public class HttpHelperServicesTests
     {

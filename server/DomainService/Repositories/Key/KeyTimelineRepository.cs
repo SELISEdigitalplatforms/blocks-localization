@@ -145,30 +145,7 @@ namespace BlocksTemplate.DomainService.Repositories
             return await collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<Dictionary<string, KeyTimeline>> GetLatestPublishTimelinesAsync(List<string> entityIds, string targetedProjectKey)
-        {
-            if (!entityIds.Any()) return new Dictionary<string, KeyTimeline>();
-
-            var dataBase = _dbContextProvider.GetDatabase(targetedProjectKey);
-            var collection = dataBase.GetCollection<KeyTimeline>(_collectionName);
-
-            var filter = Builders<KeyTimeline>.Filter.And(
-                Builders<KeyTimeline>.Filter.In(t => t.EntityId, entityIds),
-                Builders<KeyTimeline>.Filter.Eq(t => t.LogFrom, LogFromConstants.Published)
-            );
-
-            var timelines = await collection
-                .Find(filter)
-                .Sort(Builders<KeyTimeline>.Sort.Descending(t => t.CreateDate))
-                .ToListAsync();
-
-            // Group by EntityId, take latest (first after descending sort) for each
-            return timelines
-                .GroupBy(t => t.EntityId!)
-                .ToDictionary(g => g.Key, g => g.First());
-        }
-
-        private FilterDefinition<KeyTimeline> GetTimelineFilter(GetKeyTimelineRequest request)
+        private static FilterDefinition<KeyTimeline> GetTimelineFilter(GetKeyTimelineRequest request)
         {
             var builder = Builders<KeyTimeline>.Filter;
             var filters = new List<FilterDefinition<KeyTimeline>>();
@@ -378,6 +355,30 @@ namespace BlocksTemplate.DomainService.Repositories
                 Timelines = timelines
             };
         }
+
+        public async Task<Dictionary<string, KeyTimeline>> GetLatestPublishTimelinesAsync(List<string> entityIds, string targetedProjectKey)
+        {
+            if (!entityIds.Any()) return new Dictionary<string, KeyTimeline>();
+
+            var dataBase = _dbContextProvider.GetDatabase(targetedProjectKey);
+            var collection = dataBase.GetCollection<KeyTimeline>(_collectionName);
+
+            var filter = Builders<KeyTimeline>.Filter.And(
+                Builders<KeyTimeline>.Filter.In(t => t.EntityId, entityIds),
+                Builders<KeyTimeline>.Filter.Eq(t => t.LogFrom, LogFromConstants.Published)
+            );
+
+            var timelines = await collection
+                .Find(filter)
+                .Sort(Builders<KeyTimeline>.Sort.Descending(t => t.CreateDate))
+                .ToListAsync();
+
+            // Group by EntityId, take latest (first after descending sort) for each
+            return timelines
+                .GroupBy(t => t.EntityId!)
+                .ToDictionary(g => g.Key, g => g.First());
+        }
+
 
         private async Task<Dictionary<string, User>> GetUserLookupAsync(List<string?> userIds)
         {

@@ -1,9 +1,9 @@
-using MongoDB.Bson.Serialization.Attributes;
+
 
 namespace BlocksTemplate.DomainService;
 
 public sealed record EventItem(
-    [property: BsonId] string Id,
+    [property: MongoDB.Bson.Serialization.Attributes.BsonId] string Id,
     string Name,
     DateTimeOffset StartDateTime,
     DateTimeOffset EndDateTime,
