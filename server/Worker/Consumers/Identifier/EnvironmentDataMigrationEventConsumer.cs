@@ -1,9 +1,6 @@
 ﻿using Blocks.Genesis;
-using DomainService.Dtos;
 using DomainService.Migration;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Eurolm.DomainService.Shared.Events;
 
 namespace Worker.Consumers.Identifier
 {
