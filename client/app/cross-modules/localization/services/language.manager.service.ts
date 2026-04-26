@@ -4,11 +4,14 @@ import {
   LANGUAGE_ENDPOINTS,
   LANGUAGE_KEY_ENDPOINTS,
   LANGUAGE_MODULE_ENDPOINTS,
+  GLOSSARY_ENDPOINTS,
 } from "@blocks-localization/constants/endpoint.constant";
 import {
   ExportHistoryFilters,
   IBlocksLanguageKey,
   IGetExportHistory,
+  IGetGlossariesResponse,
+  IGetSuggestedGlossariesResponse,
   IGetLocalizationTimelineResponse,
   IGetTimelineByOperationIdResponse,
   IGetTimelineResponse,
@@ -86,6 +89,7 @@ class LanguageManagerService {
       culture: string;
     }[];
     routes: string[];
+    glossaryIds?: string[];
     isPartiallyTranslated: boolean;
     projectKey: string;
     isNewKey?: boolean;
@@ -182,7 +186,10 @@ class LanguageManagerService {
     destinationLanguage: string;
     currentLanguage: string;
     temperature: number;
-    elementDetailContext: string;
+    // elementDetailContext: string;
+    glossaryIds?: string[];
+    destinationLanguageCode?: string;
+    projectKey: string;
   }): Promise<{
     content: string;
     errors: null | unknown;
@@ -330,6 +337,73 @@ class LanguageManagerService {
 
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE_BY_OPERATION_ID}?${params.toString()}`;
     return http.get(url);
+  };
+
+  // Glossary methods
+
+  fetchGlossaries = (request: {
+    projectKey: string;
+    pageNumber: number;
+    pageSize: number;
+    searchText?: string;
+  }): Promise<IGetGlossariesResponse> => {
+    const params = new URLSearchParams({
+      ProjectKey: request.projectKey,
+      PageNumber: String(request.pageNumber),
+      PageSize: String(request.pageSize),
+    });
+
+    if (request.searchText) {
+      params.append("SearchText", request.searchText);
+    }
+
+    return http.get(`${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`);
+  };
+
+  saveGlossary = (payload: {
+    itemId?: string;
+    name: string;
+    language?: string;
+    type?: string;
+    context?: string;
+    additionalNote?: string;
+    projectKey: string;
+  }): Promise<{
+    success: boolean;
+    errorMessage: string;
+    validationErrors: IValidationError[];
+  }> => {
+    return http.post(GLOSSARY_ENDPOINTS.SAVE, payload);
+  };
+
+  deleteGlossary = (payload: {
+    itemId: string;
+    projectKey: string;
+  }): Promise<{
+    errors: null | unknown;
+    isSuccess: boolean;
+  }> => {
+    return http
+      .delete<{
+        errors: unknown;
+        isSuccess: boolean;
+      }>(`${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
+      .then((response) => response);
+  };
+
+  getSuggestedGlossaries = (request: {
+    itemId: string;
+    projectKey: string;
+    maxResults?: number;
+  }): Promise<IGetSuggestedGlossariesResponse> => {
+    const params = new URLSearchParams({
+      ItemId: request.itemId,
+      ProjectKey: request.projectKey,
+    });
+    if (request.maxResults) {
+      params.append("MaxResults", String(request.maxResults));
+    }
+    return http.get(`${LANGUAGE_KEY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`);
   };
 }
 export const languageManagerService = new LanguageManagerService();

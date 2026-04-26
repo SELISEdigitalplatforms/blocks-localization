@@ -4,6 +4,7 @@ const KEY_SUBPATH = "/Key";
 const MODULE_SUBPATH = "/Module";
 const LANGUAGE_SUBPATH = "/Language";
 const ASSISTANT_SUBPATH = "/Assistant";
+const GLOSSARY_SUBPATH = "/Glossary";
 
 // Language Key endpoints
 export const LANGUAGE_KEY_ENDPOINTS = {
@@ -21,6 +22,7 @@ export const LANGUAGE_KEY_ENDPOINTS = {
   ROLLBACK: `${API_BASES.UILM}${KEY_SUBPATH}/RollBack`,
   GET_LOCALIZATION_TIMELINE: `${API_BASES.UILM}${KEY_SUBPATH}/GetLocalizationTimeline`,
   GET_TIMELINE_BY_OPERATION_ID: `${API_BASES.UILM}${KEY_SUBPATH}/GetTimelineByOperationId`,
+  GET_SUGGESTED_GLOSSARIES: `${API_BASES.UILM}${KEY_SUBPATH}/GetSuggestedGlossaries`,
 } as const;
 
 // Language Module endpoints
@@ -40,4 +42,11 @@ export const LANGUAGE_ENDPOINTS = {
 // Language Assistant endpoints
 export const LANGUAGE_ASSISTANT_ENDPOINTS = {
   GET_TRANSLATION_SUGGESTION: `${API_BASES.UILM}${ASSISTANT_SUBPATH}/GetTranslationSuggestion`,
+} as const;
+
+// Glossary endpoints
+export const GLOSSARY_ENDPOINTS = {
+  GETS: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Gets`,
+  SAVE: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Save`,
+  DELETE: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Delete`,
 } as const;

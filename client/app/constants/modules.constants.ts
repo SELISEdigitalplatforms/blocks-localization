@@ -1,3 +1,4 @@
+/** Module identifiers used by cross-module features (e.g. UILM import). */
 export enum ModuleName {
   Cloud = 1,
   Construct = 2,

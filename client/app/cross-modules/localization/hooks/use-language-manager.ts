@@ -54,8 +54,10 @@ export const useGetBlocksLanguageKey = (
 
 export const useGetBlocksLanguageKeyById = (itemId: string) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const enabled = Boolean(tenantId && itemId);
   return useQuery({
     queryKey: ["get-blocksLanguageKey", tenantId, itemId],
+    enabled,
     queryFn: () =>
       languageManagerService.fetchBlocksLanguageKeyById({
         projectKey: tenantId,
@@ -226,8 +228,10 @@ export const useSaveLanguageKeyUilmExport = () => {
 
 export const useGetLanguageKeysTimeline = (pageNumber: number, pageSize: number, keyId: string) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const enabled = Boolean(tenantId && keyId);
   return useQuery({
     queryKey: ["get-uilm-timeline", tenantId, pageNumber, pageSize, keyId],
+    enabled,
     queryFn: () =>
       languageManagerService.getKeysTimeline({
         projectKey: tenantId,
@@ -332,5 +336,80 @@ export const useGetTimelineByOperationId = (
         pageSize,
       }),
     enabled: !!operationId,
+  });
+};
+
+// Glossary hooks
+
+export const useGetGlossaries = (
+  pageNumber: number,
+  pageSize: number,
+  searchText?: string,
+) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: ["get-glossaries", tenantId, pageNumber, pageSize, searchText ?? ""],
+    queryFn: () =>
+      languageManagerService.fetchGlossaries({
+        projectKey: tenantId,
+        pageNumber,
+        pageSize,
+        searchText,
+      }),
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+};
+
+export const useSaveGlossary = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["save-glossary"],
+    mutationFn: languageManagerService.saveGlossary,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["get-glossaries"] });
+    },
+  });
+};
+
+export const useDeleteGlossary = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["glossary", "delete"],
+    mutationFn: languageManagerService.deleteGlossary,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["get-glossaries"] });
+    },
+  });
+};
+
+export const useGetSuggestedGlossaries = (itemId: string, enabled: boolean) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: ["get-suggested-glossaries", tenantId, itemId],
+    queryFn: () =>
+      languageManagerService.getSuggestedGlossaries({
+        itemId,
+        projectKey: tenantId,
+        maxResults: 5,
+      }),
+    enabled: enabled && !!itemId && !!tenantId,
+    staleTime: 0,
+  });
+};
+
+export const useSearchGlossaries = (searchText: string, enabled: boolean) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: ["search-glossaries", tenantId, searchText],
+    queryFn: () =>
+      languageManagerService.fetchGlossaries({
+        projectKey: tenantId,
+        pageNumber: 0,
+        pageSize: 10,
+        searchText: searchText || undefined,
+      }),
+    enabled: enabled && !!tenantId,
+    staleTime: 0,
   });
 };
