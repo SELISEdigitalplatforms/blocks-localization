@@ -1,4 +1,4 @@
-using BlocksTemplate.DomainService.Repositories;
+using Eurolm.DomainService.Repositories;
 using FluentAssertions;
 using MongoDB.Bson.Serialization.Attributes;
 

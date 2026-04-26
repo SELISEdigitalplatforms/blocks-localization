@@ -1,8 +1,9 @@
 using Api.Controllers;
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared;
-using BlocksTemplate.DomainService.Shared.Entities;
+using BlocksTemplate.Api.Controllers;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

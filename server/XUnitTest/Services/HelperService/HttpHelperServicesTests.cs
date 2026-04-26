@@ -1,6 +1,6 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;

@@ -1,5 +1,5 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 
 namespace XUnitTest

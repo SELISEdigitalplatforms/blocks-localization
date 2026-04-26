@@ -1,16 +1,17 @@
 using BlocksTemplate.Api;
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Entities;
-using BlocksTemplate.DomainService.Validation;
+
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
 using Worker;
+using Eurolm.DomainService.Shared.Entities;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Validation;
 
 namespace XUnitTest
 {
@@ -26,7 +27,7 @@ namespace XUnitTest
                 ChatGptEncryptionKey = "key"
             };
 
-            services.RegisterApplicationServices(localizationSecret);
+  
 
             AssertRegistration<ILocalizationSecret>(services, ServiceLifetime.Singleton, implementationInstance: localizationSecret);
 

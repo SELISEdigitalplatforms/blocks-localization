@@ -1,13 +1,13 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Xunit;
-using KeyTimelineModel = BlocksTemplate.DomainService.Services.KeyTimeline;
+using KeyTimelineModel = Eurolm.DomainService.Services.KeyTimeline;
 
 namespace XUnitTest
 {

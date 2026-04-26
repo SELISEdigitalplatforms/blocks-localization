@@ -1,17 +1,17 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared;
-using BlocksTemplate.DomainService.Shared.Utilities;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Shared.Utilities;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Moq;
 using StorageDriver;
 using Xunit;
-using KeyModel = BlocksTemplate.DomainService.Services.Key;
-using GlossaryModel = BlocksTemplate.DomainService.Services.Glossary;
+using KeyModel = Eurolm.DomainService.Services.Key;
+using GlossaryModel = Eurolm.DomainService.Services.Glossary;
 
 namespace XUnitTest
 {

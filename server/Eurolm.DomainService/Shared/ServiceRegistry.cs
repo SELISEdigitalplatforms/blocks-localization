@@ -1,30 +1,24 @@
 ﻿using Blocks.Extension.DependencyInjection;
-using BlocksTemplate.DomainService;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Entities;
-using BlocksTemplate.DomainService.Validation;
 using DomainService.Storage;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.Entities;
+using Eurolm.DomainService.Validation;
 using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
 using Storage.DomainService.Shared.Services;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Api
+namespace Eurolm.DomainService.Shared
 {
-    /// <summary>
-    /// A static class responsible for registering application services and validators.
-    /// </summary>
-
     public static class ServiceRegistry
     {
-        /// <summary>
-        /// Registers services and validators related to modules, languages, and keys.
-        /// </summary>
-        /// <param name="services">The collection of services to which dependencies are registered.</param>
-
-        public static void RegisterApplicationServices(this IServiceCollection services, ILocalizationSecret localizationSecret)
+        public static void AddEurolmRegisterApplicationServices(this IServiceCollection services, ILocalizationSecret localizationSecret)
         {
             services.AddSingleton<ILocalizationSecret>(localizationSecret);
 
@@ -65,8 +59,6 @@ namespace Api
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
-            services.AddSingleton<IEventService, EventService>();
-            services.AddValidatorsFromAssembly(typeof(IEventService).Assembly);
 
 
         }

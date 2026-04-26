@@ -1,7 +1,8 @@
 ﻿using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Events;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.Events;
+
 
 namespace Worker.Consumers
 {
