@@ -1,0 +1,34 @@
+---
+description: Dead-code cleanup tiers, knip/depcheck, and when to invoke code-architect for client (UILM SPA)
+globs:
+  - "**/*"
+---
+
+# client (UILM SPA) dead-code cleanup
+
+Canonical spec (repo root): `docs/superpowers/specs/2026-04-11-uilm-react-refactor-clean-architecture-design.md`.
+
+## Commands
+
+- `npm run dead-code:knip` — unused files, exports, dependencies (Vite + `@/`; many platform UI hits are false positives until barrels/consumers are modeled — treat as CAUTION).
+- `npm run dead-code:depcheck` — `package.json` vs imports (includes Tailwind v4 `@import` / `@plugin` in `*.css` via `scripts/run-depcheck.cjs`); reconcile with knip and Radix/shadcn transitive usage before removing deps.
+
+## Tiers (align with `/refactor-clean`)
+
+- **SAFE** — Unused private symbols in a leaf file; no barrels, no `platform/` re-exports, no `routing/` or lazy `import()`. Remove in tiny batches.
+- **CAUTION** — Components, hooks, `features/*`, `platform/*`, guards, barrels. **Invoke `code-architect` (Task subagent)** for a boundary memo before edits.
+- **DANGER** — `src/app/main.tsx`, `vite.config.ts`, env, side-effect imports (`*.css`), public package API. Architect + human.
+
+Default unknown → **CAUTION**.
+
+## Gates
+
+After each SAFE batch from `client/`:
+
+`npm run test && npm run lint && npm run build`
+
+If touching routes or lazy loading: grep `import\\(` / route path strings; confirm no broken deep links.
+
+## Preserve behavior and design
+
+Do not delete or narrow exports to change UX, routes, or visuals without explicit approval. Prefer **report-only** (`knip` / `depcheck`) on first pass; classify before deleting.

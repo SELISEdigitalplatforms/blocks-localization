@@ -1,0 +1,435 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tokens aligned with blocks-app-next src/styles/globals.scss */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 218 78% 32%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+      "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+    --high-emphasis: 0 0% 15%;
+    --medium-emphasis: 0 0% 33%;
+    --low-emphasis: 0 0% 62%;
+    --border-default: 0 0% 85%;
+    --border-medium-emphasis: 0 0% 48%;
+
+    --blocks-primary-25: 217 37% 93%;
+    --blocks-primary-50: 208 16% 79%;
+    --blocks-primary-100: 209 28% 68%;
+    --blocks-primary-200: 212 34% 58%;
+    --blocks-primary-300: 214 39% 48%;
+    --blocks-primary-400: 214 39% 48%;
+    --blocks-primary-500: 218 78% 32%;
+    --blocks-primary-600: 220 88% 22%;
+    --blocks-primary-700: 221 97% 14%;
+    --blocks-primary-800: 225 100% 6%;
+    --blocks-primary-900: 0 0% 0%;
+
+    --blocks-primary-shades-100: 217 33% 95%;
+    --blocks-primary-shades-200: 217 36% 94%;
+    --blocks-primary-shades-300: 217 37% 93%;
+
+    --blocks-secondary-50: 166 100% 95%;
+    --blocks-secondary-100: 168 80% 81%;
+    --blocks-secondary-200: 170 71% 69%;
+    --blocks-secondary-300: 172 66% 58%;
+    --blocks-secondary-400: 174 67% 49%;
+    --blocks-secondary-500: 176 92% 39%;
+    --blocks-secondary-600: 178 100% 31%;
+    --blocks-secondary-700: 180 100% 23%;
+    --blocks-secondary-800: 182 100% 15%;
+    --blocks-secondary-900: 184 100% 8%;
+
+    --chart-purple: 277 66% 71%;
+    --chart-purple-light: 276 66% 89%;
+    --chart-magenta: 312 99% 68%;
+    --chart-yellow: 49 89% 49%;
+    --chart-red: 2 71% 70%;
+    --chart-blue: 211 96% 70%;
+    --chart-orange: 30 92% 57%;
+    --chart-brown-gray: 345 7% 68%;
+
+    --surface-app: 220 33% 96%;
+    /** Project overview rail — second reference: cool pale panel ~#F8FAFC, not pure white. */
+    --sidebar-nav: 210 40% 98%;
+    --canvas-muted: 214 32% 96%;
+    /** Project overview nav — #E2E8F0 border, #94A3B8 inactive, blue-800 active, navy rail. */
+    --po-sidebar-border: 214 32% 91%;
+    --po-nav-active: 226 71% 40%;
+    --po-nav-rail: 226 64% 28%;
+    --po-nav-inactive: 215 16% 47%;
+    --error: 0 100% 60%;
+    --success: 146 79% 44%;
+    --neutral-50: 0 0% 96%;
+    --neutral-200: 0 0% 85%;
+    --neutral-300: 0 0% 77%;
+    --warning-50: 52 100% 97%;
+    --warning-100: 51 100% 90%;
+    --warning-200: 49 100% 82%;
+    --warning-300: 47 100% 74%;
+    --warning-400: 45 100% 66%;
+    --warning-500: 43 94% 56%;
+    --warning-600: 41 80% 45%;
+    --warning-700: 39 89% 35%;
+    --warning-800: 37 99% 26%;
+    --warning-900: 35 100% 18%;
+    --base-warning: 43 94% 56%;
+    --icon-warning: 43 94% 56%;
+
+    --blocks-error-50: #eff2f0;
+    --blocks-error-100: #ffdcd6;
+    --blocks-error-800: #8c0714;
+    --avatar-surface-default: #c0c9d1;
+    --avatar-text-high-emphasis: #262626;
+    --base-error: #ff3333;
+    --loader-color: #262626;
+  }
+
+  .dark,
+  :root.dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 218 75% 45%;
+    --primary-foreground: 0 0% 96%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    --high-emphasis: 0 0% 96%;
+    --medium-emphasis: 0 0% 85%;
+    --low-emphasis: 0 0% 62%;
+    --border-default: 0 0% 85%;
+    --border-medium-emphasis: 0 0% 48%;
+
+    --blocks-primary-25: 219 74% 5%;
+    --blocks-primary-50: 224 38% 11%;
+    --blocks-primary-100: 220 54% 16%;
+    --blocks-primary-200: 218 57% 21%;
+    --blocks-primary-300: 218 65% 27%;
+    --blocks-primary-400: 218 72% 36%;
+    --blocks-primary-500: 218 75% 45%;
+    --blocks-primary-600: 216 69% 56%;
+    --blocks-primary-700: 214 85% 69%;
+    --blocks-primary-800: 212 87% 78%;
+    --blocks-primary-900: 209 85% 87%;
+
+    --blocks-primary-shades-100: 218 73% 3%;
+    --blocks-primary-shades-200: 220 72% 6%;
+    --blocks-primary-shades-300: 218 77% 8%;
+
+    --blocks-secondary-50: 180 35% 10%;
+    --blocks-secondary-100: 178 57% 14%;
+    --blocks-secondary-200: 177 64% 17%;
+    --blocks-secondary-300: 176 73% 22%;
+    --blocks-secondary-400: 176 83% 28%;
+    --blocks-secondary-500: 177 89% 35%;
+    --blocks-secondary-600: 174 66% 45%;
+    --blocks-secondary-700: 172 59% 56%;
+    --blocks-secondary-800: 169 65% 67%;
+    --blocks-secondary-900: 168 74% 79%;
+
+    --chart-purple: 277 66% 71%;
+    --chart-purple-light: 276 66% 89%;
+    --chart-magenta: 312 99% 68%;
+    --chart-yellow: 49 89% 49%;
+    --chart-red: 2 71% 70%;
+    --chart-blue: 211 96% 70%;
+    --chart-orange: 30 92% 57%;
+    --chart-brown-gray: 345 7% 68%;
+
+    --surface-app: 216 73% 3%;
+    --error: 0 100% 60%;
+    --success: 146 79% 44%;
+    --neutral-50: 0 0% 96%;
+    --neutral-200: 0 0% 33%;
+    --neutral-300: 0 0% 77%;
+    --warning-50: 38 39% 12%;
+    --warning-100: 42 52% 17%;
+    --warning-200: 44 54% 22%;
+    --warning-300: 43 62% 30%;
+    --warning-400: 44 67% 39%;
+    --warning-500: 43 71% 49%;
+    --warning-600: 45 77% 60%;
+    --warning-700: 47 84% 71%;
+    --warning-800: 49 86% 80%;
+    --warning-900: 50 83% 88%;
+    --icon-warning: 43 94% 56%;
+
+    --blocks-error-50: #2c1415;
+    --blocks-error-100: #451719;
+    --blocks-error-800: #f8b1a8;
+    --avatar-surface-default: #c0c9d1;
+    --avatar-text-high-emphasis: #262626;
+    --base-error: #ff3333;
+    --loader-color: #fff;
+
+    /* UILM-only layout tokens (not in Next globals.scss) */
+    --sidebar-nav: 222.2 32.6% 12%;
+    --canvas-muted: 222.2 84% 6%;
+    --po-sidebar-border: 217.2 32.6% 17.5%;
+    --po-nav-active: 218 75% 45%;
+    --po-nav-rail: 220 88% 38%;
+    --po-nav-inactive: 215 14% 52%;
+  }
+}
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-blocks-btn-secondary: hsl(var(--blocks-secondary-300));
+  --color-high-emphasis: hsl(var(--high-emphasis));
+  --color-medium-emphasis: hsl(var(--medium-emphasis));
+  --color-low-emphasis: hsl(var(--low-emphasis));
+  --color-border-default: hsl(var(--border-default));
+  --color-border-medium-emphasis: hsl(var(--border-medium-emphasis));
+
+  --color-blocks-primary-25: hsl(var(--blocks-primary-25));
+  --color-blocks-primary-50: hsl(var(--blocks-primary-50));
+  --color-blocks-primary-100: hsl(var(--blocks-primary-100));
+  --color-blocks-primary-200: hsl(var(--blocks-primary-200));
+  --color-blocks-primary-300: hsl(var(--blocks-primary-300));
+  --color-blocks-primary-400: hsl(var(--blocks-primary-400));
+  --color-blocks-primary-500: hsl(var(--blocks-primary-500));
+  --color-blocks-primary-600: hsl(var(--blocks-primary-600));
+  --color-blocks-primary-700: hsl(var(--blocks-primary-700));
+  --color-blocks-primary-800: hsl(var(--blocks-primary-800));
+  --color-blocks-primary-900: hsl(var(--blocks-primary-900));
+  --color-blocks-primary-shades-100: hsl(var(--blocks-primary-shades-100));
+  --color-blocks-primary-shades-200: hsl(var(--blocks-primary-shades-200));
+  --color-blocks-primary-shades-300: hsl(var(--blocks-primary-shades-300));
+
+  --color-blocks-secondary-50: hsl(var(--blocks-secondary-50));
+  --color-blocks-secondary-100: hsl(var(--blocks-secondary-100));
+  --color-blocks-secondary-200: hsl(var(--blocks-secondary-200));
+  --color-blocks-secondary-300: hsl(var(--blocks-secondary-300));
+  --color-blocks-secondary-400: hsl(var(--blocks-secondary-400));
+  --color-blocks-secondary-500: hsl(var(--blocks-secondary-500));
+  --color-blocks-secondary-600: hsl(var(--blocks-secondary-600));
+  --color-blocks-secondary-700: hsl(var(--blocks-secondary-700));
+  --color-blocks-secondary-800: hsl(var(--blocks-secondary-800));
+  --color-blocks-secondary-900: hsl(var(--blocks-secondary-900));
+
+  --color-surface-app: hsl(var(--surface-app));
+  --color-error: hsl(var(--error));
+  --color-success: hsl(var(--success));
+  --color-neutral-50: hsl(var(--neutral-50));
+  --color-neutral-200: hsl(var(--neutral-200));
+  --color-neutral-300: hsl(var(--neutral-300));
+
+  --color-warning-50: hsl(var(--warning-50));
+  --color-warning-100: hsl(var(--warning-100));
+  --color-warning-200: hsl(var(--warning-200));
+  --color-warning-300: hsl(var(--warning-300));
+  --color-warning-400: hsl(var(--warning-400));
+  --color-warning-500: hsl(var(--warning-500));
+  --color-warning-600: hsl(var(--warning-600));
+  --color-warning-700: hsl(var(--warning-700));
+  --color-warning-800: hsl(var(--warning-800));
+  --color-warning-900: hsl(var(--warning-900));
+  --color-base-warning: hsl(var(--base-warning));
+  --color-icon-warning: hsl(var(--icon-warning));
+
+  --color-chart-purple: hsl(var(--chart-purple));
+  --color-chart-purple-light: hsl(var(--chart-purple-light));
+  --color-chart-magenta: hsl(var(--chart-magenta));
+  --color-chart-yellow: hsl(var(--chart-yellow));
+  --color-chart-red: hsl(var(--chart-red));
+  --color-chart-blue: hsl(var(--chart-blue));
+  --color-chart-orange: hsl(var(--chart-orange));
+  --color-chart-brown-gray: hsl(var(--chart-brown-gray));
+
+  --color-blocks-error-50: var(--blocks-error-50);
+  --color-blocks-error-100: var(--blocks-error-100);
+  --color-blocks-error-800: var(--blocks-error-800);
+  --color-avatar-surface-default: var(--avatar-surface-default);
+  --color-avatar-text-high-emphasis: var(--avatar-text-high-emphasis);
+  --color-base-error: var(--base-error);
+
+  --color-sidebar-nav: hsl(var(--sidebar-nav));
+  --color-canvas-muted: hsl(var(--canvas-muted));
+  --color-po-sidebar-border: hsl(var(--po-sidebar-border));
+  --color-po-nav-active: hsl(var(--po-nav-active));
+  --color-po-nav-rail: hsl(var(--po-nav-rail));
+  --color-po-nav-inactive: hsl(var(--po-nav-inactive));
+  --color-ring-offset-background: hsl(var(--background));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+  --animate-collapsible-down: collapsible-down 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  /**
+   * Single viewport column: scrolling happens inside panes (`overflow-y-auto` + `.thin-scrollbar`),
+   * not on the document — avoids a full-height layout still showing a window scrollbar.
+   */
+  html {
+    height: 100%;
+    @apply overflow-x-hidden bg-surface-app;
+  }
+  body {
+    height: 100%;
+    margin: 0;
+    @apply overflow-hidden overflow-x-hidden bg-surface-app font-sans text-foreground antialiased;
+  }
+  #root {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+@layer utilities {
+  /**
+   * Scroll affordances for in-app panes (see also `@layer base` html/body/#root: document does not scroll).
+   *
+   * - `thin-scrollbar` — default for primary `overflow-y-auto` regions: slim track, still discoverable.
+   * - `scrollbar-none` — optional for nested micro-panes / horizontal strips where a thumb would add noise;
+   *   wheel and touch scrolling still work; avoid on sole scroll container of a tall page.
+   */
+  /**
+   * Slim scrollbars; pair with `overflow-y-auto` so the track only appears when content overflows.
+   */
+  .thin-scrollbar {
+    scrollbar-gutter: auto;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--muted-foreground) / 0.28);
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.48);
+  }
+
+  /** Scrollable pane without a visible scrollbar (wheel / touch scroll still works). */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+

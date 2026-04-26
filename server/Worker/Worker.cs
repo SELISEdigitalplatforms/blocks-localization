@@ -1,4 +1,4 @@
-namespace Worker;
+namespace BlocksTemplate.Worker;
 
 public class Worker(ILogger<Worker> logger) : BackgroundService
 {

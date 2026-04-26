@@ -1,0 +1,1971 @@
+{
+  "generatedAt": "2026-04-09T19:45:21.927Z",
+  "idpRoot": "idp/",
+  "summary": {
+    "tsxCount": 200,
+    "barrelCount": 95,
+    "byDomain": {
+      "authentication": 86,
+      "captcha": 7,
+      "iam": 104,
+      "mfa": 3
+    },
+    "byKind": {
+      "component": 50,
+      "page": 73,
+      "other": 4,
+      "module": 73
+    }
+  },
+  "tsxFiles": [
+    {
+      "path": "idp/authentication/components/auth-layout/blocks-info.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/client-credentials/client-credential-card.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/client-credentials/client-credentials-list.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/client-credentials/client-credentials.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/create-client-credential/create-client-credential.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/create-oidc/create-oidc.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/oidc/oidc-card.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/oidc/oidc-list.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/oidc/oidc.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/password-strength-checker/password-strength-checker.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/add-sso-permission/add-sso-permission.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/delete-sso-permission/delete-sso-permission.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/sso-initial-permissions.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/sso-permissions-list.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/add-sso-role/add-sso-role.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/delete-sso-role/delete-sso-role.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/sso-initial-roles.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/sso-roles-list.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-provider-card/sso-provider-card.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-provider-status-toggle/sso-provider-status-toggle.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/components/sso-signin-card/sso-signin-card.tsx",
+      "domain": "authentication",
+      "kind": "component"
+    },
+    {
+      "path": "idp/authentication/pages/activation-success/activation-success.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/activation/activation-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/activation/activation.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/auth-logs/index.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/authentication-config.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/certificates/add-edit-provider-modal.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/certificates/certificates.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/certificates/empty-configuration.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/certificates/map-jwt-claim-modal.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/grant-types/grant-types.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/self-signup/self-signup.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/settings/edit-settings.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/settings/settings.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/settings/url-with-actions.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/settings/view-auth-configure.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/sso/sso-provider-list/sso-provider-list.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/sso/sso.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/forgot-email-sent/forgot-email-sent.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/forgot-password/forgot-password-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/forgot-password/forgot-password.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/login/signin-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/login/signin.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/login/sso-signin.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/mfa-check/mfa-check-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/mfa-check/mfa-check.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/email-sent-confirmation/email-sent-confirmation.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/error-screen.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/forgot-password/oidc-forgot-password-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/forgot-password/oidc-forgot-password.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/oidc-signin-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/oidc-signin.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/permission-wrapper.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/oidc/permission.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/reset-password-success/reset-password-success.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/reset-password/reset-password-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/reset-password/reset-password.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/signup-email-sent/signup-email-sent.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/signup/signup-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/signup/signup.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-activate/sso-activate.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-configuration.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-blocks-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-blocks-own-sso-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/index.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/input-field.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/multi-select-dropdown.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/multi-select-field.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/password-field.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/radio-field.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-form-fields/select-field.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-forms.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-github-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-google-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-linkedin-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-microsoft-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config-forms/sso-provider-config-x-form.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/sso-provider-config.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-provider-setup-guideline.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-github.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-google.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-linkedin.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-microsoft.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-steps-docs.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline-x.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/sso-setup-guideline.tsx",
+      "domain": "authentication",
+      "kind": "page"
+    },
+    {
+      "path": "idp/captcha/modals/configure-captcha-modal/configure-block-captcha-form-field.tsx",
+      "domain": "captcha",
+      "kind": "other"
+    },
+    {
+      "path": "idp/captcha/modals/configure-captcha-modal/configure-captcha-modal.tsx",
+      "domain": "captcha",
+      "kind": "other"
+    },
+    {
+      "path": "idp/captcha/modals/configure-captcha-modal/configure-general-captcha-from-field.tsx",
+      "domain": "captcha",
+      "kind": "other"
+    },
+    {
+      "path": "idp/captcha/modals/toggle-captcha-status-modal.tsx",
+      "domain": "captcha",
+      "kind": "other"
+    },
+    {
+      "path": "idp/captcha/pages/configure-captcha/configure-captcha-list.tsx",
+      "domain": "captcha",
+      "kind": "page"
+    },
+    {
+      "path": "idp/captcha/pages/configure-captcha/configure-captcha.tsx",
+      "domain": "captcha",
+      "kind": "page"
+    },
+    {
+      "path": "idp/captcha/pages/logs/logs.tsx",
+      "domain": "captcha",
+      "kind": "page"
+    },
+    {
+      "path": "idp/iam/components/permission-group-combobox/permission-group-combobox.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/permission-severity/permission-severity.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-details/profile-details.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-image-uploader/profile-image-uploader.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/profile-mfa-detail.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/profile-mfa.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-config-manage.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-confirmation-disable.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-confirmation-enable.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-methods-list.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-methods-select-list.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-veriffy/profile-mfa-verify-form.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-veriffy/profile-mfa-verify-guideline-email.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-veriffy/profile-mfa-verify-guideline-totp.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-veriffy/profile-mfa-verify.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-basic-information/user-basic-information.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-details/user-details.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-config-manage.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-confirmation-disable.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-confirmation-enable.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-methods-list.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-veriffy/user-mfa-verify-form.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-veriffy/user-mfa-verify-guideline-email.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-veriffy/user-mfa-verify-guideline-totp.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-veriffy/user-mfa-verify.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-detail.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/users-role-permission-table-toolbar/users-role-permission-table-toolbar.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/components/users-role-table-toolbar/users-role-table-toolbar.tsx",
+      "domain": "iam",
+      "kind": "component"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/add-organization/add-organization.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-config/organization-config.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-users/invite-organization-user.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-users/organization-users-filter-toolbar.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-users/organization-users-table.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-users/organization-users.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organizations/organizations-filter-toolbar.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organizations/organizations-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organizations/organizations.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/toggle-organization-status/toggle-organization-status.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/organization-management/update-organization/update-organization.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/add-permission/add-permission.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/dependent-permissions/add-dependent-permission/add-dependent-permission.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/dependent-permissions/dependent-permissions.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permission-details/permission-details.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permission-details/permission-roles-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permission-form/permission-form.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permissions/permissions-filter-toolbar.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permissions/permissions-group-severity.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permissions/permissions-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permissions/permissions.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/add-role/add-role.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/affected-dependents-dialog.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/permission-group-section.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/permission-selection-row.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/permission-selection.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/permission-toggle-card.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/permissions-selection-panel.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/required-permission-dialog.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/role-details-state.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/role-details.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles/roles-filter-toolbar.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles/roles-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles/roles.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/role-management/update-role/update-role.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/configure/configure.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/invite-user/invite-user.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/logs/logs.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/profile/profile.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/signup-settings/signup-settings.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/update-user/update-user.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-devices/user-devices-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-devices/user-devices.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-histories/user-histories.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-histories/user-history-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/assign-organization.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/edit-membership/index.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/edit-membership/membership-footer.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/edit-membership/membership-permission-tab.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/edit-membership/membership-role-tab.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/remove-membership.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/user-memberships-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/user-memberships.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-pat/generate-pat-modal.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-pat/user-pats-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-pat/user-pats.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/add-user-permission/add-user-permission.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/delete-user-permission/delete-user-permission.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/user-permissions-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/user-permissions.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/add-user-role/add-user-role.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/delete-user-role/delete-user-role.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/user-roles-list.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/user-roles.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-action-menu.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-deactivate/user-deactivate.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-disable-mfa/user-disable-mfa.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-resend-activation/user-resend-activation.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-reset-password/user-reset-password.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/users/users-filter-toolbar.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/users/users-table.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/modules/user-management/users/users.tsx",
+      "domain": "iam",
+      "kind": "module"
+    },
+    {
+      "path": "idp/iam/pages/iam-management/iam-management.tsx",
+      "domain": "iam",
+      "kind": "page"
+    },
+    {
+      "path": "idp/iam/pages/organization-detail/organization-detail.tsx",
+      "domain": "iam",
+      "kind": "page"
+    },
+    {
+      "path": "idp/mfa/pages/configure-mfa/choose-email-template/choose-email-template.tsx",
+      "domain": "mfa",
+      "kind": "page"
+    },
+    {
+      "path": "idp/mfa/pages/configure-mfa/configure-mfa.tsx",
+      "domain": "mfa",
+      "kind": "page"
+    },
+    {
+      "path": "idp/mfa/pages/logs/mfa-logs.tsx",
+      "domain": "mfa",
+      "kind": "page"
+    }
+  ],
+  "barrels": [
+    {
+      "path": "idp/authentication/components/client-credentials/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./client-credentials"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/create-client-credential/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./create-client-credential"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/create-oidc/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./create-oidc"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/oidc/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./oidc"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/add-sso-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-sso-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/delete-sso-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./delete-sso-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-permissions/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-initial-permissions"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/add-sso-role/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-sso-role"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/delete-sso-role/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./delete-sso-role"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-initial-roles/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-initial-roles"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-provider-card/index.ts",
+      "exports": []
+    },
+    {
+      "path": "idp/authentication/components/sso-provider-status-toggle/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-provider-status-toggle"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/components/sso-signin-card/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-signin-card"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/constants/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./authentication.constant"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./endpoint.constant"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./sso-providers.constant"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/activation-success/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./activation-success"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/activation/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./activation"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/grant-types/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./grant-types"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/self-signup/index.ts",
+      "exports": [
+        {
+          "type": "named",
+          "names": [
+            "SelfSignup"
+          ],
+          "from": "./self-signup"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/general/settings/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./settings"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./authentication-config"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/sso/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/authentication-config/sso/sso-provider-list/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-provider-list"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/forgot-email-sent/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./forgot-email-sent"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/forgot-password/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./forgot-password"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/login/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./signin"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/mfa-check/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./mfa-check"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/oidc/forgot-password/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./oidc-forgot-password"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/oidc/index.ts",
+      "exports": [
+        {
+          "type": "named",
+          "names": [
+            "OIDCPermissionScreen"
+          ],
+          "from": "./permission"
+        },
+        {
+          "type": "named",
+          "names": [
+            "OIDCPermissionWrapper"
+          ],
+          "from": "./permission-wrapper"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/reset-password-success/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./reset-password-success"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/reset-password/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./reset-password"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/signup-email-sent/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./signup-email-sent"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/signup/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./signup"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/sso-activate/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-activate"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-configuration"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-config/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-provider-config"
+        }
+      ]
+    },
+    {
+      "path": "idp/authentication/pages/sso-configuration/sso-provider-setup-guideline/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./sso-provider-setup-guideline"
+        }
+      ]
+    },
+    {
+      "path": "idp/captcha/constants/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./endpoint.constant"
+        }
+      ]
+    },
+    {
+      "path": "idp/captcha/modals/configure-captcha-modal/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./configure-captcha-modal"
+        }
+      ]
+    },
+    {
+      "path": "idp/captcha/pages/configure-captcha/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./configure-captcha"
+        }
+      ]
+    },
+    {
+      "path": "idp/captcha/pages/logs/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./logs"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/permission-group-combobox/index.ts",
+      "exports": []
+    },
+    {
+      "path": "idp/iam/components/permission-severity/index.ts",
+      "exports": []
+    },
+    {
+      "path": "idp/iam/components/profile-details/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./profile-details"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/profile-image-uploader/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./profile-image-uploader"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./profile-mfa"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/profile-mfa/user-mfa-confirmation/profile-mfa-veriffy/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./profile-mfa-verify"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/user-basic-information/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-basic-information"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/user-details/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-details"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/user-mfa/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-mfa"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/components/user-mfa/user-mfa-confirmation/user-mfa-veriffy/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-mfa-verify"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/constants/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./endpoint.constant"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/add-organization/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-organization"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./organizations"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./add-organization"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./organization-config"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./organization-users"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./update-organization"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./toggle-organization-status"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-config/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./organization-config"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organization-users/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./organization-users"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./organization-users-table"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./organization-users-filter-toolbar"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./invite-organization-user"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/organizations/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./organizations"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/toggle-organization-status/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./toggle-organization-status"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/organization-management/update-organization/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./update-organization"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/add-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/dependent-permissions/add-dependent-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-dependent-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/dependent-permissions/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./dependent-permissions"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-permission"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./permissions"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permission-details/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./permission-details"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permission-form/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./permission-form"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/permission-management/permissions/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./permissions"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/role-management/add-role/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-role"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/role-management/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-role"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./roles"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./roles-details"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles-details/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./role-details"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/role-management/roles/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./roles"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./configure/configure"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./logs"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./user"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./user-memberships"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/logs/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./logs"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/profile/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./profile"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/signup-settings/index.ts",
+      "exports": [
+        {
+          "type": "named",
+          "names": [
+            "SignupSettings"
+          ],
+          "from": "./signup-settings"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/update-user/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./update-user"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-devices/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-devices"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-histories/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-histories"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-memberships/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-memberships"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./assign-organization"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./remove-membership"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./edit-membership"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-pat/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-pats"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/add-user-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-user-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/delete-user-permission/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./delete-user-permission"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-permssions/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-permissions"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/add-user-role/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./add-user-role"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/delete-user-role/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./delete-user-role"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user-roles/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-roles"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-disable-mfa/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-disable-mfa"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-resend-activation/index.ts",
+      "exports": []
+    },
+    {
+      "path": "idp/iam/modules/user-management/user/user-reset-password/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./user-reset-password"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/modules/user-management/users/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./users"
+        }
+      ]
+    },
+    {
+      "path": "idp/iam/pages/iam-management/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./iam-management"
+        }
+      ]
+    },
+    {
+      "path": "idp/mfa/constants/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./endpoint.constant"
+        }
+      ]
+    },
+    {
+      "path": "idp/mfa/pages/configure-mfa/choose-email-template/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./choose-email-template"
+        }
+      ]
+    },
+    {
+      "path": "idp/mfa/pages/logs/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./mfa-logs"
+        }
+      ]
+    },
+    {
+      "path": "idp/test-utils/__mocks__/index.ts",
+      "exports": [
+        {
+          "type": "re-export-all",
+          "from": "./auth.data.mock"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./iam.data.mock"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./captcha.data.mock"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./mfa.data.mock"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./oidc-flow.data.mock"
+        },
+        {
+          "type": "re-export-all",
+          "from": "./mock-factories"
+        }
+      ]
+    },
+    {
+      "path": "idp/test-utils/msw/index.ts",
+      "exports": [
+        {
+          "type": "declaration",
+          "name": "idpHandlers"
+        }
+      ]
+    }
+  ]
+}

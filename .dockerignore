@@ -15,3 +15,9 @@ client/dist
 **/.DS_Store
 **/*.log
 **/Thumbs.db
+
+# Local secrets and env files
+**/Secret.json
+**/appsetting.json
+**/appsettings.*
+**/.env
