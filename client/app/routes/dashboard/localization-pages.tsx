@@ -16,23 +16,23 @@ export function LocalizationLanguageHomePage() {
 }
 
 export function LocalizationNewKeyPage() {
-  return <AddNewLanguageKey />;
+  return <div className="h-full w-full min-w-0 p-6"><AddNewLanguageKey /></div>;
 }
 
 export function LocalizationKeyDetailPage() {
-  return <KeyDetails />;
+  return <div className="h-full w-full min-w-0 p-6"><KeyDetails /></div>;
 }
 
 export function LocalizationConfigurePage() {
-  return <Configure />;
+  return <div className="h-full w-full min-w-0 p-6"><Configure /></div>;
 }
 
 export function LocalizationExportHistoryPage() {
-  return <ExportHistory />;
+  return <div className="h-full w-full min-w-0 p-6"><ExportHistory /></div>;
 }
 
 export function LocalizationLogsPage() {
-  return <LanguageLogs />;
+  return <div className="h-full w-full min-w-0 p-6"><LanguageLogs /></div>;
 }
 
 export function LocalizationGlossaryPage() {

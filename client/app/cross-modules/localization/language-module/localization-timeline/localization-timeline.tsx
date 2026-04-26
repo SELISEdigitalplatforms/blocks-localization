@@ -82,6 +82,14 @@ function formatDate(dateStr: string): { date: string; time: string } {
   };
 }
 
+const DEFAULT_TIMELINE_EXCLUDES = [
+  "KeyController.Create",
+  "KeyController.Save",
+  "KeyController.Delete",
+  "TranslateKey",
+  "Rollback",
+] as const;
+
 // Cultures from both sides for diff table
 const asArray = <T,>(x?: T | T[]): T[] => (Array.isArray(x) ? x : x ? [x] : []);
 const getCultures = (
@@ -208,21 +216,39 @@ function OperationDetailModal({
   );
 }
 
-export default function LocalizationTimeline() {
+export type LocalizationTimelineProps = {
+  /**
+   * When omitted, some high-volume per-key event types are hidden (used on the keys “History” tab).
+   * Pass `{}` for the full localization timeline (e.g. dedicated Activity log page).
+   */
+  timelineQuery?: {
+    userId?: string;
+    logFrom?: string;
+    logFromValues?: string[];
+    excludeLogFromValues?: string[];
+    createDateRange?: { startDate?: string; endDate?: string };
+  };
+  cardTitle?: string;
+  cardDescription?: string;
+};
+
+export default function LocalizationTimeline({
+  timelineQuery,
+  cardTitle = "History",
+  cardDescription = "View all localization changes.",
+}: LocalizationTimelineProps = {}) {
   const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
 
-  const { data, isLoading } = useGetLocalizationTimeline(page + 1, pageSize, {
-    excludeLogFromValues: [
-      "KeyController.Create",
-      "KeyController.Save",
-      "KeyController.Delete",
-      "TranslateKey",
-      "Rollback",
-    ],
-  });
+  const { data, isLoading } = useGetLocalizationTimeline(
+    page + 1,
+    pageSize,
+    timelineQuery === undefined
+      ? { excludeLogFromValues: [...DEFAULT_TIMELINE_EXCLUDES] }
+      : timelineQuery,
+  );
 
   const timelineData = data as IGetLocalizationTimelineResponse | undefined;
 
@@ -230,8 +256,8 @@ export default function LocalizationTimeline() {
     <>
       <Card className="mt-6 h-min rounded-sm shadow-none">
         <CardHeader>
-          <CardTitle className="text-xl">History</CardTitle>
-          <CardDescription>View all localization changes.</CardDescription>
+          <CardTitle className="text-xl">{cardTitle}</CardTitle>
+          <CardDescription>{cardDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="h-[calc(100vh-420px)] overflow-y-auto pr-2">
