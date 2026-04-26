@@ -1,25 +1,24 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared.Events;
-using BlocksTemplate.DomainService.Shared.Entities;
-using BlocksTemplate.DomainService.Repositories;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.Events;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using BlocksTemplate.DomainService.Utilities;
+
 
 namespace Worker.Consumers
 {
-    public class EnvironmentDataMigrationEventConsumer : IConsumer<EnvironmentDataMigrationEvent>
+    public class EuroLMEnvironmentDataMigrationEventConsumer : IConsumer<EnvironmentDataMigrationEvent>
     {
         private readonly IKeyManagementService _keyManagementService;
         private readonly IEnvironmentDataMigrationRepository _migrationRepository;
-        private readonly ILogger<EnvironmentDataMigrationEventConsumer> _logger;
+        private readonly ILogger<EuroLMEnvironmentDataMigrationEventConsumer> _logger;
         private readonly IMessageClient _messageClient;
 
-        public EnvironmentDataMigrationEventConsumer(
+        public EuroLMEnvironmentDataMigrationEventConsumer(
             IKeyManagementService keyManagementService,
             IEnvironmentDataMigrationRepository migrationRepository,
-            ILogger<EnvironmentDataMigrationEventConsumer> logger,
+            ILogger<EuroLMEnvironmentDataMigrationEventConsumer> logger,
             IMessageClient messageClient)
         {
             _keyManagementService = keyManagementService;

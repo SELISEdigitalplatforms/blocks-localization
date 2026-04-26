@@ -1,5 +1,5 @@
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.Entities;
 using DomainService.Storage;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;

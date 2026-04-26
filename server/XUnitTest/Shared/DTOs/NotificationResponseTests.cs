@@ -1,4 +1,4 @@
-using BlocksTemplate.DomainService.Shared.DTOs;
+using Eurolm.DomainService.Shared.DTOs;
 using FluentAssertions;
 
 namespace XUnitTest

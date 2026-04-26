@@ -1,6 +1,6 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
 using FluentAssertions;
 using Moq;
 using MongoDB.Driver;

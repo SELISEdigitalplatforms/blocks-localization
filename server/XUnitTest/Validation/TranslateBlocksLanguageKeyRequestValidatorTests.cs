@@ -1,5 +1,5 @@
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Validation;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Validation;
 using FluentAssertions;
 
 namespace XUnitTest

@@ -1,12 +1,12 @@
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using BlocksLanguage = BlocksTemplate.DomainService.Repositories.BlocksLanguage;
-using LanguageModel = BlocksTemplate.DomainService.Services.Language;
+using BlocksLanguage = Eurolm.DomainService.Repositories.BlocksLanguage;
+using LanguageModel = Eurolm.DomainService.Services.Language;
 
 namespace XUnitTest
 {

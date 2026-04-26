@@ -1,6 +1,6 @@
 ﻿using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlocksTemplate.Api.Controllers

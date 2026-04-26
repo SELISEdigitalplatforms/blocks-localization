@@ -1,7 +1,7 @@
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;

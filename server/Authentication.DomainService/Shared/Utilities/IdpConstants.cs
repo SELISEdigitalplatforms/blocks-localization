@@ -26,7 +26,13 @@ namespace DomainService.Utilities
         public const string ProjectPeopleInvitationMailPurpose = "project_invitation";
         public const string BlocsDomain = "seliseblocks.com";
         #endregion
-
+        #region Eurolm Service Constants
+        public const string UilmQueue = "blocks_uilm_listener";
+        public const string UilmImportExportQueue = "blocks_uilm_import_export_listener";
+        public const string TranslateAllKeysQueue = "blocks_uilm_translate_all_keys_listener";
+        public const string TranslateBlocksLanguageKeyQueue = "blocks_uilm_translate_blocks_language_key_listener";
+        public const string EnvironmentDataMigrationQueue = "blocks_uilm_environment_data_migration_listener";
+        #endregion
         public static MessageConfiguration GetMessageConfiguration(string messageConnectionString)
         {
             var provider = GetProvider(messageConnectionString);
@@ -61,7 +67,13 @@ namespace DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(IdentifierQueueName),
                                              ConsumerSubscription.BindToQueue(DataCleanupQueue),
                                              ConsumerSubscription.BindToQueue(LanguageDataMigrationQueue),
-                                             ConsumerSubscription.BindToQueue(GenericMigrationQueue)],
+                                             ConsumerSubscription.BindToQueue(GenericMigrationQueue),
+                                             ConsumerSubscription.BindToQueue(UilmQueue),
+                                             ConsumerSubscription.BindToQueue(UilmImportExportQueue),
+                                             ConsumerSubscription.BindToQueue(EnvironmentDataMigrationQueue),
+                                             ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
+                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue)
+                                             ],
                 }
             };
         }
@@ -72,7 +84,7 @@ namespace DomainService.Utilities
             {
                 AzureServiceBusConfiguration = new AzureServiceBusConfiguration
                 {
-                    Queues = [AuthenticationQueue, IamQueue, MfaQueueName, IdentifierQueueName, DataCleanupQueue, LanguageDataMigrationQueue, GenericMigrationQueue],
+                    Queues = [AuthenticationQueue, IamQueue, MfaQueueName, IdentifierQueueName, DataCleanupQueue, LanguageDataMigrationQueue, GenericMigrationQueue, UilmQueue, UilmImportExportQueue, EnvironmentDataMigrationQueue, TranslateAllKeysQueue, TranslateBlocksLanguageKeyQueue],
                     Topics = [MigrationCompletionTopic]
                 }
             };

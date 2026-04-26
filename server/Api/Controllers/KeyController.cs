@@ -1,6 +1,6 @@
 ﻿using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;

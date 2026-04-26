@@ -1,13 +1,13 @@
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using BlocksGlossary = BlocksTemplate.DomainService.Repositories.BlocksGlossary;
-using GlossaryModel = BlocksTemplate.DomainService.Services.Glossary;
+using BlocksGlossary = Eurolm.DomainService.Repositories.BlocksGlossary;
+using GlossaryModel = Eurolm.DomainService.Services.Glossary;
 
 namespace XUnitTest
 {

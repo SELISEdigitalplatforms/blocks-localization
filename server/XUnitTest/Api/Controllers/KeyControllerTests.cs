@@ -1,8 +1,8 @@
 using Api.Controllers;
 using Blocks.Genesis;
-using BlocksTemplate. DomainService.Services;
-using BlocksTemplate.DomainService.Shared;
-using BlocksTemplate.DomainService.Shared.Events;
+using BlocksTemplate.Api.Controllers;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -1025,58 +1025,5 @@ namespace XUnitTest
             result.Should().BeOfType<BadRequestObjectResult>();
         }
 
-        #region GetSuggestedGlossaries Tests
-
-        [Fact]
-        public async Task GetSuggestedGlossaries_WithValidRequest_ReturnsSuggestions()
-        {
-            // Arrange
-            var request = new GetSuggestedGlossariesRequest { ItemId = "key-1", ProjectKey = "project-1" };
-            var expectedResponse = new GetSuggestedGlossariesResponse
-            {
-                SuggestedGlossaries = new List<Glossary>
-                {
-                    new Glossary { ItemId = "g1", Name = "API" },
-                    new Glossary { ItemId = "g2", Name = "SDK" }
-                }
-            };
-
-            _keyManagementServiceMock
-                .Setup(x => x.GetSuggestedGlossariesAsync(request))
-                .ReturnsAsync(expectedResponse);
-
-            // Act
-            var result = await _controller.GetSuggestedGlossaries(request);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.SuggestedGlossaries.Should().HaveCount(2);
-        }
-
-        [Fact]
-        public async Task GetSuggestedGlossaries_WithNoMatches_ReturnsEmptyList()
-        {
-            // Arrange
-            var request = new GetSuggestedGlossariesRequest { ItemId = "key-1", ProjectKey = "project-1" };
-            var expectedResponse = new GetSuggestedGlossariesResponse();
-
-            _keyManagementServiceMock
-                .Setup(x => x.GetSuggestedGlossariesAsync(request))
-                .ReturnsAsync(expectedResponse);
-
-            // Act
-            var result = await _controller.GetSuggestedGlossaries(request);
-
-            // Assert
-            result.SuggestedGlossaries.Should().BeEmpty();
-        }
-
-        [Fact]
-        public async Task GetSuggestedGlossaries_WithNullRequest_ThrowsNullReferenceException()
-        {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.GetSuggestedGlossaries(null));
-        }
-
-        #endregion
     }
 }

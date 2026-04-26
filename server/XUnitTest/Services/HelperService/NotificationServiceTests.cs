@@ -1,6 +1,6 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.DTOs;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.DTOs;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Moq;

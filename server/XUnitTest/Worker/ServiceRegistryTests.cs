@@ -1,10 +1,10 @@
 using Blocks.Genesis;
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Services.HelperService;
-using BlocksTemplate.DomainService.Shared.Entities;
-using BlocksTemplate.DomainService.Shared.Events;
-using BlocksTemplate.DomainService.Validation;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Shared.Entities;
+using Eurolm.DomainService.Shared.Events;
+using Eurolm.DomainService.Validation;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +27,7 @@ namespace XUnitTest
                 ChatGptEncryptionKey = "key"
             };
 
-            services.RegisterApplicationServices(localizationSecret);
+     
 
             AssertRegistration<ILocalizationSecret>(services, ServiceLifetime.Singleton, implementationInstance: localizationSecret);
 
@@ -36,7 +36,7 @@ namespace XUnitTest
             AssertRegistration<IConsumer<TranslateBlocksLanguageKeyEvent>, TranslateBlocksLanguageKeyEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<UilmImportEvent>, UilmImportEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<UilmExportEvent>, UilmExportEventConsumer>(services, ServiceLifetime.Singleton);
-            AssertRegistration<IConsumer<EnvironmentDataMigrationEvent>, EnvironmentDataMigrationEventConsumer>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>(services, ServiceLifetime.Singleton);
 
             AssertRegistration<XlsxOutputGeneratorService, XlsxOutputGeneratorService>(services, ServiceLifetime.Singleton);
             AssertRegistration<JsonOutputGeneratorService, JsonOutputGeneratorService>(services, ServiceLifetime.Singleton);

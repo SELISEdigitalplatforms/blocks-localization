@@ -1,14 +1,14 @@
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared.Entities;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using BlocksLanguage = BlocksTemplate.DomainService.Repositories.BlocksLanguage;
-using BlocksLanguageModule = BlocksTemplate.DomainService.Repositories.BlocksLanguageModule;
-using BlocksLanguageKey = BlocksTemplate.DomainService.Repositories.BlocksLanguageKey;
-using Resource = BlocksTemplate.DomainService.Services.Resource;
+using BlocksLanguage = Eurolm.DomainService.Repositories.BlocksLanguage;
+using BlocksLanguageModule = Eurolm.DomainService.Repositories.BlocksLanguageModule;
+using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
+using Resource = Eurolm.DomainService.Services.Resource;
 
 namespace XUnitTest
 {

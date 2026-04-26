@@ -1,4 +1,4 @@
-using BlocksTemplate.DomainService.Services;
+using Eurolm.DomainService.Services;
 using FluentAssertions;
 using Xunit;
 

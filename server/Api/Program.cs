@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Cloud.LmtService.Utilities;
 using CloudConfiguration.DomainService.Shared.Utilities;
+using Eurolm.DomainService.Shared;
 
 var serviceName = "blocks-os-api";
 var vaultType = ResolveVaultType();
@@ -37,12 +38,13 @@ var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(wwwrootPath);
 
 ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
-
+var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
 services.RegisterAllServices();
 services.AddApplicationServices();
 services.AddCloudDomainServices();
 services.AddCloudLmtServices();
 services.AddCloudConfigurationServices();
+services.AddEurolmRegisterApplicationServices(localizationSecret);
 
 var app = builder.Build();
 

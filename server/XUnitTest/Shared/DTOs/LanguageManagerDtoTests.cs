@@ -1,6 +1,6 @@
-using BlocksTemplate.DomainService.Repositories;
-using BlocksTemplate.DomainService.Services;
-using BlocksTemplate.DomainService.Shared.DTOs;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.DTOs;
 using FluentAssertions;
 using Xunit;
 

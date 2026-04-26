@@ -1,5 +1,6 @@
 using Api.Controllers;
-using BlocksTemplate.DomainService.Services;
+using BlocksTemplate.Api.Controllers;
+using Eurolm.DomainService.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
