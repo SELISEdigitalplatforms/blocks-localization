@@ -4,7 +4,7 @@ import { AddNewLanguageKey } from "@blocks-localization/language-module/add-new-
 import { Configure } from "@blocks-localization/language-module/configure/configure";
 import { ExportHistory } from "@blocks-localization/language-module/export-history/export-history";
 import { KeyDetails } from "@blocks-localization/language-module/key-details/key-details";
-import { LanguageLogs } from "@blocks-localization/language-module/logs/language-logs";
+import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
 
 export function LocalizationLanguageHomePage() {
