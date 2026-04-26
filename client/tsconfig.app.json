@@ -7,19 +7,26 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": false,
-    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./app/*"],
+      "@blocks-idp/*": ["./app/idp/*"],
+      "@blocks-lmt/*": ["./app/cross-modules/lmt/*"],
+      "@blocks-storage/*": ["./app/cross-modules/storage/*"],
+      "@blocks-communication/*": ["./app/cross-modules/communication/*"],
+      "@blocks-identifier/*": ["./app/cross-modules/identifier/*"],
+      "@blocks-localization/*": ["./app/cross-modules/localization/*"],
+      "@blocks-utilities/*": ["./app/cross-modules/utilities/*"],
+      "@blocks-ai/*": ["./app/cross-modules/ai/*"]
     }
   },
-  "include": ["src"]
+  "include": ["app"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "**/test-utils/**", "**/__mocks__/**"]
 }
