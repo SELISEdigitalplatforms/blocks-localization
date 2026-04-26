@@ -1,1 +1,10 @@
-export const BREADCRUMB_CUSTOM_TITLES: Record<string, string | null> = {};
+export const BREADCRUMB_CUSTOM_TITLES: Record<string, string | null> = {
+  "/services/authentication": "IDP",
+  "/services/language": "Language",
+  "/services/language/configure": "Configure",
+  "/services/language/export-history": "Export history",
+  "/services/language/logs": "Logs",
+  "/services/language/translations/new-key": "New Key",
+  "/services/language/translations": "Language Translation Keys",
+  "/services/glossary": "Glossary",
+};

@@ -1,18 +1,6 @@
-export interface NotificationData {
-  message: {
-    denormalizedPayload:
-      | string
-      | {
-          Message: {
-            Id?: string;
-            BuildId: string;
-            EventType: string;
-            Message: string;
-            EventGroup: string;
-            CreatedAt: string;
-          };
-        };
-  };
+/** UILM export SSE payload shape (self-contained for Vite client). */
+export interface IUilmExportNotificationMessage {
+  denormalizedPayload: string | { Message?: string; FileId?: string; fileId?: string };
 }
 
 export type LanguageKeys = { en?: string; de?: string; fr?: string };
@@ -32,6 +20,7 @@ export interface IBlocksLanguageKey {
   keyName: string;
   moduleId: string;
   routes?: string[];
+  glossaryIds?: string[];
   resources: IResource[];
   isPartiallyTranslated: boolean;
   lastUpdateDate: string;
@@ -170,7 +159,8 @@ export interface IRollbackResponse {
   isSuccess: boolean;
 }
 
-export interface IUilmExportNotificationData extends NotificationData {
+export interface IUilmExportNotificationData {
+  message: IUilmExportNotificationMessage;
   FileId: string;
 }
 
@@ -202,4 +192,51 @@ export interface IGetTimelineByOperationIdResponse {
     previousData?: IBlocksLanguageKey;
     currentData?: IBlocksLanguageKey;
   }>;
+}
+
+// Glossary types
+
+export type GlossaryType =
+  | "Full form"
+  | "Acronym"
+  | "Abbreviation"
+  | "Short form"
+  | "Phrase"
+  | "Variant";
+
+export const GLOSSARY_TYPE_OPTIONS: { value: GlossaryType; label: string }[] = [
+  { value: "Full form", label: "Full form" },
+  { value: "Acronym", label: "Acronym" },
+  { value: "Abbreviation", label: "Abbreviation" },
+  { value: "Short form", label: "Short form" },
+  { value: "Phrase", label: "Phrase" },
+  { value: "Variant", label: "Variant" },
+];
+
+export interface IGlossary {
+  itemId: string;
+  name: string;
+  language?: string;
+  type?: string;
+  context?: string;
+  additionalNote?: string;
+  createDate: string;
+  lastUpdateDate: string;
+}
+
+export interface IGlossaryFormData {
+  name: string;
+  language?: string;
+  type?: string;
+  context?: string;
+  additionalNote?: string;
+}
+
+export interface IGetGlossariesResponse {
+  items: IGlossary[];
+  totalCount: number;
+}
+
+export interface IGetSuggestedGlossariesResponse {
+  suggestedGlossaries: IGlossary[];
 }

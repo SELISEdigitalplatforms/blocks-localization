@@ -5,8 +5,6 @@ import { PublicLayout } from "./layouts/public-layout";
 import { OidcLayout } from "./layouts/oidc-layout";
 import { DashboardLayout } from "./layouts/dashboard-layout";
 import { ConsoleLayout } from "./layouts/console-layout";
-import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
-
 // Auth routes (public, with auth layout)
 import LoginPage from "./routes/auth/login";
 import SignupPage from "./routes/auth/signup";
@@ -51,6 +49,15 @@ import LmtServiceLogsPage from "./routes/dashboard/lmt-service-logs";
 import SecretManagementPage from "./routes/dashboard/secret-management";
 import AiModelSelectedRoute from "./routes/dashboard/ai-model-selected";
 import ManagedServicesPage from "./routes/dashboard/managed-services";
+import {
+  LocalizationConfigurePage,
+  LocalizationExportHistoryPage,
+  LocalizationGlossaryPage,
+  LocalizationKeyDetailPage,
+  LocalizationLanguageHomePage,
+  LocalizationLogsPage,
+  LocalizationNewKeyPage,
+} from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
 
 // Console pages
@@ -129,6 +136,13 @@ export const router = createBrowserRouter([
       { path: "/managed-services", element: <ManagedServicesPage /> },
       { path: "/services/captcha", element: <Navigate to="/services/secret-management?tab=captcha" replace /> },
       { path: "/services/captcha/logs", element: <CaptchaLogsPage /> },
+      { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
+      { path: "/services/language", element: <LocalizationLanguageHomePage /> },
+      { path: "/services/language/configure", element: <LocalizationConfigurePage /> },
+      { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
+      { path: "/services/language/logs", element: <LocalizationLogsPage /> },
+      { path: "/services/language/translations/new-key", element: <LocalizationNewKeyPage /> },
+      { path: "/services/language/translations/:keyId", element: <LocalizationKeyDetailPage /> },
     ],
   },
 
