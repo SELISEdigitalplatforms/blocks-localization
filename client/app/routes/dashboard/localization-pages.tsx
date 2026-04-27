@@ -4,7 +4,7 @@ import { AddNewLanguageKey } from "@blocks-localization/language-module/add-new-
 import { Configure } from "@blocks-localization/language-module/configure/configure";
 import { ExportHistory } from "@blocks-localization/language-module/export-history/export-history";
 import { KeyDetails } from "@blocks-localization/language-module/key-details/key-details";
-import { LanguageLogs } from "@blocks-localization/language-module/logs/language-logs";
+import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
 
 export function LocalizationLanguageHomePage() {
@@ -16,23 +16,23 @@ export function LocalizationLanguageHomePage() {
 }
 
 export function LocalizationNewKeyPage() {
-  return <AddNewLanguageKey />;
+  return <div className="h-full w-full min-w-0 p-6"><AddNewLanguageKey /></div>;
 }
 
 export function LocalizationKeyDetailPage() {
-  return <KeyDetails />;
+  return <div className="h-full w-full min-w-0 p-6"><KeyDetails /></div>;
 }
 
 export function LocalizationConfigurePage() {
-  return <Configure />;
+  return <div className="h-full w-full min-w-0 p-6"><Configure /></div>;
 }
 
 export function LocalizationExportHistoryPage() {
-  return <ExportHistory />;
+  return <div className="h-full w-full min-w-0 p-6"><ExportHistory /></div>;
 }
 
 export function LocalizationLogsPage() {
-  return <LanguageLogs />;
+  return <div className="h-full w-full min-w-0 p-6"><LanguageLogs /></div>;
 }
 
 export function LocalizationGlossaryPage() {

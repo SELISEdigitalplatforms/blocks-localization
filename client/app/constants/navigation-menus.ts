@@ -1,5 +1,5 @@
 import { Menu } from "@/models/menu-models";
-import { Home, Package, Users, BookMinus, Settings, KeyRound, Languages } from "lucide-react";
+import { BookMinus, Home, Languages, Package, Settings, Users } from "lucide-react";
 
 export const navigationMenus: Menu[] = [
   {
@@ -54,25 +54,18 @@ export const navigationMenus: Menu[] = [
   // },
   {
     type: "menu",
-    id: "service-localization",
-    name: "Localization",
+    id: "service-localization__language",
+    name: "Language",
     path: "/services/language",
     icon: Languages,
-    children: [
-      {
-        type: "menu",
-        id: "service-localization__language",
-        name: "Language",
-        path: "/services/language",
-      },
-      {
-        type: "menu",
-        id: "service-localization__glossary",
-        name: "Glossary",
-        path: "/services/glossary",
-      },
-    ],
   },
+  // {
+  //   type: "menu",
+  //   id: "service-localization__glossary",
+  //   name: "Glossary",
+  //   path: "/services/glossary",
+  //   icon: BookText,
+  // },
   // {
   //   type: "menu",
   //   id: "service-identity__authorization",
