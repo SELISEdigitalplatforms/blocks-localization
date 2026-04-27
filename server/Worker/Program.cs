@@ -18,7 +18,7 @@ using Worker.Consumers;
 using Worker.Consumers.Identifier;
 using Worker.Consumers.Users;
 
-const string _serviceName = "blocks-idp-worker";
+const string _serviceName = "blocks-eurolm-worker";
 
 var vaultType = ResolveVaultType();
 Console.WriteLine($"Using Genesis vault type: {vaultType}");

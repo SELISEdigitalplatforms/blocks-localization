@@ -6,10 +6,10 @@ namespace DomainService.Utilities
     public static class IdpConstants
     {
         public const string TenantTokenPublicCertificateCachePrefix = "tetocertpublic::";
-        public const string AuthenticationQueue = "blocks_authentication_listener";
-        public const string IamQueue = "blocks_iam_listener";
-        public const string MailQueue = "blocks_mail_listener";
-        public const string MfaQueueName = "blocks_mfa_listener";
+        public const string AuthenticationQueue = "blocks_eurolm_authentication_listener";
+        public const string IamQueue = "blocks_eurolm_iam_listener";
+        public const string MailQueue = "blocks_eurolm_mail_listener";
+        public const string MfaQueueName = "blocks_eurolm_mfa_listener";
 
         public const string AccessTokenCookieName = "access_token";
         public const string RefreshTokenCookieName = "refresh_token";
@@ -18,12 +18,12 @@ namespace DomainService.Utilities
         private const string RabbitMqProvider = "rabbitmq";
 
         #region Identifier Service Constants
-        public const string IdentifierQueueName = "blocks_identifier_listener";
-        public const string DataCleanupQueue = "blocks_data_cleanup_listener";
-        public const string LanguageDataMigrationQueue = "blocks_uilm_environment_data_migration_listener";
-        public const string GenericMigrationQueue = "blocks_generic_migration_listener";
-        public const string MigrationCompletionTopic = "migration_topic";
-        public const string ProjectPeopleInvitationMailPurpose = "project_invitation";
+        public const string IdentifierQueueName = "blocks_eurolm_identifier_listener";
+        public const string DataCleanupQueue = "blocks_eurolm_data_cleanup_listener";
+        public const string LanguageDataMigrationQueue = "blocks_eurolm_environment_data_migration_listener";
+        public const string GenericMigrationQueue = "blocks_eurolm_generic_migration_listener";
+        public const string MigrationCompletionTopic = "blocks_eurolm_migration_topic";
+        public const string ProjectPeopleInvitationMailPurpose = "blocks_eurolm_project_invitation";
         public const string BlocsDomain = "seliseblocks.com";
         #endregion
         #region Eurolm Service Constants
