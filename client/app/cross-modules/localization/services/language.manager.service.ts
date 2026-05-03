@@ -1,5 +1,6 @@
 import { http } from "@/lib/http-client";
 import {
+  CONFIG_ENDPOINTS,
   LANGUAGE_ASSISTANT_ENDPOINTS,
   LANGUAGE_ENDPOINTS,
   LANGUAGE_KEY_ENDPOINTS,
@@ -10,6 +11,7 @@ import {
   ExportHistoryFilters,
   IBlocksLanguageKey,
   IGetExportHistory,
+  IGlossary,
   IGetGlossariesResponse,
   IGetSuggestedGlossariesResponse,
   IGetLocalizationTimelineResponse,
@@ -22,6 +24,7 @@ import {
   IModuleGets,
   IRollbackResponse,
   IValidationError,
+  IWebhookConfig,
 } from "@blocks-localization/models/language";
 
 class LanguageManagerService {
@@ -43,6 +46,8 @@ class LanguageManagerService {
       endDate?: string;
     };
     resourceSearchFilters?: { culture: string; searchText: string }[];
+    glossaryId?: string;
+    missingLanguages?: string[];
   }): Promise<{ totalCount: number; keys: IBlocksLanguageKey[] }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
@@ -188,6 +193,7 @@ class LanguageManagerService {
     temperature: number;
     // elementDetailContext: string;
     glossaryIds?: string[];
+    moduleId?: string;
     destinationLanguageCode?: string;
     projectKey: string;
   }): Promise<{
@@ -346,6 +352,8 @@ class LanguageManagerService {
     pageNumber: number;
     pageSize: number;
     searchText?: string;
+    isGlobal?: boolean;
+    moduleId?: string;
   }): Promise<IGetGlossariesResponse> => {
     const params = new URLSearchParams({
       ProjectKey: request.projectKey,
@@ -355,6 +363,14 @@ class LanguageManagerService {
 
     if (request.searchText) {
       params.append("SearchText", request.searchText);
+    }
+
+    if (request.isGlobal !== undefined) {
+      params.append("IsGlobal", String(request.isGlobal));
+    }
+
+    if (request.moduleId) {
+      params.append("ModuleId", request.moduleId);
     }
 
     return http.get(`${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`);
@@ -367,6 +383,8 @@ class LanguageManagerService {
     type?: string;
     context?: string;
     additionalNote?: string;
+    isGlobal?: boolean;
+    moduleIds?: string[];
     projectKey: string;
   }): Promise<{
     success: boolean;
@@ -404,6 +422,22 @@ class LanguageManagerService {
       params.append("MaxResults", String(request.maxResults));
     }
     return http.get(`${LANGUAGE_KEY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`);
+  };
+
+  getGlossaryById = (request: { itemId: string; projectKey: string }): Promise<IGlossary> => {
+    return http.get(
+      `${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}&projectKey=${request.projectKey}`,
+    );
+  };
+
+  getWebhook = (projectKey: string): Promise<IWebhookConfig | null> => {
+    return http.get(`${CONFIG_ENDPOINTS.GET_WEBHOOK}?projectKey=${projectKey}`);
+  };
+
+  saveWebhook = (
+    payload: IWebhookConfig,
+  ): Promise<{ success: boolean; errorMessage: string | null }> => {
+    return http.post(CONFIG_ENDPOINTS.SAVE_WEBHOOK, payload);
   };
 }
 export const languageManagerService = new LanguageManagerService();
