@@ -1,4 +1,3 @@
-
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
@@ -10,7 +9,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui-kits/form/form";
+import { Input } from "@/components/ui-kits/input/input";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
+import { Switch } from "@/components/ui-kits/switch/switch";
 import {
   Table,
   TableBody,
@@ -23,9 +32,12 @@ import NewLanguage from "@blocks-localization/components/modals/new-language/new
 import {
   useDeleteLanguage,
   useGetLanguages,
+  useGetWebhook,
+  useSaveWebhook,
   useSetDefaultLanguage,
 } from "@blocks-localization/hooks/use-language-manager";
-import { ILanguageConfig } from "@blocks-localization/models/language";
+import { ILanguageConfig, IWebhookConfig } from "@blocks-localization/models/language";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ColumnDef,
   flexRender,
@@ -38,7 +50,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { EllipsisVertical, Plus, Star, Trash } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -51,6 +65,16 @@ const LoadingSkelton = () => (
   </div>
 );
 
+const webhookSchema = z.object({
+  url: z.string().url({ message: "Must be a valid URL" }),
+  contentType: z.string().min(1, { message: "Content type is required" }),
+  headerKey: z.string().min(1, { message: "Header key is required" }),
+  secret: z.string().min(1, { message: "Secret is required" }),
+  isDisabled: z.boolean(),
+});
+
+type WebhookFormValues = z.infer<typeof webhookSchema>;
+
 function Configure() {
   const [isNewLanguageDialogOpen, setIsNewLanguageDialogOpen] = useState(false);
   const [isMakeDefaultDialogOpen, setIsMakeDefaultDialogOpen] = useState(false);
@@ -59,8 +83,68 @@ function Configure() {
   const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
   const { isPending: isDeleteLanguagePending, mutateAsync: deleteAsync } = useDeleteLanguage();
   const { isPending: isSetDefaultPending, mutateAsync: setDefaultAsync } = useSetDefaultLanguage();
+  const { data: webhookData } = useGetWebhook();
+  const { isPending: isSaveWebhookPending, mutateAsync: saveWebhookAsync } = useSaveWebhook();
 
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  const webhookForm = useForm<WebhookFormValues>({
+    resolver: zodResolver(webhookSchema),
+    defaultValues: {
+      url: "",
+      contentType: "application/json",
+      headerKey: "",
+      secret: "",
+      isDisabled: false,
+    },
+  });
+
+  useEffect(() => {
+    if (webhookData) {
+      webhookForm.reset({
+        url: webhookData.url,
+        contentType: webhookData.contentType ?? "application/json",
+        headerKey: webhookData.blocksWebhookSecret?.headerKey,
+        secret: webhookData.blocksWebhookSecret?.secret,
+        isDisabled: webhookData.isDisabled ?? false,
+      });
+    }
+  }, [webhookData, webhookForm]);
+
+  const onWebhookSubmit = async (values: WebhookFormValues) => {
+    try {
+      const payload: IWebhookConfig = {
+        url: values.url,
+        contentType: values.contentType,
+        blocksWebhookSecret: {
+          headerKey: values.headerKey,
+          secret: values.secret,
+        },
+        isDisabled: values.isDisabled,
+        projectKey: tenantId,
+      };
+      const res = await saveWebhookAsync(payload);
+      if (res?.success) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Webhook saved successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errorMessage),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  };
 
   const makeDefaultModalData = {
     dialogTitle: "Make default language",
@@ -322,6 +406,95 @@ function Configure() {
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 rounded-sm border border-border shadow-none">
+        <CardHeader>
+          <CardTitle>Webhook</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...webhookForm}>
+            <form onSubmit={webhookForm.handleSubmit(onWebhookSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={webhookForm.control}
+                  name="url"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com/webhook" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={webhookForm.control}
+                  name="contentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Content Type</FormLabel>
+                      <FormControl>
+                        <Input placeholder="application/json" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={webhookForm.control}
+                  name="headerKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Secret Header Key</FormLabel>
+                      <FormControl>
+                        <Input placeholder="X-Webhook-Secret" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={webhookForm.control}
+                  name="secret"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>Secret</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={webhookForm.control}
+                  name="isDisabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-3 sm:col-span-2">
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <FormLabel className="!mt-0">Disable webhook</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="default"
+                  className="h-10 bg-primary text-sm text-primary-foreground"
+                  disabled={isSaveWebhookPending}
+                >
+                  Save Webhook
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 
