@@ -1,5 +1,9 @@
-import { Profile } from "@blocks-idp/iam/modules/user-management/profile";
+import { useEffect } from "react"
 
 export default function ProfilePage() {
-	return <Profile />;
+  useEffect(() => {
+    window.location.href = "http://dev-idp.blocksdevelopers.com/profile"
+  }, [])
+
+  return null
 }
