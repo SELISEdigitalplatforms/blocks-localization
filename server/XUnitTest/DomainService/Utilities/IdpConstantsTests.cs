@@ -13,49 +13,49 @@ namespace XUnitTest.DomainService.Utilities
         public void TenantTokenPublicCertificateCachePrefix_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.TenantTokenPublicCertificateCachePrefix.Should().Be("tetocertpublic::");
+            UilmConstants.TenantTokenPublicCertificateCachePrefix.Should().Be("tetocertpublic::");
         }
 
         [Fact]
         public void AuthenticationQueue_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.AuthenticationQueue.Should().Be("blocks_authentication_listener");
+            UilmConstants.AuthenticationQueue.Should().Be("blocks_authentication_listener");
         }
 
         [Fact]
         public void IamQueue_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.IamQueue.Should().Be("blocks_iam_listener");
+            UilmConstants.IamQueue.Should().Be("blocks_iam_listener");
         }
 
         [Fact]
         public void MailQueue_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.MailQueue.Should().Be("blocks_mail_listener");
+            UilmConstants.MailQueue.Should().Be("blocks_mail_listener");
         }
 
         [Fact]
         public void MfaQueueName_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.MfaQueueName.Should().Be("blocks_mfa_listener");
+            UilmConstants.MfaQueueName.Should().Be("blocks_mfa_listener");
         }
 
         [Fact]
         public void AccessTokenCookieName_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.AccessTokenCookieName.Should().Be("access_token");
+            UilmConstants.AccessTokenCookieName.Should().Be("access_token");
         }
 
         [Fact]
         public void RefreshTokenCookieName_ShouldHaveCorrectValue()
         {
             // Assert
-            IdpConstants.RefreshTokenCookieName.Should().Be("refresh_token");
+            UilmConstants.RefreshTokenCookieName.Should().Be("refresh_token");
         }
 
         #endregion
@@ -69,7 +69,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://<username>:<password>@localhost:5672/";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -84,7 +84,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqps://<username>:<password>@rabbitmq.example.com:5671/vhost";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -99,16 +99,16 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://localhost:5672";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.RabbitMqConfiguration.ConsumerSubscriptions.Should().HaveCount(3);
             result.RabbitMqConfiguration.ConsumerSubscriptions.Should().Contain(s => 
-                s.QueueName == IdpConstants.AuthenticationQueue);
+                s.QueueName == UilmConstants.AuthenticationQueue);
             result.RabbitMqConfiguration.ConsumerSubscriptions.Should().Contain(s => 
-                s.QueueName == IdpConstants.IamQueue);
+                s.QueueName == UilmConstants.IamQueue);
             result.RabbitMqConfiguration.ConsumerSubscriptions.Should().Contain(s => 
-                s.QueueName == IdpConstants.MfaQueueName);
+                s.QueueName == UilmConstants.MfaQueueName);
         }
 
         [Fact]
@@ -118,23 +118,23 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://localhost:5672";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             var authSubscription = result.RabbitMqConfiguration.ConsumerSubscriptions
-                .FirstOrDefault(s => s.QueueName == IdpConstants.AuthenticationQueue);
+                .FirstOrDefault(s => s.QueueName == UilmConstants.AuthenticationQueue);
             authSubscription.Should().NotBeNull();
-            authSubscription.QueueName.Should().Be(IdpConstants.AuthenticationQueue);
+            authSubscription.QueueName.Should().Be(UilmConstants.AuthenticationQueue);
 
             var iamSubscription = result.RabbitMqConfiguration.ConsumerSubscriptions
-                .FirstOrDefault(s => s.QueueName == IdpConstants.IamQueue);
+                .FirstOrDefault(s => s.QueueName == UilmConstants.IamQueue);
             iamSubscription.Should().NotBeNull();
-            iamSubscription.QueueName.Should().Be(IdpConstants.IamQueue);
+            iamSubscription.QueueName.Should().Be(UilmConstants.IamQueue);
 
             var mfaSubscription = result.RabbitMqConfiguration.ConsumerSubscriptions
-                .FirstOrDefault(s => s.QueueName == IdpConstants.MfaQueueName);
+                .FirstOrDefault(s => s.QueueName == UilmConstants.MfaQueueName);
             mfaSubscription.Should().NotBeNull();
-            mfaSubscription.QueueName.Should().Be(IdpConstants.MfaQueueName);
+            mfaSubscription.QueueName.Should().Be(UilmConstants.MfaQueueName);
         }
 
         [Fact]
@@ -144,7 +144,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "AMQP://localhost:5672";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -159,7 +159,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "AMQPS://localhost:5671";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -174,7 +174,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "AmQp://localhost:5672";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -193,7 +193,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "Endpoint=sb://myservicebus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=key";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -208,7 +208,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "http://example.com";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -223,7 +223,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "https://example.com";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -238,7 +238,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "not-a-valid-uri";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -253,7 +253,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -268,13 +268,13 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=Key;SharedAccessKey=value";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.AzureServiceBusConfiguration.Queues.Should().HaveCount(3);
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.AuthenticationQueue);
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.IamQueue);
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.MfaQueueName);
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.AuthenticationQueue);
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.IamQueue);
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.MfaQueueName);
         }
 
         [Fact]
@@ -284,7 +284,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=Key;SharedAccessKey=value";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.AzureServiceBusConfiguration.Topics.Should().NotBeNull();
@@ -298,7 +298,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "sb://test.servicebus.windows.net/";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -317,7 +317,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://localhost:5672?heartbeat=30";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -332,7 +332,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://localhost:5672#fragment";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -347,7 +347,7 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "ftp://example.com";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -363,7 +363,7 @@ namespace XUnitTest.DomainService.Utilities
         public void GetMessageConfiguration_WithVariousAmqpFormats_ReturnsRabbitMqConfiguration(string connectionString)
         {
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -381,7 +381,7 @@ namespace XUnitTest.DomainService.Utilities
         public void GetMessageConfiguration_WithNonRabbitMqFormats_ReturnsAzureConfiguration(string connectionString)
         {
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             result.Should().NotBeNull();
@@ -400,17 +400,17 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "amqp://localhost";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
             var queueNames = result.RabbitMqConfiguration.ConsumerSubscriptions
                 .Select(s => s.QueueName)
                 .ToList();
 
-            queueNames.Should().Contain(IdpConstants.AuthenticationQueue);
-            queueNames.Should().Contain(IdpConstants.IamQueue);
-            queueNames.Should().Contain(IdpConstants.MfaQueueName);
-            queueNames.Should().NotContain(IdpConstants.MailQueue); // Mail queue is not in consumer subscriptions
+            queueNames.Should().Contain(UilmConstants.AuthenticationQueue);
+            queueNames.Should().Contain(UilmConstants.IamQueue);
+            queueNames.Should().Contain(UilmConstants.MfaQueueName);
+            queueNames.Should().NotContain(UilmConstants.MailQueue); // Mail queue is not in consumer subscriptions
         }
 
         [Fact]
@@ -420,13 +420,13 @@ namespace XUnitTest.DomainService.Utilities
             var connectionString = "Endpoint=sb://test.servicebus.windows.net";
 
             // Act
-            var result = IdpConstants.GetMessageConfiguration(connectionString);
+            var result = UilmConstants.GetMessageConfiguration(connectionString);
 
             // Assert
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.AuthenticationQueue);
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.IamQueue);
-            result.AzureServiceBusConfiguration.Queues.Should().Contain(IdpConstants.MfaQueueName);
-            result.AzureServiceBusConfiguration.Queues.Should().NotContain(IdpConstants.MailQueue); // Mail queue is not configured
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.AuthenticationQueue);
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.IamQueue);
+            result.AzureServiceBusConfiguration.Queues.Should().Contain(UilmConstants.MfaQueueName);
+            result.AzureServiceBusConfiguration.Queues.Should().NotContain(UilmConstants.MailQueue); // Mail queue is not configured
         }
 
         #endregion
@@ -449,7 +449,7 @@ namespace XUnitTest.DomainService.Utilities
             foreach (var connectionString in connectionStrings)
             {
                 // Act
-                var result = IdpConstants.GetMessageConfiguration(connectionString);
+                var result = UilmConstants.GetMessageConfiguration(connectionString);
 
                 // Assert
                 result.Should().NotBeNull();
@@ -474,7 +474,7 @@ namespace XUnitTest.DomainService.Utilities
             foreach (var connectionString in testCases)
             {
                 // Act
-                var result = IdpConstants.GetMessageConfiguration(connectionString);
+                var result = UilmConstants.GetMessageConfiguration(connectionString);
 
                 // Assert
                 result.Should().NotBeNull($"connection string '{connectionString}' should not return null");
@@ -496,7 +496,7 @@ namespace XUnitTest.DomainService.Utilities
             foreach (var connectionString in testCases)
             {
                 // Act
-                var result = IdpConstants.GetMessageConfiguration(connectionString);
+                var result = UilmConstants.GetMessageConfiguration(connectionString);
 
                 // Assert
                 var bothNull = result.RabbitMqConfiguration == null && result.AzureServiceBusConfiguration == null;

@@ -16,7 +16,9 @@ Console.WriteLine($"Using Genesis vault type: {vaultType}");
 var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, vaultType);
 var builder = WebApplication.CreateBuilder(args);
 
-ApplicationConfigurations.ConfigureServices(builder.Services, IdpConstants.GetMessageConfiguration(secret.MessageConnectionString));
+ ApplicationConfigurations.ConfigureApiEnv(builder, args);
+
+ApplicationConfigurations.ConfigureServices(builder.Services, UilmConstants.GetMessageConfiguration(secret.MessageConnectionString));
 
 builder.Services.Configure<FormOptions>(options =>
 {
@@ -27,7 +29,7 @@ var services = builder.Services;
 
 services.AddHealthChecks();
 
-ApplicationConfigurations.ConfigureApi(services);
+
 
 builder.Services.Configure<MvcOptions>(options =>
 {
@@ -39,6 +41,8 @@ Directory.CreateDirectory(wwwrootPath);
 
 ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
+
+ApplicationConfigurations.ConfigureApi(services);
 services.RegisterAllServices();
 services.AddApplicationServices();
 services.AddCloudDomainServices();

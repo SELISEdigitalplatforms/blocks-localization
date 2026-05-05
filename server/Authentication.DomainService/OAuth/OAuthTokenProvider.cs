@@ -103,8 +103,8 @@ namespace DomainService.OAuth
 
                 if (!string.IsNullOrWhiteSpace(response.CookieDomain))
                 {
-                    var accessTokenkey = $"{IdpConstants.AccessTokenCookieName}_{bc.TenantId}";
-                    var refreshTokenKey = $"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}";
+                    var accessTokenkey = $"{UilmConstants.AccessTokenCookieName}_{bc.TenantId}";
+                    var refreshTokenKey = $"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}";
                     request.Request.HttpContext.Response.Cookies.Delete(accessTokenkey);
                     var cookieOptionsForDomain = GetCookieOptions("blocksdevelopers.com", response.ExpiresUtc);
 
@@ -194,8 +194,8 @@ namespace DomainService.OAuth
         public async Task<TokenResponse> GetTokenResponseForRefreshToken(ITokenService authService, TokenRequest request, AuthenticationConfiguration authenticationConfiguration)
         {
             var bc = BlocksContext.GetContext();   
-            var cookieToken = request.Request.HttpContext.Request.Cookies[$"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}"];
-            cookieToken = string.IsNullOrEmpty(cookieToken) ? request.Request.HttpContext.Request.Headers[$"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}"] : cookieToken;
+            var cookieToken = request.Request.HttpContext.Request.Cookies[$"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}"];
+            cookieToken = string.IsNullOrEmpty(cookieToken) ? request.Request.HttpContext.Request.Headers[$"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}"] : cookieToken;
             cookieToken = string.IsNullOrEmpty(cookieToken) ? request.RefreshToken : cookieToken;
 
             if (string.IsNullOrEmpty(cookieToken))

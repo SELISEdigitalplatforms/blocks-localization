@@ -30,7 +30,7 @@ IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
         .ConfigureAppConfiguration((context, builder) =>
         {
-            // ApplicationConfigurations.ConfigureWorkerEnv(builder, args);
+              ApplicationConfigurations.ConfigureWorkerEnv(builder, args);
         })
         .ConfigureServices((services) =>
         {
@@ -70,7 +70,7 @@ IHostBuilder CreateHostBuilder(string[] args) =>
 
           
             services.AddEurolmRegisterApplicationServices(localizationSecret);
-            ApplicationConfigurations.ConfigureWorker(services, IdpConstants.GetMessageConfiguration(secret.MessageConnectionString));
+            ApplicationConfigurations.ConfigureWorker(services, UilmConstants.GetMessageConfiguration(secret.MessageConnectionString));
             //ApplicationConfigurations.ConfigureWorker(services, IdentifierConstants.GetMessageConfiguration(secret.MessageConnectionString));
             #endregion
         });
