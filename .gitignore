@@ -157,5 +157,5 @@ server/Api/wwwroot/**
 /server/.claude
 
 # Ignore environment-specific app settings, keep base appsettings.json
-**/appsettings.*.json
-**/appsetting.*.json
+# **/appsettings.*.json
+# **/appsetting.*.json
