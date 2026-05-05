@@ -1,5 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
-import { TabsContent } from "@radix-ui/react-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
 import { useQueryState } from "nuqs";
 import { SSO } from "@blocks-idp/authentication/pages/authentication-config/sso";
 import { GRANT_TYPES, SecretManagementTabs } from "@blocks-idp/authentication/constants/authentication.constant";
@@ -11,22 +10,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfigureCaptcha } from "@blocks-idp/captcha/pages/configure-captcha";
 import { ConfigureCaptchaModal } from "@blocks-idp/captcha/modals/configure-captcha-modal";
 import { ConfigureMFA } from "@blocks-idp/mfa/pages/configure-mfa/configure-mfa";
-import { MagicUrlConfigDialog } from "@blocks-utilities/components/magic-url-config-dialog/magic-url-config-dialog";
-import { useSaveMagicUrlConfig } from "@blocks-utilities/hooks/use-magic-url";
+import { MagicUrlConfigDialog } from "@blocks-utilities/magic-url/components/magic-url-config-dialog/magic-url-config-dialog";
+import { useSaveMagicUrlConfig } from "@blocks-utilities/magic-url/hooks/use-magic-url";
 import { StorageContents } from "@blocks-storage/pages/storage/storage-contents";
 import { ManagedServices } from "@blocks-identifier/pages/services/managed-services";
 import { AddService } from "@blocks-identifier/components/add-service/add-service";
-import { EmailConfiguration } from "@blocks-communication/mail/email/email-configure/email-configure";
-import NotificationConfigurationList from "@blocks-communication/notification/components/notification-configuration-list";
+import { EmailConfiguration } from "@blocks-utilities/mail/pages/email-configure/email-configure";
+import NotificationConfigurationList from "@blocks-utilities/notification/pages/notification-list";
+import NewNotificationConfiguration from "@blocks-utilities/notification/components/modals/new-notification-configuration";
 import { Button } from "@/components/ui-kits/button/button";
-import { getApiUrl } from "@/lib/get-api-path";
 import { CirclePlus, Settings, Notebook, AlertCircle } from "lucide-react";
 import { MouseEvent, useMemo, useState } from "react";
 import { CAPTCHA_PROVIDERS, CAPTCHA_PROVIDERS_KEY } from "@blocks-idp/captcha/models/captcha";
 import { useGetCaptchaConfigs } from "@blocks-idp/captcha/hooks/use-captcha-config";
 import { useProjectStore } from "@/store/useProjectStore";
-import { DialogTrigger } from "@radix-ui/react-dialog";
 import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 
 export default function SecretManagementPage() {
   const [selectedTab, setSelectedTab] = useQueryState("tab", { defaultValue: "infra-config" });
@@ -138,10 +137,20 @@ export default function SecretManagementPage() {
             )}
             {selectedTab === "notification" && (
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setIsNotificationConfigOpen(true)}>
-                  <CirclePlus className="h-5 w-5" />
-                <span className="sr-only sm:not-sr-only sm:ml-2.5 sm:text-sm sm:whitespace-nowrap">Add Configuration</span>
-                </Button>
+                <Dialog open={isNotificationConfigOpen} onOpenChange={setIsNotificationConfigOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <CirclePlus className="h-5 w-5" />
+                      <span className="sr-only sm:not-sr-only sm:ml-2.5 sm:text-sm sm:whitespace-nowrap">Add Configuration</span>
+                    </Button>
+                  </DialogTrigger>
+                  <NewNotificationConfiguration
+                    key={isNotificationConfigOpen ? "open" : "closed"}
+                    dialogTitle="Add Configuration"
+                    onClose={() => setIsNotificationConfigOpen(false)}
+                    isEdit={false}
+                  />
+                </Dialog>
               </div>
             )}
           </>
