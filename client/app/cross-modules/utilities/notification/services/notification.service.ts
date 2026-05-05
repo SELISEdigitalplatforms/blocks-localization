@@ -8,6 +8,8 @@ import {
   NOTIFICATION_ENDPOINTS,
 } from "@blocks-utilities/notification/constants/endpoint.constant";
 
+const UTILITY_API_BASE = "https://dev-utility.blocksdevelopers.com/api";
+
 export class NotificationService {
   getNotifications = (
     pageNumber: number,
@@ -17,8 +19,8 @@ export class NotificationService {
     totalNotificationsCount: number;
     notifications: INotification[];
   }> => {
-    const url = `${NOTIFICATION_ENDPOINTS.GET_NOTIFICATIONS}?page=${pageNumber - 1}&pageSize=${pageSize}`;
-    return http.get(url);
+    const url = `${UTILITY_API_BASE}/Notifier/GetNotifications?page=${pageNumber - 1}&pageSize=${pageSize}`;
+    return http.get(url, undefined, { absoluteUrl: true });
   };
 
   markAsRead = (
@@ -27,16 +29,16 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(NOTIFICATION_ENDPOINTS.MARK_AS_READ, {
+    return http.post(`${UTILITY_API_BASE}/Notifier/MarkNotificationAsRead`, {
       id: notificationId,
-    });
+    }, undefined, { absoluteUrl: true });
   };
 
   markAllNotificationsAsRead = (): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(NOTIFICATION_ENDPOINTS.MARK_ALL_AS_READ, {});
+    return http.post(`${UTILITY_API_BASE}/Notifier/MarkAllNotificationAsRead`, {}, undefined, { absoluteUrl: true });
   };
 
   getNotificationConfig = (
@@ -64,8 +66,8 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${NOTIFICATION_CONFIG_ENDPOINTS.GET_CONFIGS}?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
-    return http.get(url);
+    const url = `${UTILITY_API_BASE}/Notification/Gets?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
+    return http.get(url, undefined, { absoluteUrl: true });
   };
 
   saveNotificationConfig = (payload: {
@@ -81,7 +83,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(NOTIFICATION_CONFIG_ENDPOINTS.SAVE_CONFIG, payload);
+    return http.post(`${UTILITY_API_BASE}/Notification/Save`, payload, undefined, { absoluteUrl: true });
   };
 
   deleteNotificationConfig = (payload: {
@@ -91,8 +93,8 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${NOTIFICATION_CONFIG_ENDPOINTS.DELETE_CONFIG}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
-    return http.delete(url);
+    const url = `${UTILITY_API_BASE}/Notification/Delete?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
+    return http.delete(url, undefined, { absoluteUrl: true });
   };
 }
 
