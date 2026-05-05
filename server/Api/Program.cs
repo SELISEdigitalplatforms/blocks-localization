@@ -29,7 +29,7 @@ var services = builder.Services;
 
 services.AddHealthChecks();
 
-ApplicationConfigurations.ConfigureApi(services);
+
 
 builder.Services.Configure<MvcOptions>(options =>
 {
@@ -41,6 +41,8 @@ Directory.CreateDirectory(wwwrootPath);
 
 ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
+
+ApplicationConfigurations.ConfigureApi(services);
 services.RegisterAllServices();
 services.AddApplicationServices();
 services.AddCloudDomainServices();
