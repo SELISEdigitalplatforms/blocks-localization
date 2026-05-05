@@ -1,5 +1,5 @@
 {
-  "name": "blocks-idp-client",
+  "name": "blocks-eurolm-client",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -13,6 +13,7 @@
     "@beefree.io/sdk": "^11.4.0",
     "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@hookform/resolvers": "^3.9.0",
+    "@microsoft/signalr": "^8.0.7",
     "@mailupinc/bee-plugin": "^2.3.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
