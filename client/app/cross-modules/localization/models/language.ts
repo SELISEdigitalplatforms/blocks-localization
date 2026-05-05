@@ -55,6 +55,20 @@ export type ILanguageConfig = {
   isDefault?: boolean;
 };
 
+export interface IWebhookSecret {
+  secret: string;
+  headerKey: string;
+}
+
+export interface IWebhookConfig {
+  itemId?: string;
+  url: string;
+  contentType: string;
+  blocksWebhookSecret: IWebhookSecret;
+  isDisabled: boolean;
+  projectKey: string;
+}
+
 export type TimelineEvents = {
   id: string;
   date: string;
@@ -220,6 +234,8 @@ export interface IGlossary {
   type?: string;
   context?: string;
   additionalNote?: string;
+  isGlobal?: boolean;
+  moduleIds?: string[];
   createDate: string;
   lastUpdateDate: string;
 }
@@ -230,6 +246,8 @@ export interface IGlossaryFormData {
   type?: string;
   context?: string;
   additionalNote?: string;
+  isGlobal?: boolean;
+  moduleIds?: string[];
 }
 
 export interface IGetGlossariesResponse {

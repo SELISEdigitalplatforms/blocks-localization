@@ -4,6 +4,7 @@ const KEY_SUBPATH = "/Key";
 const MODULE_SUBPATH = "/Module";
 const LANGUAGE_SUBPATH = "/Language";
 const ASSISTANT_SUBPATH = "/Assistant";
+const CONFIG_SUBPATH = "/Config";
 const GLOSSARY_SUBPATH = "/Glossary";
 
 // Language Key endpoints
@@ -44,8 +45,15 @@ export const LANGUAGE_ASSISTANT_ENDPOINTS = {
   GET_TRANSLATION_SUGGESTION: `${API_BASES.UILM}${ASSISTANT_SUBPATH}/GetTranslationSuggestion`,
 } as const;
 
+// Config endpoints
+export const CONFIG_ENDPOINTS = {
+  GET_WEBHOOK: `${API_BASES.UILM}${CONFIG_SUBPATH}/GetWebHook`,
+  SAVE_WEBHOOK: `${API_BASES.UILM}${CONFIG_SUBPATH}/SaveWebHook`,
+} as const;
+
 // Glossary endpoints
 export const GLOSSARY_ENDPOINTS = {
+  GET: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Get`,
   GETS: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Gets`,
   SAVE: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Save`,
   DELETE: `${API_BASES.UILM}${GLOSSARY_SUBPATH}/Delete`,
