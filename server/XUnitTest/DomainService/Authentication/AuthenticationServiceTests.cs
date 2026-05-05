@@ -244,7 +244,7 @@ namespace XUnitTest.DomainService.Authentication
             context.Request.Cookies = new MockRequestCookieCollection(
                 new Dictionary<string, string>
                 {
-                    { $"{IdpConstants.RefreshTokenCookieName}_{tenantId}", tokenValue }
+                    { $"{UilmConstants.RefreshTokenCookieName}_{tenantId}", tokenValue }
                 });
             return context.Request;
         }
@@ -296,7 +296,7 @@ namespace XUnitTest.DomainService.Authentication
         {
             var context = new DefaultHttpContext();
             context.Request.Headers.UserAgent = "Test User Agent";
-            context.Request.Headers[$"{IdpConstants.RefreshTokenCookieName}_{tenantId}"] = tokenValue;
+            context.Request.Headers[$"{UilmConstants.RefreshTokenCookieName}_{tenantId}"] = tokenValue;
             return context.Request;
         }
 
@@ -433,7 +433,7 @@ namespace XUnitTest.DomainService.Authentication
             // Assert
             result.Should().BeTrue();
             _mockAuthenticationDomainService.Verify(x => x.SendToQueueAsync(
-                IdpConstants.AuthenticationQueue,
+                UilmConstants.AuthenticationQueue,
                 It.Is<UserAuthenticationTimelineEvent>(e =>
                     e.Event == "revoke_access_by_logout_all" &&
                     e.ActionBy == "call_api_to_logout_all")), Times.Once);
@@ -456,7 +456,7 @@ namespace XUnitTest.DomainService.Authentication
             // Assert
             result.Should().BeTrue();
             _mockAuthenticationDomainService.Verify(x => x.SendToQueueAsync(
-                IdpConstants.AuthenticationQueue,
+                UilmConstants.AuthenticationQueue,
                 It.Is<UserAuthenticationTimelineEvent>(e =>
                     e.Event == "revoke_access_by_logout" &&
                     e.ActionBy == "call_api_to_logout")), Times.Once);

@@ -70,7 +70,7 @@ IHostBuilder CreateHostBuilder(string[] args) =>
 
           
             services.AddEurolmRegisterApplicationServices(localizationSecret);
-            ApplicationConfigurations.ConfigureWorker(services, IdpConstants.GetMessageConfiguration(secret.MessageConnectionString));
+            ApplicationConfigurations.ConfigureWorker(services, UilmConstants.GetMessageConfiguration(secret.MessageConnectionString));
             //ApplicationConfigurations.ConfigureWorker(services, IdentifierConstants.GetMessageConfiguration(secret.MessageConnectionString));
             #endregion
         });

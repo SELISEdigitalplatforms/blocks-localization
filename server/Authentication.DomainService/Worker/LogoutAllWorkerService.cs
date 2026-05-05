@@ -45,7 +45,7 @@ namespace DomainService.Worker
                 UserId = userId
             };
 
-            await _authenticationDomainService.SendToQueueAsync(IdpConstants.AuthenticationQueue, eventTimeline);
+            await _authenticationDomainService.SendToQueueAsync(UilmConstants.AuthenticationQueue, eventTimeline);
             return true;
         }
     }

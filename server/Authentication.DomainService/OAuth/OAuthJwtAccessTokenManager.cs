@@ -188,7 +188,7 @@ namespace DomainService.OAuth
                     IsLogin = false,
                     GrantType = tokenRequest.GrantType
                 };
-                await _authenticationDomainService.SendToQueueAsync(Utilities.IdpConstants.AuthenticationQueue, revokeEvent);
+                await _authenticationDomainService.SendToQueueAsync(Utilities.UilmConstants.AuthenticationQueue, revokeEvent);
                 
                 return (string.Empty, DateTime.MinValue);
             }
@@ -227,7 +227,7 @@ namespace DomainService.OAuth
                 IsLogin = false,
                 GrantType = tokenRequest.GrantType
             };
-            await _authenticationDomainService.SendToQueueAsync(Utilities.IdpConstants.AuthenticationQueue, revokeOldTokenEvent);
+            await _authenticationDomainService.SendToQueueAsync(Utilities.UilmConstants.AuthenticationQueue, revokeOldTokenEvent);
 
             // Send creation event for new token (renewal, not login)
             var addNewTokenEvent = new RefreshTokenEvent
@@ -243,7 +243,7 @@ namespace DomainService.OAuth
                 IsLogin = false,
                 GrantType = tokenRequest.GrantType
             };
-            await _authenticationDomainService.SendToQueueAsync(Utilities.IdpConstants.AuthenticationQueue, addNewTokenEvent);
+            await _authenticationDomainService.SendToQueueAsync(Utilities.UilmConstants.AuthenticationQueue, addNewTokenEvent);
 
             return (newRefreshTokenId, newRefreshTokenExpireOn);
         }
@@ -293,7 +293,7 @@ namespace DomainService.OAuth
                 GrantType = tokenRequest.GrantType
             };
             
-            await _authenticationDomainService.SendToQueueAsync(Utilities.IdpConstants.AuthenticationQueue, addRefreshTokenCommand);
+            await _authenticationDomainService.SendToQueueAsync(Utilities.UilmConstants.AuthenticationQueue, addRefreshTokenCommand);
 
             return (refreshTokenId, refreshTokenExpireOn);
         }

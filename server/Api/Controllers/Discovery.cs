@@ -30,7 +30,7 @@ namespace Api.Controllers
         public async Task<IActionResult> GetJwks([FromQuery] string? projectKey)
         {
             projectKey = !string.IsNullOrWhiteSpace(projectKey) ? projectKey : BlocksContext.GetContext().TenantId;
-            string cacheKey = $"{IdpConstants.TenantTokenPublicCertificateCachePrefix}{projectKey}";
+            string cacheKey = $"{UilmConstants.TenantTokenPublicCertificateCachePrefix}{projectKey}";
             var certData = await _cacheClient.CacheDatabase().StringGetAsync(cacheKey);
             X509Certificate2 certificate;
 
