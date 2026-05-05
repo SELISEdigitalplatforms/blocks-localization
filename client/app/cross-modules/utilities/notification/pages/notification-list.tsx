@@ -18,7 +18,7 @@ import {
   CardContent,
 } from "@/components/ui-kits/card/card";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { EllipsisVertical, Pencil, Trash } from "lucide-react";
+import { EllipsisVertical, Pencil, Trash, CirclePlus } from "lucide-react";
 import {
   channelsToNotify,
   notificationTypes,
@@ -35,8 +35,8 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui-kits/button/button";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
-import NewNotificationConfiguration from "@blocks-utilities/notification/components/modals/new-notification-configuration";
 import { useProjectStore } from "@/store/useProjectStore";
+import NewNotificationConfiguration from "./new-notification-config";
 
 const columns = [
   { key: "name", label: "Name" },
@@ -46,7 +46,15 @@ const columns = [
   { key: "actions", label: "" },
 ];
 
-const NotificationConfigurationList: React.FC = () => {
+interface NotificationConfigurationListProps {
+  addConfigOpen?: boolean;
+  onAddConfigOpenChange: (open: boolean) => void;
+}
+
+const NotificationConfigurationList: React.FC<NotificationConfigurationListProps> = ({
+  addConfigOpen = false,
+  onAddConfigOpenChange,
+}) => {
   const [filterData, setFilterData] = useState({ page: 0, pageSize: 10 });
   const { data, isLoading } = useGetNotificationConfigs(
     filterData.page,
@@ -108,7 +116,15 @@ const NotificationConfigurationList: React.FC = () => {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Configurations</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Configurations</CardTitle>
+            {onAddConfigOpenChange && (
+              <Button size="sm" onClick={() => onAddConfigOpenChange(true)}>
+                <CirclePlus className="h-5 w-5" />
+                <span className="ml-2 hidden sm:inline">Add Configuration</span>
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -221,8 +237,20 @@ const NotificationConfigurationList: React.FC = () => {
                 previousData={selectedConfigData}
                 isEdit={true}
                 onClose={setIsEditOpen}
+                dataTestId="edit-notification-config"
               />
             )}
+          </Dialog>
+
+          {/* Add dialog */}
+          <Dialog open={addConfigOpen} onOpenChange={onAddConfigOpenChange}>
+            <NewNotificationConfiguration
+              key={`add-${addConfigOpen}`}
+              dialogTitle="Add Configuration"
+              isEdit={false}
+              onClose={onAddConfigOpenChange}
+              dataTestId="add-notification-config"
+            />
           </Dialog>
 
           {!isLoading && data && data.totalCount > filterData.pageSize && (

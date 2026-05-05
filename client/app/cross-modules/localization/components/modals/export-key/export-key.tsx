@@ -27,7 +27,6 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 
 import { ModuleName } from "@/constants/modules.constants";
-import { useNotificationListener } from "@blocks-communication/hooks/use-notification-listener";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
 import {
   useGetFilesDownload,
@@ -42,6 +41,7 @@ import { flushSync } from "react-dom";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
+import { useNotificationListener } from "@blocks-utilities/notification";
 
 const outputTypes = [
   { id: 0, label: "Json" },
