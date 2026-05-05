@@ -138,7 +138,7 @@ namespace XUnitTest.DomainService.Worker
             // Assert
             _authenticationDomainService.Verify(
                 x => x.SendToQueueAsync(
-                    IdpConstants.AuthenticationQueue,
+                    UilmConstants.AuthenticationQueue,
                     It.Is<UserAuthenticationTimelineEvent>(e => 
                         e.UserId == userId &&
                         e.Event == "revoke_access_by_logout_all" &&
@@ -189,7 +189,7 @@ namespace XUnitTest.DomainService.Worker
             result.Should().BeTrue();
             _authenticationDomainService.Verify(
                 x => x.SendToQueueAsync(
-                    IdpConstants.AuthenticationQueue,
+                    UilmConstants.AuthenticationQueue,
                     It.Is<UserAuthenticationTimelineEvent>(e =>
                         e.UserId == userId &&
                         e.Event == "revoke_access_by_logout_all" &&
