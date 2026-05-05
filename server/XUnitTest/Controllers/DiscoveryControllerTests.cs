@@ -107,7 +107,7 @@ namespace XUnitTest.Controllers
             BlocksContext.SetContext(blocksContext, true);
 
             _mockDatabase.Setup(x => x.StringGetAsync(
-                It.Is<RedisKey>(k => k.ToString() == $"{IdpConstants.TenantTokenPublicCertificateCachePrefix}{projectKey}"),
+                It.Is<RedisKey>(k => k.ToString() == $"{UilmConstants.TenantTokenPublicCertificateCachePrefix}{projectKey}"),
                 It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisValue)certData);
 
@@ -172,7 +172,7 @@ namespace XUnitTest.Controllers
             BlocksContext.SetContext(blocksContext, true);
 
             _mockDatabase.Setup(x => x.StringGetAsync(
-                It.Is<RedisKey>(k => k.ToString() == $"{IdpConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
+                It.Is<RedisKey>(k => k.ToString() == $"{UilmConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
                 It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisValue)certData);
 
@@ -187,7 +187,7 @@ namespace XUnitTest.Controllers
             Assert.NotNull(okResult.Value);
 
             _mockDatabase.Verify(x => x.StringGetAsync(
-                It.Is<RedisKey>(k => k.ToString() == $"{IdpConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
+                It.Is<RedisKey>(k => k.ToString() == $"{UilmConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
                 It.IsAny<CommandFlags>()), Times.Once);
         }
         
@@ -463,7 +463,7 @@ namespace XUnitTest.Controllers
             BlocksContext.SetContext(blocksContext, true);
 
             _mockDatabase.Setup(x => x.StringGetAsync(
-                It.Is<RedisKey>(k => k.ToString() == $"{IdpConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
+                It.Is<RedisKey>(k => k.ToString() == $"{UilmConstants.TenantTokenPublicCertificateCachePrefix}{tenantId}"),
                 It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisValue)certData);
 

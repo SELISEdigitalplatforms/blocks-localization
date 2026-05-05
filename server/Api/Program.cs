@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
  ApplicationConfigurations.ConfigureApiEnv(builder, args);
 
-ApplicationConfigurations.ConfigureServices(builder.Services, IdpConstants.GetMessageConfiguration(secret.MessageConnectionString));
+ApplicationConfigurations.ConfigureServices(builder.Services, UilmConstants.GetMessageConfiguration(secret.MessageConnectionString));
 
 builder.Services.Configure<FormOptions>(options =>
 {

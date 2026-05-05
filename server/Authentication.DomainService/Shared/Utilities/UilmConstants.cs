@@ -3,13 +3,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace DomainService.Utilities
 {
-    public static class IdpConstants
+    public static class UilmConstants
     {
         public const string TenantTokenPublicCertificateCachePrefix = "tetocertpublic::";
-        public const string AuthenticationQueue = "blocks_eurolm_authentication_listener";
-        public const string IamQueue = "blocks_eurolm_iam_listener";
-        public const string MailQueue = "blocks_eurolm_mail_listener";
-        public const string MfaQueueName = "blocks_eurolm_mfa_listener";
+        public const string AuthenticationQueue = "eurolm_authentication_listener";
+        public const string IamQueue = "eurolm_iam_listener";
+        public const string MailQueue = "eurolm_mail_listener";
+        public const string MfaQueueName = "eurolm_mfa_listener";
 
         public const string AccessTokenCookieName = "access_token";
         public const string RefreshTokenCookieName = "refresh_token";
@@ -18,20 +18,20 @@ namespace DomainService.Utilities
         private const string RabbitMqProvider = "rabbitmq";
 
         #region Identifier Service Constants
-        public const string IdentifierQueueName = "blocks_eurolm_identifier_listener";
-        public const string DataCleanupQueue = "blocks_eurolm_data_cleanup_listener";
-        public const string LanguageDataMigrationQueue = "blocks_eurolm_environment_data_migration_listener";
-        public const string GenericMigrationQueue = "blocks_eurolm_generic_migration_listener";
-        public const string MigrationCompletionTopic = "blocks_eurolm_migration_topic";
-        public const string ProjectPeopleInvitationMailPurpose = "blocks_eurolm_project_invitation";
+        public const string IdentifierQueueName = "eurolm_identifier_listener";
+        public const string DataCleanupQueue = "eurolm_data_cleanup_listener";
+        public const string LanguageDataMigrationQueue = "eurolm_environment_data_migration_listener";
+        public const string GenericMigrationQueue = "eurolm_generic_migration_listener";
+        public const string MigrationCompletionTopic = "eurolm_migration_topic";
+        public const string ProjectPeopleInvitationMailPurpose = "eurolm_project_invitation";
         public const string BlocsDomain = "seliseblocks.com";
         #endregion
         #region Eurolm Service Constants
-        public const string UilmQueue = "blocks_eurolm_listener";
-        public const string UilmImportExportQueue = "blocks_eurolm_import_export_listener";
-        public const string TranslateAllKeysQueue = "blocks_eurolm_translate_all_keys_listener";
-        public const string TranslateBlocksLanguageKeyQueue = "blocks_eurolm_translate_blocks_language_key_listener";
-        public const string EnvironmentDataMigrationQueue = "blocks_eurolm_environment_data_migration_listener";
+        public const string UilmQueue = "eurolm_listener";
+        public const string UilmImportExportQueue = "eurolm_import_export_listener";
+        public const string TranslateAllKeysQueue = "eurolm_translate_all_keys_listener";
+        public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
+        public const string EnvironmentDataMigrationQueue = "eurolm_environment_data_migration_listener";
         #endregion
         public static MessageConfiguration GetMessageConfiguration(string messageConnectionString)
         {

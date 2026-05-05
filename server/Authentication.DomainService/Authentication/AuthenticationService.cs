@@ -92,7 +92,7 @@ namespace DomainService.Authentication
                 UserId = bc?.UserId?? ""
             };
 
-            await _authenticationDomainService.SendToQueueAsync(IdpConstants.AuthenticationQueue, eventTimeline);
+            await _authenticationDomainService.SendToQueueAsync(UilmConstants.AuthenticationQueue, eventTimeline);
             return true;
         }
 
@@ -118,8 +118,8 @@ namespace DomainService.Authentication
         public string CookieToken(HttpRequest request)
         {
             var bc = BlocksContext.GetContext();  
-            var refreshToken = request.HttpContext.Request.Cookies[$"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}"];
-            refreshToken = string.IsNullOrEmpty(refreshToken) ? request.HttpContext.Request.Headers[$"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}"] : refreshToken;
+            var refreshToken = request.HttpContext.Request.Cookies[$"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}"];
+            refreshToken = string.IsNullOrEmpty(refreshToken) ? request.HttpContext.Request.Headers[$"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}"] : refreshToken;
 
             return refreshToken;
         }
@@ -137,8 +137,8 @@ namespace DomainService.Authentication
                 SameSite = SameSiteMode.None
             };
 
-            request.HttpContext.Response.Cookies.Delete($"{IdpConstants.RefreshTokenCookieName}_{bc.TenantId}", cookieOptions);
-            request.HttpContext.Response.Cookies.Delete($"{IdpConstants.AccessTokenCookieName}_{bc.TenantId}", cookieOptions);
+            request.HttpContext.Response.Cookies.Delete($"{UilmConstants.RefreshTokenCookieName}_{bc.TenantId}", cookieOptions);
+            request.HttpContext.Response.Cookies.Delete($"{UilmConstants.AccessTokenCookieName}_{bc.TenantId}", cookieOptions);
 
             return true;
         }
