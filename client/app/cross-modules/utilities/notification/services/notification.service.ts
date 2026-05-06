@@ -8,9 +8,8 @@ import {
   NOTIFICATION_ENDPOINTS,
 } from "@blocks-utilities/notification/constants/endpoint.constant";
 import { deriveUtilityBaseUrl } from "@/lib/blocks-url.util";
-import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const UTILITY_API_BASE = `${deriveUtilityBaseUrl(getRuntimeEnv("BLOCKS_API_BASE_URL"))}/api`;
+const UTILITY_API_BASE = `${deriveUtilityBaseUrl()}/api`;
 
 export class NotificationService {
   getNotifications = (
