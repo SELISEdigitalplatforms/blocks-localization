@@ -11,9 +11,9 @@ using CloudConfiguration.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Shared;
 
 var serviceName = "blocks-idp-api";
-var vaultType = ResolveVaultType();
-Console.WriteLine($"Using Genesis vault type: {vaultType}");
-var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, vaultType);
+//var vaultType = ResolveVaultType();
+//Console.WriteLine($"Using Genesis vault type: {vaultType}");
+var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
 var builder = WebApplication.CreateBuilder(args);
 
  ApplicationConfigurations.ConfigureApiEnv(builder, args);
