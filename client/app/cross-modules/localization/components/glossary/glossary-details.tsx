@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -55,12 +55,10 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     PAGE_SIZE,
   );
 
-  // Set custom breadcrumb titles after glossary data is loaded
-  useEffect(() => {
-    if (glossary?.name) {
-      BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
-    }
-  }, [glossary, itemId]);
+  // Set breadcrumb title synchronously when glossary data is available
+  if (glossary?.name) {
+    BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
+  }
 
   if (isLoading) {
     return (
