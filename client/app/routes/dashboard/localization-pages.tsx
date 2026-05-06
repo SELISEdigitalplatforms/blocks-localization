@@ -1,11 +1,13 @@
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import GlossaryTable from "@blocks-localization/components/glossary/glossary-table";
+import GlossaryDetails from "@blocks-localization/components/glossary/glossary-details";
 import { AddNewLanguageKey } from "@blocks-localization/language-module/add-new-language-key/add-new-language-key";
 import { Configure } from "@blocks-localization/language-module/configure/configure";
 import { ExportHistory } from "@blocks-localization/language-module/export-history/export-history";
 import { KeyDetails } from "@blocks-localization/language-module/key-details/key-details";
 import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
+import { useParams } from "react-router-dom";
 
 export function LocalizationLanguageHomePage() {
   return (
@@ -44,6 +46,15 @@ export function LocalizationGlossaryPage() {
         </div>
         <GlossaryTable />
       </main>
+    </div>
+  );
+}
+
+export function LocalizationGlossaryDetailPage() {
+  const { itemId } = useParams<{ itemId: string }>();
+  return (
+    <div className="h-full w-full min-w-0 p-6">
+      <GlossaryDetails itemId={itemId ?? ""} />
     </div>
   );
 }

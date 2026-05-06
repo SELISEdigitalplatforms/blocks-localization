@@ -9,6 +9,7 @@ export const useKeysFilterQueryParams = () => {
     pageSize: parseAsInteger.withDefault(10),
     search: parseAsString.withDefault(""),
     moduleIds: parseAsArrayOf(parseAsString).withDefault([]),
+    missingLanguages: parseAsArrayOf(parseAsString).withDefault([]),
     createStartDate: parseAsString.withDefault(""),
     createEndDate: parseAsString.withDefault(""),
     lastUpdateStartDate: parseAsString.withDefault(""),
@@ -22,11 +23,13 @@ export const useKeysSortQueryParams = () =>
 
 export function LanguageTableToolbar({
   languageModulesData,
+  languagesData,
 }: {
   languageModulesData: Array<{ itemId: string; moduleName: string }>;
+  languagesData: Array<{ languageCode: string; languageName: string }>;
 }) {
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
-  const onChange: FilterChangeHandler<{ search: string; moduleIds: string[], createDate: { from?: Date; to?: Date } | null, lastUpdateDate: { from?: Date; to?: Date } | null }> = (
+  const onChange: FilterChangeHandler<{ search: string; moduleIds: string[]; missingLanguages: string[]; createDate: { from?: Date; to?: Date } | null, lastUpdateDate: { from?: Date; to?: Date } | null }> = (
     key,
     value
   ) => {
@@ -75,6 +78,17 @@ export function LanguageTableToolbar({
           },
         },
         {
+          key: "missingLanguages",
+          type: "MultiSelect",
+          label: "Missing Translations",
+          props: {
+            options: languagesData?.map((lang) => ({
+              label: lang.languageName,
+              value: lang.languageCode,
+            })),
+          },
+        },
+        {
           key: "createDate",
           type: "DateRange",
           label: "Create Date",
@@ -90,6 +104,7 @@ export function LanguageTableToolbar({
       values={{
         search: queryParams.search,
         moduleIds: queryParams.moduleIds,
+        missingLanguages: queryParams.missingLanguages,
         createDate: {
           from: queryParams.createStartDate ? new Date(queryParams.createStartDate) : undefined,
           to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
@@ -100,7 +115,7 @@ export function LanguageTableToolbar({
         },
         resourceSearch: queryParams.resourceSearch,
       }}
-      defaultValues={{ search: "", moduleIds: [], createDate: { from: undefined, to: undefined }, lastUpdateDate: { from: undefined, to: undefined }, resourceSearch: "" }}
+      defaultValues={{ search: "", moduleIds: [], missingLanguages: [], createDate: { from: undefined, to: undefined }, lastUpdateDate: { from: undefined, to: undefined }, resourceSearch: "" }}
       onChange={onChange}
       onReset={onReset}
     />
