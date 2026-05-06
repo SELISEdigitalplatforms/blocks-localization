@@ -21,6 +21,9 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { flushSync } from "react-dom";
+import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+
+BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language";
 
 export const ExportHistory: React.FC = () => {
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";

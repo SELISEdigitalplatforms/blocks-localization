@@ -56,6 +56,9 @@ import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
+import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+
+BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language";
 
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">

@@ -111,7 +111,6 @@ function AddNewLanguageKey() {
   // Set custom breadcrumb titles
   useEffect(() => {
     BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
-    BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
   }, []);
   const form = useForm<FormValues>({
     defaultValues: {

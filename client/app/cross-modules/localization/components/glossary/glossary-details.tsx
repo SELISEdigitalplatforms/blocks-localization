@@ -58,7 +58,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   // Set custom breadcrumb titles after glossary data is loaded
   useEffect(() => {
     if (glossary?.name) {
-      BREADCRUMB_CUSTOM_TITLES["/services/glossary"] = "Glossaries";
       BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
     }
   }, [glossary, itemId]);
