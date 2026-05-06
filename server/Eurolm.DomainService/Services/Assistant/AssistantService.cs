@@ -1,3 +1,5 @@
+using Blocks.Genesis;
+using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,11 +20,13 @@ namespace Eurolm.DomainService.Services
         private readonly string _chatGptTemperature;
         private readonly HttpClient _httpClient;
         private readonly ILocalizationSecret _localizationSecret;
+        private readonly IGlossaryRepository _glossaryRepository;
         public AssistantService(
             ILogger<AssistantService> logger,
             IConfiguration configuration,
             HttpClient httpClient,
-            ILocalizationSecret localizationSecret
+            ILocalizationSecret localizationSecret,
+            IGlossaryRepository glossaryRepository
         )
         {
             _localizationSecret = localizationSecret;
@@ -31,12 +35,40 @@ namespace Eurolm.DomainService.Services
             _aiCompletionUrl = _configuration["AiCompletionUrl"];
             _chatGptTemperature = _configuration["ChatGptTemperature"];
             _httpClient = httpClient;
+            _glossaryRepository = glossaryRepository;
         }
 
 
         public async Task<string> SuggestTranslation(SuggestLanguageRequest query)
         {
-            var context = GenerateSuggestTranslationContext(query);
+            var projectKey = query.ProjectKey ?? BlocksContext.GetContext()?.TenantId ?? "";
+
+            // Tier 1: global glossaries
+            var globalGlossaries = await _glossaryRepository.GetGlobalAsync(projectKey);
+
+            // Tier 2: module-specific glossaries
+            var moduleGlossaries = !string.IsNullOrWhiteSpace(query.ModuleId)
+                ? await _glossaryRepository.GetByModuleIdAsync(projectKey, query.ModuleId)
+                : new List<Glossary>();
+
+            // Tier 3: key-specific glossaries
+            var keyGlossaries = query.GlossaryIds != null && query.GlossaryIds.Any()
+                ? await _glossaryRepository.GetByIdsAsync(query.GlossaryIds)
+                : new List<Glossary>();
+
+            // Merge and deduplicate by ItemId
+            var allGlossaries = globalGlossaries
+                .Concat(moduleGlossaries)
+                .Concat(keyGlossaries)
+                .GroupBy(g => g.ItemId)
+                .Select(g => g.First())
+                .ToList();
+
+            string glossaryContext = allGlossaries.Any()
+                ? BuildGlossaryContext(allGlossaries, query.DestinationLanguage)
+                : null;
+
+            var context = GenerateSuggestTranslationContext(query, glossaryContext);
 
             var aiCompletionRequest = new AiCompletionRequest(context, query.Temperature);
 
@@ -62,12 +94,35 @@ namespace Eurolm.DomainService.Services
             return output;
         }
 
-        public static string GenerateSuggestTranslationContext(SuggestLanguageRequest request)
+        public static string GenerateSuggestTranslationContext(SuggestLanguageRequest request, string? glossaryContext = null)
         {
             var context = !string.IsNullOrWhiteSpace(request.ElementDetailContext) ? request.ElementDetailContext :
                 $"The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
+            if (!string.IsNullOrWhiteSpace(glossaryContext))
+            {
+                context += $"\n{glossaryContext}\n";
+            }
             context += $"Translate the following from {request.CurrentLanguage} to {request.DestinationLanguage}: '{request.SourceText}'";
             return context;
+        }
+
+        public static string BuildGlossaryContext(List<Glossary> glossaries, string targetLanguage)
+        {
+            if (glossaries == null || !glossaries.Any())
+                return string.Empty;
+
+            var glossaryLines = new List<string>();
+            foreach (var glossary in glossaries)
+            {
+                var line = $"Glossary: {glossary.Name}";
+                if (!string.IsNullOrWhiteSpace(glossary.Type))
+                    line += $", Type: {glossary.Type}";
+                if (!string.IsNullOrWhiteSpace(glossary.Context))
+                    line += $", Context: {glossary.Context}";
+                glossaryLines.Add(line);
+            }
+
+            return string.Join("\n", glossaryLines);
         }
 
         public static string FormatAiTextForSuggestTranslation(string aiText)

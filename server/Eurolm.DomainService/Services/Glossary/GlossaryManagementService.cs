@@ -49,6 +49,11 @@ namespace Eurolm.DomainService.Services
             return await _glossaryRepository.GetAllAsync(request);
         }
 
+        public async Task<Glossary?> GetGlossaryByIdAsync(string itemId)
+        {
+            return await _glossaryRepository.GetByIdAsync(itemId);
+        }
+
         public async Task<BaseMutationResponse> DeleteGlossaryAsync(DeleteGlossaryRequest request)
         {
             _logger.LogInformation("Deleting glossary start");
@@ -116,6 +121,8 @@ namespace Eurolm.DomainService.Services
             repoGlossary.Type = glossary.Type;
             repoGlossary.Context = glossary.Context;
             repoGlossary.AdditionalNote = glossary.AdditionalNote;
+            repoGlossary.IsGlobal = glossary.IsGlobal;
+            repoGlossary.ModuleIds = glossary.ModuleIds;
 
             return repoGlossary;
         }
