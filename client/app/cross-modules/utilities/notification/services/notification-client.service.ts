@@ -4,8 +4,9 @@ import {
   HubConnectionBuilder,
 } from "@microsoft/signalr";
 import { getRuntimeEnv } from "@/lib/runtime-env";
+import { deriveUtilityBaseUrl } from "@/lib/blocks-url.util";
 
-const UTILITY_API_BASE_URL = "https://dev-utility.blocksdevelopers.com";
+const UTILITY_API_BASE_URL = deriveUtilityBaseUrl(getRuntimeEnv("BLOCKS_API_BASE_URL"));
 
 export class NotificationClientService {
   public connection: HubConnection;

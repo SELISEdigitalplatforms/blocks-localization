@@ -220,7 +220,7 @@ const KeyDetails = () => {
     );
   }
 
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations"] = "Language Translation Keys";
+  BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
   BREADCRUMB_CUSTOM_TITLES["/services/language/translations/" + keyDetails?.itemId] =
     keyDetails.keyName;
 

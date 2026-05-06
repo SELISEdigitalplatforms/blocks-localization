@@ -1,8 +1,8 @@
-import GitHubIcon from "/assets/github-icon.svg";
-import GitLabIcon from "/assets/gitlab-icon.svg";
-import BitbucketIcon from "/assets/bitbucket-icon.svg";
-import AzureIcon from "/assets/azure-icon.svg";
-import AwsIcon from "/assets/aws-icon.svg";
+import GitHubIcon from "/assets/github-icon.svg?url";
+import GitLabIcon from "/assets/gitlab-icon.svg?url";
+import BitbucketIcon from "/assets/bitbucket-icon.svg?url";
+import AzureIcon from "/assets/azure-icon.svg?url";
+import AwsIcon from "/assets/aws-icon.svg?url";
 
 export interface IRepository {
   id: number;
