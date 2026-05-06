@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { deriveIdpBaseUrl } from '@/lib/blocks-url.util'
 import {
   Popover,
   PopoverContent,
@@ -164,14 +165,14 @@ const SELISE_APPS: BlocksApp[] = [
     key: 'idp',
     label: 'IDP',
     description: 'Identity & Access',
-    url: 'https://dev-idp.blocksdevelopers.com',
+    url: deriveIdpBaseUrl(),
     icon: <IdpIcon />,
   },
   {
     key: 'uilm',
     label: 'EUROLM',
     description: 'Localization',
-    url: 'https://dev-eurolm.blocksdevelopers.com',
+    url: window.location.origin,
     icon: <UilmIcon />,
   },
   {
