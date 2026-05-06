@@ -143,6 +143,7 @@ export const router = createBrowserRouter([
       { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
       { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
+      { path: "/services/language/translations", element: <Navigate to="/services/language" replace /> },
       { path: "/services/language/configure", element: <LocalizationConfigurePage /> },
       { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
