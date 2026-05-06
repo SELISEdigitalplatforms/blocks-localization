@@ -74,7 +74,6 @@ const KeyDetails = () => {
   // Set custom breadcrumb titles after key details are loaded
   useEffect(() => {
     if (keyDetails?.keyName) {
-      BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
       BREADCRUMB_CUSTOM_TITLES[`/services/language/translations/${keyDetails.itemId}`] = keyDetails.keyName;
     }
   }, [keyDetails]);
@@ -231,7 +230,7 @@ const KeyDetails = () => {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={3} />
+        <PageBreadcrumb breadcrumbIndex={2} />
       </div>
       <h1 className="mt-5 text-2xl font-semibold">{keyDetails.keyName}</h1>
       <Tabs defaultValue={tabId} className="mt-5">
