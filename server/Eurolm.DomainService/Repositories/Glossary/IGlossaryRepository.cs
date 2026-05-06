@@ -7,6 +7,8 @@ namespace Eurolm.DomainService.Repositories
         Task<GetGlossariesResponse> GetAllAsync(GetGlossariesRequest request);
         Task<Glossary> GetByIdAsync(string itemId);
         Task<List<Glossary>> GetByIdsAsync(List<string> ids);
+        Task<List<Glossary>> GetGlobalAsync(string projectKey);
+        Task<List<Glossary>> GetByModuleIdAsync(string projectKey, string moduleId);
         Task SaveAsync(BlocksGlossary glossary);
         Task DeleteAsync(string itemId);
     }

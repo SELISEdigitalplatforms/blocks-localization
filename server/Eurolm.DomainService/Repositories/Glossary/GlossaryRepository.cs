@@ -30,6 +30,16 @@ namespace Eurolm.DomainService.Repositories
                 filter = filterBuilder.And(filter, nameFilter);
             }
 
+            if (request.IsGlobal.HasValue)
+            {
+                filter = filterBuilder.And(filter, filterBuilder.Eq(g => g.IsGlobal, request.IsGlobal.Value));
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.ModuleId))
+            {
+                filter = filterBuilder.And(filter, filterBuilder.AnyEq(g => g.ModuleIds, request.ModuleId));
+            }
+
             var sort = Builders<Glossary>.Sort.Descending(g => g.CreateDate);
 
             var findTask = collection
@@ -83,6 +93,24 @@ namespace Eurolm.DomainService.Repositories
                 glossary,
                 new ReplaceOptions { IsUpsert = true }
             );
+        }
+
+        public async Task<List<Glossary>> GetGlobalAsync(string projectKey)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(projectKey);
+            var collection = dataBase.GetCollection<Glossary>(_collectionName);
+            var filter = Builders<Glossary>.Filter.Eq(g => g.IsGlobal, true);
+
+            return await collection.Find(filter).ToListAsync();
+        }
+
+        public async Task<List<Glossary>> GetByModuleIdAsync(string projectKey, string moduleId)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(projectKey);
+            var collection = dataBase.GetCollection<Glossary>(_collectionName);
+            var filter = Builders<Glossary>.Filter.AnyEq(g => g.ModuleIds, moduleId);
+
+            return await collection.Find(filter).ToListAsync();
         }
 
         public async Task DeleteAsync(string itemId)

@@ -10,12 +10,14 @@ namespace Eurolm.DomainService.Services
         public string? SearchKey { get; set; }
         public string[]? ModuleIds { get; set; }
         public bool IsPartiallyTranslated { get; set; }
+        public List<string>? MissingLanguages { get; set; }
         public DateRange? CreateDateRange { get; set; }
         public string? SortProperty { get; set; }
         public bool IsDescending { get; set; }
         public string? ProjectKey { get; set; }
         public ResourceSearchFilter[]? ResourceSearchFilters { get; set; }
         public DateRange? LastUpdateDateRange { get; set; }
+        public string? GlossaryId { get; set; }
     }
 
     public class ResourceSearchFilter

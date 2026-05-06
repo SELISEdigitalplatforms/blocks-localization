@@ -146,6 +146,39 @@ namespace Eurolm.DomainService.Repositories
                     matchFilters.Add(filterBuilder.And(dateFilters));
                 }
             }
+
+            if (query.MissingLanguages != null && query.MissingLanguages.Count > 0)
+            {
+                // A key is "missing" a language if that language's resource is absent OR has an empty/null value.
+                // Return keys that are missing at least one of the requested languages.
+                var perLanguageFilters = query.MissingLanguages.Select(lang =>
+                    filterBuilder.Or(
+                        // Resource exists for this language but value is empty/null
+                        filterBuilder.ElemMatch(x => x.Resources,
+                            Builders<Resource>.Filter.And(
+                                Builders<Resource>.Filter.Eq(r => r.Culture, lang),
+                                Builders<Resource>.Filter.Or(
+                                    Builders<Resource>.Filter.Eq(r => r.Value, null),
+                                    Builders<Resource>.Filter.Eq(r => r.Value, "")
+                                )
+                            )
+                        ),
+                        // No resource exists at all for this language
+                        filterBuilder.Not(
+                            filterBuilder.ElemMatch(x => x.Resources,
+                                Builders<Resource>.Filter.Eq(r => r.Culture, lang)
+                            )
+                        )
+                    )
+                );
+                matchFilters.Add(filterBuilder.Or(perLanguageFilters));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.GlossaryId))
+            {
+                matchFilters.Add(filterBuilder.AnyEq(x => x.GlossaryIds, query.GlossaryId));
+            }
+
             return matchFilters.Count > 0 ? filterBuilder.And(matchFilters) : filterBuilder.Empty;
         }
 

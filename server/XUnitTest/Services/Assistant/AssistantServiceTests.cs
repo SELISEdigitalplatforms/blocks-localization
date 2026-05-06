@@ -1,3 +1,4 @@
+using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
@@ -56,7 +57,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 _httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
         }
 
@@ -378,7 +380,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com/api");
@@ -408,7 +411,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com/api");
@@ -432,7 +436,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 configMock.Object,
                 _httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new AiCompletionRequest("Test message", 0.5);
@@ -452,7 +457,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 configMock.Object,
                 _httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new AiCompletionRequest("Test message", 0.5);
@@ -471,7 +477,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 _httpClient,
-                localizationSecretMock.Object
+                localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new AiCompletionRequest("Test message", 0.5);
@@ -490,7 +497,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 _httpClient,
-                localizationSecretMock.Object
+                localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new AiCompletionRequest("Test message", 0.5);
@@ -533,7 +541,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 _httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             service.Should().NotBeNull();
@@ -563,7 +572,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new HttpRequestMessage(HttpMethod.Post, "http://test.com/api");
@@ -597,7 +607,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _configurationMock.Object,
                 httpClient,
-                _localizationSecretMock.Object
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com/api");
@@ -632,7 +643,8 @@ namespace XUnitTest
                 _loggerMock.Object,
                 configMock.Object,
                 _httpClient,
-                localizationSecretMock.Object
+                localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
             );
 
             var request = new AiCompletionRequest("Test", 0.5);

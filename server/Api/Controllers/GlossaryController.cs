@@ -40,6 +40,31 @@ namespace Api.Controllers
             return await _glossaryManagementService.GetGlossariesAsync(request);
         }
 
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Get([FromQuery] string itemId, [FromQuery] string projectKey)
+        {
+            if (string.IsNullOrWhiteSpace(itemId))
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string> { { "ItemId", "Invalid or missing ItemId" } }
+                });
+
+            _changeControllerContext.ChangeContext(new GetGlossariesRequest { ProjectKey = projectKey });
+
+            var glossary = await _glossaryManagementService.GetGlossaryByIdAsync(itemId);
+
+            if (glossary == null)
+                return NotFound(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string> { { "ItemId", "Glossary not found" } }
+                });
+
+            return Ok(glossary);
+        }
+
         [HttpDelete]
         [Authorize]
         public async Task<IActionResult> Delete([FromQuery] DeleteGlossaryRequest request)

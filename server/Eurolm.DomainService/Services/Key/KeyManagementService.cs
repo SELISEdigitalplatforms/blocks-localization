@@ -377,7 +377,7 @@ namespace Eurolm.DomainService.Services
 
             await _keyRepository.DeleteAsync(request.ItemId);
 
-            // Create timeline entry after successful deletion — CurrentData is null since the key is deleted
+            // Create timeline entry after successful deletion ï¿½ CurrentData is null since the key is deleted
             if (repoKey != null)
             {
                 try
@@ -586,7 +586,10 @@ namespace Eurolm.DomainService.Services
                 ElementDetailContext = resourceKey.Context,
                 SourceText = defaultResource?.Value,
                 DestinationLanguage = languageName,
-                CurrentLanguage = languageSetting?.FirstOrDefault(x => x.LanguageCode == request.DefaultLanguage).LanguageName
+                CurrentLanguage = languageSetting?.FirstOrDefault(x => x.LanguageCode == request.DefaultLanguage).LanguageName,
+                GlossaryIds = resourceKey.GlossaryIds,
+                DestinationLanguageCode = missingResource.Culture,
+                ModuleId = resourceKey.ModuleId
             };
         }
 
@@ -720,7 +723,7 @@ namespace Eurolm.DomainService.Services
                 }
                 else
                 {
-                    // All keys unchanged — create a single no-change publish timeline entry
+                    // All keys unchanged ï¿½ create a single no-change publish timeline entry
                     await CreateNoChangePublishTimelineEntryAsync(LogFromConstants.Published, command.ProjectKey ?? "");
                 }
             }
@@ -2706,7 +2709,7 @@ namespace Eurolm.DomainService.Services
         {
             if (!previousPublishTimelines.TryGetValue(currentKey.ItemId, out var previousTimeline) || previousTimeline.CurrentData == null)
             {
-                return true; // No previous publish entry — treat as changed (new key)
+                return true; // No previous publish entry ï¿½ treat as changed (new key)
             }
 
             var previousResources = previousTimeline.CurrentData.Resources;
