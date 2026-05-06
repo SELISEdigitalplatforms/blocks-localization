@@ -223,6 +223,7 @@ export function LanguageTable() {
         }
       : undefined,
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
+    queryParams.missingLanguages ?? [],
   );
 
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
@@ -697,7 +698,7 @@ export function LanguageTable() {
                 {isLanguageModulesLoading ? (
                   <Skeleton className="h-12 w-full rounded" />
                 ) : (
-                  <LanguageTableToolbar languageModulesData={languageModules || []} />
+                  <LanguageTableToolbar languageModulesData={languageModules || []} languagesData={languageListData || []} />
                 )}
               </div>
               <CardContent>

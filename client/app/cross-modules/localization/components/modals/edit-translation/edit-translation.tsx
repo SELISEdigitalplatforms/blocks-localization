@@ -56,6 +56,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           temperature: 0.1,
           // elementDetailContext: keyDetails.context,
           glossaryIds: keyDetails.glossaryIds,
+          moduleId: keyDetails.moduleId,
           destinationLanguageCode: destinationLanguageCode,
           projectKey: tenantId,
         };

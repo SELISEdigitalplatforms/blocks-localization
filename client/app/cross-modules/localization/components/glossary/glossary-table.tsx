@@ -1,5 +1,6 @@
 
 import React, { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ColumnDef,
   flexRender,
@@ -41,6 +42,7 @@ import { langConfigureData } from "@blocks-localization/constants/language-dummy
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const GlossaryTable: React.FC = () => {
+  const navigate = useNavigate();
   const [pageNumber, setPageNumber] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState("");
@@ -174,14 +176,14 @@ const GlossaryTable: React.FC = () => {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 className="cursor-pointer"
-                onClick={() => handleEditClick(row.original)}
+                onClick={(e) => { e.stopPropagation(); handleEditClick(row.original); }}
               >
                 <Pencil className="mr-2 h-4 w-4" />
                 <span>Edit</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer text-error"
-                onClick={() => handleDeleteClick(row.original)}
+                onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.original); }}
               >
                 <Trash className="mr-2 h-4 w-4" />
                 <span>Delete</span>
@@ -267,6 +269,7 @@ const GlossaryTable: React.FC = () => {
                     <TableRow
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
+                      onClick={() => navigate(`/services/glossary/${row.original.itemId}`)}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>

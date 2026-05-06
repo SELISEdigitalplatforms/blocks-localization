@@ -4,20 +4,26 @@ import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { checkValidDate, formatFullDate, parseDateString } from "@/lib/utils";
-import { BookOpen, Pencil, RouteIcon } from "lucide-react";
+import { BookOpen, Pencil, Plus, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   useGetLanguageModules,
   useGetLanguages,
   useGetGlossaries,
   useGetSuggestedGlossaries,
+  useGetGlobalGlossaries,
+  useGetModuleGlossaries,
+  useSaveBlocksLanguageKey,
 } from "../../hooks/use-language-manager";
 import { IBlocksLanguageKey } from "../../models/language";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
+import { useProjectStore } from "@/store/useProjectStore";
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const { mutateAsync: saveKey } = useSaveBlocksLanguageKey();
   const { data: languageModules } = useGetLanguageModules();
   const {
     isLoading: isLanguageListLoading,
@@ -34,11 +40,32 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     keyDetails.itemId,
     !hasGlossaryIds,
   );
+  const { data: globalGlossariesData } = useGetGlobalGlossaries();
+  const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
 
   const resolvedGlossaries = useMemo(() => {
     if (!hasGlossaryIds || !allGlossariesData?.items) return [];
     return allGlossariesData.items.filter((g) => keyDetails.glossaryIds?.includes(g.itemId));
   }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
+
+  const contextGlossaries = useMemo(() => {
+    const taggedIds = new Set(keyDetails.glossaryIds ?? []);
+    const seen = new Set<string>();
+    const result: (typeof resolvedGlossaries[number] & { source: "global" | "module" })[] = [];
+    for (const g of globalGlossariesData?.items ?? []) {
+      if (!taggedIds.has(g.itemId) && !seen.has(g.itemId)) {
+        seen.add(g.itemId);
+        result.push({ ...g, source: "global" });
+      }
+    }
+    for (const g of moduleGlossariesData?.items ?? []) {
+      if (!taggedIds.has(g.itemId) && !seen.has(g.itemId)) {
+        seen.add(g.itemId);
+        result.push({ ...g, source: "module" });
+      }
+    }
+    return result;
+  }, [globalGlossariesData, moduleGlossariesData, keyDetails.glossaryIds]);
 
   if (isLanguageListLoading || isLanguageListLoadingFetching || !languageListData) {
     return (
@@ -223,16 +250,54 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           </CardHeader>
           <CardContent>
             {hasGlossaryIds ? (
-              <div className="flex flex-wrap gap-2">
-                {resolvedGlossaries.map((glossary) => (
-                  <Badge key={glossary.itemId} variant="secondary">
-                    {glossary.name}
-                  </Badge>
-                ))}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {resolvedGlossaries.map((glossary) => (
+                    <Badge key={glossary.itemId} variant="secondary">
+                      {glossary.name}
+                    </Badge>
+                  ))}
+                </div>
+                {contextGlossaries.length > 0 && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Global &amp; module glossaries
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {contextGlossaries.map((glossary) => (
+                        <Badge
+                          key={glossary.itemId}
+                          variant="outline"
+                          title={glossary.source === "global" ? "Global glossary" : "Module glossary"}
+                        >
+                          {glossary.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">No glossary added.</p>
+                {contextGlossaries.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Global &amp; module glossaries
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {contextGlossaries.map((glossary) => (
+                        <Badge
+                          key={glossary.itemId}
+                          variant="outline"
+                          title={glossary.source === "global" ? "Global glossary" : "Module glossary"}
+                        >
+                          {glossary.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {suggestedGlossariesData?.suggestedGlossaries &&
                   suggestedGlossariesData.suggestedGlossaries.length > 0 && (
                     <div className="space-y-2">
@@ -241,9 +306,34 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {suggestedGlossariesData.suggestedGlossaries.map((glossary) => (
-                          <Badge key={glossary.itemId} variant="outline">
-                            {glossary.name}
-                          </Badge>
+                          <div key={glossary.itemId} className="flex items-center gap-1">
+                            <Badge variant="outline">
+                              {glossary.name}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 w-5 p-0"
+                                title="Tag to key"
+                                onClick={() =>
+                                  saveKey({
+                                    itemId: keyDetails.itemId,
+                                    keyName: keyDetails.keyName,
+                                    moduleId: keyDetails.moduleId,
+                                    resources: keyDetails.resources ?? [],
+                                    routes: keyDetails.routes ?? [],
+                                    glossaryIds: [
+                                      ...(keyDetails.glossaryIds ?? []),
+                                      glossary.itemId,
+                                    ],
+                                    isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
+                                    projectKey: tenantId,
+                                  })
+                                }
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </Badge>
+                          </div>
                         ))}
                       </div>
                     </div>

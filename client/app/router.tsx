@@ -52,6 +52,7 @@ import ManagedServicesPage from "./routes/dashboard/managed-services";
 import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
+  LocalizationGlossaryDetailPage,
   LocalizationGlossaryPage,
   LocalizationKeyDetailPage,
   LocalizationLanguageHomePage,
@@ -140,6 +141,7 @@ export const router = createBrowserRouter([
       { path: "/services/captcha", element: <Navigate to="/services/secret-management?tab=captcha" replace /> },
       { path: "/services/captcha/logs", element: <CaptchaLogsPage /> },
       { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
+      { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
       { path: "/services/language/configure", element: <LocalizationConfigurePage /> },
       { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
