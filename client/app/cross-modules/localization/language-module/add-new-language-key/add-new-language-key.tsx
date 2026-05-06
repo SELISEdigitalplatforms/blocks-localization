@@ -281,7 +281,7 @@ function AddNewLanguageKey() {
   // console.log("resourceFields", resourceFields);
   languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
   BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations"] = "Language Translation Keys";
+  BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">
