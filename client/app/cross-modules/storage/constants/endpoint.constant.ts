@@ -1,8 +1,7 @@
 import { API_BASES } from "@/constants/endpoint.constant";
 import { deriveUdsBaseUrl } from "@/lib/blocks-url.util";
-import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const BLOCKS_UDS_BASE_URL = deriveUdsBaseUrl(getRuntimeEnv("BLOCKS_API_BASE_URL"));
+const BLOCKS_UDS_BASE_URL = deriveUdsBaseUrl();
 const STORAGE_SUBPATH = "/Storage";
 const FILES_SUBPATH = "/Files";
 

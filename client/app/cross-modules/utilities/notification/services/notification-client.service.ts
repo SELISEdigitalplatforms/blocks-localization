@@ -6,7 +6,7 @@ import {
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { deriveUtilityBaseUrl } from "@/lib/blocks-url.util";
 
-const UTILITY_API_BASE_URL = deriveUtilityBaseUrl(getRuntimeEnv("BLOCKS_API_BASE_URL"));
+const UTILITY_API_BASE_URL = deriveUtilityBaseUrl();
 
 export class NotificationClientService {
   public connection: HubConnection;
