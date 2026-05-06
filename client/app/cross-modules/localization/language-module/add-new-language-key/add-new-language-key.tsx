@@ -108,10 +108,8 @@ function AddNewLanguageKey() {
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Set custom breadcrumb titles
-  useEffect(() => {
-    BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
-  }, []);
+  // Set breadcrumb title synchronously
+  BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
     defaultValues: {
       keyName: "",
