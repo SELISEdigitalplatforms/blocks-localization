@@ -1,6 +1,7 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import {
   ColumnDef,
   flexRender,
@@ -54,6 +55,11 @@ const GlossaryTable: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+
+  // Set custom breadcrumb title for glossary list
+  React.useEffect(() => {
+    BREADCRUMB_CUSTOM_TITLES["/services/glossary"] = "Glossaries";
+  }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchText(value);

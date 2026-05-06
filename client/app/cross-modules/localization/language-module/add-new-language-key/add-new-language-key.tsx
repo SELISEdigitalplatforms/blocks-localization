@@ -1,5 +1,5 @@
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -107,6 +107,12 @@ function AddNewLanguageKey() {
 
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  // Set custom breadcrumb titles
+  useEffect(() => {
+    BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
+    BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
+  }, []);
   const form = useForm<FormValues>({
     defaultValues: {
       keyName: "",
@@ -280,8 +286,6 @@ function AddNewLanguageKey() {
   // console.log("languageListData", languageListData);
   // console.log("resourceFields", resourceFields);
   languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] = "New Key";
-  BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">

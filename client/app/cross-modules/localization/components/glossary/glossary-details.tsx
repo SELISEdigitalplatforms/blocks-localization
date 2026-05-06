@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -55,6 +55,14 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     PAGE_SIZE,
   );
 
+  // Set custom breadcrumb titles after glossary data is loaded
+  useEffect(() => {
+    if (glossary?.name) {
+      BREADCRUMB_CUSTOM_TITLES["/services/glossary"] = "Glossaries";
+      BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
+    }
+  }, [glossary, itemId]);
+
   if (isLoading) {
     return (
       <div>
@@ -85,9 +93,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       <div className="mt-10 text-center text-medium-emphasis">Glossary item not found.</div>
     );
   }
-
-  BREADCRUMB_CUSTOM_TITLES["/services/glossary"] = "Glossaries";
-  BREADCRUMB_CUSTOM_TITLES["/services/glossary/" + glossary.itemId] = glossary.name;
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
 

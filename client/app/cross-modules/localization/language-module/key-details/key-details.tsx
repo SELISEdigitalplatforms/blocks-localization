@@ -71,6 +71,14 @@ const KeyDetails = () => {
   // Pagination/filter state
   const [filter, setFilter] = useState({ page: 0, pageSize: 10 });
 
+  // Set custom breadcrumb titles after key details are loaded
+  useEffect(() => {
+    if (keyDetails?.keyName) {
+      BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
+      BREADCRUMB_CUSTOM_TITLES[`/services/language/translations/${keyDetails.itemId}`] = keyDetails.keyName;
+    }
+  }, [keyDetails]);
+
   // Fetch timeline with current pagination
   const { data: keyTimelineData, isLoading } = useGetLanguageKeysTimeline(
     filter.page + 1,
@@ -219,10 +227,6 @@ const KeyDetails = () => {
       </div>
     );
   }
-
-  BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language Translation Keys";
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations/" + keyDetails?.itemId] =
-    keyDetails.keyName;
 
   return (
     <div>
