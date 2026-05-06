@@ -1,4 +1,3 @@
-import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import GlossaryTable from "@blocks-localization/components/glossary/glossary-table";
 import GlossaryDetails from "@blocks-localization/components/glossary/glossary-details";
 import { AddNewLanguageKey } from "@blocks-localization/language-module/add-new-language-key/add-new-language-key";
@@ -40,12 +39,7 @@ export function LocalizationLogsPage() {
 export function LocalizationGlossaryPage() {
   return (
     <div className="h-full w-full min-w-0 p-6">
-      <main className="flex flex-col">
-        <div className="hidden md:flex">
-          <PageBreadcrumb breadcrumbIndex={2} />
-        </div>
-        <GlossaryTable />
-      </main>
+      <GlossaryTable />
     </div>
   );
 }
