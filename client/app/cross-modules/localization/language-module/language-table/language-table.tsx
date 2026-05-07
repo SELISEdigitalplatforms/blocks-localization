@@ -131,9 +131,10 @@ export function LanguageTable() {
     toggleLanguage: toggleLanguageInStore,
     selectedOptionalColumns,
     toggleOptionalColumn,
+    resetSelectedLanguages,
   } = useLanguageViewStore();
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
-  const { sortQueryParams, setSortQueryParams } = useKeysSortQueryParams();
+  const { sortQueryParams, setSortQueryParams, reset: sortReset } = useKeysSortQueryParams();
 
   const selectedLanguagesRef = useRef(selectedLanguages);
   selectedLanguagesRef.current = selectedLanguages;
@@ -243,6 +244,13 @@ export function LanguageTable() {
     useDeleteLanguageKey();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
+  // Reset all filters and view state when the project changes
+  useEffect(() => {
+    setQueryParams(null);
+    resetSelectedLanguages();
+    sortReset();
+  }, [tenantId]);
+
   const deleteLanguageKeyModalData = {
     dialogTitle: "Delete language key?",
     dialogSubtitle: "Are you sure you want to delete this language key?",
@@ -296,26 +304,29 @@ export function LanguageTable() {
     }
   };
 
+  // Sync selectedLanguages with the available languages for the current project.
+  // Also runs on tenantId change to reset stale language codes from the previous project.
   useEffect(() => {
-    if (languageListData) {
-      const current = selectedLanguagesRef.current;
-      if (current.length === 0) {
-        const defaultLanguages = languageListData
-          .filter((lang) => lang.isDefault)
-          .map((lang) => lang.languageCode);
-        setSelectedLanguages([...defaultLanguages]);
-      } else {
-        const availableLanguageCodes = languageListData.map((lang) => lang.languageCode);
-        const validSelectedLanguages = current.filter((langCode) =>
-          availableLanguageCodes.includes(langCode),
-        );
+    if (!languageListData) return;
 
-        if (validSelectedLanguages.length !== current.length) {
-          setSelectedLanguages(validSelectedLanguages);
-        }
-      }
+    const current = selectedLanguagesRef.current;
+    const availableLanguageCodes = languageListData.map((lang) => lang.languageCode);
+    const validSelectedLanguages = current.filter((langCode) =>
+      availableLanguageCodes.includes(langCode),
+    );
+
+    // Reset if: no selection, OR any selected code is not in current project, OR selected set differs from available set
+    if (
+      current.length === 0 ||
+      validSelectedLanguages.length !== current.length ||
+      current.length !== availableLanguageCodes.length
+    ) {
+      const defaultLanguages = languageListData
+        .filter((lang) => lang.isDefault)
+        .map((lang) => lang.languageCode);
+      setSelectedLanguages(defaultLanguages.length > 0 ? defaultLanguages : availableLanguageCodes);
     }
-  }, [languageListData, setSelectedLanguages]);
+  }, [languageListData, setSelectedLanguages, tenantId]);
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
