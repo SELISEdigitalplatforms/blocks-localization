@@ -286,7 +286,7 @@ function AddNewLanguageKey() {
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">
-        <PageBreadcrumb breadcrumbIndex={3} />
+        <PageBreadcrumb breadcrumbIndex={2} />
       </div>
       {/* <div className="ml-10 hidden min-h-screen max-w-80 flex-col gap-5 bg-background p-5 pt-24 md:flex">
         <div className="mx-2 my-3">
