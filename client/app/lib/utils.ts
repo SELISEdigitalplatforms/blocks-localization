@@ -37,9 +37,8 @@ export function compareDates(dateStringA: string, dateStringB: string): number {
   return dateA.getTime() - dateB.getTime();
 }
 
+import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 export { BREADCRUMB_CUSTOM_TITLES, BREADCRUMB_SKIP_PATHS } from "@/constants/breadcrumb-custom-title";
-
-export const BREADCRUMB_CUSTOM_TITLES: Record<string, string | null> = {};
 
 export function clearBreadCrumbTitleEntry(pathName: string) {
   BREADCRUMB_CUSTOM_TITLES[pathName] = null;
