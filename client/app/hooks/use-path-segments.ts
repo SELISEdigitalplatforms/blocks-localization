@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+import { BREADCRUMB_CUSTOM_TITLES, BREADCRUMB_SKIP_PATHS } from "@/constants/breadcrumb-custom-title";
 
 const useRoutePathSegments = () => {
   const { pathname } = useLocation();
@@ -14,7 +14,11 @@ const useRoutePathSegments = () => {
   });
 
   // Apply custom titles with pattern matching for dynamic segments
-  return breadcrumbs.map((breadcrumb) => {
+  const filteredBreadcrumbs = breadcrumbs.filter(
+    (breadcrumb) => !BREADCRUMB_SKIP_PATHS.includes(breadcrumb.href)
+  );
+
+  return filteredBreadcrumbs.map((breadcrumb) => {
     // Direct match first
     if (BREADCRUMB_CUSTOM_TITLES[breadcrumb.href] !== undefined) {
       return {
