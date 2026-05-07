@@ -4,9 +4,9 @@ import {
   HubConnectionBuilder,
 } from "@microsoft/signalr";
 import { getRuntimeEnv } from "@/lib/runtime-env";
-import { deriveUtilityBaseUrl } from "@/lib/blocks-url.util";
+import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 
-const UTILITY_API_BASE_URL = deriveUtilityBaseUrl();
+const LOGIC_API_BASE_URL = deriveLogicBaseUrl();
 
 export class NotificationClientService {
   public connection: HubConnection;
@@ -16,7 +16,7 @@ export class NotificationClientService {
 
     this.connection = new HubConnectionBuilder()
       .withUrl(
-        `${UTILITY_API_BASE_URL}/NotificationHub?x-blocks-key=${xBlocksKey}`,
+        `${LOGIC_API_BASE_URL}/NotificationHub?x-blocks-key=${xBlocksKey}`,
         {
           transport: HttpTransportType.WebSockets,
         },

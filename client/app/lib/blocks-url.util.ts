@@ -35,6 +35,6 @@ export function deriveUdsBaseUrl(): string {
   return deriveBaseUrl("uds");
 }
 
-export function deriveUtilityBaseUrl(): string {
-  return deriveBaseUrl("utility");
+export function deriveLogicBaseUrl(): string {
+  return deriveBaseUrl("logic");
 }
