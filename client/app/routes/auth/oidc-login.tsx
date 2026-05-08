@@ -15,6 +15,7 @@ import {
   MoveRight,
   Github,
 } from "lucide-react";
+import { deriveBlocksOrigin, deriveIdpBaseUrl } from "@/lib/blocks-url.util";
 import { Link } from "react-router-dom";
 import { ModeToggle } from "@/components/mode-toggle/mode-toggle";
 
@@ -166,17 +167,18 @@ export default function OidcLogin() {
   const handleLogin = () => {
     setIsLoading(true);
     const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
+    const idpBaseUrl = deriveIdpBaseUrl();
 
     const params = new URLSearchParams({
       response_type: "code",
       client_id: "af3f5dba-8d0c-4a4d-a8d2-24738036dcb5",
-      redirect_uri: "https://dev-eurolm.blocksdevelopers.com/oidc",
+      redirect_uri: `${deriveBlocksOrigin()}/oidc`,
       scope: "openId",
       state: "039849038",
       ...(blocksKey ? { "x-blocks-key": blocksKey } : {}),
     });
 
-    window.location.href = `https://dev-idp.blocksdevelopers.com/api/Authentication/Authorize?${params.toString()}`;
+    window.location.href = `${idpBaseUrl}/api/Authentication/Authorize?${params.toString()}`;
   };
 
   return (
