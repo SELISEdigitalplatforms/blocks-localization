@@ -1,4 +1,5 @@
 const ENV_PREFIX_PATTERN = /^(dev-|stg-)/;
+const BLOCKS_DOMAIN = "blocksdevelopers.com";
 
 /**
  * Derives IDP/UDS/Utility base URLs from the current browser origin.
@@ -11,20 +12,61 @@ const ENV_PREFIX_PATTERN = /^(dev-|stg-)/;
  */
 function deriveBaseUrl(subdomain: string): string {
   if (typeof window === "undefined") {
-    return `https://${subdomain}.blocksdevelopers.com`;
+    return `https://${subdomain}.${BLOCKS_DOMAIN}`;
   }
 
-  const origin = window.location.origin; // e.g. "https://dev-eurolm.blocksdevelopers.com"
+  const origin = window.location.origin;
   const match = origin.match(/^https?:\/\/([^/]+)/);
   if (!match) {
-    return `https://${subdomain}.blocksdevelopers.com`;
+    return `https://${subdomain}.${BLOCKS_DOMAIN}`;
   }
 
-  const host = match[1]; // e.g. "dev-eurolm.blocksdevelopers.com"
-  const prefix = host.match(ENV_PREFIX_PATTERN)?.[1] ?? "";
-  const derived = prefix ? `${prefix}${subdomain}` : subdomain;
+  const host = match[1];
 
-  return `https://${derived}.blocksdevelopers.com`;
+  // When running on localhost, skip environment prefix derivation and use the base subdomain directly.
+  // e.g. http://localhost:3000 → https://idp.blocksdevelopers.com (prod)
+  if (!host.includes("localhost")) {
+    const prefix = host.match(ENV_PREFIX_PATTERN)?.[1] ?? "";
+    const derived = prefix ? `${prefix}${subdomain}` : subdomain;
+    return `https://${derived}.${BLOCKS_DOMAIN}`;
+  }
+
+  return `https://${subdomain}.${BLOCKS_DOMAIN}`;
+}
+
+/**
+ * Derives the canonical blocks app origin from the current browser origin.
+ * This uses the same environment-prefix logic to construct the correct
+ * blocks origin (e.g. https://dev-eurolm.blocksdevelopers.com), ignoring
+ * any proxy ports or non-standard schemes.
+ *
+ * Dev:    http://dev-eurolm.blocksdevelopers.com:4000 → https://dev-eurolm.blocksdevelopers.com
+ * Staging: any stg host variant                    → https://stg-eurolm.blocksdevelopers.com
+ * Prod:   any prod host variant                    → https://eurolm.blocksdevelopers.com
+ * Local:  http://localhost:3000                   → https://eurolm.blocksdevelopers.com (prod)
+ */
+export function deriveBlocksOrigin(): string {
+  if (typeof window === "undefined") {
+    return `https://eurolm.${BLOCKS_DOMAIN}`;
+  }
+
+  const origin = window.location.origin;
+  const match = origin.match(/^https?:\/\/([^/]+)/);
+  if (!match) {
+    return `https://eurolm.${BLOCKS_DOMAIN}`;
+  }
+
+  const host = match[1];
+
+  if (!host.includes("localhost")) {
+    const prefix = host.match(ENV_PREFIX_PATTERN)?.[1] ?? "";
+    // "eurolm" is the base blocks app subdomain
+    const derived = prefix ? `${prefix}eurolm` : "eurolm";
+    return `https://${derived}.${BLOCKS_DOMAIN}`;
+  }
+
+  // On localhost, point to the prod blocks app
+  return `https://eurolm.${BLOCKS_DOMAIN}`;
 }
 
 export function deriveIdpBaseUrl(): string {
