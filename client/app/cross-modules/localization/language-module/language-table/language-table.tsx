@@ -502,14 +502,12 @@ export function LanguageTable() {
     setIsNewModuleDialogOpen(true);
   };
 
-  const handleTabChange = (newTabId: string) => {
-    if (newTabId === "history") {
-      // Clear translation-key-specific filters and sort when switching to History
+  useEffect(() => {
+    if (tabId === "history") {
       setQueryParams(null);
       sortReset();
     }
-    setTabId(newTabId);
-  };
+  }, [tabId, setQueryParams, sortReset]);
 
   const selectAll = () => {
     setSelectedLanguages(
@@ -570,10 +568,10 @@ export function LanguageTable() {
         <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
           <div className="mb-5 flex items-center text-base">
             <TabsList className="h-[42px] bg-blocks-primary-shades-300">
-              <TabsTrigger onClick={() => handleTabChange("keys")} value="keys" className="h-8">
+              <TabsTrigger onClick={() => setTabId("keys")} value="keys" className="h-8">
                 Translation Keys
               </TabsTrigger>
-              <TabsTrigger onClick={() => handleTabChange("history")} value="history" className="h-8">
+              <TabsTrigger onClick={() => setTabId("history")} value="history" className="h-8">
                 History
               </TabsTrigger>
             </TabsList>
