@@ -51,14 +51,14 @@ namespace Eurolm.DomainService.Services.HelperService
 
             var blocksKey = _configuration[RootTenantIdKey];
             var rootTenantId = _configuration[RootTenantIdKey];
-            //var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
-            //var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
+            var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
+            var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 
             var url = _configuration["NotificationServiceUrl"];
             var headers = new Dictionary<string, string>
             {
                 { "x-blocks-key", blocksKey },
-                //{ "Secret", actulalSecret}
+                { "Secret", actulalSecret}
             };
 
             var (result1, _) = await _httpHelperServices.MakeHttpPostRequest<NotificationResponse>(
