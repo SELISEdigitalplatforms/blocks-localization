@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -42,13 +42,6 @@ interface GlossaryDetailsProps {
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetch("https://dev-os.blocksdevelopers.com/ping")
-      .then((res) => res.json())
-      .then((data) => console.log(data))
-      .catch((err) => console.error(err));
-  }, []);
   const { data: glossary, isLoading } = useGetGlossaryById(itemId);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
