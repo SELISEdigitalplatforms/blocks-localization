@@ -361,7 +361,7 @@ function Configure() {
               <span className="sr-only sm:not-sr-only">New Language</span>
             </Button>
           </DialogTrigger>
-          <NewLanguage onClose={setIsNewLanguageDialogOpen} />
+          <NewLanguage onClose={setIsNewLanguageDialogOpen} existingLanguages={languageListData || []} />
         </Dialog>
       </div>
       <Card className="mt-6 rounded-sm border border-border shadow-none">
