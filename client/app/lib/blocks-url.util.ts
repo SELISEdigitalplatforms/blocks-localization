@@ -80,3 +80,23 @@ export function deriveUdsBaseUrl(): string {
 export function deriveUtilityBaseUrl(): string {
   return deriveBaseUrl("utility");
 }
+
+export function deriveAgentBaseUrl(): string {
+  return deriveBaseUrl("agent");
+}
+
+export function deriveLogicBaseUrl(): string {
+  return deriveBaseUrl("logic");
+}
+
+export function deriveObservabilityBaseUrl(): string {
+  return deriveBaseUrl("observability");
+}
+
+export function deriveOsBaseUrl(): string {
+  return deriveBaseUrl("os");
+}
+
+export function deriveDeploymentBaseUrl(): string {
+  return deriveBaseUrl("deployment");
+}
