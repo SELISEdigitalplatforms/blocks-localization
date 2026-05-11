@@ -1,14 +1,10 @@
 using BlocksTemplate.Api;
 using Blocks.Genesis;
-using Cloud.DomainService.Utilities;
-using DomainService.Utilities;
-using DomainService.Shared;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
-using Cloud.LmtService.Utilities;
-using CloudConfiguration.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Utilities;
 
 var serviceName = "blocks-idp-api";
 //var vaultType = ResolveVaultType();
@@ -16,9 +12,9 @@ var serviceName = "blocks-idp-api";
 var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
 var builder = WebApplication.CreateBuilder(args);
 
- ApplicationConfigurations.ConfigureApiEnv(builder, args);
+ApplicationConfigurations.ConfigureApiEnv(builder, args);
 
-ApplicationConfigurations.ConfigureServices(builder.Services, UilmConstants.GetMessageConfiguration(secret.MessageConnectionString));
+ApplicationConfigurations.ConfigureServices(builder.Services, Constants.GetMessageConfiguration(secret.MessageConnectionString));
 
 builder.Services.Configure<FormOptions>(options =>
 {
@@ -43,11 +39,6 @@ ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
 
 ApplicationConfigurations.ConfigureApi(services);
-services.RegisterAllServices();
-services.AddApplicationServices();
-services.AddCloudDomainServices();
-services.AddCloudLmtServices();
-services.AddCloudConfigurationServices();
 services.AddEurolmRegisterApplicationServices(localizationSecret);
 
 var app = builder.Build();
@@ -59,8 +50,8 @@ var indexHtml = Path.Combine(app.Environment.WebRootPath ?? "", "index.html");
 if (File.Exists(indexHtml))
 {
     app.MapFallbackToFile("/index.html");
-   // x-blocks-key cookie
-    
+    // x-blocks-key cookie
+
 }
 
 ApplicationConfigurations.ConfigureMiddleware(app);
@@ -86,7 +77,7 @@ static VaultType ResolveVaultType()
 
 static void ApplyFrontendRuntimeSettings(IConfiguration configuration, string webRootPath)
 {
-  //  var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+    //  var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
     //var section = configuration.GetSection("FrontendRuntime");
     //var replacements = new Dictionary<string, string?>
     //{
