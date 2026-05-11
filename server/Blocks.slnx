@@ -6,6 +6,7 @@
   <Project Path="Cloud.LmtService/Cloud.LmtService.csproj" />
   <Project Path="CloudConfiguration.DomainService/CloudConfiguration.DomainService.csproj" />
   <Project Path="Eurolm.DomainService/Eurolm.DomainService.csproj" />
+  <Project Path="Eurolm.Driver/Eurolm.Driver.csproj" />
   <Project Path="Iam.DomainService/Iam.DomainService.csproj" />
   <Project Path="Identifier.DomainService/Identifier.DomainService.csproj" />
   <Project Path="Mfa.DomainService/Mfa.DomainService.csproj" />
