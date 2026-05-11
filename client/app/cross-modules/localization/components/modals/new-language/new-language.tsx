@@ -32,12 +32,14 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@/store/useProjectStore";
 import { toast } from "@/hooks/use-toast";
+import { ILanguageConfig } from "@blocks-localization/models/language";
 
 interface NewLanguageProps {
   onClose: Function;
+  existingLanguages?: ILanguageConfig[];
 }
 
-const NewLanguage: React.FC<NewLanguageProps> = ({ onClose }) => {
+const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = [] }) => {
   const schema = z.object({
     languageCode: z.string().min(1, { message: "Language is required" }),
   });
@@ -52,6 +54,17 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose }) => {
   const [selectedLanguage, setSelectedLanguage] = React.useState(form.getValues("languageCode"));
   const formSubmitHandler = async (data: any) => {
     try {
+      const isDuplicate = existingLanguages.some(
+        (lang) => lang.languageCode === data.languageCode,
+      );
+      if (isDuplicate) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Language is already added. You can't add this language.",
+        });
+        return;
+      }
       const payload = {
         ...data,
         languageName: langConfigureData.find((lang) => lang.languageCode === data.languageCode)
