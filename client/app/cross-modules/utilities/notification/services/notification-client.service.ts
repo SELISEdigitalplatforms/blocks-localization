@@ -6,17 +6,16 @@ import {
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 
-const LOGIC_API_BASE_URL = deriveLogicBaseUrl();
-
 export class NotificationClientService {
   public connection: HubConnection;
 
   constructor() {
+    const logicApiBaseUrl = deriveLogicBaseUrl();
     const xBlocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
 
     this.connection = new HubConnectionBuilder()
       .withUrl(
-        `${LOGIC_API_BASE_URL}/NotificationHub?x-blocks-key=${xBlocksKey}`,
+        `${logicApiBaseUrl}/NotificationHub?x-blocks-key=${xBlocksKey}`,
         {
           transport: HttpTransportType.WebSockets,
         },

@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { HttpClient } from "@/lib/http-client";
 import { StorageConfiguration } from "./storage-configuration.service";
 import { StorageFile } from "./storage-file.service";
 import { STORAGE_FILE_ENDPOINTS } from "../constants/endpoint.constant";
@@ -12,6 +12,13 @@ import {
   IUploadFileToLocalStorage,
   IUploadImagePayload,
 } from "../models/storage.model";
+import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
+import { getRuntimeEnv } from "@/lib/runtime-env";
+
+const logicHttp = new HttpClient(
+  deriveLogicBaseUrl(),
+  getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
+);
 
 export class StorageService {
   constructor(
@@ -20,7 +27,7 @@ export class StorageService {
   ) { }
 
   uploadFile(payload: IUploadImagePayload): Promise<{}> {
-    return http.put(
+    return logicHttp.put(
       payload.url,
       payload.file,
       {
@@ -40,7 +47,7 @@ export class StorageService {
       },
       new FormData(),
     );
-    return http.post(STORAGE_FILE_ENDPOINTS.UPLOAD_TO_LOCAL_STORAGE, formData, undefined, { absoluteUrl: true });
+    return logicHttp.post(STORAGE_FILE_ENDPOINTS.UPLOAD_TO_LOCAL_STORAGE, formData);
   }
 
   uploadPublicCertificateFile(
@@ -53,24 +60,23 @@ export class StorageService {
       payload.file,
       (payload.file as File)?.name ?? "public-certificate.pfx",
     );
-    return http.post(
+    return logicHttp.post(
       `${STORAGE_FILE_ENDPOINTS.UPLOAD_PUBLIC_CERTIFICATE}?TenantId=${payload.TenantId}&IsThirdParty=true`,
       formData,
       { Accept: "*/*" },
-      { absoluteUrl: true },
     );
   }
 
   getFilesAndFolders(payload: IGetDmsFileAndFolderPayload): Promise<IGetDmsFileAndFolderResponse> {
-    return http.post(STORAGE_FILE_ENDPOINTS.GET_DMS_FILE_AND_FOLDER, payload, undefined, { absoluteUrl: true });
+    return logicHttp.post(STORAGE_FILE_ENDPOINTS.GET_DMS_FILE_AND_FOLDER, payload);
   }
 
   uploadDmsFile(payload: IUploadDmsFilePayload): Promise<IUploadDmsFileResponse> {
-    return http.post(STORAGE_FILE_ENDPOINTS.UPLOAD_DMS_FILE, payload, undefined, { absoluteUrl: true });
+    return logicHttp.post(STORAGE_FILE_ENDPOINTS.UPLOAD_DMS_FILE, payload);
   }
 
   createDmsFolder(payload: ICreateDmsFolderPayload): Promise<IUploadDmsFileResponse> {
-    return http.post(STORAGE_FILE_ENDPOINTS.CREATE_FOLDER, payload, undefined, { absoluteUrl: true });
+    return logicHttp.post(STORAGE_FILE_ENDPOINTS.CREATE_FOLDER, payload);
   }
 }
 

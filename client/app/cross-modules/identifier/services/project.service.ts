@@ -44,7 +44,7 @@ import {
 } from "@blocks-identifier/constants/endpoint.constant";
 
 export class ProjectService {
-  getProjects(page: number, pageSize: number, tenantGroupId: string): Promise<IProjectGroup[]> {
+  getProjects(page = 0, pageSize = 100, tenantGroupId = ""): Promise<IProjectGroup[]> {
     const url = `${PROJECT_ENDPOINTS.GETS}?page=${page}&pageSize=${pageSize}&tenantGroupId=${tenantGroupId}`;
     return logicHttp.get(url);
   }

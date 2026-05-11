@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { HttpClient } from "@/lib/http-client";
 import {
   INotification,
   INotificationConfig,
@@ -8,8 +8,12 @@ import {
   NOTIFICATION_ENDPOINTS,
 } from "@blocks-utilities/notification/constants/endpoint.constant";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
+import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const LOGIC_API_BASE = `${deriveLogicBaseUrl()}/api`;
+const logicHttp = new HttpClient(
+  deriveLogicBaseUrl(),
+  getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
+);
 
 export class NotificationService {
   getNotifications = (
@@ -20,8 +24,8 @@ export class NotificationService {
     totalNotificationsCount: number;
     notifications: INotification[];
   }> => {
-    const url = `${LOGIC_API_BASE}/Notifier/GetNotifications?page=${pageNumber - 1}&pageSize=${pageSize}`;
-    return http.get(url, undefined, { absoluteUrl: true });
+    const url = `${NOTIFICATION_ENDPOINTS.GET_NOTIFICATIONS}?page=${pageNumber - 1}&pageSize=${pageSize}`;
+    return logicHttp.get(url);
   };
 
   markAsRead = (
@@ -30,16 +34,16 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${LOGIC_API_BASE}/Notifier/MarkNotificationAsRead`, {
+    return logicHttp.post(NOTIFICATION_ENDPOINTS.MARK_AS_READ, {
       id: notificationId,
-    }, undefined, { absoluteUrl: true });
+    });
   };
 
   markAllNotificationsAsRead = (): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${LOGIC_API_BASE}/Notifier/MarkAllNotificationAsRead`, {}, undefined, { absoluteUrl: true });
+    return logicHttp.post(NOTIFICATION_ENDPOINTS.MARK_ALL_AS_READ, {});
   };
 
   getNotificationConfig = (
@@ -67,8 +71,8 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${LOGIC_API_BASE}/Notification/Gets?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
-    return http.get(url, undefined, { absoluteUrl: true });
+    const url = `${NOTIFICATION_CONFIG_ENDPOINTS.GET_CONFIGS}?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
+    return logicHttp.get(url);
   };
 
   saveNotificationConfig = (payload: {
@@ -84,7 +88,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${LOGIC_API_BASE}/Notification/Save`, payload, undefined, { absoluteUrl: true });
+    return logicHttp.post(NOTIFICATION_CONFIG_ENDPOINTS.SAVE_CONFIG, payload);
   };
 
   deleteNotificationConfig = (payload: {
@@ -94,8 +98,8 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${LOGIC_API_BASE}/Notification/Delete?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
-    return http.delete(url, undefined, { absoluteUrl: true });
+    const url = `${NOTIFICATION_CONFIG_ENDPOINTS.DELETE_CONFIG}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
+    return logicHttp.delete(url);
   };
 }
 
