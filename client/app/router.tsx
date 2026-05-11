@@ -31,10 +31,6 @@ import OidcEmailSentConfirmationPage from "./routes/oidc/email-sent-confirmation
 // Dashboard routes (protected)
 import AuthenticationConfigPage from "./routes/dashboard/authentication-config";
 import SsoConfigurationPage from "./routes/dashboard/sso-configuration";
-import ApiSettingsPage from "./routes/dashboard/api-settings";
-import RateLimiterPage from "./routes/dashboard/rate-limiter";
-import SecretManagementPage from "./routes/dashboard/secret-management";
-import ManagedServicesPage from "./routes/dashboard/managed-services";
 import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
@@ -46,16 +42,6 @@ import {
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
-
-// Console pages
-import { Console } from "./pages/console/console";
-import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
-import { EnvironmentsPage } from "./pages/environments/environments";
-import { PeopleManagement } from "./pages/people/people-management";
-import { RepositoriesPage } from "./pages/repositories/repositories";
-import { SettingsPage } from "./pages/settings/settings";
-import { CreateProjectWrapper } from "./pages/create-project/create-project";
-import CallbackPage from "./routes/callback/callback";
 import OidcLogin from "./routes/auth/oidc-login";
 
 export const router = createBrowserRouter([
@@ -106,12 +92,6 @@ export const router = createBrowserRouter([
     children: [
       { path: "/services/authentication", element: <AuthenticationConfigPage /> },
       { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
-      { path: "/services/mfa", element: <Navigate to="/services/secret-management?tab=mfa" replace /> },
-      { path: "/services/api-settings", element: <ApiSettingsPage /> },
-      { path: "/services/rate-limiter", element: <RateLimiterPage /> },
-      { path: "/services/secret-management", element: <SecretManagementPage /> },
-      { path: "/managed-services", element: <ManagedServicesPage /> },
-      { path: "/services/captcha", element: <Navigate to="/services/secret-management?tab=captcha" replace /> },
       { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
       { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
@@ -121,12 +101,6 @@ export const router = createBrowserRouter([
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
       { path: "/services/language/translations/new-key", element: <LocalizationNewKeyPage /> },
       { path: "/services/language/translations/:keyId", element: <LocalizationKeyDetailPage /> },
-      { path: "/dashboard", element: <DashboardOverview /> },
-      { path: "/project-overview", element: <Navigate to="/project-overview/environments" replace /> },
-      { path: "/project-overview/environments", element: <EnvironmentsPage /> },
-      { path: "/project-overview/people", element: <PeopleManagement /> },
-      { path: "/project-overview/repositories", element: <RepositoriesPage /> },
-      { path: "/project-overview/settings", element: <SettingsPage /> },
     ],
   },
 
@@ -134,10 +108,7 @@ export const router = createBrowserRouter([
   {
     element: <ConsoleLayout />,
     children: [
-      { path: "/profile", element: <ProfilePage /> },
-      { path: "/console", element: <Console /> },
-      { path: "/create-project", element: <CreateProjectWrapper /> },
-      { path: "/callback", element: <CallbackPage /> },
+      { path: "/profile", element: <ProfilePage /> }
     ],
   },  
 
