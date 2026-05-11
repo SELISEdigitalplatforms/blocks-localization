@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 4000 --host dev-eurolm.blocksdevelopers.com",
-    "build": "tsc -b --force && vite build",
+    "build": "rm -rf node_modules/.tmp && tsc -b --force && vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit"
   },
