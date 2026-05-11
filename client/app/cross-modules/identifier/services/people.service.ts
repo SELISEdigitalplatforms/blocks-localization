@@ -4,15 +4,13 @@ import {
   IPeopleAcceptInvitationResponse,
   ITransferOwnershipPayload,
   GetPeopleResponse,
-} from "@blocks-identifier/models/people.model";
-import {
   IConfirmInvitation,
   IInvitePeoplePayload,
   IInvitePeopleResponse,
   IRemoveAccess,
   IRemoveEnvironmentAccess,
   IResendInvitation,
-} from "@/models/people";
+} from "@blocks-identifier/models/people.model";
 import { PEOPLE_ENDPOINTS } from "@blocks-identifier/constants/endpoint.constant";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 import { getRuntimeEnv } from "@/lib/runtime-env";
