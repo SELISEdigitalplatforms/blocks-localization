@@ -6,6 +6,7 @@ import {
   OIDC_FLOW_ENDPOINTS,
 } from "../constants/endpoint.constant";
 import { ACCOUNT_ENDPOINTS } from "@blocks-idp/iam/constants/endpoint.constant";
+import { deriveIdpBaseUrl } from "@/lib/blocks-url.util";
 export { redirectToLogin, buildNavigationUrl } from "../utils/oidc-navigation.util";
 
 interface IGetOidcPayload {
@@ -71,7 +72,7 @@ export const refreshAccessToken = async (projectKey: string): Promise<string | n
     body.append("grant_type", "refresh_token");
     body.append("refresh_token", refreshToken);
 
-    const url = `${getRuntimeEnv("BLOCKS_API_BASE_URL")}${AUTH_ENDPOINTS.TOKEN}`;
+    const url = `${deriveIdpBaseUrl()}${AUTH_ENDPOINTS.TOKEN}`;
 
     const response = await fetch(url, {
       method: "POST",
