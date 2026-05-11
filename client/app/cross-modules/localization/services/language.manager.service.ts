@@ -421,7 +421,7 @@ class LanguageManagerService {
     if (request.maxResults) {
       params.append("MaxResults", String(request.maxResults));
     }
-    return http.get(`${LANGUAGE_KEY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`);
+    return http.get(`${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`);
   };
 
   getGlossaryById = (request: { itemId: string; projectKey: string }): Promise<IGlossary> => {
