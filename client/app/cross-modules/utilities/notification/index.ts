@@ -1,7 +1,3 @@
-export { Notification } from "./pages/notification-item";
-export { default as NotificationList } from "./pages/notification-list";
-export { default as NewNotificationConfig } from "./pages/new-notification-config";
-export { default as NewNotificationConfigurationModal } from "./components/modals/new-notification-configuration";
 export * from "./hooks/use-notifications";
 export * from "./hooks/use-notification-listener";
 export * from "./services/notification.service";
