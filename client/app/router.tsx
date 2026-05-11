@@ -35,19 +35,14 @@ import IamRoleDetailPage from "./routes/dashboard/iam-role-detail";
 import IamPermissionDetailPage from "./routes/dashboard/iam-permission-detail";
 import IamAddPermissionPage from "./routes/dashboard/iam-add-permission";
 import IamOrgDetailPage from "./routes/dashboard/iam-org-detail";
-import IamLogsPage from "./routes/dashboard/iam-logs";
 import IamConfigurePage from "./routes/dashboard/iam-configure";
 import AuthenticationConfigPage from "./routes/dashboard/authentication-config";
 import SsoConfigurationPage from "./routes/dashboard/sso-configuration";
-import AuthLogsPage from "./routes/dashboard/auth-logs";
 import MfaLogsPage from "./routes/dashboard/mfa-logs";
 import CaptchaLogsPage from "./routes/dashboard/captcha-logs";
 import ApiSettingsPage from "./routes/dashboard/api-settings";
 import RateLimiterPage from "./routes/dashboard/rate-limiter";
-import LmtPage from "./routes/dashboard/lmt";
-import LmtServiceLogsPage from "./routes/dashboard/lmt-service-logs";
 import SecretManagementPage from "./routes/dashboard/secret-management";
-import AiModelSelectedRoute from "./routes/dashboard/ai-model-selected";
 import ManagedServicesPage from "./routes/dashboard/managed-services";
 import {
   LocalizationConfigurePage,
@@ -124,19 +119,14 @@ export const router = createBrowserRouter([
       { path: "/services/iam/permission-detail/new", element: <IamAddPermissionPage /> },
       { path: "/services/iam/permission-detail/:id", element: <IamPermissionDetailPage /> },
       { path: "/services/iam/organization-detail/:itemId", element: <IamOrgDetailPage /> },
-      { path: "/services/iam/logs", element: <IamLogsPage /> },
       { path: "/services/iam/configure", element: <IamConfigurePage /> },
       { path: "/services/authentication", element: <AuthenticationConfigPage /> },
       { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
-      { path: "/services/authentication/logs", element: <AuthLogsPage /> },
       { path: "/services/mfa", element: <Navigate to="/services/secret-management?tab=mfa" replace /> },
       { path: "/services/mfa/logs", element: <MfaLogsPage /> },
       { path: "/services/api-settings", element: <ApiSettingsPage /> },
       { path: "/services/rate-limiter", element: <RateLimiterPage /> },
-      { path: "/services/lmt", element: <LmtPage /> },
-      { path: "/services/lmt/logs/:serviceName", element: <LmtServiceLogsPage /> },
       { path: "/services/secret-management", element: <SecretManagementPage /> },
-      { path: "/services/secret-management/ai-models/:provider", element: <AiModelSelectedRoute /> },
       { path: "/managed-services", element: <ManagedServicesPage /> },
       { path: "/services/captcha", element: <Navigate to="/services/secret-management?tab=captcha" replace /> },
       { path: "/services/captcha/logs", element: <CaptchaLogsPage /> },
