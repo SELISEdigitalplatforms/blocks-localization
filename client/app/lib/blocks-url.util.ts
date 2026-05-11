@@ -30,6 +30,7 @@ export function deriveIdpBaseUrl(): string {
 export function deriveUdsBaseUrl(): string {
   return deriveBaseUrl("uds");
 }
+
 export function deriveAgentBaseUrl(): string {
   return deriveBaseUrl("agent");
 }

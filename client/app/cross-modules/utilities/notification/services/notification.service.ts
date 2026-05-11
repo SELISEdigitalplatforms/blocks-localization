@@ -7,9 +7,9 @@ import {
   NOTIFICATION_CONFIG_ENDPOINTS,
   NOTIFICATION_ENDPOINTS,
 } from "@blocks-utilities/notification/constants/endpoint.constant";
-import { deriveUtilityBaseUrl } from "@/lib/blocks-url.util";
+import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 
-const UTILITY_API_BASE = `${deriveUtilityBaseUrl()}/api`;
+const LOGIC_API_BASE = `${deriveLogicBaseUrl()}/api`;
 
 export class NotificationService {
   getNotifications = (
@@ -20,7 +20,7 @@ export class NotificationService {
     totalNotificationsCount: number;
     notifications: INotification[];
   }> => {
-    const url = `${UTILITY_API_BASE}/Notifier/GetNotifications?page=${pageNumber - 1}&pageSize=${pageSize}`;
+    const url = `${LOGIC_API_BASE}/Notifier/GetNotifications?page=${pageNumber - 1}&pageSize=${pageSize}`;
     return http.get(url, undefined, { absoluteUrl: true });
   };
 
@@ -30,7 +30,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${UTILITY_API_BASE}/Notifier/MarkNotificationAsRead`, {
+    return http.post(`${LOGIC_API_BASE}/Notifier/MarkNotificationAsRead`, {
       id: notificationId,
     }, undefined, { absoluteUrl: true });
   };
@@ -39,7 +39,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${UTILITY_API_BASE}/Notifier/MarkAllNotificationAsRead`, {}, undefined, { absoluteUrl: true });
+    return http.post(`${LOGIC_API_BASE}/Notifier/MarkAllNotificationAsRead`, {}, undefined, { absoluteUrl: true });
   };
 
   getNotificationConfig = (
@@ -67,7 +67,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${UTILITY_API_BASE}/Notification/Gets?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
+    const url = `${LOGIC_API_BASE}/Notification/Gets?page=${page}&pageSize=${pageSize}&projectKey=${projectKey}`;
     return http.get(url, undefined, { absoluteUrl: true });
   };
 
@@ -84,7 +84,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http.post(`${UTILITY_API_BASE}/Notification/Save`, payload, undefined, { absoluteUrl: true });
+    return http.post(`${LOGIC_API_BASE}/Notification/Save`, payload, undefined, { absoluteUrl: true });
   };
 
   deleteNotificationConfig = (payload: {
@@ -94,7 +94,7 @@ export class NotificationService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    const url = `${UTILITY_API_BASE}/Notification/Delete?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
+    const url = `${LOGIC_API_BASE}/Notification/Delete?itemId=${payload.itemId}&projectKey=${payload.projectKey}`;
     return http.delete(url, undefined, { absoluteUrl: true });
   };
 }
