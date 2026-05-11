@@ -6,7 +6,6 @@ import { useQueryState } from "nuqs";
 // import { SelfSignup } from "./general/self-signup";
 // import { GeneralSettings } from "./general/settings";
 import { SSO } from "./sso";
-import { Button } from "@/components/ui-kits/button/button";
 import { Certificates } from "./general/certificates/certificates";
 import { AuthenticationTabs, GRANT_TYPES } from "@blocks-idp/authentication/constants/authentication.constant";
 import { OIDC } from "@blocks-idp/authentication/components/oidc";
@@ -15,19 +14,10 @@ import { CreateClientCredential } from "@blocks-idp/authentication/components/cr
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui-kits/select/select";
 import { CreateOIDC } from "@blocks-idp/authentication/components/create-oidc";
 import { useProjectStore } from "@/store/useProjectStore";
-import { useGetOrganizationConfig } from "@blocks-idp/iam/hooks/use-organization";
-import {
-  Organizations,
-  OrganizationConfig,
-} from "@blocks-idp/iam/modules/organization-management";
-import { InviteUser } from "@blocks-idp/iam/modules/user-management/invite-user/invite-user";
-import { Users } from "@blocks-idp/iam/modules/user-management/users";
-import { SignupSettings } from "@blocks-idp/iam/modules/user-management/signup-settings";
 
 export const AuthenticationConfig = () => {
-  const [selectedTab, setSelectedTab] = useQueryState("tab", { defaultValue: "users" });
+  const [selectedTab, setSelectedTab] = useQueryState("tab", { defaultValue: GRANT_TYPES.social });
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
-  const { data: orgConfigData, isLoading: isOrgConfigLoading } = useGetOrganizationConfig(tenantId);
 
   return (
     <div>
@@ -63,15 +53,6 @@ export const AuthenticationConfig = () => {
           <>
             {selectedTab === GRANT_TYPES.clientCredential && <CreateClientCredential />}
             {selectedTab === GRANT_TYPES.authorizationCode && <CreateOIDC />}
-            {selectedTab === "users" && (
-              <div className="flex items-center gap-2">
-                <SignupSettings />
-                <InviteUser />
-              </div>
-            )}
-            {selectedTab === "organizations" && (
-              <OrganizationConfig configData={orgConfigData} isLoading={isOrgConfigLoading} />
-            )}
           </>
         </div>
         {/* <TabsContent value="general" className="grid grid-cols-1 gap-6">
@@ -83,12 +64,6 @@ export const AuthenticationConfig = () => {
         </TabsContent>
         <TabsContent value="external-idp">
           <Certificates />
-        </TabsContent>
-        <TabsContent value="users">
-          <Users />
-        </TabsContent>
-        <TabsContent value="organizations">
-          <Organizations />
         </TabsContent>
         <TabsContent value={GRANT_TYPES.clientCredential}>
           <ClientCredentials />
