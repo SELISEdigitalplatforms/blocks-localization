@@ -1,9 +1,10 @@
-import { useEffect } from "react"
+import { useEffect } from "react";
+import { deriveIdpBaseUrl } from "@/lib/blocks-url.util";
 
 export default function ProfilePage() {
   useEffect(() => {
-    window.location.href = "http://dev-idp.blocksdevelopers.com/profile"
-  }, [])
+    window.location.href = `${deriveIdpBaseUrl()}/profile`;
+  }, []);
 
-  return null
+  return null;
 }
