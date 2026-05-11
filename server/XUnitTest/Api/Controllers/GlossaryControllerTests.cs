@@ -20,10 +20,12 @@ namespace XUnitTest
             _glossaryManagementServiceMock = new Mock<IGlossaryManagementService>();
 
             var changeControllerContext = TestChangeControllerContextFactory.Create();
+            var keyManagementServiceMock = new Mock<IKeyManagementService>();
 
             _controller = new GlossaryController(
                 _glossaryManagementServiceMock.Object,
-                changeControllerContext
+                changeControllerContext,
+                keyManagementServiceMock.Object
             )
             {
                 ControllerContext = new ControllerContext()

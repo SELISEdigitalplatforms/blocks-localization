@@ -13,13 +13,16 @@ namespace Api.Controllers
     {
         private readonly IGlossaryManagementService _glossaryManagementService;
         private readonly ChangeControllerContext _changeControllerContext;
+        private readonly IKeyManagementService _keyManagementService;
 
         public GlossaryController(
             IGlossaryManagementService glossaryManagementService,
-            ChangeControllerContext changeControllerContext)
+            ChangeControllerContext changeControllerContext,
+            IKeyManagementService keyManagementService)
         {
             _glossaryManagementService = glossaryManagementService;
             _changeControllerContext = changeControllerContext;
+            _keyManagementService = keyManagementService;
         }
 
         [HttpPost]
@@ -63,6 +66,15 @@ namespace Api.Controllers
                 });
 
             return Ok(glossary);
+        }
+
+        [HttpGet]
+        [ProtectedEndPoint]
+        public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
+        {
+            if (request == null) BadRequest(new BaseMutationResponse());
+            _changeControllerContext.ChangeContext(request);
+            return await _keyManagementService.GetSuggestedGlossariesAsync(request);
         }
 
         [HttpDelete]
