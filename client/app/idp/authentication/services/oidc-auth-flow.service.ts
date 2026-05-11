@@ -1,12 +1,11 @@
 import { showErrorToast } from "@/hooks/use-toast";
-import { getRuntimeEnv } from "@/lib/runtime-env";
 import {
   AUTH_ENDPOINTS,
   AUTH_OIDC_ENDPOINTS,
   OIDC_FLOW_ENDPOINTS,
 } from "../constants/endpoint.constant";
 import { ACCOUNT_ENDPOINTS } from "@blocks-idp/iam/constants/endpoint.constant";
-import { deriveIdpBaseUrl } from "@/lib/blocks-url.util";
+import { deriveIdpBaseUrl, deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 export { redirectToLogin, buildNavigationUrl } from "../utils/oidc-navigation.util";
 
 interface IGetOidcPayload {
@@ -121,7 +120,7 @@ export const getOidcCredential = async (
   isSuccess: boolean;
 }> => {
   try {
-    const url = `${getRuntimeEnv("BLOCKS_API_BASE_URL")}${AUTH_OIDC_ENDPOINTS.GET_OIDC_CLIENT}?ProjectKey=${payload.projectKey}&ClientId=${payload.clientId}`;
+    const url = `${deriveIdpBaseUrl()}${AUTH_OIDC_ENDPOINTS.GET_OIDC_CLIENT}?ProjectKey=${payload.projectKey}&ClientId=${payload.clientId}`;
 
     let accessToken = "";
     try {
@@ -179,7 +178,7 @@ export const userAcknowledgement = async (
   payload: IUserAcknowledgementPayload,
 ): Promise<IUserAcknowledgementResponse> => {
   try {
-    const url = `${getRuntimeEnv("BLOCKS_API_BASE_URL")}${OIDC_FLOW_ENDPOINTS.USER_ACKNOWLEDGEMENT}`;
+    const url = `${deriveIdpBaseUrl()}${OIDC_FLOW_ENDPOINTS.USER_ACKNOWLEDGEMENT}`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -220,7 +219,7 @@ export const accountRecover = async (
   payload: IAccountRecoverPayload,
 ): Promise<IAccountRecoverResponse> => {
   try {
-    const url = `${getRuntimeEnv("BLOCKS_API_BASE_URL")}${ACCOUNT_ENDPOINTS.RECOVER}`;
+    const url = `${deriveLogicBaseUrl()}${ACCOUNT_ENDPOINTS.RECOVER}`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
