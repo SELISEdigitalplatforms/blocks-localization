@@ -1,10 +1,5 @@
 <Solution>
   <Project Path="Api/Api.csproj" />
-  <Project Path="Authentication.DomainService/Authentication.DomainService.csproj"/>
-  <Project Path="Captcha.DomainService/Captcha.DomainService.csproj"/>
-  <Project Path="Cloud.DomainService/Cloud.DomainService.csproj" />
-  <Project Path="Cloud.LmtService/Cloud.LmtService.csproj" />
-  <Project Path="CloudConfiguration.DomainService/CloudConfiguration.DomainService.csproj" />
   <Project Path="Eurolm.DomainService/Eurolm.DomainService.csproj" />
   <Project Path="Eurolm.Driver/Eurolm.Driver.csproj" />
   <Project Path="Iam.DomainService/Iam.DomainService.csproj" />
