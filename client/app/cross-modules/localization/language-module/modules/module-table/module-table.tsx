@@ -50,12 +50,12 @@ const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: ()
 );
 
 export function ModuleTable() {
-  const { isLoading, data: modulesData, refetch } = useGetLanguageModules();
+  const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Fetch users to get their names
-  const { data: usersData } = useGetUsers({
+  // Fetch users to get their names - ensure query is properly enabled and keyed by tenantId
+  const { data: usersData, isLoading: isUsersLoading } = useGetUsers({
     page: 0,
     pageSize: 1000,
     projectKey: tenantId,
@@ -64,8 +64,9 @@ export function ModuleTable() {
   // Create a map of userId to user full name
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {};
-    if (usersData?.data) {
-      usersData.data.forEach((user) => {
+    const users = usersData?.data;
+    if (users && Array.isArray(users)) {
+      users.forEach((user) => {
         const fullName = `${user.firstName} ${user.lastName}`.trim();
         map[user.itemId] = fullName || user.email || user.userName || user.itemId;
       });
@@ -144,7 +145,7 @@ export function ModuleTable() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {isModulesLoading || isUsersLoading ? (
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={index}>
                         {[1, 2, 3, 4].map((_, colIndex) => (
