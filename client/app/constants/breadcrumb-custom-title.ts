@@ -17,8 +17,8 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
   "/services/language/export-history": {
     title: "Export history",
   },
-  "/services/language/logs": {
-    title: "Logs",
+  "/services/language/modules": {
+    title: "Language module",
   },
   "/services/language/translations": {
     skip: true,

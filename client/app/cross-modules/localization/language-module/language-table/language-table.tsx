@@ -549,20 +549,7 @@ export function LanguageTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">Language</h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-sm font-medium"
-              onClick={() => {
-                navigate("/services/language/configure");
-              }}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">Configure</span>
-            </Button>
+            <h3 className="text-2xl font-bold tracking-tight">Configure keys</h3>
           </div>
         </div>
         <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
