@@ -51,8 +51,7 @@ import { Console } from "./pages/console/console";
 import { CreateProjectWrapper } from "./pages/create-project/create-project";
 
 // Project overview routes
-import ProjectOverviewPage from "./routes/project-overview/index";
-import ProjectEnvironmentsPage from "./routes/project-overview/environments";
+import { EnvironmentsPage } from "./pages/environments/environments";
 import ProjectPeoplePage from "./routes/project-overview/people";
 import ProjectRepositoriesPage from "./routes/project-overview/repositories";
 import ProjectSettingsPage from "./routes/project-overview/settings";
@@ -129,8 +128,8 @@ export const router = createBrowserRouter([
       </ProjectGuard>
     ),
     children: [
-      { path: "/project-overview", element: <ProjectOverviewPage /> },
-      { path: "/project-overview/environments", element: <ProjectEnvironmentsPage /> },
+      { path: "/project-overview", element: <Navigate to="/project-overview/environments" replace /> },
+      { path: "/project-overview/environments", element: <EnvironmentsPage /> },
       { path: "/project-overview/people", element: <ProjectPeoplePage /> },
       { path: "/project-overview/repositories", element: <ProjectRepositoriesPage /> },
       { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
