@@ -11,13 +11,13 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
   "/services/language": {
     title: "Language Translation Keys",
   },
-  "/services/language/configure": {
+  "/services/configure": {
     title: "Configure",
   },
   "/services/language/export-history": {
     title: "Export history",
   },
-  "/services/language/modules": {
+  "/services/modules": {
     title: "Language module",
   },
   "/services/language/translations": {
