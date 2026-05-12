@@ -40,5 +40,10 @@ namespace Eurolm.DomainService.Services.HelperService
 
             return new ApiResponse();
         }
+
+        public async Task<BlocksWebhook?> GetWebhookAsync()
+        {
+            return await _blocksWebhookRepository.GetAsync();
+        }
     }
 }
