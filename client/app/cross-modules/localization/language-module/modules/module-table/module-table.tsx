@@ -16,13 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
-import { useGetLanguageModules, useDeleteLanguageModule } from "@blocks-localization/hooks/use-language-manager";
+import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
 import { FilterControls } from "@/components/filter-toolbar";
 import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash, EllipsisVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
-import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { useProjectStore } from "@/store/useProjectStore";
 import { useGetUsers } from "@blocks-idp/iam/hooks/use-user";
 
@@ -39,7 +38,10 @@ const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: ()
         <Pencil className="mr-2 h-4 w-4" />
         <span>Edit</span>
       </DropdownMenuItem>
-      <DropdownMenuItem className="cursor-pointer text-error" onClick={onDelete}>
+      <DropdownMenuItem
+        className="cursor-pointer text-medium-emphasis"
+        onClick={onDelete}
+      >
         <Trash className="mr-2 h-4 w-4" />
         <span>Delete</span>
       </DropdownMenuItem>
@@ -50,9 +52,6 @@ const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: ()
 export function ModuleTable() {
   const { isLoading, data: modulesData, refetch } = useGetLanguageModules();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
-  const { isPending: isDeletePending, mutateAsync: deleteAsync } = useDeleteLanguageModule();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Fetch users to get their names
@@ -60,7 +59,7 @@ export function ModuleTable() {
     page: 0,
     pageSize: 1000,
     projectKey: tenantId,
-  });
+  }, { enabled: !!tenantId });
 
   // Create a map of userId to user full name
   const userNameMap = useMemo(() => {
@@ -97,45 +96,6 @@ export function ModuleTable() {
     setIsNewModuleDialogOpen(true);
   };
 
-  const handleDeleteClick = (itemId: string) => {
-    setIsDeleteDialogOpen(true);
-    setSelectedModuleId(itemId);
-  };
-
-  const onConfirmDelete = async () => {
-    try {
-      const res = await deleteAsync({ itemId: selectedModuleId ?? "", projectKey: tenantId });
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "Module deleted successfully",
-        });
-        setIsDeleteDialogOpen(false);
-        refetch();
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(res?.errors),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
-      });
-    }
-  };
-
-  const deleteModuleModalData = {
-    dialogTitle: "Delete module?",
-    dialogSubtitle: "Are you sure you want to delete this module? This action cannot be undone.",
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
-  };
-
   return (
     <main className="flex flex-col">
       <div className="flex w-full flex-col">
@@ -157,8 +117,8 @@ export function ModuleTable() {
         </div>
 
         <Card className="mt-[18px] rounded shadow-none md:mt-[24px]">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-xl text-high-emphasis items-start">
+          <CardHeader>
+            <CardTitle className="text-xl text-high-emphasis">
               Language Modules
             </CardTitle>
           </CardHeader>
@@ -217,7 +177,13 @@ export function ModuleTable() {
                                 description: "Edit functionality will be available soon.",
                               });
                             }}
-                            onDelete={() => handleDeleteClick(module.itemId)}
+                            onDelete={() => {
+                              toast({
+                                variant: "default",
+                                title: "Coming Soon",
+                                description: "Delete functionality will be available soon.",
+                              });
+                            }}
                           />
                         </TableCell>
                       </TableRow>
@@ -240,15 +206,6 @@ export function ModuleTable() {
             setIsNewModuleDialogOpen(false);
             refetch();
           }} />
-        </Dialog>
-
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <ConfirmationModal
-            onCancel={() => {}}
-            onConfirm={onConfirmDelete}
-            data={deleteModuleModalData}
-            buttonState={{ confirm: { disable: isDeletePending } }}
-          />
         </Dialog>
       </div>
     </main>
