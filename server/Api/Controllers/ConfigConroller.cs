@@ -1,4 +1,5 @@
 using Blocks.Genesis;
+using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Entities;
@@ -23,6 +24,14 @@ namespace BlocksTemplate.Api.Controllers
         {
             _changeControllerContext = changeControllerContext;
             _webHookService = webHookService;
+        }
+
+        [HttpGet]
+        public async Task<BlocksWebhook?> GetWebHook([FromQuery] GetWebhookRequest request)
+        {
+            if (request == null) return null;
+            _changeControllerContext.ChangeContext(request);
+            return await _webHookService.GetWebhookAsync();
         }
 
         [HttpPost]
