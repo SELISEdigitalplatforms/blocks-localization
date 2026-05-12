@@ -6,49 +6,82 @@ import { ExportHistory } from "@blocks-localization/language-module/export-histo
 import { KeyDetails } from "@blocks-localization/language-module/key-details/key-details";
 import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
+import { ModuleTable } from "@blocks-localization/language-module/modules/module-table/module-table";
 import { useParams } from "react-router-dom";
+
+function LocalizationPageLayout({ children }: { children: React.ReactNode }) {
+  return <div className="h-full w-full min-w-0 p-6">{children}</div>;
+}
 
 export function LocalizationLanguageHomePage() {
   return (
-    <div className="h-full w-full min-w-0 p-6">
+    <LocalizationPageLayout>
       <LanguageTable />
-    </div>
+    </LocalizationPageLayout>
   );
 }
 
 export function LocalizationNewKeyPage() {
-  return <div className="h-full w-full min-w-0 p-6"><AddNewLanguageKey /></div>;
+  return (
+    <LocalizationPageLayout>
+      <AddNewLanguageKey />
+    </LocalizationPageLayout>
+  );
 }
 
 export function LocalizationKeyDetailPage() {
-  return <div className="h-full w-full min-w-0 p-6"><KeyDetails /></div>;
+  return (
+    <LocalizationPageLayout>
+      <KeyDetails />
+    </LocalizationPageLayout>
+  );
 }
 
 export function LocalizationConfigurePage() {
-  return <div className="h-full w-full min-w-0 p-6"><Configure /></div>;
+  return (
+    <LocalizationPageLayout>
+      <Configure />
+    </LocalizationPageLayout>
+  );
+}
+
+export function LocalizationModulesPage() {
+  return (
+    <LocalizationPageLayout>
+      <ModuleTable />
+    </LocalizationPageLayout>
+  );
 }
 
 export function LocalizationExportHistoryPage() {
-  return <div className="h-full w-full min-w-0 p-6"><ExportHistory /></div>;
+  return (
+    <LocalizationPageLayout>
+      <ExportHistory />
+    </LocalizationPageLayout>
+  );
 }
 
 export function LocalizationLogsPage() {
-  return <div className="h-full w-full min-w-0 p-6"><LanguageLogs /></div>;
+  return (
+    <LocalizationPageLayout>
+      <LanguageLogs />
+    </LocalizationPageLayout>
+  );
 }
 
 export function LocalizationGlossaryPage() {
   return (
-    <div className="h-full w-full min-w-0 p-6">
+    <LocalizationPageLayout>
       <GlossaryTable />
-    </div>
+    </LocalizationPageLayout>
   );
 }
 
 export function LocalizationGlossaryDetailPage() {
   const { itemId } = useParams<{ itemId: string }>();
   return (
-    <div className="h-full w-full min-w-0 p-6">
+    <LocalizationPageLayout>
       <GlossaryDetails itemId={itemId ?? ""} />
-    </div>
+    </LocalizationPageLayout>
   );
 }

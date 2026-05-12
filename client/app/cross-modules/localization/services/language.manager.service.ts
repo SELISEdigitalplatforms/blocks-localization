@@ -20,7 +20,6 @@ import {
   IImportFile,
   IKeyUilmExport,
   ILanguageConfig,
-  ILanguageModule,
   IModuleGets,
   IRollbackResponse,
   IValidationError,
@@ -77,7 +76,7 @@ class LanguageManagerService {
     );
   };
 
-  fetchBlocksLanguageModules = (projectKey: string): Promise<ILanguageModule[]> => {
+  fetchBlocksLanguageModules = (projectKey: string): Promise<IModuleGets[]> => {
     return http.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${projectKey}`);
   };
 
@@ -125,6 +124,19 @@ class LanguageManagerService {
     const url = `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${ProjectKey}`;
     return http.get(url);
   };
+
+  deleteLanguageModule(payload: { itemId: string; projectKey: string }): Promise<{
+    errors: null | unknown;
+    isSuccess: boolean;
+  }> {
+    const url = LANGUAGE_MODULE_ENDPOINTS.DELETE;
+    return http
+      .delete<{
+        errors: unknown;
+        isSuccess: boolean;
+      }>(`${url}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
+      .then((response) => response);
+  }
 
   saveLanguage = (payload: {
     languageName: string;

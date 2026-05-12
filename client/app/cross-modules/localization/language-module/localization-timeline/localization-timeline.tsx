@@ -280,7 +280,7 @@ export default function LocalizationTimeline({
                   return (
                     <div
                       key={entry.operationId + index}
-                      className="flex min-h-[66px] w-full cursor-pointer rounded-md transition-colors hover:bg-muted/50"
+                      className="flex min-h-[66px] w-full cursor-pointer rounded-md hover:bg-muted/50"
                       onClick={() => setSelectedOperationId(entry.operationId)}
                     >
                       {/* Left: time/date */}

@@ -349,7 +349,7 @@ function Configure() {
         <PageBreadcrumb breadcrumbIndex={2} />
       </div>
       <div className="flex items-end justify-between">
-        <h1 className="mt-5 text-2xl font-semibold">Configure Language</h1>
+        <h1 className="mt-5 text-2xl font-semibold">Configure Languages</h1>
         <Dialog open={isNewLanguageDialogOpen} onOpenChange={setIsNewLanguageDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -414,7 +414,7 @@ function Configure() {
 
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader>
-          <CardTitle>Webhook</CardTitle>
+          <CardTitle>Webhooks</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...webhookForm}>
