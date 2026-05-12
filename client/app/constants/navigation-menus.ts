@@ -13,7 +13,7 @@ export const navigationMenus: Menu[] = [
     type: "menu",
     id: "service-localization__module",
     name: "Modules",
-    path: "/services/language/modules",
+    path: "/services/modules",
     icon: Blocks,
   },
   {
@@ -27,7 +27,7 @@ export const navigationMenus: Menu[] = [
     type: "menu",
     id: "service-localization__language-configuration",
     name: "Configuration",
-    path: "/services/language/configure",
+    path: "/services/configure",
     icon: Cog,
   },
 ];

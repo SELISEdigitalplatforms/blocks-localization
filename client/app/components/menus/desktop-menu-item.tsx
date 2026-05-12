@@ -12,7 +12,6 @@ type ChildMenuItemProps = {
 };
 
 // Helper to check if pathname matches menu path exactly or is an immediate child
-// Avoids false positives like "/services/language/modules" matching "/services/language"
 const isPathMatch = (pathname: string, menuPath: string): boolean => {
   return pathname === menuPath || pathname.startsWith(menuPath + "/");
 };
