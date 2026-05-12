@@ -99,7 +99,7 @@ export const ExportHistory: React.FC = () => {
       <PageBreadcrumb breadcrumbIndex={2} />
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" className="h-8 p-0" onClick={() => window.history.back()}>
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-semibold">Export History</h1>
