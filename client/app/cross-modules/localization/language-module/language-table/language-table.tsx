@@ -53,7 +53,6 @@ import {
   History,
   Plus,
   Rocket,
-  Settings,
   Settings2,
   Trash,
   Wand,
@@ -571,13 +570,6 @@ export function LanguageTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={handleAutoTranslateClick}
-                    >
-                      <Wand className="mr-2 h-4 w-4" />
-                      <span>Auto-translate all</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer" onSelect={handleNewModuleClick}>
                       <Plus className="mr-2 h-4 w-4" />
                       <span>New Module</span>
@@ -610,12 +602,6 @@ export function LanguageTable() {
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey onClose={() => setIsExportDialogOpen(false)} />
                 </Dialog>
-                <Dialog
-                  open={isAutoTranslateDialogOpen}
-                  onOpenChange={setIsAutoTranslateDialogOpen}
-                >
-                  <AutoTranslate />
-                </Dialog>
                 <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
                   <NewModule onClose={setIsNewModuleDialogOpen} />
                 </Dialog>
@@ -644,9 +630,19 @@ export function LanguageTable() {
           </div>
           <TabsContent value="keys">
             <Card className="rounded shadow-none">
-              <CardHeader className="">
-                <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
+              <CardHeader className="flex items-center justify-between">
+                <CardTitle className="text-xl text-high-emphasis">
                   Translations
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="default"
+                    variant="default"
+                    onClick={handleAutoTranslateClick}
+                  >
+                    <Wand className="h-5 w-5 lg:mr-2" />
+                    <span className="sr-only lg:not-sr-only">Auto-translate all</span>
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline">
@@ -697,7 +693,7 @@ export function LanguageTable() {
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </CardTitle>
+                </div>
               </CardHeader>
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
@@ -820,6 +816,12 @@ export function LanguageTable() {
                   </div>
                 )}
             </Card>
+            <Dialog
+              open={isAutoTranslateDialogOpen}
+              onOpenChange={setIsAutoTranslateDialogOpen}
+            >
+              <AutoTranslate />
+            </Dialog>
           </TabsContent>
           <TabsContent value="history">
             <LocalizationTimeline />
