@@ -39,7 +39,7 @@ namespace BlocksTemplate.Api.Controllers
         /// </summary>
         /// <param name="module">The module object to be saved.</param>
         /// <returns>An <see cref="ApiResponse"/> indicating the result of the save operation.</returns>
-        
+
         [HttpPost]
         [ProtectedEndPoint]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
@@ -54,13 +54,31 @@ namespace BlocksTemplate.Api.Controllers
         /// Retrieves a list of all available modules.
         /// </summary>
         /// <returns>A list of <see cref="Module"/> objects.</returns>
-        
+
         [HttpGet]
-        public async Task<List<BlocksLanguageModule>> Gets([FromQuery]GetModulesQuery query)
+        public async Task<List<BlocksLanguageModule>> Gets([FromQuery] GetModulesQuery query)
         {
             if (query == null) BadRequest(new BaseMutationResponse());
             _changeControllerContext.ChangeContext(query);
             return await _moduleManagementService.GetModulesAsync();
+        }
+
+        //[HttpDelete]
+        //[ProtectedEndPoint]
+        //public async Task<BaseMutationResponse> Delete([FromQuery] DeleteModuleRequest request)
+        //{
+        //    if (request == null) return new BaseMutationResponse { IsSuccess = false };
+        //    _changeControllerContext.ChangeContext(request);
+        //    return await _moduleManagementService.DeleteModuleAsync(request);
+        //}
+
+        [HttpPost]
+        [ProtectedEndPoint]
+        public async Task<BaseMutationResponse> TagGlossary([FromBody] TagGlossaryRequest request)
+        {
+            if (request == null) return new BaseMutationResponse { IsSuccess = false };
+            _changeControllerContext.ChangeContext(request);
+            return await _moduleManagementService.TagGlossaryAsync(request);
         }
     }
 }
