@@ -34,7 +34,6 @@ import {
 } from "@blocks-localization/components/language-table-toolbar/language-table-toolbar";
 import AutoTranslate from "@blocks-localization/components/modals/auto-translate/auto-translate";
 import ExportKey from "@blocks-localization/components/modals/export-key/export-key";
-import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useDeleteLanguageKey,
   useGenerateUilmFile,
@@ -53,7 +52,6 @@ import {
   History,
   Plus,
   Rocket,
-  Settings,
   Settings2,
   Trash,
   Wand,
@@ -234,7 +232,6 @@ export function LanguageTable() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] = useState(false);
-  const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [tabId, setTabId] = useQueryState("languageActivity", { defaultValue: "keys" });
   const { isPending, mutateAsync } = useGenerateUilmFile();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -498,10 +495,6 @@ export function LanguageTable() {
     setIsAutoTranslateDialogOpen(true);
   };
 
-  const handleNewModuleClick = () => {
-    setIsNewModuleDialogOpen(true);
-  };
-
   useEffect(() => {
     if (tabId === "history") {
       setQueryParams(null);
@@ -549,20 +542,7 @@ export function LanguageTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">Language</h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-sm font-medium"
-              onClick={() => {
-                navigate("/services/language/configure");
-              }}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">Configure</span>
-            </Button>
+            <h3 className="text-2xl font-bold tracking-tight">Configure keys</h3>
           </div>
         </div>
         <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
@@ -584,17 +564,6 @@ export function LanguageTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={handleAutoTranslateClick}
-                    >
-                      <Wand className="mr-2 h-4 w-4" />
-                      <span>Auto-translate all</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer" onSelect={handleNewModuleClick}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      <span>New Module</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer" onSelect={handleImportClick}>
                       <FolderInput className="mr-2 h-4 w-4" />
                       <span>Import keys</span>
@@ -623,15 +592,6 @@ export function LanguageTable() {
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey onClose={() => setIsExportDialogOpen(false)} />
                 </Dialog>
-                <Dialog
-                  open={isAutoTranslateDialogOpen}
-                  onOpenChange={setIsAutoTranslateDialogOpen}
-                >
-                  <AutoTranslate />
-                </Dialog>
-                <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
-                  <NewModule onClose={setIsNewModuleDialogOpen} />
-                </Dialog>
                 <Button
                   onClick={onPublishChangesClick}
                   size="default"
@@ -657,9 +617,19 @@ export function LanguageTable() {
           </div>
           <TabsContent value="keys">
             <Card className="rounded shadow-none">
-              <CardHeader className="">
-                <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
+              <CardHeader className="flex items-center justify-between">
+                <CardTitle className="text-xl text-high-emphasis">
                   Translations
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="default"
+                    variant="default"
+                    onClick={handleAutoTranslateClick}
+                  >
+                    <Wand className="h-5 w-5 lg:mr-2" />
+                    <span className="sr-only lg:not-sr-only">Auto-translate all</span>
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline">
@@ -710,7 +680,7 @@ export function LanguageTable() {
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </CardTitle>
+                </div>
               </CardHeader>
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
@@ -833,6 +803,12 @@ export function LanguageTable() {
                   </div>
                 )}
             </Card>
+            <Dialog
+              open={isAutoTranslateDialogOpen}
+              onOpenChange={setIsAutoTranslateDialogOpen}
+            >
+              <AutoTranslate />
+            </Dialog>
           </TabsContent>
           <TabsContent value="history">
             <LocalizationTimeline />

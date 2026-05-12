@@ -39,6 +39,7 @@ import {
   LocalizationKeyDetailPage,
   LocalizationLanguageHomePage,
   LocalizationLogsPage,
+  LocalizationModulesPage,
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
@@ -92,15 +93,16 @@ export const router = createBrowserRouter([
     children: [
       { path: "/services/authentication", element: <AuthenticationConfigPage /> },
       { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
-      { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
-      { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
       { path: "/services/language/translations", element: <Navigate to="/services/language" replace /> },
-      { path: "/services/language/configure", element: <LocalizationConfigurePage /> },
+      { path: "/services/language/configure", element: <LocalizationConfigurePage /> },      
+      { path: "/services/language/modules", element: <LocalizationModulesPage /> },
       { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
       { path: "/services/language/translations/new-key", element: <LocalizationNewKeyPage /> },
       { path: "/services/language/translations/:keyId", element: <LocalizationKeyDetailPage /> },
+      { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
+      { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
     ],
   },
 

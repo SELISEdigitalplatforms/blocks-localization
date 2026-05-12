@@ -465,7 +465,7 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                       <div className="mt-2">
                         <label
                           htmlFor="xlf-upload"
-                          className="bg-surface-default hover:bg-surface-hover flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-default px-4 py-3 text-sm transition-colors"
+                          className="bg-surface-default hover:bg-surface-hover flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-default px-4 py-3 text-sm"
                         >
                           <Upload className="h-4 w-4 text-medium-emphasis" />
                           <span className="text-medium-emphasis">Click to select XLF file</span>
@@ -488,7 +488,7 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                         <button
                           type="button"
                           onClick={handleRemoveXlfFile}
-                          className="text-medium-emphasis transition-colors hover:text-high-emphasis"
+                          className="text-medium-emphasis hover:text-high-emphasis"
                         >
                           <X className="h-4 w-4" />
                         </button>

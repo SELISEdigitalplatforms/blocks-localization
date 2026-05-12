@@ -122,6 +122,17 @@ export const useSaveLanguageModule = () => {
   });
 };
 
+export const useDeleteLanguageModule = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["language-module", "delete"],
+    mutationFn: languageManagerService.deleteLanguageModule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
+    },
+  });
+};
+
 export function useGetLanguageModule(projectKey: string) {
   return useQuery({
     queryKey: localizationQueryKeys.modules.byProject(projectKey),
