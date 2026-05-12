@@ -6,6 +6,7 @@ import { ExportHistory } from "@blocks-localization/language-module/export-histo
 import { KeyDetails } from "@blocks-localization/language-module/key-details/key-details";
 import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
+import { ModuleTable } from "@blocks-localization/language-module/modules/module-table/module-table";
 import { useParams } from "react-router-dom";
 
 function LocalizationPageLayout({ children }: { children: React.ReactNode }) {
@@ -43,10 +44,11 @@ export function LocalizationConfigurePage() {
     </LocalizationPageLayout>
   );
 }
+
 export function LocalizationModulesPage() {
   return (
     <LocalizationPageLayout>
-      <h1>Coming Soon...</h1>
+      <ModuleTable />
     </LocalizationPageLayout>
   );
 }

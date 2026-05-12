@@ -29,6 +29,7 @@ export const LANGUAGE_KEY_ENDPOINTS = {
 export const LANGUAGE_MODULE_ENDPOINTS = {
   GETS: `${API_BASES.UILM}${MODULE_SUBPATH}/Gets`,
   SAVE: `${API_BASES.UILM}${MODULE_SUBPATH}/Save`,
+  DELETE: `${API_BASES.UILM}${MODULE_SUBPATH}/Delete`,
 } as const;
 
 // Language endpoints

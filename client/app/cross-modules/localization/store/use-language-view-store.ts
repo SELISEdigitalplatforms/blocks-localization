@@ -49,7 +49,7 @@ export const useLanguageViewStore = create<LanguageViewState>()(
     }),
     {
       name: "language-view-storage",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 );
