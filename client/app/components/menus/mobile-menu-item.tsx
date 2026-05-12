@@ -16,9 +16,15 @@ import { Menu } from "@/models/menu-models";
 
 type MenuItemType = Extract<Menu, { type: "menu" }>;
 
+// Helper to check if pathname matches menu path exactly or is an immediate child
+// Avoids false positives like "/services/language/modules" matching "/services/language"
+const isPathMatch = (pathname: string, menuPath: string): boolean => {
+  return pathname === menuPath || pathname.startsWith(menuPath + "/");
+};
+
 function ChildMenuItem({ menu, onClick }: { menu: MenuItemType; onClick?: () => void }) {
   const { pathname } = useLocation();
-  const isActiveMenu = pathname.startsWith(menu.path);
+  const isActiveMenu = isPathMatch(pathname, menu.path);
 
   return (
     <Link
@@ -48,7 +54,7 @@ export function MobileMenuItem({ menu, onClick }: { menu: MenuItemType; onClick?
         }
       });
     }
-    return allPaths.some((item) => pathname.startsWith(item));
+    return allPaths.some((item) => isPathMatch(pathname, item));
   }, [menu.children, menu.path, pathname]);
 
   const hasChildren = Boolean(menu.children?.length);

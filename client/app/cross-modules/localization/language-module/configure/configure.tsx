@@ -1,4 +1,3 @@
-import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -56,9 +55,7 @@ import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
-import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 
-BREADCRUMB_CUSTOM_TITLES["/services/language"] = "Language";
 
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">
@@ -345,9 +342,6 @@ function Configure() {
 
   return (
     <div>
-      <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
-      </div>
       <div className="flex items-end justify-between">
         <h1 className="mt-5 text-2xl font-semibold">Configure Languages</h1>
         <Dialog open={isNewLanguageDialogOpen} onOpenChange={setIsNewLanguageDialogOpen}>

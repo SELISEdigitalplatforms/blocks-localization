@@ -5,6 +5,7 @@ import { PublicLayout } from "./layouts/public-layout";
 import { OidcLayout } from "./layouts/oidc-layout";
 import { DashboardLayout } from "./layouts/dashboard-layout";
 import { ConsoleLayout } from "./layouts/console-layout";
+import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
 // Auth routes (public, with auth layout)
 import LoginPage from "./routes/auth/login";
 import SignupPage from "./routes/auth/signup";
@@ -44,6 +45,20 @@ import {
 } from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
 import OidcLogin from "./routes/auth/oidc-login";
+
+// Console routes
+import { Console } from "./pages/console/console";
+import { CreateProjectWrapper } from "./pages/create-project/create-project";
+
+// Project overview routes
+import ProjectOverviewPage from "./routes/project-overview/index";
+import ProjectEnvironmentsPage from "./routes/project-overview/environments";
+import ProjectPeoplePage from "./routes/project-overview/people";
+import ProjectRepositoriesPage from "./routes/project-overview/repositories";
+import ProjectSettingsPage from "./routes/project-overview/settings";
+
+// Guards
+import { ProjectGuard } from "./guards/project-guard";
 
 export const router = createBrowserRouter([
   // ── Auth layout (login, signup, sso-activate) ──
@@ -87,15 +102,19 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Dashboard layout (protected routes) ──
+  // ── Dashboard layout (protected routes with ProjectGuard) ──
   {
-    element: <DashboardLayout />,
+    element: (
+      <ProjectGuard>
+        <DashboardLayout />
+      </ProjectGuard>
+    ),
     children: [
       { path: "/services/authentication", element: <AuthenticationConfigPage /> },
       { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
       { path: "/services/language/translations", element: <Navigate to="/services/language" replace /> },
-      { path: "/services/language/configure", element: <LocalizationConfigurePage /> },      
+      { path: "/services/language/configure", element: <LocalizationConfigurePage /> },
       { path: "/services/language/modules", element: <LocalizationModulesPage /> },
       { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
@@ -106,16 +125,30 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Console layout (profile, console pages without sidebar) ──
+  // ── Project Overview layout ──
+  {
+    element: <ProjectOverviewLayout />,
+    children: [
+      { path: "/project-overview", element: <ProjectOverviewPage /> },
+      { path: "/project-overview/environments", element: <ProjectEnvironmentsPage /> },
+      { path: "/project-overview/people", element: <ProjectPeoplePage /> },
+      { path: "/project-overview/repositories", element: <ProjectRepositoriesPage /> },
+      { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
+    ],
+  },
+
+  // ── Console layout (console pages and profile without sidebar) ──
   {
     element: <ConsoleLayout />,
     children: [
-      { path: "/profile", element: <ProfilePage /> }
+      { path: "/console", element: <Console /> },
+      { path: "/create-project", element: <CreateProjectWrapper /> },
+      { path: "/profile", element: <ProfilePage /> },
     ],
-  },  
+  },
 
   // ── Root redirect: authenticated users go to console ──
-  { path: "/", element: <Navigate to="/services/language" replace /> },
+  { path: "/", element: <Navigate to="/console" replace /> },
 
   // ── Catch-all: redirect to login ──
   { path: "*", element: <Navigate to="/login" replace /> },
