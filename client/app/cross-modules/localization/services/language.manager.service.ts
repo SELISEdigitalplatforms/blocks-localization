@@ -20,7 +20,6 @@ import {
   IImportFile,
   IKeyUilmExport,
   ILanguageConfig,
-  ILanguageModule,
   IModuleGets,
   IRollbackResponse,
   IValidationError,
@@ -77,7 +76,7 @@ class LanguageManagerService {
     );
   };
 
-  fetchBlocksLanguageModules = (projectKey: string): Promise<ILanguageModule[]> => {
+  fetchBlocksLanguageModules = (projectKey: string): Promise<IModuleGets[]> => {
     return http.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${projectKey}`);
   };
 
