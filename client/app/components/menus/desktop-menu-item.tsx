@@ -11,9 +11,15 @@ type ChildMenuItemProps = {
   menu: MenuItemType;
 };
 
+// Helper to check if pathname matches menu path exactly or is an immediate child
+// Avoids false positives like "/services/language/modules" matching "/services/language"
+const isPathMatch = (pathname: string, menuPath: string): boolean => {
+  return pathname === menuPath || pathname.startsWith(menuPath + "/");
+};
+
 const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
   const { pathname } = useLocation();
-  const isActiveMenu = pathname.startsWith(menu.path);
+  const isActiveMenu = isPathMatch(pathname, menu.path);
 
   return (
     <Link
@@ -42,7 +48,7 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         }
       });
     }
-    return allPaths.some((item) => pathname.startsWith(item));
+    return allPaths.some((item) => isPathMatch(pathname, item));
   }, [menu.children, menu.path, pathname]);
 
   const hasChildren = Boolean(menu.children?.length);

@@ -301,8 +301,12 @@ export function LanguageTable() {
     }
   };
 
+  // Track if this is the initial load to preserve user-persisted selections
+  const isInitialLoadRef = useRef(true);
+
   // Sync selectedLanguages with the available languages for the current project.
   // Also runs on tenantId change to reset stale language codes from the previous project.
+  // Only resets to defaults on initial load if user has no persisted selection.
   useEffect(() => {
     if (!languageListData) return;
 
@@ -312,17 +316,22 @@ export function LanguageTable() {
       availableLanguageCodes.includes(langCode),
     );
 
-    // Reset if: no selection, OR any selected code is not in current project, OR selected set differs from available set
+    // Only reset to defaults if:
+    // 1. This is initial load with no selection (current.length === 0) - user hasn't set preferences yet
+    // 2. OR there are invalid language codes from a different project (stale codes)
+    // Do NOT reset if user has explicitly deselected all languages (valid empty selection)
     if (
-      current.length === 0 ||
-      validSelectedLanguages.length !== current.length ||
-      current.length !== availableLanguageCodes.length
+      (isInitialLoadRef.current && current.length === 0) ||
+      validSelectedLanguages.length !== current.length
     ) {
       const defaultLanguages = languageListData
         .filter((lang) => lang.isDefault)
         .map((lang) => lang.languageCode);
       setSelectedLanguages(defaultLanguages.length > 0 ? defaultLanguages : availableLanguageCodes);
     }
+
+    // After first run, mark that initial load is complete so we don't override user preferences
+    isInitialLoadRef.current = false;
   }, [languageListData, setSelectedLanguages, tenantId]);
 
   const handleRowClick = useCallback(
@@ -617,7 +626,7 @@ export function LanguageTable() {
           </div>
           <TabsContent value="keys">
             <Card className="rounded shadow-none">
-              <CardHeader className="flex items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl text-high-emphasis">
                   Translations
                 </CardTitle>
