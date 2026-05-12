@@ -5,15 +5,15 @@ export default function ProjectRepositoriesPage() {
     <main className="flex flex-col">
       <div className="flex w-full flex-col">
         <div className="mb-6">
-          <h3 className="text-2xl font-bold tracking-tight text-high-emphasis">Repositories</h3>
-          <p className="text-medium-emphasis mt-1">Manage your project repositories</p>
+          <h3 className="text-2xl font-bold tracking-tight text-[hsl(var(--high-emphasis))]">Repositories</h3>
+          <p className="text-[hsl(var(--medium-emphasis))] mt-1">Manage your project repositories</p>
         </div>
-        <Card className="rounded shadow-none">
+        <Card className="rounded-xl border border-[hsl(var(--border-default))] shadow-sm">
           <CardHeader>
-            <CardTitle className="text-xl text-high-emphasis">Connected Repositories</CardTitle>
+            <CardTitle className="text-xl text-[hsl(var(--high-emphasis))]">Connected Repositories</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-medium-emphasis">Repository management coming soon...</p>
+            <p className="text-[hsl(var(--medium-emphasis))]">Repository management coming soon...</p>
           </CardContent>
         </Card>
       </div>
