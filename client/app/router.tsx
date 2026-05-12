@@ -56,9 +56,6 @@ import ProjectPeoplePage from "./routes/project-overview/people";
 import ProjectRepositoriesPage from "./routes/project-overview/repositories";
 import ProjectSettingsPage from "./routes/project-overview/settings";
 
-// Guards
-import { ProjectGuard } from "./guards/project-guard";
-
 export const router = createBrowserRouter([
   // ── Auth layout (login, signup, sso-activate) ──
   {
@@ -122,11 +119,7 @@ export const router = createBrowserRouter([
 
   // ── Project Overview layout (project must be selected) ──
   {
-    element: (
-      <ProjectGuard>
-        <ProjectOverviewLayout />
-      </ProjectGuard>
-    ),
+    element: <ProjectOverviewLayout />,
     children: [
       { path: "/project-overview", element: <Navigate to="/project-overview/environments" replace /> },
       { path: "/project-overview/environments", element: <EnvironmentsPage /> },

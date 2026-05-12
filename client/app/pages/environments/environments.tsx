@@ -3,8 +3,7 @@ import { useGetProjects, useGetMigrationStatus } from "@blocks-identifier/hooks/
 import { useGetPeople } from "@blocks-identifier/hooks/use-people";
 import { EnvironmentCard } from "@/components/environment-card/environment-card";
 import { AddEnvironmentModal } from "@/components/environment-card/add-environment-modal";
-import { Plus, ArrowRightLeft, CircleHelp } from "lucide-react";
-import { Button } from "@/components/ui-kits/button/button";
+import { CircleHelp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +14,6 @@ import {
 import { useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { ProjectCardLoading } from "@/components/project-card/loading";
-import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui-kits/tooltip/tooltip";
 import { useNotificationListener } from "@blocks-utilities/notification";
 
@@ -46,7 +44,6 @@ export const EnvironmentsPage = () => {
   const { data: peopleData } = useGetPeople({ page: 0, pageSize: 1, filter: "" });
   const isViewerOwner = peopleData?.isOwner ?? false;
   const [addEnvModalOpen, setAddEnvModalOpen] = useState(false);
-  const navigate = useNavigate();
 
   const { data: migrationStatus, refetch: refetchMigrationStatus } = useGetMigrationStatus(
     groupId as string,
@@ -77,7 +74,7 @@ export const EnvironmentsPage = () => {
       <div>
         <div className="mb-6 flex flex-row justify-between">
           <h4 className="text-lg font-semibold md:text-xl">Environments</h4>
-          <div className="flex gap-2 sm:gap-4">
+          {/* <div className="flex gap-2 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
@@ -98,7 +95,7 @@ export const EnvironmentsPage = () => {
                 <span className="hidden sm:inline">New Environment</span>
               </Button>
             )}
-          </div>
+          </div> */}
         </div>
 
         {environmentList[0]?.isShared && (
