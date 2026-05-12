@@ -14,6 +14,7 @@ namespace XUnitTest
     {
         private readonly Mock<ILogger<ModuleManagementService>> _loggerMock;
         private readonly Mock<IModuleRepository> _moduleRepositoryMock;
+        private readonly Mock<IGlossaryRepository> _glossaryRepositoryMock;
         private readonly Mock<IValidator<ModuleModel>> _validatorMock;
         private readonly ModuleManagementService _service;
 
@@ -21,12 +22,14 @@ namespace XUnitTest
         {
             _loggerMock = new Mock<ILogger<ModuleManagementService>>();
             _moduleRepositoryMock = new Mock<IModuleRepository>();
+            _glossaryRepositoryMock = new Mock<IGlossaryRepository>();
             _validatorMock = new Mock<IValidator<ModuleModel>>();
             
             _service = new ModuleManagementService(
                 _validatorMock.Object,
                 _moduleRepositoryMock.Object,
-                _loggerMock.Object
+                _loggerMock.Object,
+                _glossaryRepositoryMock.Object
             );
         }
 
