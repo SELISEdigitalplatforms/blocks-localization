@@ -243,11 +243,21 @@ export function LanguageTable() {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Reset all filters and view state when the project changes
+  // Only reset if this is NOT the initial mount and store is hydrated
+  const isInitialMountRef = useRef(true);
   useEffect(() => {
-    setQueryParams(null);
-    resetSelectedLanguages();
-    sortReset();
-  }, [tenantId]);
+    // Skip reset on initial mount or if store is not yet hydrated
+    if (isInitialMountRef.current || !isHydrated) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    // Only reset if tenantId actually has a value
+    if (tenantId) {
+      setQueryParams(null);
+      resetSelectedLanguages();
+      sortReset();
+    }
+  }, [tenantId, isHydrated, setQueryParams, resetSelectedLanguages, sortReset]);
 
   const deleteLanguageKeyModalData = {
     dialogTitle: "Delete language key?",

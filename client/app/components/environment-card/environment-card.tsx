@@ -31,7 +31,7 @@ export const EnvironmentCard = ({
 
   const onClickHandler = (): void => {
     setSelectedProject(project);
-    navigate("/dashboard");
+    navigate("/services/language");
   };
 
   const handleCardClick = (): void => {
