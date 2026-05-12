@@ -102,13 +102,9 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Dashboard layout (protected routes with ProjectGuard) ──
+  // ── Dashboard layout (protected routes — no project required) ──
   {
-    element: (
-      <ProjectGuard>
-        <DashboardLayout />
-      </ProjectGuard>
-    ),
+    element: <DashboardLayout />,
     children: [
       { path: "/services/authentication", element: <AuthenticationConfigPage /> },
       { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
@@ -125,9 +121,13 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Project Overview layout ──
+  // ── Project Overview layout (project must be selected) ──
   {
-    element: <ProjectOverviewLayout />,
+    element: (
+      <ProjectGuard>
+        <ProjectOverviewLayout />
+      </ProjectGuard>
+    ),
     children: [
       { path: "/project-overview", element: <ProjectOverviewPage /> },
       { path: "/project-overview/environments", element: <ProjectEnvironmentsPage /> },
