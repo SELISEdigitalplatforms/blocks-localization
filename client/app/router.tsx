@@ -137,7 +137,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Console layout (console pages and profile without sidebar) ──
+  // ── Console layout (console pages and profile without sidebar — no project required) ──
   {
     element: <ConsoleLayout />,
     children: [
@@ -147,8 +147,8 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Root redirect: authenticated users go to console ──
-  { path: "/", element: <Navigate to="/console" replace /> },
+  // ── Root redirect: authenticated users go to language service ──
+  { path: "/", element: <Navigate to="/services/language" replace /> },
 
   // ── Catch-all: redirect to login ──
   { path: "*", element: <Navigate to="/login" replace /> },
