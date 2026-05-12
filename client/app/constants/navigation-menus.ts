@@ -26,7 +26,7 @@ export const navigationMenus: Menu[] = [
   {
     type: "menu",
     id: "service-localization__language-configuration",
-    name: "Language Configuration",
+    name: "Configuration",
     path: "/services/language/configure",
     icon: Cog,
   },
