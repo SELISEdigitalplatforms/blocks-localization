@@ -9,12 +9,15 @@ interface LanguageViewState {
   selectedOptionalColumns: string[];
   setSelectedOptionalColumns: (columns: string[]) => void;
   toggleOptionalColumn: (column: string) => void;
+  isHydrated: boolean;
+  setIsHydrated: (hydrated: boolean) => void;
 }
 
 export const useLanguageViewStore = create<LanguageViewState>()(
   persist(
     (set) => ({
       selectedLanguages: [],
+      isHydrated: false,
 
       setSelectedLanguages: (languages: string[]) => {
         set({ selectedLanguages: languages });
@@ -46,10 +49,18 @@ export const useLanguageViewStore = create<LanguageViewState>()(
             : [...state.selectedOptionalColumns, column],
         }));
       },
+
+      setIsHydrated: (hydrated: boolean) => {
+        set({ isHydrated: hydrated });
+      },
     }),
     {
       name: "language-view-storage",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // Called after state is rehydrated from localStorage
+        state?.setIsHydrated(true);
+      },
     },
   ),
 );

@@ -130,6 +130,7 @@ export function LanguageTable() {
     selectedOptionalColumns,
     toggleOptionalColumn,
     resetSelectedLanguages,
+    isHydrated,
   } = useLanguageViewStore();
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const { sortQueryParams, setSortQueryParams, reset: sortReset } = useKeysSortQueryParams();
@@ -307,8 +308,9 @@ export function LanguageTable() {
   // Sync selectedLanguages with the available languages for the current project.
   // Also runs on tenantId change to reset stale language codes from the previous project.
   // Only resets to defaults on initial load if user has no persisted selection.
+  // Wait for store to hydrate from localStorage before applying any logic.
   useEffect(() => {
-    if (!languageListData) return;
+    if (!languageListData || !isHydrated) return;
 
     const current = selectedLanguagesRef.current;
     const availableLanguageCodes = languageListData.map((lang) => lang.languageCode);
@@ -332,7 +334,7 @@ export function LanguageTable() {
 
     // After first run, mark that initial load is complete so we don't override user preferences
     isInitialLoadRef.current = false;
-  }, [languageListData, setSelectedLanguages, tenantId]);
+  }, [languageListData, setSelectedLanguages, tenantId, isHydrated]);
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
