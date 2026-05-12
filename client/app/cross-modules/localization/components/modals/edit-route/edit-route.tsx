@@ -181,10 +181,10 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
               type="button"
               onClick={addRoute}
               disabled={isPending}
-              className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed py-8 text-center transition-all hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed py-8 text-center hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <div className="mb-2 rounded-full bg-muted p-3 transition-colors group-hover:bg-primary/10">
-                <Plus className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              <div className="mb-2 rounded-full bg-muted p-3 group-hover:bg-primary/10">
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">No routes added yet</p>
               <p className="text-xs text-muted-foreground">Click here to add a route</p>
@@ -194,7 +194,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="group relative rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md"
+                  className="group relative rounded-lg border bg-card p-3 shadow-sm hover:shadow-md"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
@@ -204,7 +204,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
                       <Input
                         id={`route-${index}`}
                         placeholder="e.g., dashboard/settings"
-                        className="h-9 border-input bg-background shadow-none transition-colors focus-visible:border-primary"
+                        className="h-9 border-input bg-background shadow-none focus-visible:border-primary"
                         value={form.watch(`routes.${index}`)}
                         onChange={(e) => form.setValue(`routes.${index}`, e.target.value)}
                         disabled={isPending}
@@ -213,7 +213,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 shrink-0 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive disabled:opacity-100 group-hover:opacity-100"
+                      className="h-9 w-9 shrink-0 text-muted-foreground opacity-0  hover:bg-destructive/10 hover:text-destructive disabled:opacity-100 group-hover:opacity-100"
                       onClick={() => deleteRoute(index)}
                       disabled={isPending}
                     >

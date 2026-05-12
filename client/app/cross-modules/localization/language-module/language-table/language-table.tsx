@@ -34,7 +34,6 @@ import {
 } from "@blocks-localization/components/language-table-toolbar/language-table-toolbar";
 import AutoTranslate from "@blocks-localization/components/modals/auto-translate/auto-translate";
 import ExportKey from "@blocks-localization/components/modals/export-key/export-key";
-import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useDeleteLanguageKey,
   useGenerateUilmFile,
@@ -233,7 +232,6 @@ export function LanguageTable() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] = useState(false);
-  const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [tabId, setTabId] = useQueryState("languageActivity", { defaultValue: "keys" });
   const { isPending, mutateAsync } = useGenerateUilmFile();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -497,10 +495,6 @@ export function LanguageTable() {
     setIsAutoTranslateDialogOpen(true);
   };
 
-  const handleNewModuleClick = () => {
-    setIsNewModuleDialogOpen(true);
-  };
-
   useEffect(() => {
     if (tabId === "history") {
       setQueryParams(null);
@@ -570,10 +564,6 @@ export function LanguageTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem className="cursor-pointer" onSelect={handleNewModuleClick}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      <span>New Module</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer" onSelect={handleImportClick}>
                       <FolderInput className="mr-2 h-4 w-4" />
                       <span>Import keys</span>
@@ -601,9 +591,6 @@ export function LanguageTable() {
                 </Dialog>
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey onClose={() => setIsExportDialogOpen(false)} />
-                </Dialog>
-                <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
-                  <NewModule onClose={setIsNewModuleDialogOpen} />
                 </Dialog>
                 <Button
                   onClick={onPublishChangesClick}

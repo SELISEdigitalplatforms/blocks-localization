@@ -19,7 +19,7 @@ const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
     <Link
       to={menu.path}
       className={cn(
-        "flex h-10 items-center gap-2 px-4 py-1.5 text-base transition-colors hover:text-[hsl(var(--high-emphasis))]",
+        "flex h-10 items-center gap-2 px-4 py-1.5 text-base hover:text-[hsl(var(--high-emphasis))]",
         isActiveMenu && "!text-primary",
         menu.disabled && "pointer-events-none cursor-not-allowed opacity-50",
       )}
