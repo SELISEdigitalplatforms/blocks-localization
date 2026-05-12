@@ -23,7 +23,8 @@ import { Plus, Pencil, Trash, EllipsisVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
-import { useGetUsers } from "@blocks-idp/iam/hooks/use-user";
+import { userService } from "@blocks-idp/iam/services/user.service";
+import { useQuery } from "@tanstack/react-query";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) => (
@@ -54,30 +55,63 @@ export function ModuleTable() {
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Fetch users to get their names - ensure query is properly enabled and keyed by tenantId
-  const { data: usersData, isLoading: isUsersLoading } = useGetUsers({
-    page: 0,
-    pageSize: 1000,
-    projectKey: tenantId,
-  }, { enabled: !!tenantId });
+  // Extract unique createdBy user IDs from modules
+  const uniqueCreatedByIds = useMemo(() => {
+    if (!modulesData) return [];
+    const ids = new Set<string>();
+    modulesData.forEach((module) => {
+      if (module.createdBy) {
+        ids.add(module.createdBy);
+      }
+    });
+    return Array.from(ids);
+  }, [modulesData]);
 
-  // Create a map of userId to user full name
-  const userNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    const users = usersData?.data;
-    if (users && Array.isArray(users)) {
-      users.forEach((user) => {
-        const fullName = `${user.firstName} ${user.lastName}`.trim();
-        map[user.itemId] = fullName || user.email || user.userName || user.itemId;
+  // Fetch users by IDs using useQuery
+  const { data: userMap, isLoading: isUsersLoading } = useQuery({
+    queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
+    queryFn: async () => {
+      if (uniqueCreatedByIds.length === 0) return {};
+
+      const map: Record<string, { firstName: string; lastName: string; email: string; userName: string }> = {};
+
+      // Fetch all users in parallel
+      const promises = uniqueCreatedByIds.map(async (userId) => {
+        try {
+          const response = await userService.getUserById({ id: userId, projectKey: tenantId });
+          if (response?.data) {
+            map[userId] = {
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              userName: response.data.userName,
+            };
+          }
+        } catch (error) {
+          console.error(`Failed to fetch user ${userId}:`, error);
+        }
       });
-    }
-    return map;
-  }, [usersData]);
+
+      await Promise.all(promises);
+      return map;
+    },
+    enabled: !!tenantId && uniqueCreatedByIds.length > 0,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
     if (!userId) return "—";
-    return userNameMap[userId] || userId;
+    // If user data is still loading, show placeholder
+    if (isUsersLoading || !userMap) {
+      return "—";
+    }
+    const user = userMap[userId];
+    if (user) {
+      const fullName = `${user.firstName} ${user.lastName}`.trim();
+      return fullName || user.email || user.userName || userId;
+    }
+    return userId;
   };
 
   const [searchValue, setSearchValue] = useState("");
@@ -145,7 +179,7 @@ export function ModuleTable() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isModulesLoading || isUsersLoading ? (
+                  {isModulesLoading ? (
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={index}>
                         {[1, 2, 3, 4].map((_, colIndex) => (
