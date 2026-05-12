@@ -55,8 +55,6 @@ const GlossaryTable: React.FC = () => {
 
   const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
 
-
-
   const handleSearchChange = useCallback((value: string) => {
     setSearchText(value);
     if (searchTimerRef.current) {
@@ -209,7 +207,7 @@ const GlossaryTable: React.FC = () => {
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold">Glossaries</h1>
+        <h1 className="text-2xl font-semibold">Glossary Management</h1>
         <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
           <DialogTrigger asChild>
             <Button
