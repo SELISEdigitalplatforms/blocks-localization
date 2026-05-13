@@ -4,7 +4,10 @@ type RuntimeKey =
   | "BLOCKS_API_BASE_URL"
   | "BLOCKS_X_BLOCKS_KEY"
   | "BLOCKS_GOOGLE_SITE_KEY"
-  | "BLOCKS_CONSTRUCT_URL";
+  | "BLOCKS_CONSTRUCT_URL"
+  | "BLOCKS_OIDC_CLIENT_ID"
+  | "BLOCKS_IDP_BASE_URL"
+  | "BLOCKS_LOGIC_BASE_URL";
 
 declare global {
   interface Window {
@@ -17,6 +20,7 @@ const isPlaceholder = (value?: string) =>
 
 export const getRuntimeEnv = (key: RuntimeKey): string => {
   const windowValue = typeof window !== "undefined" ? window.__BLOCKS_ENV__?.[key] : undefined;
+  
   if (windowValue && !isPlaceholder(windowValue)) {
     return windowValue;
   }

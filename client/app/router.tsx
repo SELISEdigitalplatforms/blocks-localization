@@ -55,6 +55,8 @@ import { EnvironmentsPage } from "./pages/environments/environments";
 import ProjectPeoplePage from "./routes/project-overview/people";
 import ProjectRepositoriesPage from "./routes/project-overview/repositories";
 import ProjectSettingsPage from "./routes/project-overview/settings";
+import LoginSimplePage from "./routes/auth/login-simple";
+import LoginCallbackPage from "./routes/callback/callback";
 
 export const router = createBrowserRouter([
   // ── Auth layout (login, signup, sso-activate) ──
@@ -67,7 +69,13 @@ export const router = createBrowserRouter([
     ],
   },
   // ── Simple login (no guards, no API calls) ──
-  { path: "/login", element: <OidcLogin /> },
+  {
+    path: "/login",
+    children: [
+      { index: true, element: <LoginSimplePage /> },
+      { path: "callback", element: <LoginCallbackPage /> },
+    ],
+  },
   // ── Public layout (other public pages with PublicGuard) ──
   
   {

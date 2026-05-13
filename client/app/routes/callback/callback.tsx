@@ -1,48 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { githubInfoService } from "@/cross-modules/devops/services/github-info.service";
 import { Loader } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
+import { API_BASES } from "@/constants/endpoint.constant";
 
-export default function CallbackPage() {
+export default function LoginCallbackPage() {
   const [searchParams] = useSearchParams();
+  const hasProcessed = useRef(false);
+  const { setAuthenticated } = useAuthStore();
+
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const [projectKey] = useState(() => localStorage.getItem("github_auth_project_key") || "");
-
-  const { isLoading, isSuccess } = useQuery({
-    queryKey: ["github-verification", code, projectKey],
-    queryFn: () => githubInfoService.verifyAuthorization(code || "", projectKey),
-    enabled: !!code && !!projectKey,
-    retry: false,
-  });
+  const error = searchParams.get("error");
+  const tenantId = searchParams.get("tenant_id");
 
   useEffect(() => {
-    if (isSuccess) {
-      localStorage.setItem("isReload", "true");
-      
-      // Clean up stored auth data
-      localStorage.removeItem("github_auth_state");
-      localStorage.removeItem("github_auth_project_key");
-      localStorage.removeItem("github_auth_destination");
-      
-      if (typeof window !== "undefined") {
-        window.close();
-      }
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+    const apiBaseUrl = API_BASES.IDP;
+
+    const callbackUrl = new URL("/api/idp/callback", apiBaseUrl);
+    // Forward the callback parameters to backend
+    if (code) callbackUrl.searchParams.set("code", code);
+    if (state) callbackUrl.searchParams.set("state", state);
+    if (error) callbackUrl.searchParams.set("error", error);
+    if (tenantId) callbackUrl.searchParams.set("tenant_id", tenantId);
+
+    const headers: Record<string, string> = {};
+    if (tenantId) {
+      headers["X-Blocks-Key"] = tenantId;
     }
-  }, [isSuccess]);
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+    fetch(callbackUrl.toString(), { headers, credentials: "include" })
+      .then((res) => {
+        if (res.ok) {
+          setAuthenticated();
+          window.location.href = "/console";
+        } else {
+          window.location.href = "/login?error=callback_failed";
+        }
+      })
+      .catch(() => {
+        window.location.href = "/login?error=callback_error";
+      });
+  }, [code, state, error, tenantId, setAuthenticated]);
 
-  if (isSuccess) {
-    return null;
-  }
-
-  return null;
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader className="h-12 w-12 animate-spin text-gray-500" />
+    </div>
+  );
 }
