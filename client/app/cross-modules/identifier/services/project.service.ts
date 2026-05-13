@@ -2,7 +2,7 @@ import { HttpClient } from "@/lib/http-client";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const logicHttp = new HttpClient(
+const http = new HttpClient(
   deriveLogicBaseUrl(),
   getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
 );
@@ -46,7 +46,7 @@ import {
 export class ProjectService {
   getProjects(page = 0, pageSize = 100, tenantGroupId = ""): Promise<IProjectGroup[]> {
     const url = `${PROJECT_ENDPOINTS.GETS}?page=${page}&pageSize=${pageSize}&tenantGroupId=${tenantGroupId}`;
-    return logicHttp.get(url);
+    return http.get(url,undefined, { absoluteUrl: true });
   }
 
   getAssets(tenantGroupId: string): Promise<{
@@ -61,14 +61,14 @@ export class ProjectService {
     isSuccess: boolean;
   }> {
     const url = `${PROJECT_ENDPOINTS.GET_ASSET}?TenantGroupId=${tenantGroupId}`;
-    return logicHttp.get(url);
+    return http.get(url, undefined, { absoluteUrl: true });
   }
 
   addAssets(payload: { tenantGroupId: string; resource: IResource }): Promise<{
     errors: unknown | null;
     isSuccess: boolean;
   }> {
-    return logicHttp.post(PROJECT_ENDPOINTS.ADD_ASSET, payload);
+    return http.post(PROJECT_ENDPOINTS.ADD_ASSET, payload, undefined, { absoluteUrl: true });
   }
 
   getEnvRepositories(projectkey: string): Promise<{
@@ -77,7 +77,7 @@ export class ProjectService {
     isSuccess: boolean;
   }> {
     const url = `${CLOUD_BUILD_ENDPOINTS.REPOS_LIST}?projectkey=${projectkey}`;
-    return logicHttp.get(url);
+    return http.get(url, undefined, { absoluteUrl: true });
   }
 
   repoUpdate(payload: {
@@ -92,12 +92,12 @@ export class ProjectService {
     errors: unknown | null;
     isSuccess: boolean;
   }> {
-    return logicHttp.post(CLOUD_BUILD_ENDPOINTS.REPO_UPDATE, payload);
+    return http.post(CLOUD_BUILD_ENDPOINTS.REPO_UPDATE, payload, undefined, { absoluteUrl: true });
   }
 
   getProject(payload: IGetProjectPayload): Promise<IGetProjectResponse> {
     const url = `${PROJECT_ENDPOINTS.GET}?projectId=${payload.projectId}`;
-    return logicHttp.get(url);
+    return http.get(url, undefined, { absoluteUrl: true });
   }
 
   createProject(payload: ICreateProjectPayload): Promise<{
@@ -105,53 +105,53 @@ export class ProjectService {
     errors: Record<string, string | string[]>;
     tenantGroupId: string;
   }> {
-    return logicHttp.post(PROJECT_ENDPOINTS.CREATE, payload);
+    return http.post(PROJECT_ENDPOINTS.CREATE, payload, undefined, { absoluteUrl: true });
   }
 
   validateCNameProject(
     payload: IValidateCNameProjectPayload,
   ): Promise<IValidateCNameProjectResponse> {
-    return logicHttp.post(DOMAIN_ENDPOINTS.CONFIGURE, payload);
+    return http.post(DOMAIN_ENDPOINTS.CONFIGURE, payload, undefined, { absoluteUrl: true });
   }
 
   updateProject(payload: IUpdateProjectPayload): Promise<IUpdateProjectResponse> {
-    return logicHttp.post(PROJECT_ENDPOINTS.UPDATE, payload);
+    return http.post(PROJECT_ENDPOINTS.UPDATE, payload, undefined, { absoluteUrl: true });
   }
 
   updateTenantGroup(payload: IUpdateTenantGroupPayload): Promise<IUpdateProjectResponse> {
-    return logicHttp.post(PROJECT_ENDPOINTS.UPDATE_TENANT_GROUP, payload);
+    return http.post(PROJECT_ENDPOINTS.UPDATE_TENANT_GROUP, payload, undefined, { absoluteUrl: true });
   }
   disableProject(payload: IDisableProjectPayload): Promise<IDisableProjectResponse> {
-    return logicHttp.post(PROJECT_ENDPOINTS.DISABLE, payload);
+    return http.post(PROJECT_ENDPOINTS.DISABLE, payload, undefined, { absoluteUrl: true });
   }
 
   getProjectLoginOption(): Promise<IGetProjectLoginOptionResponse> {
-    return logicHttp.get(PROJECT_ENDPOINTS.GET_LOGIN_OPTIONS);
+    return http.get(PROJECT_ENDPOINTS.GET_LOGIN_OPTIONS, undefined, { absoluteUrl: true });
   }
 
   // Data Migration Methods
   initiateMigration(payload: IMigrationRequest): Promise<IMigrationInitiateResponse> {
-    return logicHttp.post(MIGRATION_ENDPOINTS.MIGRATE, payload);
+    return http.post(MIGRATION_ENDPOINTS.MIGRATE, payload, undefined, { absoluteUrl: true });
   }
 
   verifyMigration(payload: IVerifyMigrationRequest): Promise<IMigrationVerificationResponse> {
-    return logicHttp.post(MIGRATION_ENDPOINTS.VERIFY, payload);
+    return http.post(MIGRATION_ENDPOINTS.VERIFY, payload, undefined, { absoluteUrl: true });
   }
 
   getMigrationStatus(tenantGroupId: string): Promise<IMigrationStatusResponse> {
     const url = `${MIGRATION_ENDPOINTS.GET_STATUS}?tenantGroupId=${tenantGroupId}`;
-    return logicHttp.get(url);
+    return http.get(url, undefined, { absoluteUrl: true });
   }
 
   savePublicCertificate(payload: ISavePublicCertificatePayload): Promise<IUpdateProjectResponse> {
-    return logicHttp.post(PROJECT_ENDPOINTS.UPDATE_TOKEN_VALIDATION, payload);
+    return http.post(PROJECT_ENDPOINTS.UPDATE_TOKEN_VALIDATION, payload, undefined, { absoluteUrl: true });
   }
 
   getPublicCertificateInformation(
     projectKey: string,
   ): Promise<IGetPublicCertificateResponse | null> {
     const url = `${PROJECT_ENDPOINTS.GET_TOKEN_VALIDATION}?ProjectKey=${projectKey}`;
-    return logicHttp.get<IGetPublicCertificateResponse | null>(url);
+    return http.get<IGetPublicCertificateResponse | null>(url, undefined, { absoluteUrl: true });
   }
 
   async validateJwksUrl(url: string): Promise<{
@@ -210,18 +210,18 @@ export class ProjectService {
 
   getJwtClaim(payload: GetJwtClaimPayload): Promise<JwtClaimResponse> {
     const url = `${PROJECT_ENDPOINTS.GET_JWT_CLAIMS}?ProjectKey=${payload.projectKey}&ItemId=${payload.itemId}`;
-    return logicHttp.get(url);
+    return http.get(url, undefined, { absoluteUrl: true });
   }
 
   addJwtClaim(payload: JwtClaimPayload): Promise<{
     errors: unknown | null;
     isSuccess: boolean;
   }> {
-    return logicHttp.post(PROJECT_ENDPOINTS.SAVE_JWT_CLAIMS, payload);
+    return http.post(PROJECT_ENDPOINTS.SAVE_JWT_CLAIMS, payload, undefined, { absoluteUrl: true });
   }
 
   getSubscriptionUsage(projectKey: string): Promise<IGetSubscriptionUsageResponse> {
-    return logicHttp.get(`${SUBSCRIPTION_ENDPOINTS.GETS}?projectKey=${projectKey}`);
+    return http.get(`${SUBSCRIPTION_ENDPOINTS.GETS}?projectKey=${projectKey}`, undefined, { absoluteUrl: true });
   }
 }
 
