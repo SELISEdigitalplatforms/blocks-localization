@@ -31,41 +31,48 @@ interface LanguageViewState {
 }
 
 // Custom storage adapter using cookies for cross-subdomain persistence
+// TODO: Re-enable cookie storage after OIDC work is complete
 const cookieStorage = {
   getItem: (): string | null => {
-    const value = getJsonCookie<{ state: { selectedLanguages: string[]; selectedOptionalColumns: string[] }; version: number }>(COOKIE_NAME);
-    if (!value) return null;
+    // Temporarily disabled for OIDC work
+    return null;
+    // const value = getJsonCookie<{ state: { selectedLanguages: string[]; selectedOptionalColumns: string[] }; version: number }>(COOKIE_NAME);
+    // if (!value) return null;
 
-    // Validate and sanitize data on read
-    const sanitized = {
-      state: {
-        selectedLanguages: (value.state?.selectedLanguages || []).filter(isValidLanguageCode),
-        selectedOptionalColumns: (value.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-      },
-      version: value.version || 0,
-    };
+    // // Validate and sanitize data on read
+    // const sanitized = {
+    //   state: {
+    //     selectedLanguages: (value.state?.selectedLanguages || []).filter(isValidLanguageCode),
+    //     selectedOptionalColumns: (value.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
+    //   },
+    //   version: value.version || 0,
+    // };
 
-    return JSON.stringify(sanitized);
+    // return JSON.stringify(sanitized);
   },
   setItem: (name: string, value: string): void => {
-    try {
-      const parsed = JSON.parse(value);
-      // Additional validation on write
-      const validated = {
-        ...parsed,
-        state: {
-          selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
-          selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-        },
-      };
-      setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
-    } catch {
-      // If parsing fails, store as-is
-      setCookie(COOKIE_NAME, value, COOKIE_DAYS);
-    }
+    // Temporarily disabled for OIDC work
+    return;
+    // try {
+    //   const parsed = JSON.parse(value);
+    //   // Additional validation on write
+    //   const validated = {
+    //     ...parsed,
+    //     state: {
+    //       selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
+    //       selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
+    //     },
+    //   };
+    //   setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
+    // } catch {
+    //   // If parsing fails, store as-is
+    //   setCookie(COOKIE_NAME, value, COOKIE_DAYS);
+    // }
   },
   removeItem: (): void => {
-    removeCookie(COOKIE_NAME);
+    // Temporarily disabled for OIDC work
+    return;
+    // removeCookie(COOKIE_NAME);
   },
 };
 
