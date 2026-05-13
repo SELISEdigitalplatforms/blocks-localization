@@ -1,62 +1,41 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { githubInfoService } from "@/cross-modules/devops/services/github-info.service";
 import { Loader } from "lucide-react";
-import { useAuthStore } from "@/store/useAuthStore";
-import { userService } from "@/idp/iam/services/user.service";
-import { API_BASES } from "@/constants/endpoint.constant";
 
-export default function LoginCallbackPage() {
+export default function CallbackPage() {
   const [searchParams] = useSearchParams();
-  const hasProcessed = useRef(false);
-  const { setAuthenticated, setUser } = useAuthStore();
-
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const error = searchParams.get("error");
-  const tenantId = searchParams.get("tenant_id");
-
+  const [projectKey] = useState(() => localStorage.getItem("github_auth_project_key") || "");
+  const { isLoading, isSuccess } = useQuery({
+    queryKey: ["github-verification", code, projectKey],
+    queryFn: () => githubInfoService.verifyAuthorization(code || "", projectKey),
+    enabled: !!code,
+    retry: false,
+  });
   useEffect(() => {
-    if (hasProcessed.current) return;
-    hasProcessed.current = true;
-    const apiBaseUrl = API_BASES.IDP;
-
-    const callbackUrl = new URL("/api/idp/callback", apiBaseUrl);
-    // Forward the callback parameters to backend
-    if (code) callbackUrl.searchParams.set("code", code);
-    if (state) callbackUrl.searchParams.set("state", state);
-    if (error) callbackUrl.searchParams.set("error", error);
-    if (tenantId) callbackUrl.searchParams.set("tenant_id", tenantId);
-
-    const headers: Record<string, string> = {};
-    if (tenantId) {
-      headers["X-Blocks-Key"] = tenantId;
+    if (isSuccess) {
+      localStorage.setItem("isReload", "true");
+      // Clean up stored auth data
+      localStorage.removeItem("github_auth_state");
+      localStorage.removeItem("github_auth_project_key");
+      localStorage.removeItem("github_auth_destination");
+      if (typeof window !== "undefined") {
+        window.close();
+      }
     }
-
-    fetch(callbackUrl.toString(), { headers, credentials: "include" })
-      .then((res) => {
-        if (res.ok) {
-          setAuthenticated();
-          // Fetch user data immediately so ProtectedGuard has it ready
-          return userService.getUser();
-        } else {
-          window.location.href = "/login?error=callback_failed";
-          return null;
-        }
-      })
-      .then((userResponse) => {
-        if (userResponse?.data) {
-          setUser(userResponse.data);
-        }
-        window.location.href = "/services/language";
-      })
-      .catch(() => {
-        window.location.href = "/login?error=callback_error";
-      });
-  }, [code, state, error, tenantId, setAuthenticated, setUser]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Loader className="h-12 w-12 animate-spin text-gray-500" />
-    </div>
-  );
+  }, [isSuccess]);
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+  if (isSuccess) {
+    return null;
+  }
+  return null;
 }
