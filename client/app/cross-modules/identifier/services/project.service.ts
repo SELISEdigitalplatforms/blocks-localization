@@ -1,11 +1,4 @@
-import { HttpClient } from "@/lib/http-client";
-import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
-import { getRuntimeEnv } from "@/lib/runtime-env";
-
-const http = new HttpClient(
-  deriveLogicBaseUrl(),
-  getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
-);
+import { http } from "@/lib/http-client";
 import {
   ICreateProjectPayload,
   IDisableProjectPayload,
