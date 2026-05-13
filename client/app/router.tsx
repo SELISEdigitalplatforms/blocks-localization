@@ -8,7 +8,6 @@ import { DashboardLayout } from "./layouts/dashboard-layout";
 import { ConsoleLayout } from "./layouts/console-layout";
 import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
 // Auth routes (public, with auth layout)
-import LoginPage from "./routes/auth/login";
 import SignupPage from "./routes/auth/signup";
 import SsoActivatePage from "./routes/auth/sso-activate";
 
@@ -45,7 +44,6 @@ import {
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
-import OidcLogin from "./routes/auth/oidc-login";
 
 // Console routes
 import { Console } from "./pages/console/console";
@@ -57,7 +55,8 @@ import ProjectPeoplePage from "./routes/project-overview/people";
 import ProjectRepositoriesPage from "./routes/project-overview/repositories";
 import ProjectSettingsPage from "./routes/project-overview/settings";
 import LoginSimplePage from "./routes/auth/login-simple";
-import LoginCallbackPage from "./routes/callback/callback";
+import LoginCallbackPage from "./routes/auth/callback";
+import CallbackPage from "./routes/callback/callback";
 
 // ── Root redirect: conditionally redirects based on auth state ──
 function RootRedirect() {
@@ -73,7 +72,6 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      // { path: "/login", element: <LoginPage /> },
       { path: "/signup", element: <SignupPage /> },
       { path: "/sso-activate", element: <SsoActivatePage /> },
     ],
@@ -147,13 +145,14 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Console layout (console pages and profile without sidebar — no project required) ──
+  // ── Console layout (profile, console pages without sidebar) ──
   {
     element: <ConsoleLayout />,
     children: [
+      { path: "/profile", element: <ProfilePage /> },
       { path: "/console", element: <Console /> },
       { path: "/create-project", element: <CreateProjectWrapper /> },
-      { path: "/profile", element: <ProfilePage /> },
+      { path: "/callback", element: <CallbackPage /> },
     ],
   },
 

@@ -9,11 +9,18 @@ import { userService } from "@blocks-idp/iam/services/user.service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
-export const useGetUsers = (option: IGetUsersPayload, queryOptions?: { enabled?: boolean }) => {
+export const useGetUserInfo = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: ["user-info"],
+    queryFn: () => userService.getUserInfo(),
+    ...options,
+  });
+};
+
+export const useGetUsers = (option: IGetUsersPayload) => {
   return useQuery({
     queryKey: ["users", option],
     queryFn: () => userService.getUsers(option),
-    enabled: queryOptions?.enabled ?? true,
   });
 };
 
