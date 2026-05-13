@@ -2,12 +2,13 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { userService } from "@/idp/iam/services/user.service";
 import { API_BASES } from "@/constants/endpoint.constant";
 
 export default function LoginCallbackPage() {
   const [searchParams] = useSearchParams();
   const hasProcessed = useRef(false);
-  const { setAuthenticated } = useAuthStore();
+  const { setAuthenticated, setUser } = useAuthStore();
 
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -35,15 +36,23 @@ export default function LoginCallbackPage() {
       .then((res) => {
         if (res.ok) {
           setAuthenticated();
-          window.location.href = "/services/language";
+          // Fetch user data immediately so ProtectedGuard has it ready
+          return userService.getUser();
         } else {
           window.location.href = "/login?error=callback_failed";
+          return null;
         }
+      })
+      .then((userResponse) => {
+        if (userResponse?.data) {
+          setUser(userResponse.data);
+        }
+        window.location.href = "/services/language";
       })
       .catch(() => {
         window.location.href = "/login?error=callback_error";
       });
-  }, [code, state, error, tenantId, setAuthenticated]);
+  }, [code, state, error, tenantId, setAuthenticated, setUser]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
