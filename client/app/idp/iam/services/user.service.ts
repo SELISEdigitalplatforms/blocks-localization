@@ -1,5 +1,6 @@
-import { HttpClient } from "@/lib/http-client";
+import { http } from "@/lib/http-client";
 import { parseMongoDBString } from "@/lib/utils";
+import { API_BASES } from "@/constants/endpoint.constant";
 import {
   IAccountResendActivationPayload,
   IAccountResendActivationResponse,
@@ -31,53 +32,70 @@ import {
 } from "@blocks-idp/iam/models/user";
 import { UserAccountService } from "./account.service";
 import { USER_ENDPOINTS } from "../constants/endpoint.constant";
-import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
-import { getRuntimeEnv } from "@/lib/runtime-env";
-
-const logicHttp = new HttpClient(
-  deriveLogicBaseUrl(),
-  getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
-);
 
 export class UserService {
   constructor(public account: UserAccountService) {}
 
   getUsers(payload: IGetUsersPayload): Promise<IGetUsersResponse> {
-    return logicHttp.post(USER_ENDPOINTS.GET_USERS, payload);
+    return http.post(USER_ENDPOINTS.GET_USERS, payload);
   }
 
   getUser(): Promise<{ data: User }> {
-    return logicHttp.get(USER_ENDPOINTS.GET_USER);
+    return http.get(`${USER_ENDPOINTS.GET_USER}`, undefined, {
+      absoluteUrl: true,
+    });
+  }
+
+  getUserInfo(): Promise<User> {
+    return http.get(`${USER_ENDPOINTS.USER_INFO}`, undefined, {
+      absoluteUrl: true,
+    });
   }
 
   getUserById(payload: IGetUserByIdPayload): Promise<IGetUserByIdResponse> {
-    return logicHttp.get(`${USER_ENDPOINTS.GET_USER}?id=${payload.id}&ProjectKey=${payload.projectKey}`);
+    return http.get(
+      `${USER_ENDPOINTS.GET_USER}?id=${payload.id}&ProjectKey=${payload.projectKey}`,
+      undefined,
+      { absoluteUrl: true },
+    );
   }
 
   addUser(createPayload: ICreateUserPayload): Promise<ICreateUserResponse> {
-    return logicHttp.post(USER_ENDPOINTS.CREATE, createPayload);
+    return http.post(USER_ENDPOINTS.CREATE, createPayload);
   }
 
   updateUser(payload: IUpdateUserPayload): Promise<IUpdateUserResponse> {
-    return logicHttp.post(USER_ENDPOINTS.UPDATE, payload);
+    return http.post(USER_ENDPOINTS.UPDATE, payload);
   }
 
-  getSignUpSetting(payload: IGetSignUpSettingPayload): Promise<IGetSignUpSettingResponse> {
-    return logicHttp.get(`${USER_ENDPOINTS.GET_SIGNUP_SETTING}?ProjectKey=${payload.projectKey}`);
+  getSignUpSetting(
+    payload: IGetSignUpSettingPayload,
+  ): Promise<IGetSignUpSettingResponse> {
+    return http.get(
+      `${USER_ENDPOINTS.GET_SIGNUP_SETTING}?ProjectKey=${payload.projectKey}`,
+    );
   }
 
-  saveSignUpSetting(payload: ISaveSignUpSettingPayload): Promise<ISaveSignUpSettingResponse> {
-    return logicHttp.post(USER_ENDPOINTS.SAVE_SIGNUP_SETTING, payload);
+  saveSignUpSetting(
+    payload: ISaveSignUpSettingPayload,
+  ): Promise<ISaveSignUpSettingResponse> {
+    return http.post(USER_ENDPOINTS.SAVE_SIGNUP_SETTING, payload);
   }
 
   saveRolesAndPermissions(
     payload: ISaveRolesAndPermissionsPayload,
   ): Promise<ISaveRolesAndPermissionsResponse> {
-    return logicHttp.post(USER_ENDPOINTS.SAVE_ROLES_AND_PERMISSIONS, payload);
+    return http.post(USER_ENDPOINTS.SAVE_ROLES_AND_PERMISSIONS, payload);
   }
 
-  async getSessions(payload: IGetSessionPayload): Promise<IDeviceSessionResponse> {
-    const res = await logicHttp.get<{ data: string[]; errors: unknown; totalCount: number }>(
+  async getSessions(
+    payload: IGetSessionPayload,
+  ): Promise<IDeviceSessionResponse> {
+    const res = await http.get<{
+      data: string[];
+      errors: unknown;
+      totalCount: number;
+    }>(
       `${USER_ENDPOINTS.GET_SESSIONS}?page=${payload.page}&pageSize=${payload.pageSize}&projectkey=${payload.projectKey}&filter.userId=${payload.filter.UserId}`,
     );
     return {
@@ -87,8 +105,14 @@ export class UserService {
     };
   }
 
-  async getHistories(payload: IGetHistoriesPayload): Promise<IHistoriesResponse> {
-    const res = await logicHttp.get<{ data: string[]; errors: unknown; totalCount: number }>(
+  async getHistories(
+    payload: IGetHistoriesPayload,
+  ): Promise<IHistoriesResponse> {
+    const res = await http.get<{
+      data: string[];
+      errors: unknown;
+      totalCount: number;
+    }>(
       `${USER_ENDPOINTS.GET_HISTORIES}?page=${payload.page}&pageSize=${payload.pageSize}&projectkey=${payload.projectKey}&filter.userId=${payload.filter.UserId}`,
     );
     return {
@@ -99,21 +123,23 @@ export class UserService {
   }
 
   async getPats(): Promise<IPATResponse> {
-    return logicHttp.get(USER_ENDPOINTS.GET_USER_CODES);
+    return http.get(USER_ENDPOINTS.GET_USER_CODES);
   }
 
   async generatePats(payload: IGeneratePATPayload): Promise<IPATResponse> {
-    return logicHttp.post(USER_ENDPOINTS.GENERATE_USER_CODE, payload);
+    return http.post(USER_ENDPOINTS.GENERATE_USER_CODE, payload);
   }
 
   getUserRoles(payload: IGetUserRolesPayload): Promise<IGetUserRolesResponse> {
-    return logicHttp.get(
+    return http.get(
       `${USER_ENDPOINTS.GET_USER_ROLES}?Id=${payload.userId}&ProjectKey=${payload.projectKey}`,
     );
   }
 
-  getUserPermissions(payload: IGetUserPermissionsPayload): Promise<IGetUserPermissionsResponse> {
-    return logicHttp.get(
+  getUserPermissions(
+    payload: IGetUserPermissionsPayload,
+  ): Promise<IGetUserPermissionsResponse> {
+    return http.get(
       `${USER_ENDPOINTS.GET_USER_PERMISSIONS}?Id=${payload.userId}&ProjectKey=${payload.projectKey}`,
     );
   }
@@ -121,7 +147,7 @@ export class UserService {
   accountDeactivate(
     payload: IAccountResendActivationPayload,
   ): Promise<IAccountResendActivationResponse> {
-    return logicHttp.post(USER_ENDPOINTS.DEACTIVATE, payload);
+    return http.post(USER_ENDPOINTS.DEACTIVATE, payload);
   }
 }
 
