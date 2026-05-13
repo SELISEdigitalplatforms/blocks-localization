@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { useAuthStore } from "./store/useAuthStore";
 
 import { AuthLayout } from "./layouts/auth-layout";
 import { PublicLayout } from "./layouts/public-layout";
@@ -57,6 +58,15 @@ import ProjectRepositoriesPage from "./routes/project-overview/repositories";
 import ProjectSettingsPage from "./routes/project-overview/settings";
 import LoginSimplePage from "./routes/auth/login-simple";
 import LoginCallbackPage from "./routes/callback/callback";
+
+// ── Root redirect: conditionally redirects based on auth state ──
+function RootRedirect() {
+  const { isAuthenticated } = useAuthStore();
+  if (isAuthenticated) {
+    return <Navigate to="/services/language" replace />;
+  }
+  return <Navigate to="/login" replace />;
+}
 
 export const router = createBrowserRouter([
   // ── Auth layout (login, signup, sso-activate) ──
@@ -147,8 +157,8 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Root redirect: authenticated users go to language service ──
-  { path: "/", element: <Navigate to="/services/language" replace /> },
+  // ── Root redirect: check auth first, then redirect appropriately ──
+  { path: "/", element: <RootRedirect /> },
 
   // ── Catch-all: redirect to login ──
   { path: "*", element: <Navigate to="/login" replace /> },
