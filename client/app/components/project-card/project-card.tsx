@@ -32,7 +32,7 @@ export const ProjectCard = ({ project, projects }: ProjectCardProps) => {
     e.stopPropagation();
     setTennantGroup(envProject.tenantGroupId);
     setSelectedProject(envProject);
-    navigate("/dashboard");
+    navigate("/services/language");
   };
 
   const renderEnvChip = (env: string, envProject: IProject) => {
