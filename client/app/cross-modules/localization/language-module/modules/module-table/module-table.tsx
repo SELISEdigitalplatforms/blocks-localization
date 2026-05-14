@@ -28,7 +28,7 @@ import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { useProjectStore } from "@/store/useProjectStore";
 import { userService } from "@blocks-idp/iam/services/user.service";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -66,6 +66,7 @@ const RowActionsCell = ({
 );
 
 export function ModuleTable() {
+  const queryClient = useQueryClient();
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
@@ -115,13 +116,12 @@ export function ModuleTable() {
       return map;
     },
     enabled: !!tenantId && uniqueCreatedByIds.length > 0,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: Infinity,
   });
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
     if (!userId) return "—";
-    // If user data is still loading, show placeholder
     if (isUsersLoading || !userMap) {
       return "—";
     }
@@ -247,7 +247,9 @@ export function ModuleTable() {
         <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
           <NewModule onClose={() => {
             setIsNewModuleDialogOpen(false);
-            refetch();
+            refetch().then(() => {
+              queryClient.invalidateQueries({ queryKey: ["module-users", tenantId] });
+            });
           }} />
         </Dialog>
 
