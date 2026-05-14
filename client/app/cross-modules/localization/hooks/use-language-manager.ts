@@ -133,6 +133,18 @@ export const useDeleteLanguageModule = () => {
   });
 };
 
+export const useTagGlossary = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["language-module", "tag-glossary"],
+    mutationFn: languageManagerService.tagGlossary,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.all });
+    },
+  });
+};
+
 export function useGetLanguageModule(projectKey: string) {
   return useQuery({
     queryKey: localizationQueryKeys.modules.byProject(projectKey),
