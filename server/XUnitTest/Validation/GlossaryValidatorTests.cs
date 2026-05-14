@@ -1,5 +1,7 @@
+using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using FluentAssertions;
+using Moq;
 using Xunit;
 
 namespace XUnitTest
@@ -7,10 +9,15 @@ namespace XUnitTest
     public class GlossaryValidatorTests
     {
         private readonly GlossaryValidator _validator;
+        private readonly Mock<IGlossaryRepository> _glossaryRepositoryMock;
 
         public GlossaryValidatorTests()
         {
-            _validator = new GlossaryValidator();
+            _glossaryRepositoryMock = new Mock<IGlossaryRepository>();
+            _glossaryRepositoryMock
+                .Setup(r => r.GetByNameAsync(It.IsAny<string>()))
+                .ReturnsAsync((Glossary)null);
+            _validator = new GlossaryValidator(_glossaryRepositoryMock.Object);
         }
 
         [Fact]
@@ -118,6 +125,56 @@ namespace XUnitTest
                 Name = new string('a', 200),
                 ProjectKey = "test-project"
             };
+
+            // Act
+            var result = await _validator.ValidateAsync(glossary);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_DuplicateName_ReturnsError()
+        {
+            // Arrange
+            var glossary = new Glossary { Name = "API", ProjectKey = "test-project" };
+            var existing = new Glossary { ItemId = "existing-id", Name = "API" };
+
+            _glossaryRepositoryMock
+                .Setup(r => r.GetByNameAsync("API"))
+                .ReturnsAsync(existing);
+
+            // Act
+            var result = await _validator.ValidateAsync(glossary);
+
+            // Assert
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().Contain(e => e.PropertyName == "Name" && e.ErrorMessage == "The name must be unique.");
+        }
+
+        [Fact]
+        public async Task Validate_SameGlossaryUpdate_ReturnsSuccess()
+        {
+            // Arrange
+            var glossary = new Glossary { ItemId = "existing-id", Name = "API", ProjectKey = "test-project" };
+            var existing = new Glossary { ItemId = "existing-id", Name = "API" };
+
+            _glossaryRepositoryMock
+                .Setup(r => r.GetByNameAsync("API"))
+                .ReturnsAsync(existing);
+
+            // Act
+            var result = await _validator.ValidateAsync(glossary);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_UniqueNameNewGlossary_ReturnsSuccess()
+        {
+            // Arrange
+            var glossary = new Glossary { Name = "REST", ProjectKey = "test-project" };
 
             // Act
             var result = await _validator.ValidateAsync(glossary);

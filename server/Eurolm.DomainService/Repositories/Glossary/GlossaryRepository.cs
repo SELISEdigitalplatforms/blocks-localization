@@ -69,6 +69,15 @@ namespace Eurolm.DomainService.Repositories
             return await collection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public async Task<Glossary> GetByNameAsync(string name)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<Glossary>(_collectionName);
+            var filter = Builders<Glossary>.Filter.Eq(g => g.Name, name);
+
+            return await collection.Find(filter).FirstOrDefaultAsync();
+        }
+
         public async Task<List<Glossary>> GetByIdsAsync(List<string> ids)
         {
             if (ids == null || ids.Count == 0)
