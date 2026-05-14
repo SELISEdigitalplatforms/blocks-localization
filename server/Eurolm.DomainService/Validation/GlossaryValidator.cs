@@ -14,7 +14,7 @@ namespace Eurolm.DomainService.Services
             RuleFor(glossary => glossary.Name)
                 .NotEmpty().WithMessage("Name is required.")
                 .MustAsync(async (glossary, name, cancellationToken) => await IsNameUniqueAsync(glossary.ItemId, name))
-                .WithMessage("The name must be unique.")
+                .WithMessage("Glossary name must be unique.")
                 .Length(1, 200).WithMessage("Name must be between 1 and 200 characters long.");
         }
 

@@ -149,7 +149,7 @@ namespace XUnitTest
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.PropertyName == "Name" && e.ErrorMessage == "The name must be unique.");
+            result.Errors.Should().Contain(e => e.PropertyName == "Name" && e.ErrorMessage == "Glossary name must be unique.");
         }
 
         [Fact]

@@ -14,7 +14,7 @@ namespace Eurolm.DomainService.Services
             RuleFor(module => module.ModuleName)
                 .NotEmpty().WithMessage("Module name is required.")
                 .MustAsync(async (module, name, cancellationToken) => await IsNameUniqueAsync(module.ItemId, name))
-                .WithMessage("The name must be unique.")
+                .WithMessage("Module name must be unique.")
                 .Length(3, 100).WithMessage("Module name must be between 3 and 100 characters long.");
         }
 
