@@ -46,7 +46,7 @@ namespace Eurolm.DomainService.Repositories
             var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
             var collection = dataBase.GetCollection<BlocksLanguageModule>(_collectionName);
 
-            var filter = Builders<BlocksLanguageModule>.Filter.Eq(mc => mc.ModuleName, module.ModuleName);
+            var filter = Builders<BlocksLanguageModule>.Filter.Eq(mc => mc.ItemId, module.ItemId);
 
             await collection.ReplaceOneAsync(
                 filter,
