@@ -16,18 +16,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
+import EditModule from "@blocks-localization/components/modals/edit-module/edit-module";
+import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal";
+// TODO: Enable delete module feature — import DeleteModuleModal when backend is ready
+// import DeleteModuleModal from "@blocks-localization/components/modals/delete-module-modal/delete-module-modal";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
+import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash, EllipsisVertical } from "lucide-react";
+import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
 import { userService } from "@blocks-idp/iam/services/user.service";
 import { useQuery } from "@tanstack/react-query";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
-const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) => (
+const RowActionsCell = ({
+  onEdit,
+  onTagGlossary,
+  // TODO: Enable delete module feature — restore onDelete prop when backend is ready
+  // onDelete,
+}: {
+  onEdit: () => void;
+  onTagGlossary: () => void;
+  // onDelete: () => void;
+}) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" className="h-8 w-8 p-0">
@@ -39,13 +52,15 @@ const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: ()
         <Pencil className="mr-2 h-4 w-4" />
         <span>Edit</span>
       </DropdownMenuItem>
-      <DropdownMenuItem
-        className="cursor-pointer text-medium-emphasis"
-        onClick={onDelete}
-      >
+      <DropdownMenuItem className="cursor-pointer" onClick={onTagGlossary}>
+        <Tag className="mr-2 h-4 w-4" />
+        <span>Tag glossary</span>
+      </DropdownMenuItem>
+      {/* TODO: Enable delete module feature — restore this item when backend is ready */}
+      {/* <DropdownMenuItem className="cursor-pointer text-error" onClick={onDelete}>
         <Trash className="mr-2 h-4 w-4" />
         <span>Delete</span>
-      </DropdownMenuItem>
+      </DropdownMenuItem> */}
     </DropdownMenuContent>
   </DropdownMenu>
 );
@@ -53,6 +68,10 @@ const RowActionsCell = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: ()
 export function ModuleTable() {
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
+  const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
+  // TODO: Enable delete module feature — restore this state when backend is ready
+  // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Extract unique createdBy user IDs from modules
@@ -204,21 +223,10 @@ export function ModuleTable() {
                         </TableCell>
                         <TableCell>
                           <RowActionsCell
-                            onEdit={() => {
-                              // TODO: Implement edit functionality when API is available
-                              toast({
-                                variant: "default",
-                                title: "Coming Soon",
-                                description: "Edit functionality will be available soon.",
-                              });
-                            }}
-                            onDelete={() => {
-                              toast({
-                                variant: "default",
-                                title: "Coming Soon",
-                                description: "Delete functionality will be available soon.",
-                              });
-                            }}
+                            onEdit={() => setEditTarget(module)}
+                            onTagGlossary={() => setTagTarget(module)}
+                            // TODO: Enable delete module feature
+                            // onDelete={() => setDeleteTarget(module)}
                           />
                         </TableCell>
                       </TableRow>
@@ -242,6 +250,27 @@ export function ModuleTable() {
             refetch();
           }} />
         </Dialog>
+
+        {/* Edit Module Dialog */}
+        <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+          {editTarget && <EditModule module={editTarget} onClose={() => setEditTarget(null)} />}
+        </Dialog>
+
+        {/* Tag Glossary Dialog */}
+        <Dialog open={!!tagTarget} onOpenChange={(open) => !open && setTagTarget(null)}>
+          {tagTarget && <TagGlossaryModal module={tagTarget} onClose={() => setTagTarget(null)} />}
+        </Dialog>
+
+        {/* TODO: Enable delete module feature — restore this dialog when backend is ready */}
+        {/* <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          {deleteTarget && (
+            <DeleteModuleModal
+              module={deleteTarget}
+              allModules={modulesList}
+              onClose={() => setDeleteTarget(null)}
+            />
+          )}
+        </Dialog> */}
       </div>
     </main>
   );

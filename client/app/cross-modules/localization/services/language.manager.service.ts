@@ -20,8 +20,10 @@ import {
   IImportFile,
   IKeyUilmExport,
   ILanguageConfig,
+  IDeleteModuleRequest,
   IModuleGets,
   IRollbackResponse,
+  ITagGlossaryRequest,
   IValidationError,
   IWebhookConfig,
 } from "@blocks-localization/models/language";
@@ -125,17 +127,30 @@ class LanguageManagerService {
     return http.get(url);
   };
 
-  deleteLanguageModule(payload: { itemId: string; projectKey: string }): Promise<{
+  deleteLanguageModule(payload: IDeleteModuleRequest): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> {
-    const url = LANGUAGE_MODULE_ENDPOINTS.DELETE;
+    const params = new URLSearchParams({
+      itemId: payload.itemId,
+      projectKey: payload.projectKey,
+    });
+    if (payload.targetModuleId) {
+      params.set("targetModuleId", payload.targetModuleId);
+    }
     return http
       .delete<{
         errors: unknown;
         isSuccess: boolean;
-      }>(`${url}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
+      }>(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?${params.toString()}`)
       .then((response) => response);
+  }
+
+  tagGlossary(payload: ITagGlossaryRequest): Promise<{
+    errors: null | unknown;
+    isSuccess: boolean;
+  }> {
+    return http.post(LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY, payload);
   }
 
   saveLanguage = (payload: {
