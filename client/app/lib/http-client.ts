@@ -3,10 +3,8 @@ import { getRuntimeEnv } from "@/lib/runtime-env";
 import { getQueryClient } from "@/providers/query-provider";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
-  AUTH_ENDPOINTS,
   AUTH_OIDC_ENDPOINTS,
 } from "@/idp/authentication/constants/endpoint.constant";
-import { API_BASES } from "@/constants/endpoint.constant";
 
 class HttpError extends Error {
   status: number;
@@ -91,9 +89,21 @@ class HttpClient {
     try {
       isRefreshing = true;
 
+      const oidcAuthStorage = localStorage.getItem("oidc-auth-storage");
+      let refreshToken = '""';
+
+      if (oidcAuthStorage) {
+        try {
+          const parsed = JSON.parse(oidcAuthStorage);
+          refreshToken = parsed.refresh_token || '""';
+        } catch (e) {
+          console.error("[HttpClient] Failed to parse oidc-auth-storage for refresh:", e);
+        }
+      }
+
       const formData = new URLSearchParams();
       formData.append("grant_type", "refresh_token");
-      formData.append("refresh_token", '""');
+      formData.append("refresh_token", refreshToken);
       formData.append(
         "client_id",
         getRuntimeEnv("BLOCKS_OIDC_CLIENT_ID") || "",
@@ -111,6 +121,11 @@ class HttpClient {
       });
 
       if (!response.ok) throw new Error("Failed to refresh token");
+
+      const newTokens = await response.json();
+      if (newTokens) {
+        localStorage.setItem("oidc-auth-storage", JSON.stringify(newTokens));
+      }
 
       while (requestQueue.length > 0) {
         const { url, requestOption, resolve, reject } = requestQueue.shift()!;
@@ -139,7 +154,6 @@ class HttpClient {
       headers,
       absoluteUrl = false,
       skipBlocksKey = false,
-      withCredentials = true,
       skipTokenRotation = false,
     } = requestOption;
     const fullUrl = absoluteUrl ? url : `${this.baseURL}${url}`;
@@ -274,7 +288,6 @@ class HttpClient {
     const {
       absoluteUrl = false,
       skipBlocksKey = false,
-      withCredentials = true,
     } = options || {};
 
     const fullUrl = absoluteUrl ? url : `${this.baseURL}${url}`;

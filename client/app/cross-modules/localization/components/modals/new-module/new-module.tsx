@@ -69,7 +69,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         form.reset();
         onClose(false);
       } else {
-        debugger;
         if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
           res?.validationErrors?.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
@@ -102,7 +101,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    {" "}
                     Module name
                   </FormLabel>
                   <FormControl>
