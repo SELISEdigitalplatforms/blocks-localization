@@ -5,7 +5,6 @@ import { Logo } from "@/components/logo";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { showErrorToast } from "@/hooks/use-toast";
 import {
-  BarChart3,
   Bot,
   ChevronLeft,
   ChevronRight,
@@ -13,24 +12,25 @@ import {
   Code2,
   Database,
   ExternalLink,
-  KeyRound,
+  Globe,
+  Layers,
   MoveRight,
+  PencilLine,
   ScrollText,
-  Settings2,
   ShieldCheck,
-  Sliders,
   type LucideIcon,
+  Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ModeToggle } from "@/components/mode-toggle/mode-toggle";
 import { API_BASES } from "@/constants/endpoint.constant";
 const pillars = [
-  { icon: ShieldCheck, label: "Authentication" },
-  { icon: KeyRound, label: "Secrets Management" },
-  { icon: Sliders, label: "Configuration" },
-  { icon: Settings2, label: "API Console" },
-  { icon: BarChart3, label: "Usage" },
-  { icon: ScrollText, label: "Logs & Tracing" },
+  { icon: Globe, label: "Multilingual" },
+  { icon: PencilLine, label: "WYSIWYG Editing" },
+  { icon: Zap, label: "Real-time Edits" },
+  { icon: Layers, label: "Bulk Updates" },
+  { icon: ShieldCheck, label: "Secure Access" },
+  { icon: ScrollText, label: "Translation Keys" },
 ];
 interface StackLink {
   label: string;
@@ -362,7 +362,7 @@ export default function LoginSimplePage() {
   const [isStarting, setIsStarting] = useState(false);
   const [titleNumber, setTitleNumber] = useState(0);
   const titles = useMemo(
-    () => ["observable", "intelligent", "scalable", "resilient", "secure"],
+    () => ["seamless", "multilingual", "real-time", "scalable", "secure"],
     [],
   );
   useEffect(() => {
@@ -409,10 +409,10 @@ export default function LoginSimplePage() {
         <div className="flex flex-1 flex-col items-start gap-6">
           <div className="flex flex-col gap-2">
             <p className="text-sm font-semibold uppercase tracking-[0.1em] text-primary">
-              Blocks OS Platform
+              Blocks European Language Manager
             </p>
             <h1 className="max-w-xl text-5xl font-semibold tracking-tight text-[hsl(var(--high-emphasis))] lg:text-6xl">
-              Backends that are
+              Localization that is
             </h1>
             <div className="relative flex h-[80px] overflow-visible lg:h-[88px]">
               {titles.map((title, index) => (
@@ -437,10 +437,10 @@ export default function LoginSimplePage() {
             </div>
           </div>
           <p className="max-w-lg text-lg leading-relaxed tracking-tight text-muted-foreground">
-            Blocks OS is a modern platform for building and deploying secure,
-            scalable applications with built-in observability, AI capabilities,
-            and comprehensive identity management. Focus on your application
-            logic while Blocks OS handles the infrastructure.
+            Blocks Eurolm is a core localization service which allows you to manage multilingual interfaces, perform real-time
+            in-browser edits with the browser extension, and apply bulk
+            updates across multiple keys — all with secure, role-based access
+            control.
           </p>
           <div className="flex flex-wrap gap-2">
             {pillars.map(({ icon: Icon, label }) => (
