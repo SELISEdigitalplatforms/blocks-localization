@@ -21,11 +21,9 @@ namespace XUnitTest
         {
             _moduleManagementServiceMock = new Mock<IModuleManagementService>();
 
-            var changeControllerContext = TestChangeControllerContextFactory.Create();
             
             _controller = new ModuleController(
-                _moduleManagementServiceMock.Object,
-                changeControllerContext
+                _moduleManagementServiceMock.Object
             )
             {
                 ControllerContext = new ControllerContext()
