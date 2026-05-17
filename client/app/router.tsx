@@ -59,23 +59,23 @@ import LoginCallbackPage from "./routes/auth/callback";
 import CallbackPage from "./routes/callback/callback";
 
 // ── Root redirect: conditionally redirects based on auth state ──
-function RootRedirect() {
-  const { isAuthenticated } = useAuthStore();
-  if (isAuthenticated) {
-    return <Navigate to="/services/language" replace />;
-  }
-  return <Navigate to="/login" replace />;
-}
+// function RootRedirect() {
+//   const { isAuthenticated } = useAuthStore();
+//   if (isAuthenticated) {
+//     return <Navigate to="/services/language" replace />;
+//   }
+//   return <Navigate to="/login" replace />;
+// }
 
 export const router = createBrowserRouter([
   // ── Auth layout (login, signup, sso-activate) ──
-  {
-    element: <AuthLayout />,
-    children: [
-      { path: "/signup", element: <SignupPage /> },
-      { path: "/sso-activate", element: <SsoActivatePage /> },
-    ],
-  },
+  // {
+  //   element: <AuthLayout />,
+  //   children: [
+  //     { path: "/signup", element: <SignupPage /> },
+  //     { path: "/sso-activate", element: <SsoActivatePage /> },
+  //   ],
+  // },
   // ── Simple login (no guards, no API calls) ──
   {
     path: "/login",
@@ -101,18 +101,18 @@ export const router = createBrowserRouter([
   },
 
   // ── OIDC layout (un-guarded, themed) ──
-  {
-    path: "/oidc",
-    element: <OidcLayout />,
-    children: [
-      { index: true, element: <OidcIndexPage /> },
-      { path: "login", element: <OidcLoginPage /> },
-      { path: "permission", element: <OidcPermissionPage /> },
-      { path: "error", element: <OidcErrorPage /> },
-      { path: "forgot-password", element: <OidcForgotPasswordPage /> },
-      { path: "email-sent-confirmation", element: <OidcEmailSentConfirmationPage /> },
-    ],
-  },
+  // {
+  //   path: "/oidc",
+  //   element: <OidcLayout />,
+  //   children: [
+  //     { index: true, element: <OidcIndexPage /> },
+  //     { path: "login", element: <OidcLoginPage /> },
+  //     { path: "permission", element: <OidcPermissionPage /> },
+  //     { path: "error", element: <OidcErrorPage /> },
+  //     { path: "forgot-password", element: <OidcForgotPasswordPage /> },
+  //     { path: "email-sent-confirmation", element: <OidcEmailSentConfirmationPage /> },
+  //   ],
+  // },
 
   // ── Dashboard layout (protected routes — no project required) ──
   {
@@ -157,7 +157,7 @@ export const router = createBrowserRouter([
   },
 
   // ── Root redirect: check auth first, then redirect appropriately ──
-  { path: "/", element: <RootRedirect /> },
+  { path: "/", element: <Navigate to="/login" replace /> },
 
   // ── Catch-all: redirect to login ──
   { path: "*", element: <Navigate to="/login" replace /> },
