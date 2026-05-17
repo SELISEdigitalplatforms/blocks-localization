@@ -3,6 +3,7 @@ using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Entities;
+using Eurolm.DomainService.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlocksTemplate.Api.Controllers
@@ -15,14 +16,12 @@ namespace BlocksTemplate.Api.Controllers
     [Route("[controller]/[action]")]
     public class ConfigController : ControllerBase
     {
-        private readonly ChangeControllerContext _changeControllerContext;
+
         private readonly IWebHookService _webHookService;
 
         public ConfigController(
-            ChangeControllerContext changeControllerContext,
             IWebHookService webHookService)
         {
-            _changeControllerContext = changeControllerContext;
             _webHookService = webHookService;
         }
 
@@ -30,17 +29,15 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<BlocksWebhook?> GetWebHook([FromQuery] GetWebhookRequest request)
         {
             if (request == null) return null;
-            _changeControllerContext.ChangeContext(request);
             return await _webHookService.GetWebhookAsync();
         }
 
         [HttpPost]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::config::save-webhook")]
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {
             if (webhook == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(webhook);
             return await _webHookService.SaveWebhookAsync(webhook);
         }
     }
