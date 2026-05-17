@@ -371,32 +371,39 @@ export default function LoginSimplePage() {
     }, 2400);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
-  const startLogin = async () => {
-    try {
-      if (isStarting) return;
-      setIsStarting(true);
+   const startLogin = async () => {
+     try {
+       if (isStarting) return
+       setIsStarting(true)
 
-      const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
-      const clientId = getRuntimeEnv("BLOCKS_OIDC_CLIENT_ID");
-      const initiateUrl = `${API_BASES.IDP}/idp/initiate?x-blocks-key=${blocksKey}&clientId=${clientId}`;
-      const headers: Record<string, string> = {};
-      if (blocksKey) headers["X-Blocks-Key"] = blocksKey;
+       const blocksKey = getRuntimeEnv('BLOCKS_X_BLOCKS_KEY')
+       const clientId = getRuntimeEnv('BLOCKS_OIDC_CLIENT_ID')
+       const idpBaseUrl = getRuntimeEnv('BLOCKS_IDP_BASE_URL')
+       const redirectUri = `${window.location.origin}/login/callback`
+       const initiateUrl = `${idpBaseUrl}/api/idp/initiate?x-blocks-key=${blocksKey}&clientId=${clientId}&redirectUri=${redirectUri}`
+       const headers: Record<string, string> = {}
+       if (blocksKey) headers['X-Blocks-Key'] = blocksKey
 
-      const response = await fetch(initiateUrl.toString(), { headers });
-      const data = await response.json();
+       const response = await fetch(initiateUrl.toString(), { headers })
+       const data = await response.json()
 
-      if (data.redirect_uri) {
-        window.location.href = data.redirect_uri;
-      } else {
-        showErrorToast({ errors: "Failed to get authorization URL" });
-        setIsStarting(false);
-      }
-    } catch (errors) {
-      console.error("Login initiation error:", errors);
-      showErrorToast({ errors: "Unable to start login. Please try again." });
-      setIsStarting(false);
-    }
-  };
+       if (data.redirect_uri) {
+         window.location.href = data.redirect_uri
+         console.log(
+           'Redirecting to IDP for authentication...',
+           data.redirect_uri,
+         )
+       } else {
+         showErrorToast({ errors: 'Failed to get authorization URL' })
+         setIsStarting(false)
+       }
+     } catch (errors) {
+       console.error('Login initiation error:', errors)
+       showErrorToast({ errors: 'Unable to start login. Please try again.' })
+       setIsStarting(false)
+     }
+   }
+
   return (
     <div className="relative flex min-h-screen flex-col bg-[hsl(var(--surface-app))]">
       <header className="relative z-10 flex items-center px-6 py-5 xl:px-[154px]">
