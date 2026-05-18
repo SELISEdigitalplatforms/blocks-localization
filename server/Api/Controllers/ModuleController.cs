@@ -2,6 +2,7 @@
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +18,6 @@ namespace BlocksTemplate.Api.Controllers
     public class ModuleController : ControllerBase
     {
         private readonly IModuleManagementService _moduleManagementService;
-        private readonly ChangeControllerContext _changeControllerContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ModuleController"/> class.
@@ -26,11 +26,9 @@ namespace BlocksTemplate.Api.Controllers
 
 
         public ModuleController(
-            IModuleManagementService moduleManagementService,
-            ChangeControllerContext changeControllerContext)
+            IModuleManagementService moduleManagementService)
         {
             _moduleManagementService = moduleManagementService;
-            _changeControllerContext = changeControllerContext;
         }
 
 
@@ -41,11 +39,10 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="ApiResponse"/> indicating the result of the save operation.</returns>
 
         [HttpPost]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
         {
             if (module == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(module);
             return await _moduleManagementService.SaveModuleAsync(module);
         }
 
@@ -59,7 +56,6 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<List<BlocksLanguageModule>> Gets([FromQuery] GetModulesQuery query)
         {
             if (query == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(query);
             return await _moduleManagementService.GetModulesAsync();
         }
 
@@ -73,11 +69,10 @@ namespace BlocksTemplate.Api.Controllers
         //}
 
         [HttpPost]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::tag-glossary")]
         public async Task<BaseMutationResponse> TagGlossary([FromBody] TagGlossaryRequest request)
         {
             if (request == null) return new BaseMutationResponse { IsSuccess = false };
-            _changeControllerContext.ChangeContext(request);
             return await _moduleManagementService.TagGlossaryAsync(request);
         }
     }

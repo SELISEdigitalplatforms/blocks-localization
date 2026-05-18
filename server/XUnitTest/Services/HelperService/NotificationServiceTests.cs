@@ -30,7 +30,7 @@ namespace XUnitTest
                 .Returns(new Tenant
                 {
                     TenantSalt = "salt",
-                    ApplicationDomain = "",
+                   
                     DbConnectionString = "",
                     JwtTokenParameters = new JwtTokenParameters
                     {
@@ -166,7 +166,6 @@ namespace XUnitTest
                 .Returns(new Tenant
                 {
                     TenantSalt = "salt",
-                    ApplicationDomain = "",
                     DbConnectionString = "",
                     JwtTokenParameters = new JwtTokenParameters
                     {
@@ -191,7 +190,6 @@ namespace XUnitTest
                 .Returns(new Tenant
                 {
                     TenantSalt = "salt",
-                    ApplicationDomain = "",
                     DbConnectionString = "",
                     JwtTokenParameters = new JwtTokenParameters
                     {

@@ -21,11 +21,9 @@ namespace XUnitTest
         {
             _languageManagementServiceMock = new Mock<ILanguageManagementService>();
 
-            var changeControllerContext = TestChangeControllerContextFactory.Create();
 
             _controller = new LanguageController(
-                _languageManagementServiceMock.Object,
-                changeControllerContext
+                _languageManagementServiceMock.Object
             )
             {
                 ControllerContext = new ControllerContext()

@@ -11,6 +11,7 @@ namespace Eurolm.DomainService.Utilities
         public const string EnvironmentDataMigrationQueue = "eurolm_environment_data_migration_listener";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
+        public const string ServiceName = "blocks-uilm-api";
 
 
         public static MessageConfiguration GetMessageConfiguration(string messageConnectionString)
