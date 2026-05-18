@@ -27,11 +27,6 @@ services.AddHealthChecks();
 
 
 
-//builder.Services.Configure<MvcOptions>(options =>
-//{
-//    options.Conventions.Insert(0, new GlobalApiRoutePrefixConvention("api"));
-//});
-
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(wwwrootPath);
 
@@ -39,13 +34,18 @@ ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
 
 ApplicationConfigurations.ConfigureApi(services, serviceName);
+
+builder.Services.Configure<MvcOptions>(options =>
+{
+    options.Conventions.Insert(0, new GlobalApiRoutePrefixConvention("api"));
+});
 services.AddEurolmRegisterApplicationServices(localizationSecret);
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
+ApplicationConfigurations.ConfigureMiddleware(app);
 var indexHtml = Path.Combine(app.Environment.WebRootPath ?? "", "index.html");
 // if (File.Exists(indexHtml))
 // {
@@ -86,7 +86,7 @@ if (File.Exists(indexHtml))
 
 }
 
-ApplicationConfigurations.ConfigureMiddleware(app);
+
 
 await app.RunAsync();
 
