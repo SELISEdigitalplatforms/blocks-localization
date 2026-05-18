@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Utilities;
 
-var serviceName = "blocks-idp-api";
+var serviceName = Constants.ServiceName;
 //var vaultType = ResolveVaultType();
 //Console.WriteLine($"Using Genesis vault type: {vaultType}");
 var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
@@ -38,7 +38,7 @@ Directory.CreateDirectory(wwwrootPath);
 ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
 var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
 
-ApplicationConfigurations.ConfigureApi(services);
+ApplicationConfigurations.ConfigureApi(services, serviceName);
 services.AddEurolmRegisterApplicationServices(localizationSecret);
 
 var app = builder.Build();

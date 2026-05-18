@@ -15,7 +15,7 @@
             </summary>
             
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.KeyController.#ctor(Eurolm.DomainService.Services.IKeyManagementService,Blocks.Genesis.ChangeControllerContext,FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest})">
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.#ctor(Eurolm.DomainService.Services.IKeyManagementService,FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest})">
             <summary>
             Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.KeyController"/> class.
             </summary>
@@ -161,7 +161,7 @@
             API Controller for managing language-related operations.
             </summary>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.#ctor(Eurolm.DomainService.Services.ILanguageManagementService,Blocks.Genesis.ChangeControllerContext)">
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.#ctor(Eurolm.DomainService.Services.ILanguageManagementService)">
             <summary>
             Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.LanguageController"/> class.
             </summary>
@@ -199,7 +199,7 @@
             Handles operations related to managing modules, such as saving and retrieving module data.
             </summary>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.#ctor(Eurolm.DomainService.Services.IModuleManagementService,Blocks.Genesis.ChangeControllerContext)">
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.#ctor(Eurolm.DomainService.Services.IModuleManagementService)">
             <summary>
             Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.ModuleController"/> class.
             </summary>

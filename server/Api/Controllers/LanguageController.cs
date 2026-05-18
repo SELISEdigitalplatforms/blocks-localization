@@ -1,6 +1,7 @@
 ﻿using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlocksTemplate.Api.Controllers
@@ -15,7 +16,6 @@ namespace BlocksTemplate.Api.Controllers
     public class LanguageController : ControllerBase
     {
         private readonly ILanguageManagementService _languageManagementService;
-        private readonly ChangeControllerContext _changeControllerContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LanguageController"/> class.
@@ -23,11 +23,9 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="languageManagementService">The service used for managing languages.</param>
 
         public LanguageController(
-            ILanguageManagementService languageManagementService,
-            ChangeControllerContext changeControllerContext)
+            ILanguageManagementService languageManagementService)
         {
             _languageManagementService = languageManagementService;
-            _changeControllerContext = changeControllerContext;
         }
 
         /// <summary>
@@ -38,11 +36,10 @@ namespace BlocksTemplate.Api.Controllers
         
 
         [HttpPost]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
         public async Task<ApiResponse> Save(Language language)
         {
             if (language == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(language);
             return await _languageManagementService.SaveLanguageAsync(language);
         }
 
@@ -55,7 +52,6 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<List<Language>> Gets([FromQuery] GetLanguagesRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(request);
             return await _languageManagementService.GetLanguagesAsync();
         }
 
@@ -65,11 +61,10 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(request);
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {
@@ -93,11 +88,10 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to set as default.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the operation.</returns>
         [HttpPost]
-        [ProtectedEndPoint]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::set-default")]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
-            _changeControllerContext.ChangeContext(request);
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {

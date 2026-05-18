@@ -5,6 +5,7 @@ import { Logo } from "@/components/logo";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { showErrorToast } from "@/hooks/use-toast";
 import {
+  BarChart3,
   Bot,
   ChevronLeft,
   ChevronRight,
@@ -12,25 +13,23 @@ import {
   Code2,
   Database,
   ExternalLink,
-  Globe,
-  Layers,
+  KeyRound,
   MoveRight,
-  PencilLine,
   ScrollText,
+  Settings2,
   ShieldCheck,
+  Sliders,
   type LucideIcon,
-  Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ModeToggle } from "@/components/mode-toggle/mode-toggle";
-import { API_BASES } from "@/constants/endpoint.constant";
 const pillars = [
-  { icon: Globe, label: "Multilingual" },
-  { icon: PencilLine, label: "WYSIWYG Editing" },
-  { icon: Zap, label: "Real-time Edits" },
-  { icon: Layers, label: "Bulk Updates" },
-  { icon: ShieldCheck, label: "Secure Access" },
-  { icon: ScrollText, label: "Translation Keys" },
+  { icon: ShieldCheck, label: "Authentication" },
+  { icon: KeyRound, label: "Secrets Management" },
+  { icon: Sliders, label: "Configuration" },
+  { icon: Settings2, label: "API Console" },
+  { icon: BarChart3, label: "Usage" },
+  { icon: ScrollText, label: "Logs & Tracing" },
 ];
 interface StackLink {
   label: string;
@@ -362,7 +361,7 @@ export default function LoginSimplePage() {
   const [isStarting, setIsStarting] = useState(false);
   const [titleNumber, setTitleNumber] = useState(0);
   const titles = useMemo(
-    () => ["seamless", "multilingual", "real-time", "scalable", "secure"],
+    () => ["observable", "intelligent", "scalable", "resilient", "secure"],
     [],
   );
   useEffect(() => {
@@ -371,6 +370,7 @@ export default function LoginSimplePage() {
     }, 2400);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
+
   const startLogin = async () => {
     try {
       if (isStarting) return;
@@ -378,7 +378,9 @@ export default function LoginSimplePage() {
 
       const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
       const clientId = getRuntimeEnv("BLOCKS_OIDC_CLIENT_ID");
-      const initiateUrl = `${API_BASES.IDP}/idp/initiate?x-blocks-key=${blocksKey}&clientId=${clientId}`;
+      const idpBaseUrl = getRuntimeEnv("BLOCKS_IDP_BASE_URL");
+      const redirectUri = `${window.location.origin}/login/callback`;
+      const initiateUrl = `${idpBaseUrl}/api/idp/initiate?x-blocks-key=${blocksKey}&clientId=${clientId}&redirectUri=${redirectUri}`;
       const headers: Record<string, string> = {};
       if (blocksKey) headers["X-Blocks-Key"] = blocksKey;
 
@@ -387,6 +389,10 @@ export default function LoginSimplePage() {
 
       if (data.redirect_uri) {
         window.location.href = data.redirect_uri;
+        console.log(
+          "Redirecting to IDP for authentication...",
+          data.redirect_uri,
+        );
       } else {
         showErrorToast({ errors: "Failed to get authorization URL" });
         setIsStarting(false);
@@ -397,6 +403,7 @@ export default function LoginSimplePage() {
       setIsStarting(false);
     }
   };
+
   return (
     <div className="relative flex min-h-screen flex-col bg-[hsl(var(--surface-app))]">
       <header className="relative z-10 flex items-center px-6 py-5 xl:px-[154px]">
@@ -437,10 +444,10 @@ export default function LoginSimplePage() {
             </div>
           </div>
           <p className="max-w-lg text-lg leading-relaxed tracking-tight text-muted-foreground">
-            Blocks Eurolm is a core localization service which allows you to manage multilingual interfaces, perform real-time
-            in-browser edits with the browser extension, and apply bulk
-            updates across multiple keys — all with secure, role-based access
-            control.
+            Blocks Eurolm is a core localization service which allows you to
+            manage multilingual interfaces, perform real-time in-browser edits
+            with the browser extension, and apply bulk updates across multiple
+            keys — all with secure, role-based access control.
           </p>
           <div className="flex flex-wrap gap-2">
             {pillars.map(({ icon: Icon, label }) => (

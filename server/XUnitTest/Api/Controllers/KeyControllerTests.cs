@@ -23,10 +23,9 @@ namespace XUnitTest
             _keyManagementServiceMock = new Mock<IKeyManagementService>();
             _validatorMock = new Mock<IValidator<TranslateBlocksLanguageKeyRequest>>();
 
-            var changeControllerContext = TestChangeControllerContextFactory.Create();
             
             var httpContext = new DefaultHttpContext();
-            _controller = new KeyController(_keyManagementServiceMock.Object, changeControllerContext, _validatorMock.Object)
+            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object)
             {
                 ControllerContext = new ControllerContext
                 {

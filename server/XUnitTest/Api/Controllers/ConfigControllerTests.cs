@@ -21,10 +21,9 @@ namespace XUnitTest
         {
             _webHookServiceMock = new Mock<IWebHookService>();
 
-            var changeControllerContext = TestChangeControllerContextFactory.Create();
+          
             
             _controller = new ConfigController(
-                changeControllerContext,
                 _webHookServiceMock.Object
             )
             {
