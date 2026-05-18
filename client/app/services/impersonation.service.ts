@@ -2,7 +2,7 @@ import { deriveIdpBaseUrl } from "@/lib/blocks-url.util";
 import { HttpClient } from "@/lib/http-client";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const IMPERSONATION_BASE = "/api/Authentication";
+const IMPERSONATION_BASE = "/api/auth";
 
 const idpHttp = new HttpClient(
   deriveIdpBaseUrl(),
