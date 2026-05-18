@@ -27,10 +27,10 @@ services.AddHealthChecks();
 
 
 
-builder.Services.Configure<MvcOptions>(options =>
-{
-    options.Conventions.Insert(0, new GlobalApiRoutePrefixConvention("api"));
-});
+//builder.Services.Configure<MvcOptions>(options =>
+//{
+//    options.Conventions.Insert(0, new GlobalApiRoutePrefixConvention("api"));
+//});
 
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(wwwrootPath);
