@@ -45,7 +45,6 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
-ApplicationConfigurations.ConfigureMiddleware(app);
 var indexHtml = Path.Combine(app.Environment.WebRootPath ?? "", "index.html");
 // if (File.Exists(indexHtml))
 // {
@@ -87,7 +86,7 @@ if (File.Exists(indexHtml))
 }
 
 
-
+ApplicationConfigurations.ConfigureMiddleware(app);
 await app.RunAsync();
 
 static VaultType ResolveVaultType()
