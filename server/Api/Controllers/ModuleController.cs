@@ -39,7 +39,8 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="ApiResponse"/> indicating the result of the save operation.</returns>
 
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
+        // [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
+        [Authorize]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
         {
             if (module == null) BadRequest(new BaseMutationResponse());
@@ -69,7 +70,8 @@ namespace BlocksTemplate.Api.Controllers
         //}
 
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
+        // [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
+        [Authorize]
         public async Task<BaseMutationResponse> TagGlossary([FromBody] TagGlossaryRequest request)
         {
             if (request == null) return new BaseMutationResponse { IsSuccess = false };

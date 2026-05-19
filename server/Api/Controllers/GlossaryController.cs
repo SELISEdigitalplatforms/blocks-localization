@@ -63,7 +63,8 @@ namespace Api.Controllers
         }
 
         [HttpGet]
-        [ProtectedEndPoint($"{Constants.ServiceName}::glossary::get-suggested-glossaries")]
+        // [ProtectedEndPoint($"{Constants.ServiceName}::glossary::get-suggested-glossaries")]
+        [Authorize]
         public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
