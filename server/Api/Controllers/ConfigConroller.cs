@@ -4,6 +4,7 @@ using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Utilities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlocksTemplate.Api.Controllers
@@ -33,7 +34,8 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
+        // [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
+        [Authorize]
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {
