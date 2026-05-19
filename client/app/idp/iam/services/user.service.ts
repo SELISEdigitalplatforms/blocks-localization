@@ -53,7 +53,7 @@ export class UserService {
 
   getUserById(payload: IGetUserByIdPayload): Promise<IGetUserByIdResponse> {
     return http.get(
-      `${USER_ENDPOINTS.GET_USER}?id=${payload.id}&ProjectKey=${payload.projectKey}`,
+      `${USER_ENDPOINTS.GET_USERS}?id=${payload.id}&ProjectKey=${payload.projectKey}`,
       undefined,
       { absoluteUrl: true },
     )
