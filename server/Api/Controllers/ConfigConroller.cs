@@ -33,7 +33,7 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::config::save-webhook")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {

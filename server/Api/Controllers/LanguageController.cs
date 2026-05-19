@@ -88,7 +88,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to set as default.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the operation.</returns>
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::language::set-default")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
