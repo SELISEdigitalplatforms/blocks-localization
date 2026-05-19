@@ -1,35 +1,40 @@
-import { deriveIdpBaseUrl } from "@/lib/blocks-url.util";
-import { HttpClient } from "@/lib/http-client";
-import { getRuntimeEnv } from "@/lib/runtime-env";
 
-const IMPERSONATION_BASE = "/api/auth";
-
-const idpHttp = new HttpClient(
-  deriveIdpBaseUrl(),
-  getRuntimeEnv("BLOCKS_X_BLOCKS_KEY") || "",
-);
+import { IMPERSONATE_ENDPOINTS } from '@/idp/authentication/constants'
+import { http } from '@/lib/http-client'
 
 export interface ImpersonationRequest {
-  targetTenantId: string;
-  orgId?: string;
-  organizationId?: string;
+  targetTenantId: string
+  orgId?: string
+  organizationId?: string
 }
 
 export interface ImpersonationState {
-  rootTenantId: string;
-  targetTenantId: string;
-  orgId: string;
-  startedAtUtc: string;
+  rootTenantId: string
+  targetTenantId: string
+  orgId: string
+  startedAtUtc: string
 }
 
 class ImpersonationService {
-  startImpersonation(request: ImpersonationRequest): Promise<ImpersonationState> {
-    return idpHttp.post(`${IMPERSONATION_BASE}/impersonate`, request);
+  startImpersonation(
+    request: ImpersonationRequest,
+  ): Promise<ImpersonationState> {
+    return http.post(
+      `${IMPERSONATE_ENDPOINTS.IMPERSONATE}`,
+      request,
+      undefined,
+      { absoluteUrl: true },
+    )
   }
 
   stopImpersonation(): Promise<void> {
-    return idpHttp.post(`${IMPERSONATION_BASE}/impersonation/stop`, null);
+    return http.post(
+      `${IMPERSONATE_ENDPOINTS.STOP_IMPERSONATION}`,
+      null,
+      undefined,
+      { absoluteUrl: true },
+    )
   }
 }
 
-export const impersonationService = new ImpersonationService();
+export const impersonationService = new ImpersonationService()
