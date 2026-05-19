@@ -21,6 +21,7 @@ namespace BlocksTemplate.Api.Controllers
     {
         private readonly IKeyManagementService _keyManagementService;
         private readonly IValidator<TranslateBlocksLanguageKeyRequest> _translateBlocksLanguageKeyRequestValidator;
+        private readonly IValidator<TranslateBlocksLanguageKeysRequest> _translateBlocksLanguageKeysRequestValidator;
 
 
         /// <summary>
@@ -29,13 +30,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="keyManagementService">The service for managing keys.</param>
         /// <param name="changeControllerContext">The context for changing controller state.</param>
         /// <param name="translateBlocksLanguageKeyRequestValidator">The validator for TranslateBlocksLanguageKeyRequest.</param>
+        /// <param name="translateBlocksLanguageKeysRequestValidator">The validator for TranslateBlocksLanguageKeysRequest.</param>
 
         public KeyController(
             IKeyManagementService keyManagementService,
-            IValidator<TranslateBlocksLanguageKeyRequest> translateBlocksLanguageKeyRequestValidator)
+            IValidator<TranslateBlocksLanguageKeyRequest> translateBlocksLanguageKeyRequestValidator,
+            IValidator<TranslateBlocksLanguageKeysRequest> translateBlocksLanguageKeysRequestValidator)
         {
             _keyManagementService = keyManagementService;
             _translateBlocksLanguageKeyRequestValidator = translateBlocksLanguageKeyRequestValidator;
+            _translateBlocksLanguageKeysRequestValidator = translateBlocksLanguageKeysRequestValidator;
         }
 
         /// <summary>
@@ -189,6 +193,33 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         /// <summary>
+        /// Deletes multiple keys by a list of item IDs. All deleted keys share the same OperationId in the timeline.
+        /// </summary>
+        /// <param name="request">The request containing the list of item IDs to delete.</param>
+        /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
+        [HttpDelete]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::delete-keys")]
+        public async Task<IActionResult> DeleteKeys([FromBody] DeleteKeysRequest request)
+        {
+            if (request == null) return BadRequest(new BaseMutationResponse());
+
+            if (request.ItemIds == null || !request.ItemIds.Any())
+            {
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "ItemIds", "ItemIds list cannot be null or empty" }
+                    }
+                });
+            }
+
+            var result = await _keyManagementService.DeleteKeysAsync(request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
         /// Returns a JSON UILM file for a specified module and language.
         /// </summary>
         /// <param name="request">The request containing the project key, module, and language information.</param>
@@ -272,6 +303,32 @@ namespace BlocksTemplate.Api.Controllers
             }
 
             await _keyManagementService.SendTranslateBlocksLanguageKeyEvent(request);
+            return Ok(new BaseMutationResponse { IsSuccess = true });
+        }
+
+        /// <summary>
+        /// Translates multiple BlocksLanguageKeys by sending a single bulk event to the translation queue.
+        /// All translated keys share the same OperationId in the timeline.
+        /// </summary>
+        /// <param name="request">The request containing key IDs, project key, and translation parameters.</param>
+        /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> TranslateKeys(TranslateBlocksLanguageKeysRequest request)
+        {
+            if (request == null) return BadRequest(new BaseMutationResponse());
+
+            var validationResult = await _translateBlocksLanguageKeysRequestValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = validationResult.Errors.ToDictionary(e => e.PropertyName, e => e.ErrorMessage)
+                });
+            }
+
+            await _keyManagementService.SendTranslateBlocksLanguageKeysEvent(request);
             return Ok(new BaseMutationResponse { IsSuccess = true });
         }
 

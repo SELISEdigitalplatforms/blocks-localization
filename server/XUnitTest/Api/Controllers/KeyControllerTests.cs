@@ -16,16 +16,18 @@ namespace XUnitTest
     {
         private readonly Mock<IKeyManagementService> _keyManagementServiceMock;
         private readonly Mock<IValidator<TranslateBlocksLanguageKeyRequest>> _validatorMock;
+        private readonly Mock<IValidator<TranslateBlocksLanguageKeysRequest>> _validatorsMock;
         private readonly KeyController _controller;
 
         public KeyControllerTests()
         {
             _keyManagementServiceMock = new Mock<IKeyManagementService>();
             _validatorMock = new Mock<IValidator<TranslateBlocksLanguageKeyRequest>>();
+            _validatorsMock = new Mock<IValidator<TranslateBlocksLanguageKeysRequest>>();
 
             
             var httpContext = new DefaultHttpContext();
-            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object)
+            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object, _validatorsMock.Object)
             {
                 ControllerContext = new ControllerContext
                 {

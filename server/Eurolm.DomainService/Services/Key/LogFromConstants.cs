@@ -7,8 +7,10 @@ namespace Eurolm.DomainService.Services
         public const string KeyBulkCreate = "KeyController.BulkCreate";
         public const string KeyBulkSave = "KeyController.BulkSave";
         public const string KeyDelete = "KeyController.Delete";
+        public const string KeyBulkDelete = "KeyController.BulkDelete";
         public const string TranslateAll = "TranslateAll";
         public const string TranslateKey = "TranslateKey";
+        public const string BulkTranslateKey = "BulkTranslateKey";
         public const string UilmImportUpdate = "UilmImport.Update";
         public const string UilmImportInsert = "UilmImport.Insert";
         public const string Rollback = "Rollback";

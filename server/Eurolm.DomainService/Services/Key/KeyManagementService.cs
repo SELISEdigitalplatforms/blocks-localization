@@ -394,6 +394,69 @@ namespace Eurolm.DomainService.Services
             return new BaseMutationResponse { IsSuccess = true };
         }
 
+        public async Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request)
+        {
+            _logger.LogInformation("Bulk deleting Keys start. Count: {Count}", request.ItemIds.Count);
+
+            var errors = new Dictionary<string, string>();
+            var bulkOperationId = Guid.NewGuid().ToString();
+
+            foreach (var itemId in request.ItemIds)
+            {
+                try
+                {
+                    var key = await _keyRepository.GetByIdAsync(itemId);
+                    if (key == null)
+                    {
+                        errors[itemId] = "Key not found";
+                        continue;
+                    }
+
+                    BlocksLanguageKey? repoKey = null;
+                    try
+                    {
+                        repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
+                    }
+
+                    await _keyRepository.DeleteAsync(itemId);
+
+                    if (repoKey != null)
+                    {
+                        try
+                        {
+                            await CreateKeyTimelineEntryAsync(repoKey, null, LogFromConstants.KeyBulkDelete, bulkOperationId, entityId: repoKey.ItemId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError("Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
+                    errors[itemId] = ex.Message;
+                }
+            }
+
+            _logger.LogInformation("Bulk deleting Keys end. Errors: {ErrorCount}", errors.Count);
+
+            if (errors.Any())
+            {
+                return new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = errors
+                };
+            }
+
+            return new BaseMutationResponse { IsSuccess = true };
+        }
+
         public async Task<bool> ChangeAll(TranslateAllEvent request)
         {
             List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
@@ -486,6 +549,66 @@ namespace Eurolm.DomainService.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while translating BlocksLanguageKey with ID {KeyId}", request.KeyId);
+                return false;
+            }
+        }
+
+        public async Task<bool> TranslateBlocksLanguageKeys(TranslateBlocksLanguageKeysEvent request)
+        {
+            try
+            {
+                List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
+
+                var uilmResourceKeyList = new List<BlocksLanguageKey>();
+                var originalResourceKeys = new Dictionary<string, BlocksLanguageKey>();
+
+                foreach (var keyId in request.KeyIds)
+                {
+                    var resourceKey = await _keyRepository.GetUilmResourceKey(
+                        x => x.ItemId == keyId,
+                        BlocksContext.GetContext()?.TenantId ?? ""
+                    );
+
+                    if (resourceKey == null)
+                    {
+                        _logger.LogWarning("TranslateBlocksLanguageKeys: Key with ID {KeyId} not found", keyId);
+                        continue;
+                    }
+
+                    var originalKey = JsonConvert.DeserializeObject<BlocksLanguageKey>(JsonConvert.SerializeObject(resourceKey));
+                    if (originalKey != null)
+                    {
+                        originalResourceKeys[resourceKey.ItemId] = originalKey;
+                    }
+
+                    var translateAllEvent = new TranslateAllEvent
+                    {
+                        MessageCoRelationId = request.MessageCoRelationId,
+                        ProjectKey = request.ProjectKey,
+                        DefaultLanguage = request.DefaultLanguage,
+                        ModuleId = resourceKey.ModuleId
+                    };
+
+                    await ProcessResourceKey(translateAllEvent, resourceKey, languageSetting, uilmResourceKeyList);
+                }
+
+                if (uilmResourceKeyList.Any())
+                {
+                    var translateAllEvent = new TranslateAllEvent
+                    {
+                        MessageCoRelationId = request.MessageCoRelationId,
+                        ProjectKey = request.ProjectKey,
+                        DefaultLanguage = request.DefaultLanguage
+                    };
+
+                    await UpdateResourceKey(uilmResourceKeyList, translateAllEvent, originalResourceKeys, request.OperationId, LogFromConstants.BulkTranslateKey);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while bulk translating BlocksLanguageKeys");
                 return false;
             }
         }
@@ -872,6 +995,26 @@ namespace Eurolm.DomainService.Services
                         ProjectKey = request.ProjectKey,
                         DefaultLanguage = request.DefaultLanguage,
                         KeyId = request.KeyId
+                    }
+                }
+            );
+        }
+
+        public async Task SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request)
+        {
+            var operationId = Guid.NewGuid().ToString();
+
+            await _messageClient.SendToConsumerAsync(
+                new ConsumerMessage<TranslateBlocksLanguageKeysEvent>
+                {
+                    ConsumerName = Utilities.Constants.TranslateBlocksLanguageKeysQueue,
+                    Payload = new TranslateBlocksLanguageKeysEvent
+                    {
+                        MessageCoRelationId = request.MessageCoRelationId,
+                        ProjectKey = request.ProjectKey,
+                        DefaultLanguage = request.DefaultLanguage,
+                        KeyIds = request.KeyIds,
+                        OperationId = operationId
                     }
                 }
             );

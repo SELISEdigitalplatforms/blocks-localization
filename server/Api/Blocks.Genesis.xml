@@ -15,13 +15,14 @@
             </summary>
             
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.KeyController.#ctor(Eurolm.DomainService.Services.IKeyManagementService,FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest})">
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.#ctor(Eurolm.DomainService.Services.IKeyManagementService,FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest},FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeysRequest})">
             <summary>
             Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.KeyController"/> class.
             </summary>
             <param name="keyManagementService">The service for managing keys.</param>
             <param name="changeControllerContext">The context for changing controller state.</param>
             <param name="translateBlocksLanguageKeyRequestValidator">The validator for TranslateBlocksLanguageKeyRequest.</param>
+            <param name="translateBlocksLanguageKeysRequestValidator">The validator for TranslateBlocksLanguageKeysRequest.</param>
         </member>
         <member name="M:BlocksTemplate.Api.Controllers.KeyController.Save(Eurolm.DomainService.Services.Key)">
             <summary>
@@ -86,6 +87,13 @@
             <param name="request">The request containing the item ID of the key to delete.</param>
             <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the delete operation.</returns>
         </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.DeleteKeys(Eurolm.DomainService.Services.DeleteKeysRequest)">
+            <summary>
+            Deletes multiple keys by a list of item IDs. All deleted keys share the same OperationId in the timeline.
+            </summary>
+            <param name="request">The request containing the list of item IDs to delete.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
+        </member>
         <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetUilmFile(Eurolm.DomainService.Services.GetUilmFileRequest)">
             <summary>
             Returns a JSON UILM file for a specified module and language.
@@ -112,6 +120,14 @@
             Translates a specific BlocksLanguageKey by sending it to the translation queue.
             </summary>
             <param name="request">The request containing key ID, project key, and translation parameters.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the translation request.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.TranslateKeys(Eurolm.DomainService.Services.TranslateBlocksLanguageKeysRequest)">
+            <summary>
+            Translates multiple BlocksLanguageKeys by sending a single bulk event to the translation queue.
+            All translated keys share the same OperationId in the timeline.
+            </summary>
+            <param name="request">The request containing key IDs, project key, and translation parameters.</param>
             <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the translation request.</returns>
         </member>
         <member name="M:BlocksTemplate.Api.Controllers.KeyController.UilmImport(Eurolm.DomainService.Services.UilmImportRequest)">
