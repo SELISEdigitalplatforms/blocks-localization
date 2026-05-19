@@ -8,6 +8,7 @@ namespace Eurolm.DomainService.Utilities
         public const string UilmImportExportQueue = "eurolm_import_export_listener";
         public const string TranslateAllKeysQueue = "eurolm_translate_all_keys_listener";
         public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
+        public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
         public const string EnvironmentDataMigrationQueue = "eurolm_environment_data_migration_listener";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
@@ -47,7 +48,8 @@ namespace Eurolm.DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(UilmImportExportQueue),
                                              ConsumerSubscription.BindToQueue(EnvironmentDataMigrationQueue),
                                              ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
-                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue)],
+                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue),
+                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue)],
                 }
             };
         }
@@ -58,7 +60,7 @@ namespace Eurolm.DomainService.Utilities
             {
                 AzureServiceBusConfiguration = new AzureServiceBusConfiguration
                 {
-                    Queues = [UilmQueue, UilmImportExportQueue, EnvironmentDataMigrationQueue, TranslateAllKeysQueue, TranslateBlocksLanguageKeyQueue],
+                    Queues = [UilmQueue, UilmImportExportQueue, EnvironmentDataMigrationQueue, TranslateAllKeysQueue, TranslateBlocksLanguageKeyQueue, TranslateBlocksLanguageKeysQueue],
                     Topics = []
                 }
             };

@@ -24,6 +24,7 @@ namespace Worker
             services.AddSingleton<IConsumer<GenerateUilmFilesEvent>, GenerateUilmFilesConsumer>();
             services.AddSingleton<IConsumer<TranslateAllEvent>, TranslateAllEventConsumer>();
             services.AddSingleton<IConsumer<TranslateBlocksLanguageKeyEvent>, TranslateBlocksLanguageKeyEventConsumer>();
+            services.AddSingleton<IConsumer<TranslateBlocksLanguageKeysEvent>, TranslateBlocksLanguageKeysEventConsumer>();
             services.AddSingleton<IConsumer<UilmImportEvent>, UilmImportEventConsumer>();
             services.AddSingleton<IConsumer<UilmExportEvent>, UilmExportEventConsumer>();
             services.AddSingleton<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>();
@@ -49,6 +50,7 @@ namespace Worker
             services.AddSingleton<ILanguageFileGenerationHistoryRepository, LanguageFileGenerationHistoryRepository>();
             services.AddSingleton<IValidator<Key>, KeyValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
+            services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IEnvironmentDataMigrationRepository, EnvironmentDataMigrationRepository>();
 
             services.AddSingleton<IAssistantService, AssistantService>();

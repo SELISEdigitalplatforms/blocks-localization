@@ -17,14 +17,17 @@ namespace Eurolm.DomainService.Services
         Task<string> GetUilmFile(GetUilmFileRequest request);
         Task<Key?> GetAsync(GetKeyRequest request);
         Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request);
+        Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request);
         Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request);
         Task SendTranslateAllEvent(TranslateAllRequest request);
         Task SendTranslateBlocksLanguageKeyEvent(TranslateBlocksLanguageKeyRequest request);
+        Task SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request);
         Task SendUilmImportEvent(UilmImportRequest request);
         Task SendUilmExportEvent(UilmExportRequest request);
         Task SendGenerateUilmFilesEvent(GenerateUilmFilesRequest request);
         Task<bool> ChangeAll(TranslateAllEvent request);
         Task<bool> TranslateBlocksLanguageKey(TranslateBlocksLanguageKeyEvent request);
+        Task<bool> TranslateBlocksLanguageKeys(TranslateBlocksLanguageKeysEvent request);
         Task<bool> ImportUilmFile(UilmImportEvent request);
         Task<bool> ExportUilmFile(UilmExportEvent request);
         Task PublishUilmExportNotification(bool response, string fileId, string? messageCoRelationId, string tenantId);
