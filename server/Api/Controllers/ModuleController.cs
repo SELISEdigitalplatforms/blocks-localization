@@ -69,7 +69,7 @@ namespace BlocksTemplate.Api.Controllers
         //}
 
         [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::module::tag-glossary")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
         public async Task<BaseMutationResponse> TagGlossary([FromBody] TagGlossaryRequest request)
         {
             if (request == null) return new BaseMutationResponse { IsSuccess = false };
