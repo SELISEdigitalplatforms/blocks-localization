@@ -25,7 +25,12 @@ interface BlocksApp {
 }
 function IdpIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#1A3C8F" />
       <path
         d="M20 7L10 11v9c0 5.55 4.27 10.74 10 12 5.73-1.26 10-6.45 10-12v-9L20 7z"
@@ -33,20 +38,37 @@ function IdpIcon() {
         opacity="0.9"
       />
       <rect x="16" y="18" width="8" height="7" rx="1.5" fill="#1A3C8F" />
-      <circle cx="20" cy="17.5" r="2.5" stroke="#1A3C8F" strokeWidth="1.5" fill="none" />
+      <circle
+        cx="20"
+        cy="17.5"
+        r="2.5"
+        stroke="#1A3C8F"
+        strokeWidth="1.5"
+        fill="none"
+      />
     </svg>
   );
 }
 function UilmIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#0E7490" />
       <path
         d="M8 12h16a2 2 0 012 2v8a2 2 0 01-2 2h-3l-3 3v-3H8a2 2 0 01-2-2v-8a2 2 0 012-2z"
         fill="white"
         opacity="0.95"
       />
-      <path d="M12 17h8M12 20h5" stroke="#0E7490" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M12 17h8M12 20h5"
+        stroke="#0E7490"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
       <path
         d="M24 21h6a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5h-1.5l-2 2v-2H24a1.5 1.5 0 01-1.5-1.5v-5A1.5 1.5 0 0124 21z"
         fill="white"
@@ -57,7 +79,12 @@ function UilmIcon() {
 }
 function AiIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#7C3AED" />
       <path
         d="M20 8l2.5 6.5L29 17l-6.5 2.5L20 26l-2.5-6.5L11 17l6.5-2.5L20 8z"
@@ -78,7 +105,12 @@ function AiIcon() {
 }
 function DataGatewayIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#D97706" />
       <ellipse cx="20" cy="13" rx="8" ry="3.5" fill="white" opacity="0.95" />
       <path
@@ -100,9 +132,23 @@ function DataGatewayIcon() {
 }
 function BlocksOsIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#059669" />
-      <rect x="8" y="8" width="24" height="18" rx="2" stroke="white" strokeWidth="1.5" fill="none" />
+      <rect
+        x="8"
+        y="8"
+        width="24"
+        height="18"
+        rx="2"
+        stroke="white"
+        strokeWidth="1.5"
+        fill="none"
+      />
       <rect x="8" y="28" width="24" height="2" fill="white" opacity="0.8" />
       <circle cx="15" cy="14" r="1.5" fill="white" opacity="0.7" />
       <circle cx="20" cy="14" r="1.5" fill="white" opacity="0.7" />
@@ -112,7 +158,12 @@ function BlocksOsIcon() {
 }
 function UtilityIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#64748B" />
       <path
         d="M27.5 9a5.5 5.5 0 00-5.24 7.18l-10.5 10.5a2 2 0 002.83 2.83l10.5-10.5A5.5 5.5 0 1027.5 9z"
@@ -125,19 +176,67 @@ function UtilityIcon() {
 }
 function LogicIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#4F46E5" />
-      <rect x="8" y="17" width="6" height="6" rx="1.5" fill="white" opacity="0.9" />
-      <rect x="26" y="11" width="6" height="6" rx="1.5" fill="white" opacity="0.9" />
-      <rect x="26" y="23" width="6" height="6" rx="1.5" fill="white" opacity="0.9" />
-      <path d="M14 20h5l3-6h2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-      <path d="M19 20l3 6h2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+      <rect
+        x="8"
+        y="17"
+        width="6"
+        height="6"
+        rx="1.5"
+        fill="white"
+        opacity="0.9"
+      />
+      <rect
+        x="26"
+        y="11"
+        width="6"
+        height="6"
+        rx="1.5"
+        fill="white"
+        opacity="0.9"
+      />
+      <rect
+        x="26"
+        y="23"
+        width="6"
+        height="6"
+        rx="1.5"
+        fill="white"
+        opacity="0.9"
+      />
+      <path
+        d="M14 20h5l3-6h2"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+      />
+      <path
+        d="M19 20l3 6h2"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+      />
     </svg>
   );
 }
 function ObservabilityIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#0891B2" />
       <path
         d="M20 12c-6 0-10 8-10 8s4 8 10 8 10-8 10-8-4-8-10-8z"
@@ -146,20 +245,37 @@ function ObservabilityIcon() {
       />
       <circle cx="20" cy="20" r="3.5" fill="#0891B2" />
       <circle cx="20" cy="20" r="1.5" fill="white" opacity="0.8" />
-      <path d="M10 30l4-5M30 30l-4-5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
+      <path
+        d="M10 30l4-5M30 30l-4-5"
+        stroke="white"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
     </svg>
   );
 }
 function DeploymentsIcon() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-9 w-9">
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-9 w-9"
+    >
       <rect width="40" height="40" rx="10" fill="#DC2626" />
       <path
         d="M20 7c-2 4-6 6-9 7l1 8c1 5 5 9 8 10 3-1 7-5 8-10l1-8c-3-1-7-3-9-7z"
         fill="white"
         opacity="0.9"
       />
-      <path d="M20 14v8M16 18l4-4 4 4" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M20 14v8M16 18l4-4 4 4"
+        stroke="#DC2626"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -168,82 +284,83 @@ const SELISE_APPS: BlocksApp[] = [
     key: "idp",
     label: "IDP",
     description: "Identity & Access",
-    url: "https://dev-idp.blocksdevelopers.com",
+    url: "https://stg-idp.blocksdevelopers.com",
     icon: <IdpIcon />,
     clientId: "a5831e15-e193-4a4f-8e10-d04a4ad1705b",
-    redirectUri: "https://dev-idp.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-idp.blocksdevelopers.com/login/callback",
   },
   {
     key: "uilm",
     label: "EUROLM",
     description: "Localization",
-    url: "https://dev-eurolm.blocksdevelopers.com",
+    url: "https://stg-eurolm.blocksdevelopers.com",
     icon: <UilmIcon />,
     clientId: "57214b67-aa9c-4307-92ab-a25e35180fac",
-    redirectUri: "https://dev-eurolm.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-eurolm.blocksdevelopers.com/login/callback",
   },
   {
     key: "ai",
     label: "Blocks Agents",
     description: "AI Platform",
-    url: "https://dev-agent.blocksdevelopers.com",
+    url: "https://stg-agent.blocksdevelopers.com",
     icon: <AiIcon />,
     clientId: "c1565dbc-de65-4966-a427-0ed9e542c678",
-    redirectUri: "https://dev-agent.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-agent.blocksdevelopers.com/login/callback",
   },
   {
     key: "data-gateway",
     label: "Data Gateway",
     description: "Data Integration",
-    url: "https://dev-uds.blocksdevelopers.com",
+    url: "https://stg-uds.blocksdevelopers.com",
     icon: <DataGatewayIcon />,
     clientId: "e76867a8-37a1-483e-a15e-875c3884b8e8",
-    redirectUri: "https://dev-uds.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-uds.blocksdevelopers.com/login/callback",
   },
   {
     key: "blocks-os",
     label: "Blocks OS",
     description: "Operating System",
-    url: "https://dev-os.blocksdevelopers.com",
+    url: "https://stg-os.blocksdevelopers.com",
     icon: <BlocksOsIcon />,
     clientId: "5225b9c1-15bc-41b0-bdc6-d3ceb180ccc5",
-    redirectUri: "https://dev-os.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-os.blocksdevelopers.com/login/callback",
   },
   {
     key: "utility",
     label: "Utility",
     description: "Utility Tools",
-    url: "https://dev-utility.blocksdevelopers.com",
+    url: "https://stg-utility.blocksdevelopers.com",
     icon: <UtilityIcon />,
     clientId: "4f7ae2b9-4b42-4770-9138-63db08538629",
-    redirectUri: "https://dev-utility.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-utility.blocksdevelopers.com/login/callback",
   },
   {
     key: "logic",
     label: "Logic",
     description: "Business Logic",
-    url: "https://dev-logic.blocksdevelopers.com",
+    url: "https://stg-logic.blocksdevelopers.com",
     icon: <LogicIcon />,
     clientId: "a25aee32-73ae-484b-b813-522a8d091f89",
-    redirectUri: "https://dev-logic.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-logic.blocksdevelopers.com/login/callback",
   },
   {
     key: "observability",
     label: "Observability",
     description: "Monitoring & Logs",
-    url: "https://dev-observability.blocksdevelopers.com",
+    url: "https://stg-observability.blocksdevelopers.com",
     icon: <ObservabilityIcon />,
     clientId: "1bd234da-1fa1-4264-982e-3debb1078be5",
-    redirectUri: "https://dev-observability.blocksdevelopers.com/login/callback",
+    redirectUri:
+      "https://stg-observability.blocksdevelopers.com/login/callback",
   },
   {
     key: "deployments",
     label: "Deployments",
     description: "CI/CD & Releases",
-    url: "https://dev-deployment.blocksdevelopers.com",
+    url: "https://stg-deployment.blocksdevelopers.com",
     icon: <DeploymentsIcon />,
     clientId: "6523b311-256f-4b9a-a88a-2ac4e02bad25",
-    redirectUri: "https://dev-deployment.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-deployment.blocksdevelopers.com/login/callback",
   },
 ];
 interface AppTileProps {
@@ -275,13 +392,13 @@ function LauncherTriggerIcon() {
       xmlns="http://www.w3.org/2000/svg"
       className="h-5 w-5"
     >
-      <rect x="1"  y="1"  width="5" height="5" rx="1.5" />
-      <rect x="7.5" y="1"  width="5" height="5" rx="1.5" />
-      <rect x="14" y="1"  width="5" height="5" rx="1.5" />
-      <rect x="1"  y="7.5" width="5" height="5" rx="1.5" />
+      <rect x="1" y="1" width="5" height="5" rx="1.5" />
+      <rect x="7.5" y="1" width="5" height="5" rx="1.5" />
+      <rect x="14" y="1" width="5" height="5" rx="1.5" />
+      <rect x="1" y="7.5" width="5" height="5" rx="1.5" />
       <rect x="7.5" y="7.5" width="5" height="5" rx="1.5" />
       <rect x="14" y="7.5" width="5" height="5" rx="1.5" />
-      <rect x="1"  y="14" width="5" height="5" rx="1.5" />
+      <rect x="1" y="14" width="5" height="5" rx="1.5" />
       <rect x="7.5" y="14" width="5" height="5" rx="1.5" />
       <rect x="14" y="14" width="5" height="5" rx="1.5" />
     </svg>
@@ -331,7 +448,10 @@ export function BlocksAppLauncher() {
   }, []);
   const saveFavourites = (keys: Set<string>) => {
     setFavouriteKeys(keys);
-    localStorage.setItem("blocks-app-favourites", JSON.stringify(Array.from(keys)));
+    localStorage.setItem(
+      "blocks-app-favourites",
+      JSON.stringify(Array.from(keys)),
+    );
   };
   const toggleFavourite = (key: string) => {
     const newFavourites = new Set(favouriteKeys);
@@ -368,7 +488,7 @@ export function BlocksAppLauncher() {
     }
   };
   // if (!isHydrated || !isAllowedRoute) return null;
-    if (!isHydrated) return null;
+  if (!isHydrated) return null;
   const favourites = SELISE_APPS.filter((a) => favouriteKeys.has(a.key));
   const moreApps = SELISE_APPS.filter((a) => !favouriteKeys.has(a.key));
   return (
@@ -380,7 +500,7 @@ export function BlocksAppLauncher() {
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors",
               "hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              open && "bg-accent text-foreground"
+              open && "bg-accent text-foreground",
             )}
           >
             <LauncherTriggerIcon />
@@ -392,7 +512,9 @@ export function BlocksAppLauncher() {
           className="w-[260px] overflow-hidden rounded-2xl p-0 shadow-xl"
         >
           <div className="flex items-center justify-between bg-background px-3 py-3 border-b">
-            <p className="text-[13px] font-semibold text-foreground">Your favourites</p>
+            <p className="text-[13px] font-semibold text-foreground">
+              Your favourites
+            </p>
             <button
               onClick={() => setEditDialogOpen(true)}
               className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -444,15 +566,19 @@ export function BlocksAppLauncher() {
                 onClick={() => toggleFavourite(app.key)}
                 className={cn(
                   "group flex flex-col items-center gap-2 rounded-xl border border-transparent bg-muted/40 p-4 shadow-sm transition-all hover:bg-accent hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                  favouriteKeys.has(app.key) && "border-primary bg-primary/10"
+                  favouriteKeys.has(app.key) && "border-primary bg-primary/10",
                 )}
                 aria-pressed={favouriteKeys.has(app.key)}
               >
                 <span className="flex items-center justify-center h-12 w-12 mb-1">
                   {app.icon}
                 </span>
-                <span className="font-semibold text-sm text-foreground mb-0.5 line-clamp-1">{app.label}</span>
-                <span className="text-xs text-muted-foreground text-center line-clamp-2">{app.description}</span>
+                <span className="font-semibold text-sm text-foreground mb-0.5 line-clamp-1">
+                  {app.label}
+                </span>
+                <span className="text-xs text-muted-foreground text-center line-clamp-2">
+                  {app.description}
+                </span>
               </button>
             ))}
           </div>
