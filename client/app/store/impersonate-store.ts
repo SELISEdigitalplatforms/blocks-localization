@@ -10,7 +10,11 @@ interface ImpersonateState {
     originalTenantId: string,
   ) => void;
   stopImpersonation: () => void;
-
+  setImpersonation: (
+    impersonated: boolean,
+    originalTenantId: string | null,
+    impersonatedTenantId: string | null,
+  ) => void;
   reset: () => void;
 }
 
@@ -24,25 +28,36 @@ export const useImpersonateStore = create<ImpersonateState>()(
         impersonatedTenantId: string,
         originalTenantId: string,
       ) => {
-        set({ isImpersonated: true, impersonatedTenantId, originalTenantId });
+        set({ isImpersonated: true, impersonatedTenantId, originalTenantId })
       },
       stopImpersonation: () => {
         set({
           isImpersonated: false,
           impersonatedTenantId: null,
           originalTenantId: null,
-        });
+        })
+      },
+      setImpersonation: (
+        impersonated: boolean,
+        originalTenantId: string | null,
+        impersonatedTenantId: string | null,
+      ) => {
+        set({
+          isImpersonated: impersonated,
+          originalTenantId,
+          impersonatedTenantId,
+        })
       },
       reset: () => {
         set({
           isImpersonated: false,
           impersonatedTenantId: null,
           originalTenantId: null,
-        });
+        })
       },
     }),
     {
-      name: "impersonate-storage",
+      name: 'impersonate-storage',
     },
   ),
-);
+)
