@@ -16,7 +16,7 @@ export function Logo({ src, alt, width, height, className }: LogoProps) {
   return (
     <>
       <img
-        src="/Logo.svg"
+        src="/Logo_Black.svg"
         alt={alt ?? "SELISE Logo"}
         width={width}
         height={height}
