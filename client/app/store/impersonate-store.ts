@@ -1,63 +1,57 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { create } from 'zustand'
 
 interface ImpersonateState {
-  isImpersonated: boolean;
-  impersonatedTenantId: string | null;
-  originalTenantId: string | null;
-  startImpersonation: (
-    impersonatedTenantId: string,
-    originalTenantId: string,
-  ) => void;
-  stopImpersonation: () => void;
+  isImpersonated: boolean
+  impersonatedTenantId: string | null
+  originalTenantId: string | null
+
+  isInitialized: boolean
+
   setImpersonation: (
-    impersonated: boolean,
+    isImpersonated: boolean,
     originalTenantId: string | null,
     impersonatedTenantId: string | null,
-  ) => void;
-  reset: () => void;
+  ) => void
+  impersonate: (impersonatedTenantId: string, originalTenantId: string) => void
+  terminate: (originalTenantId: string) => void
+
+  setInitialized: (isInitialized: boolean) => void
+
+  reset: () => void
 }
 
-export const useImpersonateStore = create<ImpersonateState>()(
-  persist(
-    (set) => ({
+export const useImpersonateStore = create<ImpersonateState>()((set) => ({
+  isImpersonated: false,
+  impersonatedTenantId: null,
+  originalTenantId: null,
+  isInitialized: false,
+  setImpersonation: (
+    isImpersonated: boolean,
+    originalTenantId: string | null,
+    impersonatedTenantId: string | null,
+  ) => {
+    set({ isImpersonated, impersonatedTenantId, originalTenantId })
+  },
+  impersonate: (impersonatedTenantId: string, originalTenantId: string) => {
+    set({ isImpersonated: true, impersonatedTenantId, originalTenantId })
+  },
+  terminate: (originalTenantId: string) => {
+    set((state) => ({
+      ...state,
+      isImpersonated: false,
+      impersonatedTenantId: null,
+      originalTenantId: originalTenantId,
+    }))
+  },
+  setInitialized: (isInitialized: boolean) => {
+    set({ isInitialized })
+  },
+  reset: () => {
+    set({
       isImpersonated: false,
       impersonatedTenantId: null,
       originalTenantId: null,
-      startImpersonation: (
-        impersonatedTenantId: string,
-        originalTenantId: string,
-      ) => {
-        set({ isImpersonated: true, impersonatedTenantId, originalTenantId })
-      },
-      stopImpersonation: () => {
-        set({
-          isImpersonated: false,
-          impersonatedTenantId: null,
-          originalTenantId: null,
-        })
-      },
-      setImpersonation: (
-        impersonated: boolean,
-        originalTenantId: string | null,
-        impersonatedTenantId: string | null,
-      ) => {
-        set({
-          isImpersonated: impersonated,
-          originalTenantId,
-          impersonatedTenantId,
-        })
-      },
-      reset: () => {
-        set({
-          isImpersonated: false,
-          impersonatedTenantId: null,
-          originalTenantId: null,
-        })
-      },
-    }),
-    {
-      name: 'impersonate-storage',
-    },
-  ),
-)
+      isInitialized: false,
+    })
+  },
+}))
