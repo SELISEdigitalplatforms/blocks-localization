@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -64,6 +64,7 @@ import {
 interface AddEditGlossaryProps {
   onClose: () => void;
   glossary?: IGlossary;
+  isOpen?: boolean;
 }
 
 const schema = z.object({
@@ -79,8 +80,13 @@ const schema = z.object({
   additionalNote: z.string().optional(),
 });
 
-const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary }) => {
+const AddEditGlossary: FC<AddEditGlossaryProps> = ({
+  onClose,
+  glossary,
+  isOpen,
+}) => {
   const isEditMode = !!glossary;
+  const prevIsOpenRef = useRef(false);
   const { isPending, mutateAsync } = useSaveGlossary();
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
@@ -100,6 +106,23 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary }) => {
     },
     resolver: zodResolver(schema),
   });
+
+  useEffect(() => {
+    // Reset form when dialog opens in add mode (isOpen goes from false to true)
+    if (isOpen && !prevIsOpenRef.current && !glossary) {
+      form.reset({
+        name: "",
+        language: "",
+        type: "",
+        isGlobal: false,
+        moduleIds: [],
+        context: "",
+        additionalNote: "",
+      });
+      setSelectedModuleIds([]);
+    }
+    prevIsOpenRef.current = isOpen ?? false;
+  }, [form, glossary, isOpen]);
 
   useEffect(() => {
     form.reset({

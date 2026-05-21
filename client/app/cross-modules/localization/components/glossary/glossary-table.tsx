@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ColumnDef,
@@ -56,7 +56,7 @@ const GlossaryTable: React.FC = () => {
   );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchText(value);
@@ -242,7 +242,7 @@ const GlossaryTable: React.FC = () => {
               <span className="sr-only sm:not-sr-only">New Glossary</span>
             </Button>
           </DialogTrigger>
-          <AddEditGlossary onClose={() => setAddModalOpen(false)} />
+          <AddEditGlossary onClose={() => setAddModalOpen(false)} isOpen={addModalOpen} />
         </Dialog>
       </div>
 
