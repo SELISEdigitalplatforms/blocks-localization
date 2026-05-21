@@ -1,4 +1,4 @@
-import React from "react";
+import { FC, useEffect, useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -79,14 +79,14 @@ const schema = z.object({
   additionalNote: z.string().optional(),
 });
 
-const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) => {
+const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary }) => {
   const isEditMode = !!glossary;
   const { isPending, mutateAsync } = useSaveGlossary();
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  const [languageOpen, setLanguageOpen] = React.useState(false);
-  const [modulePopoverOpen, setModulePopoverOpen] = React.useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [modulePopoverOpen, setModulePopoverOpen] = useState(false);
 
   const form = useForm<IGlossaryFormData>({
     defaultValues: {
@@ -101,9 +101,22 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    form.reset({
+      name: glossary?.name ?? "",
+      language: glossary?.language ?? "",
+      type: glossary?.type ?? "",
+      isGlobal: glossary?.isGlobal ?? false,
+      moduleIds: glossary?.moduleIds ?? [],
+      context: glossary?.context ?? "",
+      additionalNote: glossary?.additionalNote ?? "",
+    });
+    setSelectedModuleIds(glossary?.moduleIds ?? []);
+  }, [form, glossary]);
+
   const selectedLanguage = form.watch("language");
-  const [selectedModuleIds, setSelectedModuleIds] = React.useState<string[]>(
-    glossary?.moduleIds ?? []
+  const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>(
+    glossary?.moduleIds ?? [],
   );
 
   const toggleModule = (moduleId: string) => {
@@ -127,11 +140,16 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
         toast({
           variant: "success",
           title: "Success",
-          description: isEditMode ? "Glossary item updated" : "Glossary item added",
+          description: isEditMode
+            ? "Glossary item updated"
+            : "Glossary item added",
         });
         onClose();
       } else {
-        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
+        if (
+          Array.isArray(res?.validationErrors) &&
+          res.validationErrors.length > 0
+        ) {
           res.validationErrors.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
@@ -157,8 +175,10 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
       </DialogHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(formSubmitHandler)} className="space-y-4">
-
+        <form
+          onSubmit={form.handleSubmit(formSubmitHandler)}
+          className="space-y-4"
+        >
           <FormField
             name="name"
             control={form.control}
@@ -202,7 +222,10 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </FormControl>
-                <CommandDialog open={languageOpen} onOpenChange={setLanguageOpen}>
+                <CommandDialog
+                  open={languageOpen}
+                  onOpenChange={setLanguageOpen}
+                >
                   <CommandInput placeholder="Search language..." />
                   <CommandList>
                     <CommandEmpty>No language found.</CommandEmpty>
@@ -234,7 +257,9 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-left font-medium text-high-emphasis">Type</FormLabel>
+                <FormLabel className="text-left font-medium text-high-emphasis">
+                  Type
+                </FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -286,7 +311,11 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
                     {selectedModuleIds.map((id) => {
                       const mod = moduleListData?.find((m) => m.itemId === id);
                       return (
-                        <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                        <Badge
+                          key={id}
+                          variant="secondary"
+                          className="gap-1 pr-1"
+                        >
                           {mod?.moduleName ?? id}
                           <button
                             type="button"
@@ -300,7 +329,10 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
                     })}
                   </div>
                 )}
-                <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
+                <Popover
+                  open={modulePopoverOpen}
+                  onOpenChange={setModulePopoverOpen}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
@@ -374,8 +406,12 @@ const AddEditGlossary: React.FC<AddEditGlossaryProps> = ({ onClose, glossary }) 
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </FormLabel>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-80 text-sm font-normal">
-                      Not utilized for auto translation, only given for additional comments by the user
+                    <TooltipContent
+                      side="top"
+                      className="max-w-80 text-sm font-normal"
+                    >
+                      Not utilized for auto translation, only given for
+                      additional comments by the user
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
