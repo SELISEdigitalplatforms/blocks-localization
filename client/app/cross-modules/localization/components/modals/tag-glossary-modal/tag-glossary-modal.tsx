@@ -44,6 +44,10 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
     );
   };
 
+  const availableGlossaryIds = (glossariesResponse?.items ?? []).map((g) => g.itemId);
+  const hasUnavailableSelectedGlossaries = selectedIds.some((id) => !availableGlossaryIds.includes(id));
+  const isSaveDisabled = isPending || hasUnavailableSelectedGlossaries;
+
   const handleSubmit = async () => {
     try {
       const res = await mutateAsync({
@@ -114,6 +118,12 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         )}
       </div>
 
+      {hasUnavailableSelectedGlossaries && (
+        <p className="mt-2 text-sm text-destructive">
+          Some selected glossaries are no longer available. Please remove them to save.
+        </p>
+      )}
+
       <DialogFooter className="mt-4">
         <Button
           type="button"
@@ -123,7 +133,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         >
           Cancel
         </Button>
-        <Button disabled={isPending} onClick={handleSubmit}>
+        <Button disabled={isSaveDisabled} onClick={handleSubmit}>
           {isPending ? "Saving..." : "Save"}
         </Button>
       </DialogFooter>
