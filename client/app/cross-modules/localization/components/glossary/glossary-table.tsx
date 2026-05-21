@@ -1,4 +1,3 @@
-
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -48,9 +47,13 @@ const GlossaryTable: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(undefined);
+  const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(
+    undefined,
+  );
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(undefined);
+  const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(
+    undefined,
+  );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
@@ -66,7 +69,11 @@ const GlossaryTable: React.FC = () => {
     }, 400);
   }, []);
 
-  const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, debouncedSearch);
+  const { data, isLoading } = useGetGlossaries(
+    pageNumber,
+    pageSize,
+    debouncedSearch,
+  );
 
   const handleEditClick = useCallback((glossary: IGlossary) => {
     setEditGlossary(glossary);
@@ -102,8 +109,11 @@ const GlossaryTable: React.FC = () => {
         ),
         cell: ({ row }) => (
           <div className="flex items-center">
-            <span>{langConfigureData.find((lang) => lang.languageCode === row.original.language)
-                                      ?.languageName ?? "-"}</span>
+            <span>
+              {langConfigureData.find(
+                (lang) => lang.languageCode === row.original.language,
+              )?.languageName ?? "-"}
+            </span>
           </div>
         ),
       },
@@ -124,7 +134,9 @@ const GlossaryTable: React.FC = () => {
         accessorKey: "context",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Context / Description</span>
+            <span className="font-bold text-medium-emphasis">
+              Context / Description
+            </span>
           </div>
         ),
         cell: ({ row }) => (
@@ -137,11 +149,16 @@ const GlossaryTable: React.FC = () => {
         accessorKey: "additionalNote",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Additional Note</span>
+            <span className="font-bold text-medium-emphasis">
+              Additional Note
+            </span>
           </div>
         ),
         cell: ({ row }) => (
-          <div className="max-w-[200px] truncate" title={row.original.additionalNote}>
+          <div
+            className="max-w-[200px] truncate"
+            title={row.original.additionalNote}
+          >
             {row.original.additionalNote ?? "-"}
           </div>
         ),
@@ -169,21 +186,27 @@ const GlossaryTable: React.FC = () => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-5 w-5 p-0">
+              <Button variant="ghost" className="h-8 w-8 p-0">
                 <EllipsisVertical width={20} height={20} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 className="cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); handleEditClick(row.original); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditClick(row.original);
+                }}
               >
                 <Pencil className="mr-2 h-4 w-4" />
                 <span>Edit</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer text-error"
-                onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.original); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(row.original);
+                }}
               >
                 <Trash className="mr-2 h-4 w-4" />
                 <span>Delete</span>
@@ -242,12 +265,21 @@ const GlossaryTable: React.FC = () => {
             <Table className="text-sm">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
+                  <TableRow
+                    key={headerGroup.id}
+                    className="px-4 py-3 hover:bg-transparent"
+                  >
                     {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
+                      <TableHead
+                        key={header.id}
+                        className="font-bold text-medium-emphasis"
+                      >
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -269,18 +301,26 @@ const GlossaryTable: React.FC = () => {
                     <TableRow
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
-                      onClick={() => navigate(`/services/glossary/${row.original.itemId}`)}
+                      onClick={() =>
+                        navigate(`/services/glossary/${row.original.itemId}`)
+                      }
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       No results.
                     </TableCell>
                   </TableRow>
