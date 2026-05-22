@@ -7,6 +7,7 @@ import { KeyDetails } from "@blocks-localization/language-module/key-details/key
 import { LanguageLogs } from "@blocks-localization/language-module/activity-log/language-logs";
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
 import { ModuleTable } from "@blocks-localization/language-module/modules/module-table/module-table";
+import { ModuleDetails } from "@blocks-localization/language-module/modules/module-details/module-details";
 import { useParams } from "react-router-dom";
 
 function LocalizationPageLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,14 @@ export function LocalizationModulesPage() {
   return (
     <LocalizationPageLayout>
       <ModuleTable />
+    </LocalizationPageLayout>
+  );
+}
+
+export function LocalizationModuleDetailPage() {
+  return (
+    <LocalizationPageLayout>
+      <ModuleDetails />
     </LocalizationPageLayout>
   );
 }

@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { useProjectStore } from "@/store/useProjectStore";
 import { userService } from "@blocks-idp/iam/services/user.service";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -72,6 +73,7 @@ const RowActionsCell = ({
 
 export function ModuleTable() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const {
     isLoading: isModulesLoading,
     data: modulesData,
@@ -251,7 +253,8 @@ export function ModuleTable() {
                     filteredModules.map((module) => (
                       <TableRow
                         key={module.itemId}
-                        className="font-normal text-medium-emphasis hover:bg-muted/50"
+                        className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
+                        onClick={() => navigate(`/services/modules/${module.itemId}`)}
                       >
                         <TableCell className="font-medium">
                           {module.moduleName}
