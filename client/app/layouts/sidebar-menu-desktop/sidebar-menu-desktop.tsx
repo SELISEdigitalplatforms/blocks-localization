@@ -9,19 +9,10 @@ import { navigationMenus } from "@/constants/navigation-menus";
 import { SidebarContext } from "@/contexts/dashboard-layout-provider";
 import { useFilteredMenus } from "@/hooks/use-filtered-menus";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/contexts/theme-provider";
 
 export function SidebarMenuDesktop() {
   const { isSidebarOpen, toggleSidebar } = useContext(SidebarContext);
-  const { resolvedTheme } = useTheme();
   const allowedMenu = useFilteredMenus(navigationMenus);
-
-  const getLogoSrc = () => {
-    if (isSidebarOpen) {
-      return resolvedTheme === "dark" ? "/Logo_White.svg" : " /Logo_Black.svg";
-    }
-    return resolvedTheme === "dark" ? "/Icon_White.svg" : "/Icon_Black.svg";
-  };
 
   return (
     <div
@@ -35,9 +26,8 @@ export function SidebarMenuDesktop() {
             isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
-          <img
-            src={getLogoSrc()}
-            alt="Logo"
+          <Logo
+            variant={isSidebarOpen ? "logo" : "icon"}
             className="h-full w-full object-contain"
           />
         </Link>
