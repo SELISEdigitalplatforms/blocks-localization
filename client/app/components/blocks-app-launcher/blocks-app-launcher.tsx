@@ -443,7 +443,7 @@ export function BlocksAppLauncher() {
                 key={app.key}
                 onClick={() => toggleFavourite(app.key)}
                 className={cn(
-                  "group flex flex-col items-center gap-2 rounded-xl border border-transparent bg-muted/40 p-4 shadow-sm transition-all hover:bg-accent hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "group flex flex-col items-center gap-2 rounded-xl border border-transparent bg-muted/40 p-4 shadow-sm hover:bg-accent hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   favouriteKeys.has(app.key) && "border-primary bg-primary/10"
                 )}
                 aria-pressed={favouriteKeys.has(app.key)}
