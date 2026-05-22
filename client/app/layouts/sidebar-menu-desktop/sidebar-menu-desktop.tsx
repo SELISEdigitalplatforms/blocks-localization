@@ -9,7 +9,7 @@ import { navigationMenus } from "@/constants/navigation-menus";
 import { SidebarContext } from "@/contexts/dashboard-layout-provider";
 import { useFilteredMenus } from "@/hooks/use-filtered-menus";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/contexts/theme-provider";
 
 export function SidebarMenuDesktop() {
   const { isSidebarOpen, toggleSidebar } = useContext(SidebarContext);
@@ -18,9 +18,9 @@ export function SidebarMenuDesktop() {
 
   const getLogoSrc = () => {
     if (isSidebarOpen) {
-      return resolvedTheme === "dark" ? "/Logo_White.svg" : "/Logo.svg";
+      return resolvedTheme === "dark" ? "/Logo_White.svg" : " /Logo_Black.svg";
     }
-    return resolvedTheme === "dark" ? "/Icon_White.svg" : "/Icon.svg";
+    return resolvedTheme === "dark" ? "/Icon_White.svg" : "/Icon_Black.svg";
   };
 
   return (
@@ -32,13 +32,22 @@ export function SidebarMenuDesktop() {
           to="/console"
           className={cn(
             "relative inline-block cursor-pointer overflow-hidden",
-            isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8"
+            isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
-          <img src={getLogoSrc()} alt="Logo" className="h-full w-full object-contain" />
+          <img
+            src={getLogoSrc()}
+            alt="Logo"
+            className="h-full w-full object-contain"
+          />
         </Link>
         {isSidebarOpen && (
-          <Button variant="ghost" size="icon" className="shrink-0 p-0" onClick={toggleSidebar}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 p-0"
+            onClick={toggleSidebar}
+          >
             <PanelLeft className="h-6 w-6" />
           </Button>
         )}
