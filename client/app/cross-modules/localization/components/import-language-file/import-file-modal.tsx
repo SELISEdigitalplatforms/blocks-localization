@@ -12,11 +12,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui-kits/select/select";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile } from "@blocks-localization/models/language";
-import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
+import {
+  ArrowDownToLine,
+  CloudUpload,
+  Paperclip,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -37,7 +49,9 @@ const FileSvgDraw = () => {
         &nbsp; or drag and drop
       </div>
       {/* <div className="text-xs text-low-emphasis">XLSX, CSV, JSON or XLF. Maximum file 50MB</div> */}
-      <div className="text-xs text-low-emphasis">XLSX, CSV, JSON Maximum file 50MB</div>
+      <div className="text-xs text-low-emphasis">
+        XLSX, CSV, JSON Maximum file 50MB
+      </div>
     </>
   );
 };
@@ -49,29 +63,41 @@ interface IImportFilesModalProps {
   onClose(): void;
 }
 
+type TemplateFormat = "xlsx" | "csv" | "json";
+
+//TODO FE: add those file in the storage accordingly
+const TEMPLATE_URLS: Record<TemplateFormat, string> = {
+  xlsx: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.xlsx",
+  csv: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.csv",
+  json: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.json",
+};
+
 export default function ImportCommunicationsModal({
   dialogTitle,
   projectKey,
   onClose,
 }: IImportFilesModalProps) {
   const [files, setFiles] = useState<File[] | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
 
   const { mutateAsync: getPresignedUrl, isPending: isGettingPresignedUrl } =
     useGetPreSignedUrlForUpload();
-  const { mutateAsync: uploadFileMutate, isPending: isUploadingFile } = useUploadFile();
-  const { mutateAsync: uploadUilmFile, isPending: isUploadingUilmFile } = useImportLanguageFile();
+  const { mutateAsync: uploadFileMutate, isPending: isUploadingFile } =
+    useUploadFile();
+  const { mutateAsync: uploadUilmFile, isPending: isUploadingUilmFile } =
+    useImportLanguageFile();
   const [isUploadingBatch, setIsUploadingBatch] = useState(false);
 
   const isBusy =
-    isGettingPresignedUrl || isUploadingFile || isUploadingUilmFile || isUploadingBatch;
+    isGettingPresignedUrl ||
+    isUploadingFile ||
+    isUploadingUilmFile ||
+    isUploadingBatch;
 
   const downloadTemplate = async () => {
     try {
-      // TODO: we will change this later, and upload the file into CDN and fetch from there
-
-      const url =
-        "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.json";
-      const filename = "UILM_FILE.json";
+      const url = TEMPLATE_URLS[selectedFormat];
+      const filename = `Uilm_template.${selectedFormat}`;
 
       if (!url) throw new Error("No URL received");
 
@@ -104,7 +130,9 @@ export default function ImportCommunicationsModal({
     maxSize: 1024 * 1024 * 50, // 50MB as mentioned in the UI
     multiple: true,
     accept: {
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
       "text/csv": [".csv"],
       "application/json": [".json"],
       "application/x-xliff+xml": [".xlf"],
@@ -202,10 +230,13 @@ export default function ImportCommunicationsModal({
         <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
           <div className="flex flex-row items-center">
             <TriangleAlert className="h-4 w-4 text-icon-warning" />
-            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">JSON Format</p>
+            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
+              JSON Format
+            </p>
           </div>
           <p className="mt-[8px] text-[14px] text-high-emphasis">
-            Please download the JSON Template and re-upload with your data to avoid any error.
+            Please download the JSON Template and re-upload with your data to
+            avoid any error.
           </p>
         </div>
         <FileUploader
@@ -231,15 +262,32 @@ export default function ImportCommunicationsModal({
           </FileUploaderContent>
         </FileUploader>
 
-        <DialogFooter className="mr-1 grid grid-cols-2 gap-2">
-          <div
-            className="mt-2 flex cursor-pointer flex-row gap-2 text-primary"
-            onClick={downloadTemplate}
-          >
-            <ArrowDownToLine size={20} />
-            <h3 className="text-sm font-medium">Template</h3>
+        <DialogFooter className="mr-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-row items-center gap-2">
+            <Select
+              value={selectedFormat}
+              onValueChange={(value) =>
+                setSelectedFormat(value as TemplateFormat)
+              }
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="xlsx">XLSX</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+              </SelectContent>
+            </Select>
+            <div
+              className="flex cursor-pointer flex-row gap-2 text-primary"
+              onClick={downloadTemplate}
+            >
+              <ArrowDownToLine size={20} />
+              <h3 className="text-sm font-medium">Template</h3>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex gap-2">
             <Button variant="outline" size="default" onClick={onClose}>
               Cancel
             </Button>
