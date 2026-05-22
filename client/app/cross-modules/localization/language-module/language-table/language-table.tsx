@@ -7,6 +7,7 @@ import {
 } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
+import { Label } from "@/components/ui-kits/label/label";
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +50,7 @@ import {
   useGetBlocksLanguageKey,
   useGetLanguageModules,
   useGetLanguages,
+  useTranslateKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
@@ -70,6 +72,7 @@ import {
   Settings2,
   Trash,
   Wand,
+  Languages,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryState } from "nuqs";
@@ -81,6 +84,7 @@ import React, {
   useState,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -117,7 +121,7 @@ const KeyNameCell = React.memo(({ keyName }: { keyName: string }) => {
 KeyNameCell.displayName = "KeyNameCell";
 
 const RowActionsCell = React.memo(
-  ({ onView, onDelete }: { onView: () => void; onDelete: () => void }) => (
+  ({ onView, onDelete, onTranslate }: { onView: () => void; onDelete: () => void; onTranslate: () => void }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -128,6 +132,13 @@ const RowActionsCell = React.memo(
         <DropdownMenuItem className="cursor-pointer" onClick={onView}>
           <AlignLeft className="mr-2 h-4 w-4" />
           <span>View details</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
+          e.stopPropagation();
+          onTranslate();
+        }}>
+          <Languages className="mr-2 h-4 w-4" />
+          <span>Translate</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer text-error"
@@ -277,6 +288,8 @@ export function LanguageTable() {
   >(null);
   const { isPending: isDeleteLanguageKeyPending, mutateAsync: deleteAsync } =
     useDeleteLanguageKey();
+  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } = useTranslateKey();
+  const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Reset all filters and view state when the project changes
@@ -310,6 +323,13 @@ export function LanguageTable() {
     cancelButton: "Cancel",
   };
 
+  const translateKeyModalData = {
+    dialogTitle: "Auto-translate this key?",
+    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
+    confirmButton: "Translate",
+    cancelButton: "Cancel",
+  };
+
   const onDeleteClick = (itemId: string) => {
     setIsDeleteDialogOpen(true);
     setSelectedLanguageKeyId(itemId);
@@ -317,6 +337,47 @@ export function LanguageTable() {
 
   const onPublishChangesClick = () => {
     setIsPublishChangesDialogOpen(true);
+  };
+
+  const onTranslateClick = (itemId: string) => {
+    setIsTranslateDialogOpen(true);
+    setSelectedLanguageKeyId(itemId);
+  };
+
+  const onConfirmTranslate = async () => {
+    if (!tenantId || !selectedLanguageKeyId) return;
+
+    const payload = {
+      keyId: selectedLanguageKeyId,
+      projectKey: tenantId,
+      messageCoRelationId: shortGuidGenerator(8),
+      defaultLanguage: "en-US",
+    };
+
+    try {
+      const res = await translateKeyAsync(payload);
+
+      if (res?.isSuccess) {
+        toast({
+          variant: "success",
+          title: "Processing Translation",
+          description: "Key translation in progress.",
+        });
+        setIsTranslateDialogOpen(false);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
   };
 
   const onConfirmDelete = async () => {
@@ -542,6 +603,7 @@ export function LanguageTable() {
             <RowActionsCell
               onView={() => handleRowClick(row.original.itemId)}
               onDelete={() => onDeleteClick(row.original.itemId)}
+              onTranslate={() => onTranslateClick(row.original.itemId)}
             />
           );
         },
@@ -549,6 +611,7 @@ export function LanguageTable() {
     ],
     [
       handleRowClick,
+      onTranslateClick,
       languageListData,
       languageModules,
       selectedLanguages,
@@ -989,6 +1052,17 @@ export function LanguageTable() {
               onConfirm={generateUilmFiles}
               data={publishChangesModalData}
               buttonState={{ confirm: { disable: isPending } }}
+            />
+          </Dialog>
+          <Dialog
+            open={isTranslateDialogOpen}
+            onOpenChange={setIsTranslateDialogOpen}
+          >
+            <ConfirmationModal
+              onCancel={() => {}}
+              onConfirm={onConfirmTranslate}
+              data={translateKeyModalData}
+              buttonState={{ confirm: { disable: isTranslatingKey } }}
             />
           </Dialog>
         </Tabs>

@@ -63,6 +63,7 @@ interface FormValues {
   moduleId: string;
   resources: { value: string; culture: string }[];
   routes: { value: string }[];
+  context?: string;
 }
 
 const schema = z.object({
@@ -92,6 +93,7 @@ const schema = z.object({
   routes: z
     .array(z.object({ value: z.string().min(1, { message: "Route is required" }) }))
     .optional(),
+  context: z.string().optional(),
 });
 
 function AddNewLanguageKey() {
@@ -116,6 +118,7 @@ function AddNewLanguageKey() {
       moduleId: "",
       resources: [],
       routes: [],
+      context: "",
     },
     resolver: zodResolver(schema),
     mode: "onChange", // Validate on change to provide immediate feedback
@@ -181,6 +184,7 @@ function AddNewLanguageKey() {
         projectKey: tenantId,
         itemId: "",
         isNewKey: true,
+        context: data.context || "",
       };
       const res = await mutateAsync(payload);
       if (res?.success) {
@@ -455,6 +459,26 @@ function AddNewLanguageKey() {
                             <Textarea
                               id="defaultValue"
                               placeholder="Enter default value"
+                              className="min-h-20 shadow-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs leading-4" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="context"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel htmlFor="context">
+                            Key Context
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              id="context"
+                              placeholder="Enter key context (optional)"
                               className="min-h-20 shadow-none"
                               {...field}
                             />
