@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQueryState } from "nuqs";
+import { useQuery } from "@tanstack/react-query";
 import {
   Tabs,
   TabsContent,
@@ -22,9 +23,10 @@ import {
   CardTitle,
 } from "@/components/ui-kits/card/card";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { Info, BookOpen } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+import { useProjectStore } from "@/store/useProjectStore";
+import { userService } from "@blocks-idp/iam/services/user.service";
 import {
   useGetLanguageModules,
   useGetModuleGlossaries,
@@ -33,6 +35,7 @@ import {
 function ModuleDetailsContent({
   module,
   moduleId,
+  userMap,
 }: {
   module: {
     moduleName: string;
@@ -42,6 +45,10 @@ function ModuleDetailsContent({
     lastUpdatedBy: string | null;
   };
   moduleId: string;
+  userMap?: Record<
+    string,
+    { firstName: string; lastName: string; email: string; userName: string }
+  >;
 }) {
   const [activeTab, setActiveTab] = useQueryState("moduleTab", {
     defaultValue: "details",
@@ -50,6 +57,34 @@ function ModuleDetailsContent({
   // Glossary tab - fetch glossaries for this module
   const { data: glossariesData, isLoading: isGlossariesLoading } =
     useGetModuleGlossaries(moduleId);
+
+  // Helper function to get user display name
+  const getUserDisplayName = (userId: string | null): string => {
+    if (!userId) return "—";
+    if (!userMap) return "—";
+    const user = userMap[userId];
+    if (user) {
+      const firstName =
+        typeof user.firstName === "string" && user.firstName.trim()
+          ? user.firstName
+          : null;
+      const lastName =
+        typeof user.lastName === "string" && user.lastName.trim()
+          ? user.lastName
+          : null;
+      const fullName =
+        firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
+      return (
+        fullName ||
+        (typeof user.email === "string" && user.email ? user.email : null) ||
+        (typeof user.userName === "string" && user.userName
+          ? user.userName
+          : null) ||
+        "—"
+      );
+    }
+    return "—";
+  };
 
   return (
     <div className="space-y-6">
@@ -60,11 +95,9 @@ function ModuleDetailsContent({
       >
         <TabsList className="h-[42px] bg-blocks-primary-shades-300">
           <TabsTrigger value="details" className="h-8">
-            <Info className="mr-2 h-4 w-4" />
             Details
           </TabsTrigger>
           <TabsTrigger value="glossary" className="h-8">
-            <BookOpen className="mr-2 h-4 w-4" />
             Glossary
           </TabsTrigger>
         </TabsList>
@@ -112,7 +145,7 @@ function ModuleDetailsContent({
                     Created By
                   </h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {module.createdBy ?? "—"}
+                    {getUserDisplayName(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
@@ -120,7 +153,7 @@ function ModuleDetailsContent({
                     Last Updated By
                   </h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {module.lastUpdatedBy ?? "—"}
+                    {getUserDisplayName(module.lastUpdatedBy)}
                   </p>
                 </div>
               </div>
@@ -208,6 +241,52 @@ export function ModuleDetails() {
   const { data: modules, isLoading: isModulesLoading } =
     useGetLanguageModules();
   const module = modules?.find((m) => m.itemId === moduleId);
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  // Extract unique user IDs from createdBy and lastUpdatedBy
+  const uniqueUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (module?.createdBy) ids.add(module.createdBy);
+    if (module?.lastUpdatedBy) ids.add(module.lastUpdatedBy);
+    return Array.from(ids);
+  }, [module?.createdBy, module?.lastUpdatedBy]);
+
+  // Fetch users by IDs
+  const { data: userMap } = useQuery({
+    queryKey: ["module-detail-users", tenantId, uniqueUserIds.sort()],
+    queryFn: async () => {
+      if (uniqueUserIds.length === 0) return {};
+
+      const map: Record<
+        string,
+        { firstName: string; lastName: string; email: string; userName: string }
+      > = {};
+
+      const promises = uniqueUserIds.map(async (userId) => {
+        try {
+          const response = await userService.getUserById({
+            id: userId,
+            projectKey: tenantId,
+          });
+          if (response?.data) {
+            map[userId] = {
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              userName: response.data.userName,
+            };
+          }
+        } catch (error) {
+          console.error(`Failed to fetch user ${userId}:`, error);
+        }
+      });
+
+      await Promise.all(promises);
+      return map;
+    },
+    enabled: !!tenantId && uniqueUserIds.length > 0,
+    staleTime: Infinity,
+  });
 
   if (module?.moduleName) {
     BREADCRUMB_CUSTOM_TITLES[`/services/modules/${module.itemId}`] =
@@ -248,7 +327,13 @@ export function ModuleDetails() {
       <div className="hidden md:flex">
         <PageBreadcrumb breadcrumbIndex={2} />
       </div>
-      <ModuleDetailsContent module={module} moduleId={moduleId} />
+      <div className="mt-5">
+        <ModuleDetailsContent
+          module={module}
+          moduleId={moduleId}
+          userMap={userMap}
+        />
+      </div>
     </div>
   );
 }
