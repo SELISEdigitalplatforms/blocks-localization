@@ -52,7 +52,9 @@ export default function ProjectOverviewPage() {
           <h3 className="text-2xl font-bold tracking-tight text-[hsl(var(--high-emphasis))]">
             {selectedProject.name}
           </h3>
-          <p className="text-[hsl(var(--medium-emphasis))] mt-1">Select an option from the sidebar to manage your project</p>
+          <p className="text-[hsl(var(--medium-emphasis))] mt-1">
+            Select an option from the sidebar to manage your project
+          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action, index) => (
@@ -60,13 +62,21 @@ export default function ProjectOverviewPage() {
               key={action.title}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.06, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="group cursor-pointer rounded-xl border border-[hsl(var(--border-default))] bg-card p-6 shadow-sm transition-all duration-300 hover:border-primary/40 hover:shadow-md"
+              transition={{
+                delay: index * 0.06,
+                duration: 0.35,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="group cursor-pointer rounded-xl border border-[hsl(var(--border-default))] bg-card p-6 shadow-sm hover:border-primary/40 hover:shadow-md"
               onClick={() => navigate(action.path)}
             >
               <action.icon className="mb-4 h-8 w-8 text-primary transition-transform duration-300 group-hover:scale-110" />
-              <h4 className="font-semibold text-[hsl(var(--high-emphasis))]">{action.title}</h4>
-              <p className="text-sm text-[hsl(var(--medium-emphasis))]">{action.description}</p>
+              <h4 className="font-semibold text-[hsl(var(--high-emphasis))]">
+                {action.title}
+              </h4>
+              <p className="text-sm text-[hsl(var(--medium-emphasis))]">
+                {action.description}
+              </p>
             </motion.div>
           ))}
         </div>
