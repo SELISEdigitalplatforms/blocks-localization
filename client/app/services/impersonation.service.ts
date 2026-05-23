@@ -10,14 +10,14 @@ const idpHttp = new HttpClient(
 const IMPERSONATION_BASE = "/api/auth";
 
 export interface ImpersonationRequest {
-  targetTenantId: string;
+  targeted_tenant_id: string;
   orgId?: string;
   organizationId?: string;
 }
 
 export interface ImpersonationState {
   rootTenantId: string;
-  targetTenantId: string;
+  targeted_tenant_id: string;
   orgId: string;
   startedAtUtc: string;
 }
