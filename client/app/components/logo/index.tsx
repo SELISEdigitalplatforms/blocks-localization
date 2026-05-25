@@ -37,8 +37,8 @@ export function Logo({
         ? "/Icon_White.svg"
         : "/Icon_Black.svg"
       : resolvedTheme === "dark"
-        ? "/Logo_White.svg"
-        : "/Logo_Black.svg";
+        ? "/localization_logo_white.svg"
+        : "/localization_logo_black.svg";
 
   return (
     <img
