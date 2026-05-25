@@ -40,6 +40,7 @@ import {
   LocalizationKeyDetailPage,
   LocalizationLanguageHomePage,
   LocalizationLogsPage,
+  LocalizationModuleDetailPage,
   LocalizationModulesPage,
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
@@ -124,6 +125,7 @@ export const router = createBrowserRouter([
       { path: "/services/language/translations", element: <Navigate to="/services/language" replace /> },
       { path: "/services/configure", element: <LocalizationConfigurePage /> },
       { path: "/services/modules", element: <LocalizationModulesPage /> },
+      { path: "/services/modules/:moduleId", element: <LocalizationModuleDetailPage /> },
       { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
       { path: "/services/language/translations/new-key", element: <LocalizationNewKeyPage /> },

@@ -198,6 +198,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 </div> */}
               </div>
             </div>
+            {keyDetails.context && (
+              <div className="col-span-2 mt-4 border-t pt-4">
+                <h3 className="mb-2 text-sm font-medium text-low-emphasis">Context</h3>
+                <p className="whitespace-pre-wrap text-base text-high-emphasis">
+                  {keyDetails.context}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
