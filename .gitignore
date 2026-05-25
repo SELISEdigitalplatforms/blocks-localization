@@ -139,16 +139,23 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# .NET — local config (use examples / env / vault in repo docs)
-**/appsettings.json
-**/appsettings.*.json
-server/Api/bin/
-server/Api/obj/
-server/DomainService/bin/
-server/DomainService/obj/
-server/Worker/bin/
-server/Worker/obj/
+# .NET build artifacts
+**/bin/
+**/obj/
+.DS_Store
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userprefs
+*.vscode
 
 # SPA production output (see client/vite.config.ts)
 server/Api/wwwroot/**
 !server/Api/wwwroot/.gitkeep
+
+/server/.claude
+
+# Ignore environment-specific app settings, keep base appsettings.json
+# **/appsettings.*.json
+# **/appsetting.*.json
