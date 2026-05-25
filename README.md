@@ -160,7 +160,7 @@ Worker separately:
 dotnet run --project server/Worker/Worker.csproj
 ```
 
-Frontend dev server (see **`vite.config.ts`**: **`BLOCKS_API_BASE_URL`** enables dev proxy prefixes such as **`/api`**, **`/idp`**, **`/communication`**, etc.):
+Frontend dev server (see **`vite.config.ts`**: **`BLOCKS_API_BASE_URL`** enables dev proxy prefixes such as **`/api`**, **`/iam`**, **`/communication`**, etc.):
 
 ```bash
 cd client && npm install && npm run dev
