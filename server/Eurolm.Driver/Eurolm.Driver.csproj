@@ -10,8 +10,8 @@
 		<IncludeBuildOutput>true</IncludeBuildOutput>
 		<IncludeOutputAssemblies>true</IncludeOutputAssemblies>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageTags>Genesis, BlocksGenesis, SeliseBlocksGenesis, Eurolm, Language, Driver</PackageTags>
-		<RepositoryUrl>https://github.com/SELISEdigitalplatforms/blocks-eurolm</RepositoryUrl>
+		<PackageTags>Genesis, BlocksGenesis, SeliseBlocksGenesis, Localization, Language, Driver</PackageTags>
+		<RepositoryUrl>https://github.com/SELISEdigitalplatforms/blocks-localization</RepositoryUrl>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

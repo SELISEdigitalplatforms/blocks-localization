@@ -4,7 +4,7 @@ using Worker;
 using Worker.Configuration;
 using Worker.Consumers;
 
-const string _serviceName = "blocks-eurolm-worker";
+const string _serviceName = "blocks-localization-worker";
 
 //var vaultType = ResolveVaultType();
 //Console.WriteLine($"Using Genesis vault type: {vaultType}");

@@ -378,7 +378,7 @@ export default function LoginSimplePage() {
 
       const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
       const clientId = getRuntimeEnv("BLOCKS_OIDC_CLIENT_ID");
-      const idpBaseUrl = getRuntimeEnv("BLOCKS_IDP_BASE_URL");
+      const idpBaseUrl = getRuntimeEnv("BLOCKS_IAM_BASE_URL");
       const redirectUri = `${window.location.origin}/login/callback`;
       const initiateUrl = `${idpBaseUrl}/api/idp/initiate?x-blocks-key=${blocksKey}&clientId=${clientId}&redirectUri=${redirectUri}`;
       const headers: Record<string, string> = {};
@@ -444,10 +444,10 @@ export default function LoginSimplePage() {
             </div>
           </div>
           <p className="max-w-lg text-lg leading-relaxed tracking-tight text-muted-foreground">
-            Blocks Eurolm is a core localization service which allows you to
-            manage multilingual interfaces, perform real-time in-browser edits
-            with the browser extension, and apply bulk updates across multiple
-            keys — all with secure, role-based access control.
+            Blocks localization is a core localization service which allows you
+            to manage multilingual interfaces, perform real-time in-browser
+            edits with the browser extension, and apply bulk updates across
+            multiple keys — all with secure, role-based access control.
           </p>
           <div className="flex flex-wrap gap-2">
             {pillars.map(({ icon: Icon, label }) => (
