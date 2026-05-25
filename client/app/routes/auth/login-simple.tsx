@@ -444,7 +444,7 @@ export default function LoginSimplePage() {
             </div>
           </div>
           <p className="max-w-lg text-lg leading-relaxed tracking-tight text-muted-foreground">
-            Blocks Eurolm is a core localization service which allows you to
+            Blocks localization is a core localization service which allows you to
             manage multilingual interfaces, perform real-time in-browser edits
             with the browser extension, and apply bulk updates across multiple
             keys — all with secure, role-based access control.

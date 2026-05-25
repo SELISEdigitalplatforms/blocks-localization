@@ -291,12 +291,12 @@ const SELISE_APPS: BlocksApp[] = [
   },
   {
     key: "uilm",
-    label: "EUROLM",
+    label: "Localization",
     description: "Localization",
-    url: "https://stg-eurolm.blocksdevelopers.com",
+    url: "https://stg-localization.blocksdevelopers.com",
     icon: <UilmIcon />,
     clientId: "57214b67-aa9c-4307-92ab-a25e35180fac",
-    redirectUri: "https://stg-eurolm.blocksdevelopers.com/login/callback",
+    redirectUri: "https://stg-localization.blocksdevelopers.com/login/callback",
   },
   {
     key: "ai",
