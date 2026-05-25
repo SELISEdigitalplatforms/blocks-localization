@@ -182,7 +182,7 @@ export default function OidcLogin() {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] min-h-screen flex-col bg-[hsl(var(--surface-app))] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <div className="relative flex min-h-[100dvh] flex-col bg-[hsl(var(--surface-app))] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <header className="relative z-10 flex w-full max-w-[100vw] items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 xl:px-[clamp(1.5rem,8vw,9.625rem)]">
         <Logo
           width={120}
