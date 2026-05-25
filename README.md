@@ -1,11 +1,11 @@
-# Blocks EuroLM (blocks-eurolm)
+# Blocks EuroLM (blocks-localization)
 
 ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud admin** surfaces with **EuroLM** domain extensions (`Eurolm.DomainService`). The web host (**Genesis**/Blocks configuration, FluentValidation, health checks) serves the SPA from `server/Api/wwwroot`; `GlobalApiRoutePrefixConvention` prefixes attribute routes with `api`. A separate **Worker** (`blocks-eurolm-worker`) runs message consumers. Node/npm are for the client toolchain (`npm install`, `npm run dev`, `npm run build`).
 
 ## Project structure
 
 ```
-blocks-eurolm/
+blocks-localization/
 ├── client/                                   # React + Vite + TypeScript (package name: blocks-idp-client)
 │   ├── app/                                  # Source (idp, cross-modules, routes, components, lib, …)
 │   │   ├── idp/                              # Auth, IAM, captcha, API settings, …
@@ -160,7 +160,7 @@ Worker separately:
 dotnet run --project server/Worker/Worker.csproj
 ```
 
-Frontend dev server (see **`vite.config.ts`**: **`BLOCKS_API_BASE_URL`** enables dev proxy prefixes such as **`/api`**, **`/idp`**, **`/communication`**, etc.):
+Frontend dev server (see **`vite.config.ts`**: **`BLOCKS_API_BASE_URL`** enables dev proxy prefixes such as **`/api`**, **`/iam`**, **`/communication`**, etc.):
 
 ```bash
 cd client && npm install && npm run dev
