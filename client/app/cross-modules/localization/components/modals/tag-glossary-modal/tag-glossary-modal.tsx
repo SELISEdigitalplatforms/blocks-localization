@@ -11,7 +11,10 @@ import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Label } from "@/components/ui-kits/label/label";
 import { Input } from "@/components/ui-kits/input/input";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useGetGlossaries, useTagGlossary } from "@blocks-localization/hooks/use-language-manager";
+import {
+  useGetGlossaries,
+  useTagGlossary,
+} from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
 import { IModuleGets } from "@blocks-localization/models/language";
@@ -21,12 +24,19 @@ interface TagGlossaryModalProps {
   onClose: (open: boolean) => void;
 }
 
-const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) => {
+const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
+  module,
+  onClose,
+}) => {
   const [searchText, setSearchText] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  const { data: glossariesResponse, isLoading } = useGetGlossaries(0, 100, searchText || undefined);
+  const { data: glossariesResponse, isLoading } = useGetGlossaries(
+    0,
+    100,
+    searchText || undefined,
+  );
   const { isPending, mutateAsync } = useTagGlossary();
 
   useEffect(() => {
@@ -40,9 +50,20 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
 
   const toggleGlossary = (itemId: string) => {
     setSelectedIds((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId],
     );
   };
+
+  const availableGlossaryIds = (glossariesResponse?.items ?? []).map(
+    (g) => g.itemId,
+  );
+  const hasSelectedInSearchResults = selectedIds.some((id) =>
+    availableGlossaryIds.includes(id),
+  );
+  const isSaveDisabled =
+    isPending || (Boolean(searchText) && !hasSelectedInSearchResults);
 
   const handleSubmit = async () => {
     try {
@@ -52,7 +73,11 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         projectKey: tenantId,
       });
       if (res?.isSuccess) {
-        toast({ variant: "success", title: "Success", description: "Glossaries updated" });
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Glossaries updated",
+        });
         onClose(false);
       } else {
         toast({
@@ -62,7 +87,11 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: JSON.stringify(error) });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
     }
   };
 
@@ -93,7 +122,10 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         ) : (
           <div className="space-y-2">
             {(glossariesResponse?.items ?? []).map((glossary) => (
-              <div key={glossary.itemId} className="flex items-center gap-3 py-1">
+              <div
+                key={glossary.itemId}
+                className="flex items-center gap-3 py-1"
+              >
                 <Checkbox
                   id={`glossary-${glossary.itemId}`}
                   checked={selectedIds.includes(glossary.itemId)}
@@ -108,7 +140,9 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
               </div>
             ))}
             {!isLoading && (glossariesResponse?.items ?? []).length === 0 && (
-              <p className="py-4 text-center text-sm text-low-emphasis">No glossaries found</p>
+              <p className="py-4 text-center text-sm text-low-emphasis">
+                No glossaries found
+              </p>
             )}
           </div>
         )}
@@ -123,7 +157,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
         >
           Cancel
         </Button>
-        <Button disabled={isPending} onClick={handleSubmit}>
+        <Button disabled={isSaveDisabled} onClick={handleSubmit}>
           {isPending ? "Saving..." : "Save"}
         </Button>
       </DialogFooter>

@@ -66,7 +66,10 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
       <div className={cn(baseClasses, "group relative justify-between")}>
         <Link
           to={menu.path}
-          className={cn("flex items-center gap-3", menu.disabled && "pointer-events-none opacity-50")}
+          className={cn(
+            "flex h-full w-full items-center gap-3",
+            menu.disabled && "pointer-events-none cursor-not-allowed opacity-50"
+          )}
         >
           {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
           {isSidebarOpen ? (
@@ -95,7 +98,13 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
 
   return (
     <div className={cn(baseClasses, "group relative")}>
-      <div className="flex items-center gap-3">
+      <Link
+        to={menu.path}
+        className="flex h-full w-full items-center gap-3"
+        onClick={(e) => {
+          if (menu.disabled) e.preventDefault();
+        }}
+      >
         {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
         {isSidebarOpen ? (
           <span className="relative">
@@ -110,7 +119,7 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
             ) : null}
           </span>
         ) : null}
-      </div>
+      </Link>
       {!isSidebarOpen ? (
         <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
           {menu.name.length >= 8 ? (
