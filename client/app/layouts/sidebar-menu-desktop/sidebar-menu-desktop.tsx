@@ -27,18 +27,8 @@ export function SidebarMenuDesktop() {
           )}
         >
           <Logo
-            variant="logo"
-            className={cn(
-              "absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-100" : "opacity-0",
-            )}
-          />
-          <Logo
-            variant="icon"
-            className={cn(
-              "absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-0" : "opacity-100",
-            )}
+            variant={isSidebarOpen ? "logo" : "icon"}
+            className="h-full w-full object-contain"
           />
         </Link>
         {isSidebarOpen && (
