@@ -73,10 +73,6 @@ const RowActionsCell = ({
         <Tag className="mr-2 h-4 w-4" />
         <span>Tag glossary</span>
       </DropdownMenuItem>
-      <DropdownMenuItem className="cursor-pointer" onClick={onTagGlossary}>
-        <Tag className="mr-2 h-4 w-4" />
-        <span>Tag glossary</span>
-      </DropdownMenuItem>
       {/* TODO: Enable delete module feature — restore this item when backend is ready */}
       {/* <DropdownMenuItem className="cursor-pointer text-error" onClick={onDelete}>
         <Trash className="mr-2 h-4 w-4" />
