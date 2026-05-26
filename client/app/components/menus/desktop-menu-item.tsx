@@ -35,7 +35,13 @@ const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
   );
 };
 
-export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; isSidebarOpen: boolean }) {
+export function DesktopMenuItem({
+  menu,
+  isSidebarOpen,
+}: {
+  menu: MenuItemType;
+  isSidebarOpen: boolean;
+}) {
   const { pathname } = useLocation();
 
   const isActiveMenu = useMemo(() => {
@@ -68,14 +74,17 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
           to={menu.path}
           className={cn(
             "flex h-full w-full items-center gap-3",
-            menu.disabled && "pointer-events-none cursor-not-allowed opacity-50"
+            menu.disabled &&
+              "pointer-events-none cursor-not-allowed opacity-50",
           )}
         >
           {menu.icon ? <menu.icon className="h-5 w-5 shrink-0" /> : null}
           <span
             className={cn(
               "relative transition-all duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0 overflow-hidden"
+              isSidebarOpen
+                ? "opacity-100 max-w-full"
+                : "opacity-0 max-w-0 overflow-hidden",
             )}
           >
             {menu.name}
@@ -94,7 +103,9 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
             {menu.name}
           </div>
         ) : null}
-        {isActiveMenu ? <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" /> : null}
+        {isActiveMenu ? (
+          <div className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-lg bg-primary" />
+        ) : null}
       </div>
     );
   }
@@ -112,7 +123,9 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         <span
           className={cn(
             "relative transition-all duration-300 ease-in-out",
-            isSidebarOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0 overflow-hidden"
+            isSidebarOpen
+              ? "opacity-100 max-w-full"
+              : "opacity-0 max-w-0 overflow-hidden",
           )}
         >
           {menu.name}
@@ -138,11 +151,16 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         </div>
       ) : null}
       {isSidebarOpen ? <ChevronRight className="ml-auto h-4 w-4" /> : null}
-      {isActiveMenu ? <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" /> : null}
+      {isActiveMenu ? (
+        <div className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-lg bg-primary" />
+      ) : null}
 
       <div className="absolute left-full top-0 z-10 hidden w-64 min-w-64 flex-col rounded-sm border border-border bg-background py-2 text-[hsl(var(--low-emphasis))] group-hover:flex">
         {menu.children
-          ?.filter((subMenu): subMenu is MenuItemType => subMenu.type === "menu" && !subMenu.disabled)
+          ?.filter(
+            (subMenu): subMenu is MenuItemType =>
+              subMenu.type === "menu" && !subMenu.disabled,
+          )
           .map((subMenu) => (
             <ChildMenuItem key={subMenu.id} menu={subMenu} />
           ))}
