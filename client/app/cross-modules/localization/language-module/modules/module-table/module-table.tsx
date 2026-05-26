@@ -40,8 +40,7 @@ import { useNavigate } from "react-router-dom";
 const RowActionsCell = ({
   onEdit,
   onTagGlossary,
-  // TODO: Enable delete module feature — restore onDelete prop when backend is ready
-  // onDelete,
+  // onDelete: () => void;
 }: {
   onEdit: () => void;
   onTagGlossary: () => void;
@@ -54,11 +53,23 @@ const RowActionsCell = ({
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
-      <DropdownMenuItem className="cursor-pointer" onClick={onEdit}>
+      <DropdownMenuItem
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+      >
         <Pencil className="mr-2 h-4 w-4" />
         <span>Edit</span>
       </DropdownMenuItem>
-      <DropdownMenuItem className="cursor-pointer" onClick={onTagGlossary}>
+      <DropdownMenuItem
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTagGlossary();
+        }}
+      >
         <Tag className="mr-2 h-4 w-4" />
         <span>Tag glossary</span>
       </DropdownMenuItem>
@@ -254,7 +265,9 @@ export function ModuleTable() {
                       <TableRow
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
-                        onClick={() => navigate(`/services/modules/${module.itemId}`)}
+                        onClick={() =>
+                          navigate(`/services/modules/${module.itemId}`)
+                        }
                       >
                         <TableCell className="font-medium">
                           {module.moduleName}
