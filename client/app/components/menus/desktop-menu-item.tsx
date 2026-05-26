@@ -11,20 +11,15 @@ type ChildMenuItemProps = {
   menu: MenuItemType;
 };
 
-// Helper to check if pathname matches menu path exactly or is an immediate child
-const isPathMatch = (pathname: string, menuPath: string): boolean => {
-  return pathname === menuPath || pathname.startsWith(menuPath + "/");
-};
-
 const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
   const { pathname } = useLocation();
-  const isActiveMenu = isPathMatch(pathname, menu.path);
+  const isActiveMenu = pathname.startsWith(menu.path);
 
   return (
     <Link
       to={menu.path}
       className={cn(
-        "flex h-10 items-center gap-2 px-4 py-1.5 text-base hover:text-[hsl(var(--high-emphasis))]",
+        "flex h-10 items-center gap-2 px-4 py-1.5 text-base transition-colors hover:text-[hsl(var(--high-emphasis))]",
         isActiveMenu && "!text-primary",
         menu.disabled && "pointer-events-none cursor-not-allowed opacity-50",
       )}
@@ -35,7 +30,13 @@ const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
   );
 };
 
-export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; isSidebarOpen: boolean }) {
+export function DesktopMenuItem({
+  menu,
+  isSidebarOpen,
+}: {
+  menu: MenuItemType;
+  isSidebarOpen: boolean;
+}) {
   const { pathname } = useLocation();
 
   const isActiveMenu = useMemo(() => {
@@ -47,7 +48,7 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         }
       });
     }
-    return allPaths.some((item) => isPathMatch(pathname, item));
+    return allPaths.some((item) => pathname.startsWith(item));
   }, [menu.children, menu.path, pathname]);
 
   const hasChildren = Boolean(menu.children?.length);
@@ -67,8 +68,8 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         <Link
           to={menu.path}
           className={cn(
-            "flex h-full w-full items-center gap-3",
-            menu.disabled && "pointer-events-none cursor-not-allowed opacity-50"
+            "flex items-center gap-3",
+            menu.disabled && "pointer-events-none opacity-50",
           )}
         >
           {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
@@ -91,20 +92,16 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
             {menu.name}
           </div>
         ) : null}
-        {isActiveMenu ? <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" /> : null}
+        {isActiveMenu ? (
+          <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" />
+        ) : null}
       </div>
     );
   }
 
   return (
     <div className={cn(baseClasses, "group relative")}>
-      <Link
-        to={menu.path}
-        className="flex h-full w-full items-center gap-3"
-        onClick={(e) => {
-          if (menu.disabled) e.preventDefault();
-        }}
-      >
+      <div className="flex items-center gap-3">
         {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
         {isSidebarOpen ? (
           <span className="relative">
@@ -119,7 +116,7 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
             ) : null}
           </span>
         ) : null}
-      </Link>
+      </div>
       {!isSidebarOpen ? (
         <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
           {menu.name.length >= 8 ? (
@@ -132,11 +129,16 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
         </div>
       ) : null}
       {isSidebarOpen ? <ChevronRight className="ml-auto h-4 w-4" /> : null}
-      {isActiveMenu ? <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" /> : null}
+      {isActiveMenu ? (
+        <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" />
+      ) : null}
 
       <div className="absolute left-full top-0 z-10 hidden w-64 min-w-64 flex-col rounded-sm border border-border bg-background py-2 text-[hsl(var(--low-emphasis))] group-hover:flex">
         {menu.children
-          ?.filter((subMenu): subMenu is MenuItemType => subMenu.type === "menu" && !subMenu.disabled)
+          ?.filter(
+            (subMenu): subMenu is MenuItemType =>
+              subMenu.type === "menu" && !subMenu.disabled,
+          )
           .map((subMenu) => (
             <ChildMenuItem key={subMenu.id} menu={subMenu} />
           ))}
