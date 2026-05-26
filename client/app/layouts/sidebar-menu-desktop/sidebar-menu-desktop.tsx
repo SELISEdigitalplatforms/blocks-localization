@@ -16,31 +16,29 @@ export function SidebarMenuDesktop() {
 
   return (
     <div
-      className={`hidden h-[calc(100vh)] flex-col border-r bg-background md:flex ${isSidebarOpen ? "min-w-60" : "w-14"}`}
+      className={`hidden h-[calc(100vh)] flex-col border-r bg-background md:flex transition-all duration-300 ease-in-out ${isSidebarOpen ? "w-60" : "w-14"}`}
     >
       <div className="flex h-[60px] shrink-0 items-center justify-between border-b bg-background px-3">
         <Link
           to="/console"
           className={cn(
-            "relative inline-block cursor-pointer overflow-hidden",
+            "relative inline-block cursor-pointer overflow-hidden transition-all duration-300 ease-in-out",
             isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
           <Logo
             variant={isSidebarOpen ? "logo" : "icon"}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-contain transition-all duration-300 ease-in-out"
           />
         </Link>
-        {isSidebarOpen && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 p-0"
-            onClick={toggleSidebar}
-          >
-            <PanelLeft className="h-6 w-6" />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 p-0 transition-all duration-300"
+          onClick={toggleSidebar}
+        >
+          <PanelLeft className={cn("h-6 w-6 transition-transform duration-300", isSidebarOpen ? "" : "rotate-180")} />
+        </Button>
       </div>
       <div className="w-full flex-1">
         <nav className={cn("grid w-full items-start gap-1 text-sm")}>
