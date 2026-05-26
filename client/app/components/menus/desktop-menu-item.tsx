@@ -71,20 +71,23 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
             menu.disabled && "pointer-events-none cursor-not-allowed opacity-50"
           )}
         >
-          {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
-          {isSidebarOpen ? (
-            <span className="relative">
-              {menu.name}
-              {menu.badge ? (
-                <Badge
-                  variant="secondary"
-                  className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
-                >
-                  {menu.badge}
-                </Badge>
-              ) : null}
-            </span>
-          ) : null}
+          {menu.icon ? <menu.icon className="h-5 w-5 shrink-0" /> : null}
+          <span
+            className={cn(
+              "relative transition-all duration-300 ease-in-out",
+              isSidebarOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0 overflow-hidden"
+            )}
+          >
+            {menu.name}
+            {menu.badge ? (
+              <Badge
+                variant="secondary"
+                className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
+              >
+                {menu.badge}
+              </Badge>
+            ) : null}
+          </span>
         </Link>
         {!isSidebarOpen ? (
           <div className="pointer-events-none absolute left-full top-0 z-20 ml-2 min-w-max whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
@@ -105,20 +108,23 @@ export function DesktopMenuItem({ menu, isSidebarOpen }: { menu: MenuItemType; i
           if (menu.disabled) e.preventDefault();
         }}
       >
-        {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
-        {isSidebarOpen ? (
-          <span className="relative">
-            {menu.name}
-            {menu.badge ? (
-              <Badge
-                variant="outline"
-                className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
-              >
-                {menu.badge}
-              </Badge>
-            ) : null}
-          </span>
-        ) : null}
+        {menu.icon ? <menu.icon className="h-5 w-5 shrink-0" /> : null}
+        <span
+          className={cn(
+            "relative transition-all duration-300 ease-in-out",
+            isSidebarOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0 overflow-hidden"
+          )}
+        >
+          {menu.name}
+          {menu.badge ? (
+            <Badge
+              variant="outline"
+              className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
+            >
+              {menu.badge}
+            </Badge>
+          ) : null}
+        </span>
       </Link>
       {!isSidebarOpen ? (
         <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
