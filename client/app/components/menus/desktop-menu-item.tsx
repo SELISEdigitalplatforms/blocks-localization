@@ -11,20 +11,15 @@ type ChildMenuItemProps = {
   menu: MenuItemType;
 };
 
-// Helper to check if pathname matches menu path exactly or is an immediate child
-const isPathMatch = (pathname: string, menuPath: string): boolean => {
-  return pathname === menuPath || pathname.startsWith(menuPath + "/");
-};
-
 const ChildMenuItem = ({ menu }: ChildMenuItemProps) => {
   const { pathname } = useLocation();
-  const isActiveMenu = isPathMatch(pathname, menu.path);
+  const isActiveMenu = pathname.startsWith(menu.path);
 
   return (
     <Link
       to={menu.path}
       className={cn(
-        "flex h-10 items-center gap-2 px-4 py-1.5 text-base hover:text-[hsl(var(--high-emphasis))]",
+        "flex h-10 items-center gap-2 px-4 py-1.5 text-base transition-colors hover:text-[hsl(var(--high-emphasis))]",
         isActiveMenu && "!text-primary",
         menu.disabled && "pointer-events-none cursor-not-allowed opacity-50",
       )}
@@ -53,7 +48,7 @@ export function DesktopMenuItem({
         }
       });
     }
-    return allPaths.some((item) => isPathMatch(pathname, item));
+    return allPaths.some((item) => pathname.startsWith(item));
   }, [menu.children, menu.path, pathname]);
 
   const hasChildren = Boolean(menu.children?.length);
@@ -73,30 +68,24 @@ export function DesktopMenuItem({
         <Link
           to={menu.path}
           className={cn(
-            "flex h-full w-full items-center gap-3",
-            menu.disabled &&
-              "pointer-events-none cursor-not-allowed opacity-50",
+            "flex items-center gap-3",
+            menu.disabled && "pointer-events-none opacity-50",
           )}
         >
-          {menu.icon ? <menu.icon className="h-5 w-5 shrink-0" /> : null}
-          <span
-            className={cn(
-              "relative transition-all duration-300 ease-in-out",
-              isSidebarOpen
-                ? "opacity-100 max-w-full"
-                : "opacity-0 max-w-0 overflow-hidden",
-            )}
-          >
-            {menu.name}
-            {menu.badge ? (
-              <Badge
-                variant="secondary"
-                className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
-              >
-                {menu.badge}
-              </Badge>
-            ) : null}
-          </span>
+          {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
+          {isSidebarOpen ? (
+            <span className="relative">
+              {menu.name}
+              {menu.badge ? (
+                <Badge
+                  variant="secondary"
+                  className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
+                >
+                  {menu.badge}
+                </Badge>
+              ) : null}
+            </span>
+          ) : null}
         </Link>
         {!isSidebarOpen ? (
           <div className="pointer-events-none absolute left-full top-0 z-20 ml-2 min-w-max whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
@@ -104,7 +93,7 @@ export function DesktopMenuItem({
           </div>
         ) : null}
         {isActiveMenu ? (
-          <div className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-lg bg-primary" />
+          <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" />
         ) : null}
       </div>
     );
@@ -112,33 +101,22 @@ export function DesktopMenuItem({
 
   return (
     <div className={cn(baseClasses, "group relative")}>
-      <Link
-        to={menu.path}
-        className="flex h-full w-full items-center gap-3"
-        onClick={(e) => {
-          if (menu.disabled) e.preventDefault();
-        }}
-      >
-        {menu.icon ? <menu.icon className="h-5 w-5 shrink-0" /> : null}
-        <span
-          className={cn(
-            "relative transition-all duration-300 ease-in-out",
-            isSidebarOpen
-              ? "opacity-100 max-w-full"
-              : "opacity-0 max-w-0 overflow-hidden",
-          )}
-        >
-          {menu.name}
-          {menu.badge ? (
-            <Badge
-              variant="outline"
-              className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
-            >
-              {menu.badge}
-            </Badge>
-          ) : null}
-        </span>
-      </Link>
+      <div className="flex items-center gap-3">
+        {menu.icon ? <menu.icon className="h-5 w-5" /> : null}
+        {isSidebarOpen ? (
+          <span className="relative">
+            {menu.name}
+            {menu.badge ? (
+              <Badge
+                variant="outline"
+                className="absolute -top-2 left-full ml-1 h-4 px-1 text-[9px] font-semibold uppercase text-primary"
+              >
+                {menu.badge}
+              </Badge>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
       {!isSidebarOpen ? (
         <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
           {menu.name.length >= 8 ? (
@@ -152,7 +130,7 @@ export function DesktopMenuItem({
       ) : null}
       {isSidebarOpen ? <ChevronRight className="ml-auto h-4 w-4" /> : null}
       {isActiveMenu ? (
-        <div className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-lg bg-primary" />
+        <div className="absolute right-0 top-2.5 h-5 w-1 rounded-lg bg-primary" />
       ) : null}
 
       <div className="absolute left-full top-0 z-10 hidden w-64 min-w-64 flex-col rounded-sm border border-border bg-background py-2 text-[hsl(var(--low-emphasis))] group-hover:flex">
