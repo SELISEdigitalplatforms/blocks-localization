@@ -31,14 +31,16 @@ export function SidebarMenuDesktop() {
             className="h-full w-full object-contain transition-all duration-300 ease-in-out"
           />
         </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0 p-0 transition-all duration-300"
-          onClick={toggleSidebar}
-        >
-          <PanelLeft className={cn("h-6 w-6 transition-transform duration-300", isSidebarOpen ? "" : "rotate-180")} />
-        </Button>
+        {isSidebarOpen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 p-0"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft className="h-6 w-6" />
+          </Button>
+        )}
       </div>
       <div className="w-full flex-1">
         <nav className={cn("grid w-full items-start gap-1 text-sm")}>
