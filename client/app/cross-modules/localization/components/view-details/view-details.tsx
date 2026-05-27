@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui-kits/button/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui-kits/card/card";
 import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { Badge } from "@/components/ui-kits/badge/badge";
@@ -31,7 +36,8 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     data: languageListData,
   } = useGetLanguages();
   const [isEditRoutesDialogOpen, setIsEditRoutesDialogOpen] = useState(false);
-  const [isEditGlossaryDialogOpen, setIsEditGlossaryDialogOpen] = useState(false);
+  const [isEditGlossaryDialogOpen, setIsEditGlossaryDialogOpen] =
+    useState(false);
 
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
 
@@ -41,17 +47,23 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     !hasGlossaryIds,
   );
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
-  const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
+  const { data: moduleGlossariesData } = useGetModuleGlossaries(
+    keyDetails.moduleId ?? "",
+  );
 
   const resolvedGlossaries = useMemo(() => {
     if (!hasGlossaryIds || !allGlossariesData?.items) return [];
-    return allGlossariesData.items.filter((g) => keyDetails.glossaryIds?.includes(g.itemId));
+    return allGlossariesData.items.filter((g) =>
+      keyDetails.glossaryIds?.includes(g.itemId),
+    );
   }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
 
   const contextGlossaries = useMemo(() => {
     const taggedIds = new Set(keyDetails.glossaryIds ?? []);
     const seen = new Set<string>();
-    const result: (typeof resolvedGlossaries[number] & { source: "global" | "module" })[] = [];
+    const result: ((typeof resolvedGlossaries)[number] & {
+      source: "global" | "module";
+    })[] = [];
     for (const g of globalGlossariesData?.items ?? []) {
       if (!taggedIds.has(g.itemId) && !seen.has(g.itemId)) {
         seen.add(g.itemId);
@@ -67,7 +79,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     return result;
   }, [globalGlossariesData, moduleGlossariesData, keyDetails.glossaryIds]);
 
-  if (isLanguageListLoading || isLanguageListLoadingFetching || !languageListData) {
+  if (
+    isLanguageListLoading ||
+    isLanguageListLoadingFetching ||
+    !languageListData
+  ) {
     return (
       <div>
         <Skeleton className="h-64 w-full" />
@@ -83,12 +99,20 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
         <Card className="h-min rounded-sm shadow-none">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl">{languageListData[0].languageName}</CardTitle>
+              <CardTitle className="text-xl">
+                {languageListData[0].languageName}
+              </CardTitle>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-2 px-4 py-1"
+                  >
                     <Pencil className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Edit
+                    </span>
                   </Button>
                 </DialogTrigger>
                 <EditTranslation
@@ -102,7 +126,8 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           </CardHeader>
           <CardContent className="text-base">
             {keyDetails.resources?.find(
-              (resource) => resource.culture === languageListData[0].languageCode,
+              (resource) =>
+                resource.culture === languageListData[0].languageCode,
             )?.value || "No translation available"}
           </CardContent>
         </Card>
@@ -120,9 +145,15 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   <span className="font-medium">{language.languageName}</span>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 gap-2 px-4 py-1"
+                      >
                         <Pencil className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          Edit
+                        </span>
                       </Button>
                     </DialogTrigger>
                     <EditTranslation
@@ -153,16 +184,21 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
               <div className="grid gap-1">
                 {/* <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
                 <p className="text-base font-normal text-high-emphasis">Text box</p> */}
-                <h3 className="text-sm font-medium text-low-emphasis">Module</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  Module
+                </h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {
-                    languageModules?.find((module) => module.itemId === keyDetails.moduleId)
-                      ?.moduleName
+                    languageModules?.find(
+                      (module) => module.itemId === keyDetails.moduleId,
+                    )?.moduleName
                   }
                 </p>
               </div>
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Default Language</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  Default Language
+                </h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {languageListData[0].languageName}
                 </p>
@@ -175,21 +211,29 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <div>
               <div className="grid gap-10">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    Created on
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {!keyDetails || !keyDetails.createDate || !checkValidDate(keyDetails.createDate)
+                    {!keyDetails ||
+                    !keyDetails.createDate ||
+                    !checkValidDate(keyDetails.createDate)
                       ? "-"
                       : formatFullDate(parseDateString(keyDetails.createDate))}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last modified</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    Last modified
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {!keyDetails ||
                     !keyDetails.lastUpdateDate ||
                     !checkValidDate(keyDetails.lastUpdateDate)
                       ? "-"
-                      : formatFullDate(parseDateString(keyDetails.lastUpdateDate))}
+                      : formatFullDate(
+                          parseDateString(keyDetails.lastUpdateDate),
+                        )}
                   </p>
                 </div>
                 {/* <div className="grid gap-1">
@@ -198,14 +242,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 </div> */}
               </div>
             </div>
-            {keyDetails.context && (
-              <div className="col-span-2 mt-4 border-t pt-4">
-                <h3 className="mb-2 text-sm font-medium text-low-emphasis">Context</h3>
-                <p className="whitespace-pre-wrap text-base text-high-emphasis">
-                  {keyDetails.context}
-                </p>
-              </div>
-            )}
+            <div className="col-span-2 mt-4 border-t pt-4">
+              <h3 className="mb-2 text-sm font-medium text-low-emphasis">
+                Context
+              </h3>
+              <p className="whitespace-pre-wrap text-base text-high-emphasis">
+                {keyDetails.context ?? "-"}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -214,7 +258,10 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <div className="grid w-full grid-cols-2">
               <h3 className="text-xl font-semibold">Routes</h3>
               <div className="flex justify-end">
-                <Dialog open={isEditRoutesDialogOpen} onOpenChange={setIsEditRoutesDialogOpen}>
+                <Dialog
+                  open={isEditRoutesDialogOpen}
+                  onOpenChange={setIsEditRoutesDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-2">
                       <RouteIcon className="h-3.5 w-3.5" />
@@ -223,13 +270,20 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       </span>
                     </Button>
                   </DialogTrigger>
-                  <EditRoute keyDetails={keyDetails} onClose={() => setIsEditRoutesDialogOpen(false)} />
+                  <EditRoute
+                    keyDetails={keyDetails}
+                    onClose={() => setIsEditRoutesDialogOpen(false)}
+                  />
                 </Dialog>
               </div>
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 text-sm font-normal text-primary">
-            {keyDetails.routes?.map((route, index) => <div className="break-all" key={index}>{route}</div>)}
+            {keyDetails.routes?.map((route, index) => (
+              <div className="break-all" key={index}>
+                {route}
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -238,7 +292,10 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <div className="grid w-full grid-cols-2">
               <h3 className="text-xl font-semibold">Glossary</h3>
               <div className="flex justify-end">
-                <Dialog open={isEditGlossaryDialogOpen} onOpenChange={setIsEditGlossaryDialogOpen}>
+                <Dialog
+                  open={isEditGlossaryDialogOpen}
+                  onOpenChange={setIsEditGlossaryDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-2">
                       <BookOpen className="h-3.5 w-3.5" />
@@ -276,7 +333,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                         <Badge
                           key={glossary.itemId}
                           variant="outline"
-                          title={glossary.source === "global" ? "Global glossary" : "Module glossary"}
+                          title={
+                            glossary.source === "global"
+                              ? "Global glossary"
+                              : "Module glossary"
+                          }
                         >
                           {glossary.name}
                         </Badge>
@@ -287,7 +348,9 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">No glossary added.</p>
+                <p className="text-sm text-muted-foreground">
+                  No glossary added.
+                </p>
                 {contextGlossaries.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">
@@ -298,7 +361,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                         <Badge
                           key={glossary.itemId}
                           variant="outline"
-                          title={glossary.source === "global" ? "Global glossary" : "Module glossary"}
+                          title={
+                            glossary.source === "global"
+                              ? "Global glossary"
+                              : "Module glossary"
+                          }
                         >
                           {glossary.name}
                         </Badge>
@@ -313,36 +380,43 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                         Suggested glossaries
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {suggestedGlossariesData.suggestedGlossaries.map((glossary) => (
-                          <div key={glossary.itemId} className="flex items-center gap-1">
-                            <Badge variant="outline">
-                              {glossary.name}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-5 w-5 p-0"
-                                title="Tag to key"
-                                onClick={() =>
-                                  saveKey({
-                                    itemId: keyDetails.itemId,
-                                    keyName: keyDetails.keyName,
-                                    moduleId: keyDetails.moduleId,
-                                    resources: keyDetails.resources ?? [],
-                                    routes: keyDetails.routes ?? [],
-                                    glossaryIds: [
-                                      ...(keyDetails.glossaryIds ?? []),
-                                      glossary.itemId,
-                                    ],
-                                    isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
-                                    projectKey: tenantId,
-                                  })
-                                }
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                              </Button>
-                            </Badge>
-                          </div>
-                        ))}
+                        {suggestedGlossariesData.suggestedGlossaries.map(
+                          (glossary) => (
+                            <div
+                              key={glossary.itemId}
+                              className="flex items-center gap-1"
+                            >
+                              <Badge variant="outline">
+                                {glossary.name}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  title="Tag to key"
+                                  onClick={() =>
+                                    saveKey({
+                                      itemId: keyDetails.itemId,
+                                      keyName: keyDetails.keyName,
+                                      moduleId: keyDetails.moduleId,
+                                      resources: keyDetails.resources ?? [],
+                                      routes: keyDetails.routes ?? [],
+                                      glossaryIds: [
+                                        ...(keyDetails.glossaryIds ?? []),
+                                        glossary.itemId,
+                                      ],
+                                      isPartiallyTranslated:
+                                        keyDetails.isPartiallyTranslated ??
+                                        false,
+                                      projectKey: tenantId,
+                                    })
+                                  }
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                              </Badge>
+                            </div>
+                          ),
+                        )}
                       </div>
                     </div>
                   )}
