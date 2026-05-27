@@ -19,7 +19,10 @@ export function SidebarMenuDesktop() {
 
   return (
     <div
-      className={`hidden h-[calc(100vh)] flex-col border-r bg-background transition-all md:flex ${isSidebarOpen ? "w-60 overflow-hidden" : "w-14"}`}
+      className={cn(
+        "hidden h-screen flex-col border-r bg-background transition-all md:flex",
+        isSidebarOpen ? "w-60 overflow-hidden" : "w-14",
+      )}
     >
       <div className="flex h-[60px] shrink-0 items-center justify-between border-b bg-background px-3">
         <Link
@@ -29,53 +32,48 @@ export function SidebarMenuDesktop() {
             isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
-          {/* Expanded logo — dark: variants first (lower specificity), collapse classes last (higher specificity) */}
+          {/* Expanded Light Logo */}
           <div
             className={cn(
-              "dark:opacity-0 dark:scale-75 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
-              isSidebarOpen
-                ? "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
-                : "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out dark:hidden",
+              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
             )}
             style={{
               backgroundImage: "url('/localization_logo_black.svg')",
             }}
           />
+          {/* Expanded Dark Logo */}
           <div
             className={cn(
-              "dark:opacity-100 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
-              isSidebarOpen
-                ? "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
-                : "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              "absolute inset-0 hidden bg-contain bg-no-repeat transition-all duration-300 ease-in-out dark:block",
+              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
             )}
             style={{
               backgroundImage: "url('/localization_logo_white.svg')",
             }}
           />
-          {/* Collapsed logo */}
+          {/* Collapsed Light Icon */}
           <div
             className={cn(
-              "dark:opacity-0 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
-              isSidebarOpen
-                ? "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
-                : "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out dark:hidden",
+              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
             )}
             style={{
               backgroundImage: "url('/Icon.svg')",
             }}
           />
+          {/* Collapsed Dark Icon */}
           <div
             className={cn(
-              "dark:opacity-100 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
-              isSidebarOpen
-                ? "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
-                : "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              "absolute inset-0 hidden bg-contain bg-no-repeat transition-all duration-300 ease-in-out dark:block",
+              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
             )}
             style={{
               backgroundImage: "url('/Icon_White.svg')",
             }}
           />
         </Link>
+
         {isSidebarOpen && (
           <Button
             variant="ghost"
@@ -87,12 +85,15 @@ export function SidebarMenuDesktop() {
           </Button>
         )}
       </div>
+
+      {/* Workspace */}
       {!isProjectOverviewRoute &&
         (isSidebarOpen ? (
           <div className="border-b px-2 pb-2 pt-2">
             <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Workspace
             </p>
+
             <div className="space-y-0.5">
               <ProjectList />
               <EnvironmentList />
@@ -104,8 +105,10 @@ export function SidebarMenuDesktop() {
             <EnvironmentList collapsed />
           </div>
         ))}
+
+      {/* Navigation */}
       <div className="w-full flex-1">
-        <nav className={cn("grid w-full items-start gap-1 text-sm")}>
+        <nav className="grid w-full items-start gap-1 text-sm">
           {allowedMenu.map((menu) => (
             <Fragment key={menu.id}>
               {menu.type === "menu" ? (
