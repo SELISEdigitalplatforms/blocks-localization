@@ -10,21 +10,13 @@ import { navigationMenus } from "@/constants/navigation-menus";
 import { SidebarContext } from "@/contexts/dashboard-layout-provider";
 import { useFilteredMenus } from "@/hooks/use-filtered-menus";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
+
 export function SidebarMenuDesktop() {
   const { isSidebarOpen, toggleSidebar } = useContext(SidebarContext);
-  const { resolvedTheme } = useTheme();
   const allowedMenu = useFilteredMenus(navigationMenus);
   const { pathname } = useLocation();
   const isProjectOverviewRoute = pathname.startsWith("/project-overview");
-  const getLogoSrc = () => {
-    if (isSidebarOpen) {
-      return resolvedTheme === "dark"
-        ? "/localization_logo_white.svg"
-        : "/localization_logo_black.svg";
-    }
-    return resolvedTheme === "dark" ? "/Icon_White.svg" : "/Icon.svg";
-  };
+
   return (
     <div
       className={`hidden h-[calc(100vh)] flex-col border-r bg-background transition-all md:flex ${isSidebarOpen ? "w-60 overflow-hidden" : "w-14"}`}
@@ -33,14 +25,47 @@ export function SidebarMenuDesktop() {
         <Link
           to="/console"
           className={cn(
-            "relative inline-block cursor-pointer overflow-hidden transition-all",
+            "relative inline-block cursor-pointer overflow-hidden transition-all duration-300 ease-in-out",
             isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
-          <img
-            src={getLogoSrc()}
-            alt="Logo"
-            className="h-full w-full object-contain"
+          {/* Expanded logo */}
+          <div
+            className={cn(
+              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
+            )}
+            style={{
+              backgroundImage: "url('/localization_logo_black.svg')",
+            }}
+          />
+          <div
+            className={cn(
+              "dark absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
+            )}
+            style={{
+              backgroundImage: "url('/localization_logo_white.svg')",
+            }}
+          />
+          {/* Collapsed logo */}
+          <div
+            className={cn(
+              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
+            )}
+            style={{
+              backgroundImage: "url('/Icon.svg')",
+            }}
+          />
+          <div
+            className={cn(
+              "dark absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
+              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
+            )}
+            style={{
+              backgroundImage: "url('/Icon_White.svg')",
+            }}
           />
         </Link>
         {isSidebarOpen && (
