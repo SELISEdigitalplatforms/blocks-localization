@@ -288,7 +288,7 @@ namespace XUnitTest
             // Assert
             result.IsValid.Should().BeTrue();
         }
-        
+
         [Fact]
         public async Task Validate_PrivateUseSubtagLanguageCode_ReturnsSuccess()
         {
@@ -296,7 +296,7 @@ namespace XUnitTest
             var language = new Language
             {
                 LanguageName = "Caveman En",
-                LanguageCode = "en-x-C",
+                LanguageCode = "en-x-cave",
                 ProjectKey = "test-project"
             };
 
