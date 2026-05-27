@@ -29,11 +29,13 @@ export function SidebarMenuDesktop() {
             isSidebarOpen ? "h-[36px] w-[72px]" : "h-8 w-8",
           )}
         >
-          {/* Expanded logo */}
+          {/* Expanded logo — dark: variants first (lower specificity), collapse classes last (higher specificity) */}
           <div
             className={cn(
-              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
+              "dark:opacity-0 dark:scale-75 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
+              isSidebarOpen
+                ? "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
+                : "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
             )}
             style={{
               backgroundImage: "url('/localization_logo_black.svg')",
@@ -41,8 +43,10 @@ export function SidebarMenuDesktop() {
           />
           <div
             className={cn(
-              "dark absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-100 scale-100" : "opacity-0 scale-75",
+              "dark:opacity-100 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
+              isSidebarOpen
+                ? "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
+                : "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
             )}
             style={{
               backgroundImage: "url('/localization_logo_white.svg')",
@@ -51,8 +55,10 @@ export function SidebarMenuDesktop() {
           {/* Collapsed logo */}
           <div
             className={cn(
-              "absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
+              "dark:opacity-0 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
+              isSidebarOpen
+                ? "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
+                : "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
             )}
             style={{
               backgroundImage: "url('/Icon.svg')",
@@ -60,8 +66,10 @@ export function SidebarMenuDesktop() {
           />
           <div
             className={cn(
-              "dark absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
-              isSidebarOpen ? "opacity-0 scale-75" : "opacity-100 scale-100",
+              "dark:opacity-100 dark:scale-100 dark:absolute dark:inset-0 dark:bg-contain dark:bg-no-repeat dark:transition-all dark:duration-300 dark:ease-in-out",
+              isSidebarOpen
+                ? "opacity-0 scale-75 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out"
+                : "opacity-100 scale-100 absolute inset-0 bg-contain bg-no-repeat transition-all duration-300 ease-in-out",
             )}
             style={{
               backgroundImage: "url('/Icon_White.svg')",
