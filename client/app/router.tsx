@@ -86,7 +86,7 @@ export const router = createBrowserRouter([
     ],
   },
   // ── Public layout (other public pages with PublicGuard) ──
-  
+
   {
     element: <PublicLayout />,
     children: [
@@ -97,7 +97,10 @@ export const router = createBrowserRouter([
       { path: "/forgot-email-sent", element: <ForgotEmailSentPage /> },
       { path: "/signup-email-sent", element: <SignupEmailSentPage /> },
       { path: "/mfa-check", element: <MfaCheckPage /> },
-      { path: "/reset-password-success", element: <ResetPasswordSuccessPage /> },
+      {
+        path: "/reset-password-success",
+        element: <ResetPasswordSuccessPage />,
+      },
     ],
   },
 
@@ -111,7 +114,10 @@ export const router = createBrowserRouter([
       { path: "permission", element: <OidcPermissionPage /> },
       { path: "error", element: <OidcErrorPage /> },
       { path: "forgot-password", element: <OidcForgotPasswordPage /> },
-      { path: "email-sent-confirmation", element: <OidcEmailSentConfirmationPage /> },
+      {
+        path: "email-sent-confirmation",
+        element: <OidcEmailSentConfirmationPage />,
+      },
     ],
   },
 
@@ -119,31 +125,54 @@ export const router = createBrowserRouter([
   {
     element: <DashboardLayout />,
     children: [
-      { path: "/services/authentication", element: <AuthenticationConfigPage /> },
-      { path: "/services/authentication/sso-configuration", element: <SsoConfigurationPage /> },
+      {
+        path: "/services/authentication",
+        element: <AuthenticationConfigPage />,
+      },
+      {
+        path: "/services/authentication/sso-configuration",
+        element: <SsoConfigurationPage />,
+      },
       { path: "/services/language", element: <LocalizationLanguageHomePage /> },
-      { path: "/services/language/translations", element: <Navigate to="/services/language" replace /> },
+      {
+        path: "/services/language/translations",
+        element: <Navigate to="/services/language" replace />,
+      },
       { path: "/services/configure", element: <LocalizationConfigurePage /> },
       { path: "/services/modules", element: <LocalizationModulesPage /> },
-      { path: "/services/modules/:moduleId", element: <LocalizationModuleDetailPage /> },
-      { path: "/services/language/export-history", element: <LocalizationExportHistoryPage /> },
+      {
+        path: "/services/modules/:moduleId",
+        element: <LocalizationModuleDetailPage />,
+      },
+      {
+        path: "/services/language/export-history",
+        element: <LocalizationExportHistoryPage />,
+      },
       { path: "/services/language/logs", element: <LocalizationLogsPage /> },
-      { path: "/services/language/translations/new-key", element: <LocalizationNewKeyPage /> },
-      { path: "/services/language/translations/:keyId", element: <LocalizationKeyDetailPage /> },
+      {
+        path: "/services/language/translations/new-key",
+        element: <LocalizationNewKeyPage />,
+      },
+      {
+        path: "/services/language/translations/:keyId",
+        element: <LocalizationKeyDetailPage />,
+      },
       { path: "/services/glossary", element: <LocalizationGlossaryPage /> },
-      { path: "/services/glossary/:itemId", element: <LocalizationGlossaryDetailPage /> },
-    ],
-  },
-
-  // ── Project Overview layout (project must be selected) ──
-  {
-    element: <ProjectOverviewLayout />,
-    children: [
-      { path: "/project-overview", element: <Navigate to="/project-overview/environments" replace /> },
+      {
+        path: "/services/glossary/:itemId",
+        element: <LocalizationGlossaryDetailPage />,
+      },
+      {
+        path: "/project-overview",
+        element: <Navigate to="/project-overview/environments" replace />,
+      },
       { path: "/project-overview/environments", element: <EnvironmentsPage /> },
-      { path: "/project-overview/people", element: <ProjectPeoplePage /> },
-      { path: "/project-overview/repositories", element: <ProjectRepositoriesPage /> },
-      { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
+      // { path: "/project-overview/people", element: <ProjectPeoplePage /> },
+      // {
+      //   path: "/project-overview/repositories",
+      //   element: <ProjectRepositoriesPage />,
+      // },
+      // { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
     ],
   },
 
