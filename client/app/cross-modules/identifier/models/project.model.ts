@@ -11,6 +11,7 @@ export interface IProject {
   name: string;
   applicationDomain: string;
   customDomain: string;
+  domain?: string;
   isProduction: true;
   tenantId: string;
   isCookieEnable: boolean;
