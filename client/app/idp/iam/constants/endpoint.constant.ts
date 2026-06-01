@@ -1,17 +1,21 @@
-import { API_BASES } from "@/constants/endpoint.constant";
+import { getRuntimeEnv } from "@/lib/runtime-env";
+
+// ─── IAM Base URL ───────────────────────────────────────────────────────────────
+
+const IAM_BASE_URL = getRuntimeEnv("BLOCKS_IAM_BASE_URL") || "https://dev-iam.blocksdevelopers.com";
 
 // ─── Subpaths ─────────────────────────────────────────────────────────────────
 
-const IAM_SUBPATH = "/api/iam";
-const AUTH_SUBPATH = "/api/Authentication";
-const IAM_CONFIG_SUBPATH = "/api/IAM";
+const IAM_SUBPATH = `${IAM_BASE_URL}/api/iam`;
+const AUTH_SUBPATH = `${IAM_BASE_URL}/api/Authentication`;
+const IAM_CONFIG_SUBPATH = `${IAM_BASE_URL}/api/IAM`;
 
 // ─── User endpoints (user.service) ──────────────────────────────────────────
 
 export const USER_ENDPOINTS = {
   GET_USERS: `${IAM_SUBPATH}/users`,
   GET_USER: `${IAM_SUBPATH}/user`,
-  USER_INFO: `/api/UserInfo`,
+  USER_INFO: `${IAM_BASE_URL}/api/UserInfo`,
   ME: `${IAM_SUBPATH}/me`,
   CREATE: `${IAM_SUBPATH}/Create`,
   UPDATE: `${IAM_SUBPATH}/Update`,
