@@ -4,11 +4,17 @@ import { getRuntimeEnv } from "@/lib/runtime-env";
 
 const IAM_BASE_URL = getRuntimeEnv("BLOCKS_IAM_BASE_URL") || "https://dev-iam.blocksdevelopers.com";
 
+// ─── Logic Base URL (for specific endpoints) ────────────────────────────────────
+
+const LOGIC_BASE_URL = getRuntimeEnv("BLOCKS_LOGIC_BASE_URL") || "https://dev-logic.blocksdevelopers.com";
+
 // ─── Subpaths ─────────────────────────────────────────────────────────────────
 
 const IAM_SUBPATH = `${IAM_BASE_URL}/api/iam`;
 const AUTH_SUBPATH = `${IAM_BASE_URL}/api/Authentication`;
 const IAM_CONFIG_SUBPATH = `${IAM_BASE_URL}/api/IAM`;
+const LOGIC_IAM_SUBPATH = `${LOGIC_BASE_URL}/api/iam`;
+const LOGIC_AUTH_SUBPATH = `${LOGIC_BASE_URL}/api/Authentication`;
 
 // ─── User endpoints (user.service) ──────────────────────────────────────────
 
@@ -22,9 +28,9 @@ export const USER_ENDPOINTS = {
   GET_SIGNUP_SETTING: `${IAM_SUBPATH}/GetSignUpSetting`,
   SAVE_SIGNUP_SETTING: `${IAM_SUBPATH}/SaveSignUpSetting`,
   SAVE_ROLES_AND_PERMISSIONS: `${IAM_SUBPATH}/SaveRolesAndPermissions`,
-  GET_SESSIONS: `${IAM_SUBPATH}/GetSessions`,
-  GET_HISTORIES: `${IAM_SUBPATH}/GetHistories`,
-  GET_USER_CODES: `${AUTH_SUBPATH}/GetUserCodes`,
+  GET_SESSIONS: `${LOGIC_IAM_SUBPATH}/GetSessions`,
+  GET_HISTORIES: `${LOGIC_IAM_SUBPATH}/GetHistories`,
+  GET_USER_CODES: `${LOGIC_AUTH_SUBPATH}/GetUserCodes`,
   GENERATE_USER_CODE: `${AUTH_SUBPATH}/GenerateUserCode`,
   GET_USER_ROLES: `${IAM_SUBPATH}/GetUserRoles`,
   GET_USER_PERMISSIONS: `${IAM_SUBPATH}/GetUserPermissions`,
