@@ -198,7 +198,7 @@ export const langConfigureData: ILanguageConfig[] = [
     {
         languageName: "Caveman En",
         itemId: "en-cave",
-        languageCode: "en-x-C"
+        languageCode: "en-x-cave"
     },
     {
         languageName: "Chinese",
