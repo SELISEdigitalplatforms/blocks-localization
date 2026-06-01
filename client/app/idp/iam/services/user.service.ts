@@ -40,22 +40,16 @@ export class UserService {
   }
 
   getUser(): Promise<{ data: User }> {
-    return http.get(`${USER_ENDPOINTS.GET_USER}`, undefined, {
-      absoluteUrl: true,
-    })
+    return http.get(`${USER_ENDPOINTS.GET_USER}`)
   }
 
   getUserInfo(): Promise<User> {
-    return http.get(`${USER_ENDPOINTS.USER_INFO}`, undefined, {
-      absoluteUrl: true,
-    })
+    return http.get(`${USER_ENDPOINTS.USER_INFO}`)
   }
 
   getUserById(payload: IGetUserByIdPayload): Promise<IGetUserByIdResponse> {
     return http.get(
       `${USER_ENDPOINTS.GET_USERS}?id=${payload.id}&ProjectKey=${payload.projectKey}`,
-      undefined,
-      { absoluteUrl: true },
     )
   }
 
@@ -150,9 +144,7 @@ export class UserService {
   }
 
   me(): Promise<{ data: User }> {
-    return http.get(`${USER_ENDPOINTS.ME}`, undefined, {
-      absoluteUrl: true,
-    })
+    return http.get(`${USER_ENDPOINTS.ME}`)
   }
 }
 
