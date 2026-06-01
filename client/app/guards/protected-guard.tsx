@@ -47,7 +47,8 @@ export const ImpersonationChecker = ({
     );
     setInitialized(true);
   }, [data, setImpersonation, setInitialized]);
-  if (isLoading || !isSuccess || !isInitialized) return <LogoLoadingSpinner />;
+  if (isLoading || !isSuccess || !isInitialized)
+    return <LogoLoadingSpinner size={48} color="text-primary" />;
   return <>{children}</>;
 };
 
@@ -120,7 +121,8 @@ export function ImpersonationSynchronizer({
     impersonatedTenantId,
     isTriggering,
   ]);
-  if (isImpersonating) return <LogoLoadingSpinner />;
+  if (isImpersonating)
+    return <LogoLoadingSpinner size={48} color="text-primary" />;
   if (!isImpersonated || isTriggering.current) return null;
   return <>{children}</>;
 }
