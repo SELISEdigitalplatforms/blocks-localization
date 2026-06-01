@@ -1,23 +1,23 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
 interface ImpersonateState {
-  isImpersonated: boolean
-  impersonatedTenantId: string | null
-  originalTenantId: string | null
+  isImpersonated: boolean;
+  impersonatedTenantId: string | null;
+  originalTenantId: string | null;
 
-  isInitialized: boolean
+  isInitialized: boolean;
 
   setImpersonation: (
     isImpersonated: boolean,
     originalTenantId: string | null,
     impersonatedTenantId: string | null,
-  ) => void
-  impersonate: (impersonatedTenantId: string, originalTenantId: string) => void
-  terminate: (originalTenantId: string) => void
+  ) => void;
+  impersonate: (impersonatedTenantId: string, originalTenantId: string) => void;
+  terminate: (originalTenantId: string) => void;
 
-  setInitialized: (isInitialized: boolean) => void
+  setInitialized: (isInitialized: boolean) => void;
 
-  reset: () => void
+  reset: () => void;
 }
 
 export const useImpersonateStore = create<ImpersonateState>()((set) => ({
@@ -30,10 +30,10 @@ export const useImpersonateStore = create<ImpersonateState>()((set) => ({
     originalTenantId: string | null,
     impersonatedTenantId: string | null,
   ) => {
-    set({ isImpersonated, impersonatedTenantId, originalTenantId })
+    set({ isImpersonated, impersonatedTenantId, originalTenantId });
   },
   impersonate: (impersonatedTenantId: string, originalTenantId: string) => {
-    set({ isImpersonated: true, impersonatedTenantId, originalTenantId })
+    set({ isImpersonated: true, impersonatedTenantId, originalTenantId });
   },
   terminate: (originalTenantId: string) => {
     set((state) => ({
@@ -41,10 +41,10 @@ export const useImpersonateStore = create<ImpersonateState>()((set) => ({
       isImpersonated: false,
       impersonatedTenantId: null,
       originalTenantId: originalTenantId,
-    }))
+    }));
   },
   setInitialized: (isInitialized: boolean) => {
-    set({ isInitialized })
+    set({ isInitialized });
   },
   reset: () => {
     set({
@@ -52,6 +52,6 @@ export const useImpersonateStore = create<ImpersonateState>()((set) => ({
       impersonatedTenantId: null,
       originalTenantId: null,
       isInitialized: false,
-    })
+    });
   },
-}))
+}));
