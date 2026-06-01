@@ -4,6 +4,8 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogDescription,
+  DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
 import {
   Popover,
@@ -192,9 +194,10 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
   return (
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
-        <h2 className="text-lg font-semibold">
+        <DialogTitle className="text-lg font-semibold">
           {isEditMode ? "Edit Glossary" : "Add Glossary"}
-        </h2>
+        </DialogTitle>
+        <DialogDescription />
       </DialogHeader>
 
       <Form {...form}>

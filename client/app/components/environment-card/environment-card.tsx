@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ChevronRight, Hourglass } from "lucide-react";
+import { ExternalLink, Server, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import { Card, CardContent } from "@/components/ui-kits/card/card";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { IProject } from "@blocks-identifier/models/project.model";
@@ -29,6 +29,10 @@ export const EnvironmentCard = ({
   const { setSelectedProject } = useProjectStore();
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
+  const environmentOption = environmentOptions.find(
+    (option) => option.value === project?.environment,
+  );
+
   const onClickHandler = (): void => {
     setSelectedProject(project);
     navigate("/services/language");
@@ -50,37 +54,71 @@ export const EnvironmentCard = ({
   return (
     <Dialog open={isConfirmationOpen} onOpenChange={setIsConfirmationOpen}>
       <Card
-        onClick={handleCardClick}
-        className={`group flex min-h-[70px] cursor-pointer flex-col justify-between rounded-sm p-4 shadow-none transition-shadow duration-200 hover:shadow-md ${className}`}
+        className={`group cursor-pointer overflow-hidden transition-all duration-200 hover:shadow-lg ${className}`}
       >
-        <CardHeader className="flex flex-row justify-between !p-0">
-          <CardTitle className="line-clamp-1 break-all text-lg leading-tight">
-            <div className="flex w-fit flex-row items-center gap-1">
-              <div className="text-base text-medium-emphasis">
-                {environmentOptions.find((option) => option.value === project?.environment)?.label}
+        <CardContent className="p-0">
+          {/* Top section with icon */}
+          <div
+            className="flex h-24 cursor-pointer flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10"
+            onClick={handleCardClick}
+          >
+            <div className="rounded-full bg-background p-3 shadow-sm">
+              <Server className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+
+          {/* Content section */}
+          <div className="p-4">
+            {/* Environment name and status */}
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold text-[hsl(var(--high-emphasis))]">
+                {environmentOption?.label || project.environment}
+              </h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      {isMigrationOngoing ? (
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isMigrationOngoing ? "Migration in progress" : "Active"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Details */}
+            <div className="mb-4 space-y-1">
+              <div className="flex items-center gap-2 text-xs text-[hsl(var(--medium-emphasis))]">
+                <span className="font-medium">X-Blocks-Key:</span>
+                <span className="truncate font-mono">{project?.tenantId}</span>
               </div>
-              {isMigrationOngoing && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Hourglass className="h-4 w-4 cursor-pointer text-icon-warning" />
-                    </TooltipTrigger>
-                    <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
-                      Migration in progress
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              {project.domain && (
+                <div className="flex items-center gap-2 text-xs text-[hsl(var(--medium-emphasis))]">
+                  <span className="font-medium">Domain:</span>
+                  <span className="truncate">{project.domain}</span>
+                </div>
               )}
             </div>
-          </CardTitle>
-          <ChevronRight className="h-4 w-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-        </CardHeader>
-        <div className="mt-2">
-          <div className="flex flex-wrap items-center gap-1.5 py-0.5 text-xs sm:py-1 md:py-1.5">
-            <span className="font-semibold text-muted-foreground">X-Blocks-Key:</span>
-            <span className="truncate font-mono text-muted-foreground">{project?.tenantId}</span>
+
+            {/* Open Dashboard link */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              Open Dashboard
+              <ExternalLink className="h-4 w-4" />
+            </button>
           </div>
-        </div>
+        </CardContent>
       </Card>
       {isMigrationOngoing && (
         <ConfirmationModal
