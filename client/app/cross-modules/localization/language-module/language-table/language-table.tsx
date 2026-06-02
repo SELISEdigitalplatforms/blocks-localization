@@ -285,6 +285,12 @@ export function LanguageTable() {
     useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
 
+  const defaultLanguageCode = useMemo(() => {
+    if (!languageListData) return "en-US";
+    const defaultLang = languageListData.find((lang) => lang.isDefault);
+    return defaultLang?.languageCode ?? "en-US";
+  }, [languageListData]);
+
   const navigate = useNavigate();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -375,7 +381,7 @@ export function LanguageTable() {
       keyId: selectedLanguageKeyId,
       projectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
-      defaultLanguage: "en-US",
+      defaultLanguage: defaultLanguageCode,
     };
 
     try {
@@ -709,7 +715,7 @@ export function LanguageTable() {
 
     const payload = {
       itemIds: selectedKeys,
-      projectKey: tenantId,
+      ProjectKey: tenantId,
     };
 
     try {
@@ -743,9 +749,8 @@ export function LanguageTable() {
 
     const payload = {
       keyIds: selectedKeys,
-      projectKey: tenantId,
-      defaultLanguage: "en-US",
-      messageCoRelationId: shortGuidGenerator(8),
+      ProjectKey: tenantId,
+      defaultLanguage: defaultLanguageCode,
     };
 
     try {
