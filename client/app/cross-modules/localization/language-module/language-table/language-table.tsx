@@ -46,11 +46,13 @@ import AutoTranslate from "@blocks-localization/components/modals/auto-translate
 import ExportKey from "@blocks-localization/components/modals/export-key/export-key";
 import {
   useDeleteLanguageKey,
+  useDeleteLanguageKeys,
   useGenerateUilmFile,
   useGetBlocksLanguageKey,
   useGetLanguageModules,
   useGetLanguages,
   useTranslateKey,
+  useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
@@ -61,6 +63,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { RowSelectionState } from "@tanstack/react-table";
 import {
   AlignLeft,
   EllipsisVertical,
@@ -302,6 +305,14 @@ export function LanguageTable() {
   const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
     useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] =
+    useState(false);
+  const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } =
+    useDeleteLanguageKeys();
+  const { isPending: isBulkTranslatingKeys, mutateAsync: bulkTranslateAsync } =
+    useTranslateLanguageKeys();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Reset all filters and view state when the project changes
@@ -478,6 +489,34 @@ export function LanguageTable() {
   const columns = useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected()
+                ? true
+                : table.getIsSomePageRowsSelected()
+                  ? "indeterminate"
+                  : false
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
         accessorKey: "keyName",
         header: () => (
           <div className="w-[300px] md:w-[200px]">
@@ -640,7 +679,100 @@ export function LanguageTable() {
     data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    state: {
+      rowSelection,
+    },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
   });
+
+  const selectedKeys = useMemo(() => {
+    return table.getSelectedRowModel().rows.map((row) => row.original.itemId);
+  }, [table.getSelectedRowModel().rows]);
+
+  const bulkDeleteModalData = {
+    dialogTitle: "Delete language keys?",
+    dialogSubtitle: `Are you sure you want to delete ${selectedKeys.length} selected language key(s)?`,
+    confirmButton: "Delete",
+    cancelButton: "Cancel",
+  };
+
+  const bulkTranslateModalData = {
+    dialogTitle: "Auto-translate selected keys?",
+    dialogSubtitle: `Are you sure you want to automatically translate ${selectedKeys.length} selected language key(s)?`,
+    confirmButton: "Translate",
+    cancelButton: "Cancel",
+  };
+
+  const onConfirmBulkDelete = async () => {
+    if (!tenantId || selectedKeys.length === 0) return;
+
+    const payload = {
+      itemIds: selectedKeys,
+      projectKey: tenantId,
+    };
+
+    try {
+      const res = await bulkDeleteAsync(payload);
+      if (res?.isSuccess) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Keys deleted successfully",
+        });
+        setIsBulkDeleteDialogOpen(false);
+        setRowSelection({});
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  };
+
+  const onConfirmBulkTranslate = async () => {
+    if (!tenantId || selectedKeys.length === 0) return;
+
+    const payload = {
+      keyIds: selectedKeys,
+      projectKey: tenantId,
+      defaultLanguage: "en-US",
+      messageCoRelationId: shortGuidGenerator(8),
+    };
+
+    try {
+      const res = await bulkTranslateAsync(payload);
+      if (res?.isSuccess) {
+        toast({
+          variant: "success",
+          title: "Processing Translation",
+          description: "Key translation in progress for selected keys.",
+        });
+        setIsBulkTranslateDialogOpen(false);
+        setRowSelection({});
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  };
 
   const handleExportClick = () => {
     setIsExportDialogOpen(true);
@@ -895,6 +1027,41 @@ export function LanguageTable() {
                   </DropdownMenu>
                 </div>
               </CardHeader>
+              {selectedKeys.length > 0 && (
+                <div className="mb-4 flex items-center justify-between rounded bg-blocks-primary-shades-300 px-4 py-2">
+                  <span className="text-sm font-medium">
+                    {selectedKeys.length} key
+                    {selectedKeys.length > 1 ? "s" : ""} selected
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsBulkTranslateDialogOpen(true)}
+                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Languages className="mr-1 h-4 w-4" />
+                      Translate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsBulkDeleteDialogOpen(true)}
+                      className="border-error text-error hover:bg-error hover:text-primary-foreground"
+                    >
+                      <Trash className="mr-1 h-4 w-4" />
+                      Delete
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setRowSelection({})}
+                    >
+                      Clear selection
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
                   <Skeleton className="h-12 w-full rounded" />
@@ -1074,6 +1241,28 @@ export function LanguageTable() {
               onConfirm={onConfirmTranslate}
               data={translateKeyModalData}
               buttonState={{ confirm: { disable: isTranslatingKey } }}
+            />
+          </Dialog>
+          <Dialog
+            open={isBulkDeleteDialogOpen}
+            onOpenChange={setIsBulkDeleteDialogOpen}
+          >
+            <ConfirmationModal
+              onCancel={() => {}}
+              onConfirm={onConfirmBulkDelete}
+              data={bulkDeleteModalData}
+              buttonState={{ confirm: { disable: isBulkDeletingKeys } }}
+            />
+          </Dialog>
+          <Dialog
+            open={isBulkTranslateDialogOpen}
+            onOpenChange={setIsBulkTranslateDialogOpen}
+          >
+            <ConfirmationModal
+              onCancel={() => {}}
+              onConfirm={onConfirmBulkTranslate}
+              data={bulkTranslateModalData}
+              buttonState={{ confirm: { disable: isBulkTranslatingKeys } }}
             />
           </Dialog>
         </Tabs>

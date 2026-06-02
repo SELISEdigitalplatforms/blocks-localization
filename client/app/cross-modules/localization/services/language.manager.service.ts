@@ -178,6 +178,32 @@ class LanguageManagerService {
       .then((response) => response);
   }
 
+  deleteLanguageKeys(payload: { itemIds: string[]; projectKey: string }): Promise<{
+    errors: null | unknown;
+    isSuccess: boolean;
+  }> {
+    const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
+    return http
+      .post<{
+        errors: unknown;
+        isSuccess: boolean;
+      }>(url, payload)
+      .then((response) => response);
+  }
+
+  translateLanguageKeys = (payload: {
+    keyIds: string[];
+    projectKey: string;
+    defaultLanguage: string;
+    messageCoRelationId: string;
+  }): Promise<{
+    errors: null | unknown;
+    isSuccess: boolean;
+  }> => {
+    const url = LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS;
+    return http.post(url, payload);
+  };
+
   deleteLanguage(payload: { languageName: string; projectKey: string }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
