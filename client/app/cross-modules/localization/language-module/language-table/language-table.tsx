@@ -121,7 +121,15 @@ const KeyNameCell = React.memo(({ keyName }: { keyName: string }) => {
 KeyNameCell.displayName = "KeyNameCell";
 
 const RowActionsCell = React.memo(
-  ({ onView, onDelete, onTranslate }: { onView: () => void; onDelete: () => void; onTranslate: () => void }) => (
+  ({
+    onView,
+    onDelete,
+    onTranslate,
+  }: {
+    onView: () => void;
+    onDelete: () => void;
+    onTranslate: () => void;
+  }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -133,10 +141,13 @@ const RowActionsCell = React.memo(
           <AlignLeft className="mr-2 h-4 w-4" />
           <span>View details</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
-          e.stopPropagation();
-          onTranslate();
-        }}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTranslate();
+          }}
+        >
           <Languages className="mr-2 h-4 w-4" />
           <span>Translate</span>
         </DropdownMenuItem>
@@ -288,7 +299,8 @@ export function LanguageTable() {
   >(null);
   const { isPending: isDeleteLanguageKeyPending, mutateAsync: deleteAsync } =
     useDeleteLanguageKey();
-  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } = useTranslateKey();
+  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
+    useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
@@ -325,7 +337,8 @@ export function LanguageTable() {
 
   const translateKeyModalData = {
     dialogTitle: "Auto-translate this key?",
-    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
+    dialogSubtitle:
+      "Are you sure you want to automatically translate this language key?",
     confirmButton: "Translate",
     cancelButton: "Cancel",
   };
@@ -517,14 +530,12 @@ export function LanguageTable() {
                 const resources = row.original.resources;
                 if (!resources || resources.length === 0)
                   return "No translation";
-                const translatedLanguages = resources.map(
-                  (resource) => resource.culture,
-                );
                 const allLanguages =
                   languageListData?.map((lang) => lang.languageCode) || [];
-                const isComplete = allLanguages.every((lang) =>
-                  translatedLanguages.includes(lang),
-                );
+                const isComplete = allLanguages.every((lang) => {
+                  const resource = resources.find((r) => r.culture === lang);
+                  return resource && resource.value.trim() !== "";
+                });
                 return isComplete ? "Complete" : "Partial";
               },
               enableHiding: true,
