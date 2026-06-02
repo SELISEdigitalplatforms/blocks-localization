@@ -495,7 +495,7 @@ function Configure() {
                         <Input
                           placeholder="X-Webhook-Secret"
                           {...field}
-                          autoComplete="secret-header-key"
+                          autoComplete="off"
                         />
                       </FormControl>
                       <FormMessage />
@@ -512,7 +512,7 @@ function Configure() {
                         <Input
                           type="password"
                           placeholder="********"
-                          autoComplete="secret"
+                          autoComplete="off"
                           {...field}
                         />
                       </FormControl>

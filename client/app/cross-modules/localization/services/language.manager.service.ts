@@ -79,7 +79,9 @@ class LanguageManagerService {
   };
 
   fetchBlocksLanguageModules = (projectKey: string): Promise<IModuleGets[]> => {
-    return http.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${projectKey}`);
+    return http.get(
+      `${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${projectKey}`,
+    );
   };
 
   fetchBlocksLanguages = (projectKey: string): Promise<ILanguageConfig[]> => {
@@ -178,7 +180,10 @@ class LanguageManagerService {
       .then((response) => response);
   }
 
-  deleteLanguageKeys(payload: { itemIds: string[]; projectKey: string }): Promise<{
+  deleteLanguageKeys(payload: {
+    itemIds: string[];
+    ProjectKey: string;
+  }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> {
@@ -193,9 +198,8 @@ class LanguageManagerService {
 
   translateLanguageKeys = (payload: {
     keyIds: string[];
-    projectKey: string;
+    ProjectKey: string;
     defaultLanguage: string;
-    messageCoRelationId: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -204,7 +208,10 @@ class LanguageManagerService {
     return http.post(url, payload);
   };
 
-  deleteLanguage(payload: { languageName: string; projectKey: string }): Promise<{
+  deleteLanguage(payload: {
+    languageName: string;
+    projectKey: string;
+  }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> {
@@ -213,7 +220,9 @@ class LanguageManagerService {
       .delete<{
         errors: unknown;
         isSuccess: boolean;
-      }>(`${url}?languageName=${payload.languageName}&projectKey=${payload.projectKey}`)
+      }>(
+        `${url}?languageName=${payload.languageName}&projectKey=${payload.projectKey}`,
+      )
       .then((response) => response);
   }
 
@@ -368,10 +377,15 @@ class LanguageManagerService {
       payload.logFromValues.forEach((v) => params.append("LogFromValues", v));
     }
     if (payload.excludeLogFromValues) {
-      payload.excludeLogFromValues.forEach((v) => params.append("ExcludeLogFromValues", v));
+      payload.excludeLogFromValues.forEach((v) =>
+        params.append("ExcludeLogFromValues", v),
+      );
     }
     if (payload.createDateRange?.startDate) {
-      params.append("CreateDateRange.StartDate", payload.createDateRange.startDate);
+      params.append(
+        "CreateDateRange.StartDate",
+        payload.createDateRange.startDate,
+      );
     }
     if (payload.createDateRange?.endDate) {
       params.append("CreateDateRange.EndDate", payload.createDateRange.endDate);
@@ -458,7 +472,9 @@ class LanguageManagerService {
       .delete<{
         errors: unknown;
         isSuccess: boolean;
-      }>(`${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
+      }>(
+        `${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`,
+      )
       .then((response) => response);
   };
 
@@ -474,10 +490,15 @@ class LanguageManagerService {
     if (request.maxResults) {
       params.append("MaxResults", String(request.maxResults));
     }
-    return http.get(`${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`);
+    return http.get(
+      `${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`,
+    );
   };
 
-  getGlossaryById = (request: { itemId: string; projectKey: string }): Promise<IGlossary> => {
+  getGlossaryById = (request: {
+    itemId: string;
+    projectKey: string;
+  }): Promise<IGlossary> => {
     return http.get(
       `${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}&projectKey=${request.projectKey}`,
     );
