@@ -84,7 +84,7 @@ export class UserService {
           ).flat()
       : [];
 
-    return http.put(
+    return http.post(
       `${USER_ENDPOINTS.UPDATE}/${payload.itemId}`,
       { ...rest, roles: normalizedRoles, permissions: normalizedPermissions },
       undefined,
