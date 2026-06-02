@@ -205,6 +205,35 @@ export const useDeleteLanguageKey = () => {
   });
 };
 
+export const useDeleteLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["language-keys", "bulk-delete"],
+    mutationFn: languageManagerService.deleteLanguageKeys,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    },
+  });
+};
+
+export const useTranslateLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["translate-keys", "bulk"],
+    mutationFn: languageManagerService.translateLanguageKeys,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+      });
+    },
+  });
+};
+
 export const useDeleteLanguage = () => {
   const queryClient = useQueryClient();
   return useMutation({

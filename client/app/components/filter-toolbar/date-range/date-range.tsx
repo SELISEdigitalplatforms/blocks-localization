@@ -13,9 +13,10 @@ interface DateRangeFilterProps {
   label: string;
   value: DateRangeType;
   onChange: (date: DateRangeType) => void;
+  disableFutureDates?: boolean;
 }
 
-export function DateRange({ label, value, onChange }: DateRangeFilterProps) {
+export function DateRange({ label, value, onChange, disableFutureDates = false }: DateRangeFilterProps) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateRangeType>(value);
@@ -80,6 +81,7 @@ export function DateRange({ label, value, onChange }: DateRangeFilterProps) {
           selected={date?.from ? { from: date.from, to: date.to } : undefined}
           onSelect={handleDateSelect}
           numberOfMonths={isMobile ? 1 : 2}
+          disabled={disableFutureDates ? { after: new Date() } : undefined}
         />
         <div className="flex items-center gap-4 px-3 pb-4">
           <Button type="button" variant="outline" className="w-full" onClick={resetBtnHandler}>

@@ -92,13 +92,17 @@ export function LanguageTableToolbar({
           key: "createDate",
           type: "DateRange",
           label: "Create Date",
-          props: {},
+          props: {
+            disableFutureDates: true,
+          },
         },
         {
           key: "lastUpdateDate",
           type: "DateRange",
           label: "Last Update Date",
-          props: {},
+          props: {
+            disableFutureDates: true,
+          },
         },
       ]}
       values={{
