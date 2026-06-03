@@ -281,11 +281,14 @@ export const useImportLanguageFile = () => {
 };
 
 export const useSaveLanguageKeyUilmExport = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["save-language-key-uilm-export"],
     mutationFn: (payload: IKeyUilmExport) =>
       languageManagerService.saveLanguageKeyUilmExport(payload),
-    onSuccess: () => {},
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.exportHistory.all });
+    },
   });
 };
 
