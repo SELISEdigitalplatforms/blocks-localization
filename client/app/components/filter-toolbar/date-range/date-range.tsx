@@ -34,7 +34,9 @@ export function DateRange({ label, value, onChange, disableFutureDates = false }
 
   const resetBtnHandler = (event: MouseEvent) => {
     event.stopPropagation();
+    onChange(null);
     setDate(null);
+    setOpen(false);
   };
   const applyBtnHandler = (event: MouseEvent) => {
     event.stopPropagation();

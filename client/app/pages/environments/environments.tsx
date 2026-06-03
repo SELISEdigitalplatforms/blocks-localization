@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 // import { useCallback } from "react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { ProjectCardLoading } from "@/components/project-card/loading";
+import { EnvironmentCardSkeleton } from "@/components/environment-card/environment-card-skeleton";
 import { useNavigate } from "react-router-dom";
 // import { useNotificationListener } from "@/cross-modules/communication/hooks/use-notification-listener";
 import {
@@ -36,10 +36,10 @@ const ProjectGroupLoading = () => (
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array(8)
+        {Array(4)
           .fill(1)
           .map((_, index) => (
-            <ProjectCardLoading key={index} />
+            <EnvironmentCardSkeleton key={index} />
           ))}
       </div>
     </div>
