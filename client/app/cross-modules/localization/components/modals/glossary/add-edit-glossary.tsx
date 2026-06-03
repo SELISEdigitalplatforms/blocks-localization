@@ -404,7 +404,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-left font-medium text-high-emphasis">
-                  Context / Description
+                  Context
                 </FormLabel>
                 <FormControl>
                   <Textarea
@@ -428,7 +428,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <FormLabel className="flex w-fit cursor-help items-center gap-1.5 text-left font-medium text-high-emphasis">
-                        Additional User Notes
+                        Additional Notes
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </FormLabel>
                     </TooltipTrigger>
