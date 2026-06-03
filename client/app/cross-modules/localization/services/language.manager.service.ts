@@ -189,7 +189,7 @@ class LanguageManagerService {
   }> {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
     return http
-      .post<{
+      .delete<{
         errors: unknown;
         isSuccess: boolean;
       }>(url, payload)

@@ -750,6 +750,7 @@ export function LanguageTable() {
     const payload = {
       keyIds: selectedKeys,
       ProjectKey: tenantId,
+      messageCoRelationId: shortGuidGenerator(8),
       defaultLanguage: defaultLanguageCode,
     };
 
