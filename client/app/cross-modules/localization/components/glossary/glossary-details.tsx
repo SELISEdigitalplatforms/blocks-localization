@@ -49,8 +49,17 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [keysPage, setKeysPage] = useState(0);
   const PAGE_SIZE = 10;
-  const { data: taggedKeysData, isLoading: isTaggedKeysLoading } =
-    useGetKeysByGlossaryId(itemId, keysPage, PAGE_SIZE);
+  const {
+    data: taggedKeysData,
+    isLoading: isTaggedKeysLoading,
+    isError: isTaggedKeysError,
+  } = useGetKeysByGlossaryId(itemId, keysPage, PAGE_SIZE);
+
+  // Debug logging for tagged keys
+  console.log("[GlossaryDetails] taggedKeysData:", taggedKeysData);
+  console.log("[GlossaryDetails] isTaggedKeysLoading:", isTaggedKeysLoading);
+  console.log("[GlossaryDetails] isTaggedKeysError:", isTaggedKeysError);
+  console.log("[GlossaryDetails] itemId:", itemId);
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
@@ -262,7 +271,11 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                 <Skeleton key={i} className="h-10 w-full rounded-sm" />
               ))}
             </div>
-          ) : !taggedKeysData?.keys?.length ? (
+          ) : isTaggedKeysError || !taggedKeysData ? (
+            <p className="px-6 pb-6 text-sm text-medium-emphasis">
+              Failed to load tagged keys.
+            </p>
+          ) : !taggedKeysData.keys?.length ? (
             <p className="px-6 pb-6 text-sm text-medium-emphasis">
               No keys tagged with this glossary.
             </p>
