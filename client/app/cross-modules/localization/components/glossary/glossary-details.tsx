@@ -53,14 +53,12 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     data: taggedKeysData,
     isLoading: isTaggedKeysLoading,
     isError: isTaggedKeysError,
-  } = useGetKeysByGlossaryId(itemId, glossary?.moduleIds ?? [], keysPage, PAGE_SIZE);
-
-  // Debug logging for tagged keys
-  console.log("[GlossaryDetails] taggedKeysData:", taggedKeysData);
-  console.log("[GlossaryDetails] isTaggedKeysLoading:", isTaggedKeysLoading);
-  console.log("[GlossaryDetails] isTaggedKeysError:", isTaggedKeysError);
-  console.log("[GlossaryDetails] itemId:", itemId);
-  console.log("[GlossaryDetails] glossary.moduleIds:", glossary?.moduleIds);
+  } = useGetKeysByGlossaryId(
+    itemId,
+    glossary?.moduleIds ?? [],
+    keysPage,
+    PAGE_SIZE,
+  );
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
@@ -180,10 +178,10 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">
-                  In global context
+                  Is Global
                 </h3>
                 <p className="text-base font-normal text-high-emphasis">
-                  {glossary.isGlobal ? "Yes" : "No"}
+                  {glossary.isGlobal ? "True" : "False"}
                 </p>
               </div>
               <div className="grid gap-1">
