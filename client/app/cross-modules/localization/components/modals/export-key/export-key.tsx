@@ -25,19 +25,19 @@ import {
   useGetLanguages,
   useSaveLanguageKeyUilmExport,
 } from "@blocks-localization/hooks/use-language-manager";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ModuleName } from "@/constants/modules.constants";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
 import {
-  useGetFilesDownload,
   useGetPreSignedUrlForUpload,
   useUploadFile,
 } from "@blocks-storage/hooks/use-storage-file";
+import { storageService } from "@blocks-storage/services/storage.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -76,15 +76,11 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
   const [xlfFile, setXlfFile] = useState<File | null>(null);
   const [isUploadingXlf, setIsUploadingXlf] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [downloadMeta, setDownloadMeta] = useState<{ fileId: string; projectKey: string }>({
-    fileId: "",
-    projectKey,
-  });
 
   const { mutateAsync: exportAsync } = useSaveLanguageKeyUilmExport();
   const { mutateAsync: getPresignedUrl } = useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFileMutate } = useUploadFile();
-  const { refetch } = useGetFilesDownload(downloadMeta, { enabled: false });
+  const queryClient = useQueryClient();
 
   const handleSelectFileType = () => {
     setCurrentStep(2);
@@ -234,13 +230,12 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
 
           if (fileId) {
             try {
-              // Force React to apply the new meta immediately
-              flushSync(() => {
-                setDownloadMeta({ fileId, projectKey });
+              // Fetch the download URL directly using queryClient
+              const result = await queryClient.fetchQuery({
+                queryKey: ["getFilesDownload", fileId, projectKey],
+                queryFn: () =>
+                  storageService.file.getFilesDownloadUrl({ fileId, projectKey }),
               });
-
-              // Now refetch uses the updated meta inside the hook
-              const { data: result } = await refetch();
 
               if (result?.url) {
                 const link = document.createElement("a");
@@ -255,6 +250,7 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
               }
             } catch (error) {
               console.error(error);
+              showErrorToast();
             }
           } else {
             console.error("No fileId found in notification message");
@@ -271,7 +267,7 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
       }
     },
 
-    [projectKey, refetch],
+    [projectKey, queryClient],
   );
 
   useNotificationListener("language-import-export", handleNotificationData);

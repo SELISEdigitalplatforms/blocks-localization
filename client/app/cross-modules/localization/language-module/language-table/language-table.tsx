@@ -495,6 +495,38 @@ export function LanguageTable() {
     }));
   };
 
+  const onPageSizeChangeHandler = (pageSize: number) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      pageSize,
+      pageNumber: 0,
+    }));
+  };
+
+  // Generate dynamic page size options based on total count
+  const pageSizeOptions = useMemo(() => {
+    const totalCount = blocksLanguageKeyData?.totalCount || 0;
+    if (totalCount === 0) return [10];
+
+    // Dynamically generate page size options based on total count
+    const options: number[] = [];
+    // Start from 10 and increment by 10 until we reach or exceed the total (up to 100)
+    const upperLimit = Math.min(100, totalCount);
+    for (let size = 10; size <= upperLimit; size += 10) {
+      options.push(size);
+    }
+    // Ensure at least 10 is included
+    if (options.length === 0) {
+      options.push(10);
+    }
+    // Always include totalCount as an option if it's greater than the last generated option
+    const lastOption = options[options.length - 1];
+    if (totalCount > lastOption) {
+      options.push(totalCount);
+    }
+    return options;
+  }, [blocksLanguageKeyData?.totalCount]);
+
   const columns = useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
@@ -1197,14 +1229,15 @@ export function LanguageTable() {
               </CardContent>
               {!isLoading &&
                 blocksLanguageKeyData &&
-                blocksLanguageKeyData.totalCount > queryParams.pageSize && (
+                blocksLanguageKeyData.totalCount > 0 && (
                   <div className="mt-5 flex items-center md:justify-end">
                     <Pagination
                       page={queryParams.pageNumber}
                       pageSize={queryParams.pageSize}
                       totalCount={blocksLanguageKeyData?.totalCount || 0}
-                      pageSizeOptions={[10]}
+                      pageSizeOptions={pageSizeOptions}
                       onChange={onPageChangeHandler}
+                      onPageSizeChange={onPageSizeChangeHandler}
                     />
                   </div>
                 )}

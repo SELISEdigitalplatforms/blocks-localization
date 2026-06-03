@@ -57,17 +57,41 @@ interface ValidationResult {
 }
 
 /**
+ * Detects the delimiter used in a CSV line
+ * Returns the most likely delimiter (comma, semicolon, or tab)
+ */
+const detectDelimiter = (line: string): string => {
+  const delimiters = [",", ";", "\t"];
+  const counts = delimiters.map((d) => ({
+    delimiter: d,
+    count: (line.match(new RegExp(`\\${d}`, "g")) || []).length,
+  }));
+  // Return the delimiter with the highest count, default to comma
+  const best = counts.reduce((prev, curr) =>
+    curr.count > prev.count ? curr : prev,
+  );
+  return best.count > 0 ? best.delimiter : ",";
+};
+
+/**
  * Parses CSV content and returns array of records
  */
 const parseCSVContent = (
   content: string,
 ): { headers: string[]; rows: string[][] } => {
-  const lines = content.split(/\r?\n/).filter((line) => line.trim() !== "");
+  // Remove BOM (Byte Order Mark) if present
+  const cleanContent = content.replace(/^\uFEFF/, "");
+  const lines = cleanContent
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "");
   if (lines.length === 0) {
     return { headers: [], rows: [] };
   }
 
-  const parseCSVLine = (line: string): string[] => {
+  // Detect delimiter from the first line
+  const delimiter = detectDelimiter(lines[0]);
+
+  const parseCSVLine = (line: string, delim: string): string[] => {
     const result: string[] = [];
     let current = "";
     let inQuotes = false;
@@ -81,7 +105,7 @@ const parseCSVContent = (
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (char === "," && !inQuotes) {
+      } else if (char === delim && !inQuotes) {
         result.push(current.trim());
         current = "";
       } else {
@@ -92,8 +116,8 @@ const parseCSVContent = (
     return result;
   };
 
-  const headers = parseCSVLine(lines[0]);
-  const rows = lines.slice(1).map((line) => parseCSVLine(line));
+  const headers = parseCSVLine(lines[0], delimiter);
+  const rows = lines.slice(1).map((line) => parseCSVLine(line, delimiter));
 
   return { headers, rows };
 };
@@ -104,6 +128,12 @@ const parseCSVContent = (
  */
 const validateJsonFileContent = (content: string): ValidationResult => {
   const errors: string[] = [];
+
+  // Early validation: check for empty content
+  if (!content || content.trim() === "") {
+    errors.push("The JSON file is empty.");
+    return { isValid: false, errors };
+  }
 
   try {
     const data = JSON.parse(content);
@@ -163,7 +193,8 @@ const validateJsonFileContent = (content: string): ValidationResult => {
     });
 
     return { isValid: errors.length === 0, errors };
-  } catch {
+  } catch (parseError) {
+    console.error("JSON parse error:", parseError);
     errors.push(
       "Invalid JSON format. Please ensure the file contains valid JSON.",
     );
@@ -178,6 +209,12 @@ const validateJsonFileContent = (content: string): ValidationResult => {
 const validateCsvFileContent = (content: string): ValidationResult => {
   const errors: string[] = [];
 
+  // Early validation: check for empty content
+  if (!content || content.trim() === "") {
+    errors.push("The CSV file is empty.");
+    return { isValid: false, errors };
+  }
+
   try {
     const { headers, rows } = parseCSVContent(content);
 
@@ -189,7 +226,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     // Normalize headers to lowercase for comparison
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
 
-    // Check for required headers
+    // Check for required headers (all 4 are required)
     const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
     const missingHeaders = requiredHeaders.filter(
       (h) => !normalizedHeaders.includes(h),
@@ -209,58 +246,112 @@ const validateCsvFileContent = (content: string): ValidationResult => {
 
     // Find column indices
     const keyNameIndex = normalizedHeaders.indexOf("keyname");
+    const moduleNameIndex = normalizedHeaders.indexOf("modulename");
     const resourcesIndex = normalizedHeaders.indexOf("resources");
     const routesIndex = normalizedHeaders.indexOf("routes");
 
     // Validate each data row
-    rows.forEach((row, index) => {
+    let errorCount = 0;
+    const maxErrorsToReport = 5; // Limit error reporting to avoid too many toast messages
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // +2 because of header row and 0-indexing
+
+      // Validate keyName is not empty
       const keyName = row[keyNameIndex];
       if (!keyName || keyName.trim() === "") {
-        errors.push(
-          `Row ${index + 2}: Empty 'keyName' value. All entries must have a valid keyName.`,
-        );
+        if (errorCount < maxErrorsToReport) {
+          errors.push(
+            `Row ${rowNum}: Empty 'keyName' value. All entries must have a valid keyName.`,
+          );
+        }
+        errorCount++;
       }
 
-      // Validate resources format (expected: culture:value;culture:value or JSON string)
+      // Validate resources format - should be culture:value pairs separated by semicolons
+      // e.g., "en-US:Email;bn-BD:ইমেইল;de-DE:E-Mail"
       const resources = row[resourcesIndex];
-      if (resources) {
-        // If resources is a JSON string, try to parse and validate
-        if (resources.startsWith("[") || resources.startsWith("{")) {
-          try {
-            const parsedResources = JSON.parse(resources);
-            if (!Array.isArray(parsedResources)) {
+      if (resources && resources.trim() !== "") {
+        // Check if it's a simple format (culture:value pairs)
+        const resourcePairs = resources.split(";");
+        for (const pair of resourcePairs) {
+          if (pair.trim() && !pair.includes(":")) {
+            if (errorCount < maxErrorsToReport) {
               errors.push(
-                `Row ${index + 2}: 'resources' must be a JSON array.`,
+                `Row ${rowNum}: Invalid resource format. Expected 'culture:value' pairs separated by semicolons (e.g., 'en-US:Email;bn-BD:ইমেইল').`,
               );
             }
-          } catch {
-            // If not JSON, check if it's in culture:value format
-            const resourcePairs = resources.split(";");
-            resourcePairs.forEach((pair) => {
-              if (pair && !pair.includes(":")) {
-                errors.push(
-                  `Row ${index + 2}: Invalid resource format. Expected 'culture:value' pairs separated by semicolons or a JSON array.`,
-                );
-              }
-            });
+            errorCount++;
+            break;
           }
         }
       }
 
-      // Validate routes format (expected: JSON array or empty)
+      // Validate routes format - should be JSON array or empty
       const routes = row[routesIndex];
-      if (routes && routes !== "[]" && routes !== "{}") {
-        if (!routes.startsWith("[") && !routes.startsWith("{")) {
-          errors.push(
-            `Row ${index + 2}: Invalid 'routes' format. Expected a JSON array.`,
-          );
+      if (
+        routes &&
+        routes.trim() !== "" &&
+        routes !== "[]" &&
+        routes !== "{}"
+      ) {
+        if (!routes.startsWith("[")) {
+          if (errorCount < maxErrorsToReport) {
+            errors.push(
+              `Row ${rowNum}: Invalid 'routes' format. Expected empty or JSON array (e.g., '[]').`,
+            );
+          }
+          errorCount++;
         }
       }
-    });
+    }
+
+    if (errorCount > maxErrorsToReport) {
+      errors.push(
+        `And ${errorCount - maxErrorsToReport} more errors. Please fix the issues and re-upload.`,
+      );
+    }
 
     return { isValid: errors.length === 0, errors };
-  } catch {
+  } catch (csvError) {
+    console.error("CSV parse error:", csvError);
     errors.push("Invalid CSV format. Please ensure the file is a valid CSV.");
+    return { isValid: false, errors };
+  }
+};
+
+/**
+ * Validates XLSX file format by checking ZIP signature and internal structure
+ */
+const validateXlsxFileContent = (
+  arrayBuffer: ArrayBuffer,
+): ValidationResult => {
+  const errors: string[] = [];
+
+  try {
+    // XLSX is a ZIP archive, check for ZIP signature (PK)
+    const bytes = new Uint8Array(arrayBuffer);
+    if (bytes.length < 4) {
+      errors.push("The XLSX file appears to be empty or invalid.");
+      return { isValid: false, errors };
+    }
+
+    // Check for ZIP signature (PK at start)
+    const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
+    if (!isZip) {
+      errors.push(
+        "The file does not appear to be a valid XLSX file. Expected ZIP signature.",
+      );
+      return { isValid: false, errors };
+    }
+
+    // XLSX validation is limited without proper XLSX parsing library
+    // We can only verify it's a valid ZIP archive, not the actual spreadsheet data
+    // The server will validate the actual data content
+    return { isValid: true, errors: [] };
+  } catch {
+    errors.push("Failed to validate XLSX file. Please try again.");
     return { isValid: false, errors };
   }
 };
@@ -272,6 +363,13 @@ const validateCsvFileContent = (content: string): ValidationResult => {
  */
 const validateFileContent = async (file: File): Promise<ValidationResult> => {
   const errors: string[] = [];
+
+  // Guard check: ensure file exists and has a valid name
+  if (!file || typeof file.name !== "string" || !file.name.includes(".")) {
+    errors.push("Invalid file object. Please try selecting the file again.");
+    return { isValid: false, errors };
+  }
+
   const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
 
   // Check file extension
@@ -283,35 +381,22 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
   }
 
   try {
-    const content = await file.text();
-
     if (fileExtension === ".json") {
+      const content = await file.text();
       return validateJsonFileContent(content);
     } else if (fileExtension === ".csv") {
+      const content = await file.text();
       return validateCsvFileContent(content);
     } else if (fileExtension === ".xlsx") {
-      // For XLSX files, client-side validation is limited without additional libraries
-      // We do a basic check to ensure the file is not empty and appears to be a valid XLSX
-      if (content.length < 100) {
-        errors.push("The XLSX file appears to be empty or invalid.");
-        return { isValid: false, errors };
-      }
-      // XLSX is a binary format (ZIP), so we check for the ZIP signature
-      // PK (50 4B) is the signature for ZIP/XLSX files
-      const isValidXlsx = content
-        .slice(0, 4)
-        .split("")
-        .every((char) => char.charCodeAt(0) !== 0);
-      if (!isValidXlsx) {
-        errors.push("The file does not appear to be a valid XLSX file.");
-        return { isValid: false, errors };
-      }
-      return { isValid: true, errors: [] };
+      // For XLSX, use ArrayBuffer to avoid corrupting binary data
+      const arrayBuffer = await file.arrayBuffer();
+      return validateXlsxFileContent(arrayBuffer);
     }
 
     return { isValid: true, errors: [] };
-  } catch {
-    errors.push("Failed to read file content. Please try again.");
+  } catch (err) {
+    console.error("File validation error:", err);
+    errors.push("Failed to read or validate file content. Please try again.");
     return { isValid: false, errors };
   }
 };
@@ -371,6 +456,31 @@ export default function ImportCommunicationsModal({
     isUploadingFile ||
     isUploadingUilmFile ||
     isUploadingBatch;
+
+  // Handle files change with validation on selection
+  const handleFilesChange = async (newFiles: File[] | null) => {
+    // If files are being removed (null or empty array), allow it without validation
+    if (!newFiles || newFiles.length === 0) {
+      setFiles(newFiles);
+      return;
+    }
+
+    // Validate all newly selected files
+    for (const file of newFiles) {
+      const validation = await validateFileContent(file);
+      if (!validation.isValid) {
+        // File format is invalid, show error and don't add the file
+        showErrorToast({
+          errors:
+            "File data format is not correct. Please check the template and try again.",
+        });
+        return;
+      }
+    }
+
+    // All files are valid, update state
+    setFiles(newFiles);
+  };
 
   const downloadTemplate = async () => {
     try {
@@ -474,17 +584,21 @@ export default function ImportCommunicationsModal({
     // Capture files at upload start to handle case where files are removed during upload
     const filesToUpload = [...files];
 
-    try {
-      // Validate all files before uploading
-      for (const file of filesToUpload) {
-        const validation = await validateFileContent(file);
-        if (!validation.isValid) {
-          showErrorToast({ errors: validation.errors });
-          setIsUploadingBatch(false);
-          return;
-        }
+    // Validate all files before uploading
+    for (const file of filesToUpload) {
+      const validation = await validateFileContent(file);
+      if (!validation.isValid) {
+        showErrorToast({
+          errors:
+            "File data format is not correct. Please check the template and try again.",
+        });
+        setIsUploadingBatch(false);
+        return;
       }
+    }
 
+    // Only proceed to upload if all validations pass
+    try {
       const uploadPromises = filesToUpload.map((file) => uploadFile(file));
       await Promise.all(uploadPromises);
 
@@ -494,10 +608,16 @@ export default function ImportCommunicationsModal({
 
       showSuccessToast({ description: "Files uploaded successfully" });
     } catch (error) {
+      console.error("Upload error:", error);
       if (isErrorWithErrors(error)) {
         showErrorToast({ errors: error.errors });
+      } else if (error instanceof Error) {
+        showErrorToast({ errors: [error.message] });
       } else {
-        showErrorToast({ errors: "Something went wrong during upload" });
+        showErrorToast({
+          errors:
+            "An unexpected error occurred during upload. Please try again.",
+        });
       }
     } finally {
       setIsUploadingBatch(false);
@@ -532,7 +652,7 @@ export default function ImportCommunicationsModal({
         </div>
         <FileUploader
           value={files}
-          onValueChange={setFiles}
+          onValueChange={handleFilesChange}
           dropzoneOptions={dropZoneConfig}
           className="relative my-2 rounded-lg"
         >
