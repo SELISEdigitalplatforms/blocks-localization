@@ -53,13 +53,14 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     data: taggedKeysData,
     isLoading: isTaggedKeysLoading,
     isError: isTaggedKeysError,
-  } = useGetKeysByGlossaryId(itemId, keysPage, PAGE_SIZE);
+  } = useGetKeysByGlossaryId(itemId, glossary?.moduleIds ?? [], keysPage, PAGE_SIZE);
 
   // Debug logging for tagged keys
   console.log("[GlossaryDetails] taggedKeysData:", taggedKeysData);
   console.log("[GlossaryDetails] isTaggedKeysLoading:", isTaggedKeysLoading);
   console.log("[GlossaryDetails] isTaggedKeysError:", isTaggedKeysError);
   console.log("[GlossaryDetails] itemId:", itemId);
+  console.log("[GlossaryDetails] glossary.moduleIds:", glossary?.moduleIds);
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {

@@ -540,36 +540,58 @@ export const useGetGlossaryById = (itemId: string) => {
 
 export const useGetKeysByGlossaryId = (
   glossaryId: string,
+  moduleIds: string[],
   pageNumber: number,
   pageSize: number,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  console.log("[useGetKeysByGlossaryId] called with:", { glossaryId, pageNumber, pageSize, tenantId });
-  console.log("[useGetKeysByGlossaryId] enabled:", !!glossaryId && !!tenantId);
+  console.log("[useGetKeysByGlossaryId] called with:", { glossaryId, moduleIds, pageNumber, pageSize, tenantId });
+  console.log("[useGetKeysByGlossaryId] enabled:", !!glossaryId && !!tenantId && moduleIds.length > 0);
+
+  // Only enable query when moduleIds is available
+  const queryKey = localizationQueryKeys.languageKeys.byGlossary(
+    tenantId,
+    glossaryId,
+    pageNumber,
+    pageSize,
+  );
+
   return useQuery({
-    queryKey: localizationQueryKeys.languageKeys.byGlossary(
-      tenantId,
-      glossaryId,
-      pageNumber,
-      pageSize,
-    ),
+    queryKey,
     queryFn: async () => {
-      console.log("[useGetKeysByGlossaryId] fetching with:", { projectKey: tenantId, glossaryId });
+      console.log("[useGetKeysByGlossaryId] fetching with:", { projectKey: tenantId, glossaryId, moduleIds });
+
+      // Fetch keys by moduleIds and filter client-side by glossaryId
       const result = await languageManagerService.fetchBlocksLanguageKey({
         projectKey: tenantId,
-        pageNumber,
-        pageSize,
+        pageNumber: 0, // Fetch from page 0 to get all keys for filtering
+        pageSize: 1000, // Large page size to get all keys
         searchKey: "",
-        moduleIds: [],
+        moduleIds: moduleIds,
         isPartiallyTranslated: false,
         sortProperty: "KeyName",
         isDescending: false,
-        glossaryId,
       });
-      console.log("[useGetKeysByGlossaryId] result:", result);
-      return result;
+
+      console.log("[useGetKeysByGlossaryId] all keys from modules:", result);
+
+      // Filter keys that have this glossaryId in their glossaryIds array
+      const filteredKeys = result.keys.filter(key =>
+        key.glossaryIds && key.glossaryIds.includes(glossaryId)
+      );
+
+      console.log("[useGetKeysByGlossaryId] filtered keys:", filteredKeys);
+
+      // Return paginated result from filtered keys
+      const startIndex = pageNumber * pageSize;
+      const paginatedKeys = filteredKeys.slice(startIndex, startIndex + pageSize);
+
+      return {
+        totalCount: filteredKeys.length,
+        keys: paginatedKeys,
+      };
     },
-    enabled: !!glossaryId && !!tenantId,
+    enabled: !!glossaryId && !!tenantId && moduleIds.length > 0,
     staleTime: 0,
     refetchOnMount: true,
   });
