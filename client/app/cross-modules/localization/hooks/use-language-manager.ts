@@ -545,8 +545,6 @@ export const useGetKeysByGlossaryId = (
   pageSize: number,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  console.log("[useGetKeysByGlossaryId] called with:", { glossaryId, moduleIds, pageNumber, pageSize, tenantId });
-  console.log("[useGetKeysByGlossaryId] enabled:", !!glossaryId && !!tenantId && moduleIds.length > 0);
 
   // Only enable query when moduleIds is available
   const queryKey = localizationQueryKeys.languageKeys.byGlossary(
@@ -559,9 +557,7 @@ export const useGetKeysByGlossaryId = (
   return useQuery({
     queryKey,
     queryFn: async () => {
-      console.log("[useGetKeysByGlossaryId] fetching with:", { projectKey: tenantId, glossaryId, moduleIds });
-
-      // Fetch keys by moduleIds and filter client-side by glossaryId
+      // Fetch keys by moduleIds
       const result = await languageManagerService.fetchBlocksLanguageKey({
         projectKey: tenantId,
         pageNumber: 0, // Fetch from page 0 to get all keys for filtering
@@ -573,13 +569,9 @@ export const useGetKeysByGlossaryId = (
         isDescending: false,
       });
 
-      console.log("[useGetKeysByGlossaryId] all keys from modules:", result);
-
       // Show keys that belong to the glossary's modules (not filtered by glossaryId on keys)
       // The glossary's moduleIds indicates which modules this glossary is associated with
       const filteredKeys = result.keys;
-
-      console.log("[useGetKeysByGlossaryId] filtered keys (all from modules):", filteredKeys.length);
 
       // Return paginated result from filtered keys
       const startIndex = pageNumber * pageSize;
