@@ -544,6 +544,8 @@ export const useGetKeysByGlossaryId = (
   pageSize: number,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  console.log("[useGetKeysByGlossaryId] called with:", { glossaryId, pageNumber, pageSize, tenantId });
+  console.log("[useGetKeysByGlossaryId] enabled:", !!glossaryId && !!tenantId);
   return useQuery({
     queryKey: localizationQueryKeys.languageKeys.byGlossary(
       tenantId,
@@ -551,8 +553,9 @@ export const useGetKeysByGlossaryId = (
       pageNumber,
       pageSize,
     ),
-    queryFn: () =>
-      languageManagerService.fetchBlocksLanguageKey({
+    queryFn: async () => {
+      console.log("[useGetKeysByGlossaryId] fetching with:", { projectKey: tenantId, glossaryId });
+      const result = await languageManagerService.fetchBlocksLanguageKey({
         projectKey: tenantId,
         pageNumber,
         pageSize,
@@ -562,7 +565,10 @@ export const useGetKeysByGlossaryId = (
         sortProperty: "KeyName",
         isDescending: false,
         glossaryId,
-      }),
+      });
+      console.log("[useGetKeysByGlossaryId] result:", result);
+      return result;
+    },
     enabled: !!glossaryId && !!tenantId,
     staleTime: 0,
     refetchOnMount: true,

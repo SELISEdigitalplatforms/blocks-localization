@@ -192,7 +192,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
   };
 
   return (
-    <DialogContent className="sm:max-w-[500px]">
+    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="text-lg font-semibold">
           {isEditMode ? "Edit Glossary" : "Add Glossary"}
