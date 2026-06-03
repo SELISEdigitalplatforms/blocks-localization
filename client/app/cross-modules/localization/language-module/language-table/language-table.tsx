@@ -98,23 +98,26 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
 
 // Stable memoized components to avoid Radix Popper onAnchorChange infinite loop
-const KeyNameCell = React.memo(({ keyName }: { keyName: string }) => {
+const KeyNameCell = React.memo(({ keyName }: { keyName: string | null | undefined }) => {
   const CHAR_WIDTH = 7.5;
   const PADDING = 8;
   const CONTAINER = 150;
-  const shouldShowTooltip = keyName.length * CHAR_WIDTH + PADDING > CONTAINER;
+
+  // Handle null/undefined keyName gracefully
+  const displayValue = keyName ?? "(Unnamed Key)";
+  const shouldShowTooltip = displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
 
   return (
-    <TooltipProvider key={keyName}>
+    <TooltipProvider key={displayValue}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
-            {keyName}
+            {displayValue}
           </div>
         </TooltipTrigger>
         {shouldShowTooltip && (
           <TooltipContent side="top">
-            <p>{keyName}</p>
+            <p>{displayValue}</p>
           </TooltipContent>
         )}
       </Tooltip>
@@ -579,7 +582,7 @@ export function LanguageTable() {
                   languageListData?.map((lang) => lang.languageCode) || [];
                 const isComplete = allLanguages.every((lang) => {
                   const resource = resources.find((r) => r.culture === lang);
-                  return resource && resource.value.trim() !== "";
+                  return resource?.value?.trim() !== "";
                 });
                 return isComplete ? "Complete" : "Partial";
               },
