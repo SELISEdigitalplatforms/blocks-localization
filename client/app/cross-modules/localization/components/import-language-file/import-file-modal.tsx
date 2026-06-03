@@ -154,6 +154,9 @@ const parseCSVContent = (
 const validateJsonFileContent = (content: string): ValidationResult => {
   const errors: string[] = [];
 
+  console.log("[JSON Validation] Starting validation");
+  console.log("[JSON Validation] Content sample:", content.substring(0, 300));
+
   // Early validation: check for empty content
   if (!content || content.trim() === "") {
     errors.push("File is empty.");
@@ -165,6 +168,7 @@ const validateJsonFileContent = (content: string): ValidationResult => {
 
     // Check if data is an array of objects
     if (!Array.isArray(data)) {
+      console.log("[JSON Validation] Data is not an array");
       errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
@@ -173,6 +177,8 @@ const validateJsonFileContent = (content: string): ValidationResult => {
       errors.push("File has no data.");
       return { isValid: false, errors };
     }
+
+    console.log("[JSON Validation] Data length:", data.length);
 
     // Validate each entry has required fields
     let errorCount = 0;
@@ -230,10 +236,11 @@ const validateJsonFileContent = (content: string): ValidationResult => {
       errors.push(`Found ${errorCount} validation errors.`);
     }
 
+    console.log("[JSON Validation] Final result - isValid:", errors.length === 0, "errors:", errors);
     return { isValid: errors.length === 0, errors };
   } catch (parseError) {
     console.error("JSON parse error:", parseError);
-    errors.push("Invalid JSON format.");
+    errors.push("Failed to parse file.");
     return { isValid: false, errors };
   }
 };
@@ -245,6 +252,9 @@ const validateJsonFileContent = (content: string): ValidationResult => {
 const validateCsvFileContent = (content: string): ValidationResult => {
   const errors: string[] = [];
 
+  console.log("[CSV Validation] Starting validation");
+  console.log("[CSV Validation] Content sample:", content.substring(0, 500));
+
   // Early validation: check for empty content
   if (!content || content.trim() === "") {
     errors.push("File is empty.");
@@ -254,13 +264,20 @@ const validateCsvFileContent = (content: string): ValidationResult => {
   try {
     const { headers, rows } = parseCSVContent(content);
 
+    console.log("[CSV Validation] Parsed headers:", headers);
+    console.log("[CSV Validation] Parsed rows count:", rows.length);
+    if (rows.length > 0) {
+      console.log("[CSV Validation] First row sample:", rows[0]);
+    }
+
     if (headers.length === 0) {
-      errors.push("File has no headers.");
+      errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
 
     // Normalize headers to lowercase for comparison
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
+    console.log("[CSV Validation] Normalized headers:", normalizedHeaders);
 
     // Check for required headers (all 4 are required)
     const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
@@ -269,6 +286,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     );
 
     if (missingHeaders.length > 0) {
+      console.log("[CSV Validation] Missing headers:", missingHeaders);
       errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
@@ -283,6 +301,8 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     const resourcesIndex = normalizedHeaders.indexOf("resources");
     const routesIndex = normalizedHeaders.indexOf("routes");
 
+    console.log("[CSV Validation] Column indices - keyName:", keyNameIndex, "resources:", resourcesIndex, "routes:", routesIndex);
+
     // Validate each data row
     let errorCount = 0;
     const maxErrorsToReport = 5; // Limit error reporting to avoid too many toast messages
@@ -290,6 +310,8 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNum = i + 2; // +2 because of header row and 0-indexing
+
+      console.log(`[CSV Validation] Row ${rowNum} data:`, row);
 
       // Validate keyName is not empty
       const keyName = row[keyNameIndex];
@@ -303,9 +325,11 @@ const validateCsvFileContent = (content: string): ValidationResult => {
       // Validate resources format - should be culture:value pairs separated by semicolons
       // e.g., "en-US:Email;bn-BD:ইমেইল;de-DE:E-Mail"
       const resources = row[resourcesIndex];
+      console.log(`[CSV Validation] Row ${rowNum} resources value:`, resources);
       if (resources && resources.trim() !== "") {
         // Check if it's a simple format (culture:value pairs)
         const resourcePairs = resources.split(";");
+        console.log(`[CSV Validation] Row ${rowNum} resource pairs:`, resourcePairs);
         for (const pair of resourcePairs) {
           if (pair.trim() && !pair.includes(":")) {
             if (errorCount < maxErrorsToReport) {
@@ -338,10 +362,11 @@ const validateCsvFileContent = (content: string): ValidationResult => {
       errors.push(`Found ${errorCount} validation errors.`);
     }
 
+    console.log("[CSV Validation] Final result - isValid:", errors.length === 0, "errors:", errors);
     return { isValid: errors.length === 0, errors };
   } catch (csvError) {
     console.error("CSV parse error:", csvError);
-    errors.push("Invalid CSV format.");
+    errors.push("Failed to parse file.");
     return { isValid: false, errors };
   }
 };
@@ -355,18 +380,21 @@ const validateXlsxFileContent = (
 ): ValidationResult => {
   const errors: string[] = [];
 
+  console.log("[XLSX Validation] Starting validation");
+
   try {
     // XLSX is a ZIP archive, check for ZIP signature (PK)
     const bytes = new Uint8Array(arrayBuffer);
     if (bytes.length < 4) {
-      errors.push("File is empty or invalid.");
+      errors.push("File is empty.");
       return { isValid: false, errors };
     }
 
     // Check for ZIP signature (PK at start)
     const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
     if (!isZip) {
-      errors.push("Invalid file format.");
+      console.log("[XLSX Validation] Invalid ZIP signature");
+      errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
 
@@ -376,7 +404,7 @@ const validateXlsxFileContent = (
     // Get the first sheet
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
-      errors.push("File has no worksheets.");
+      errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
 
@@ -387,6 +415,11 @@ const validateXlsxFileContent = (
       defval: "",
     });
 
+    console.log("[XLSX Validation] Sheet data count:", sheetData.length);
+    if (sheetData.length > 0) {
+      console.log("[XLSX Validation] First row:", sheetData[0]);
+    }
+
     if (sheetData.length === 0) {
       errors.push("File has no data.");
       return { isValid: false, errors };
@@ -395,6 +428,7 @@ const validateXlsxFileContent = (
     // Get headers from the first row
     const headers = Object.keys(sheetData[0]);
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
+    console.log("[XLSX Validation] Normalized headers:", normalizedHeaders);
 
     // Check for required headers (all 4 are required)
     const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
@@ -403,6 +437,7 @@ const validateXlsxFileContent = (
     );
 
     if (missingHeaders.length > 0) {
+      console.log("[XLSX Validation] Missing headers:", missingHeaders);
       errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
@@ -416,6 +451,8 @@ const validateXlsxFileContent = (
     const resourcesKey = headerMap["resources"];
     const routesKey = headerMap["routes"];
 
+    console.log("[XLSX Validation] Header map:", { keyNameKey, resourcesKey, routesKey });
+
     // Validate each data row
     let errorCount = 0;
     const maxErrorsToReport = 5;
@@ -423,6 +460,8 @@ const validateXlsxFileContent = (
     for (let i = 0; i < sheetData.length; i++) {
       const row = sheetData[i];
       const rowNum = i + 2; // +2 because of header row and 0-indexing
+
+      console.log(`[XLSX Validation] Row ${rowNum}:`, row);
 
       // Validate keyName is not empty (case-insensitive)
       const keyName = row[keyNameKey];
@@ -439,9 +478,11 @@ const validateXlsxFileContent = (
 
       // Validate resources format
       const resources = row[resourcesKey];
+      console.log(`[XLSX Validation] Row ${rowNum} resources:`, resources);
       if (resources && String(resources).trim() !== "") {
         const resourcesStr = String(resources);
         const resourcePairs = resourcesStr.split(";");
+        console.log(`[XLSX Validation] Row ${rowNum} resource pairs:`, resourcePairs);
         for (const pair of resourcePairs) {
           if (pair.trim() && !pair.includes(":")) {
             if (errorCount < maxErrorsToReport) {
@@ -478,6 +519,7 @@ const validateXlsxFileContent = (
       errors.push(`Found ${errorCount} validation errors.`);
     }
 
+    console.log("[XLSX Validation] Final result - isValid:", errors.length === 0, "errors:", errors);
     return { isValid: errors.length === 0, errors };
   } catch (xlsxError) {
     console.error("XLSX parse error:", xlsxError);
@@ -494,6 +536,8 @@ const validateXlsxFileContent = (
 const validateFileContent = async (file: File): Promise<ValidationResult> => {
   const errors: string[] = [];
 
+  console.log("[validateFileContent] Validating file:", file.name);
+
   // Guard check: ensure file exists and has a valid name
   if (!file || typeof file.name !== "string" || !file.name.includes(".")) {
     errors.push("Invalid file.");
@@ -501,6 +545,7 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
   }
 
   const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
+  console.log("[validateFileContent] File extension:", fileExtension);
 
   // Check file extension
   if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
@@ -511,13 +556,16 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
   try {
     if (fileExtension === ".json") {
       const content = await file.text();
+      console.log("[validateFileContent] JSON content sample:", content.substring(0, 300));
       return validateJsonFileContent(content);
     } else if (fileExtension === ".csv") {
       const content = await file.text();
+      console.log("[validateFileContent] CSV content sample:", content.substring(0, 500));
       return validateCsvFileContent(content);
     } else if (fileExtension === ".xlsx") {
       // For XLSX, use ArrayBuffer to avoid corrupting binary data
       const arrayBuffer = await file.arrayBuffer();
+      console.log("[validateFileContent] XLSX arrayBuffer length:", arrayBuffer.byteLength);
       return validateXlsxFileContent(arrayBuffer);
     }
 
@@ -587,6 +635,7 @@ export default function ImportCommunicationsModal({
 
   // Handle files change with validation on selection
   const handleFilesChange = async (newFiles: File[] | null) => {
+    console.log("[handleFilesChange] New files:", newFiles);
     // If files are being removed (null or empty array), allow it without validation
     if (!newFiles || newFiles.length === 0) {
       setFiles(newFiles);
@@ -595,7 +644,9 @@ export default function ImportCommunicationsModal({
 
     // Validate all newly selected files
     for (const file of newFiles) {
+      console.log("[handleFilesChange] Validating file:", file.name);
       const validation = await validateFileContent(file);
+      console.log("[handleFilesChange] Validation result:", validation);
       if (!validation.isValid) {
         // File format is invalid, show generic error
         toast({
@@ -608,6 +659,7 @@ export default function ImportCommunicationsModal({
     }
 
     // All files are valid, update state
+    console.log("[handleFilesChange] All files valid, setting state");
     setFiles(newFiles);
   };
 
@@ -703,6 +755,7 @@ export default function ImportCommunicationsModal({
   };
 
   const handleUpload = async () => {
+    console.log("[handleUpload] Starting upload, files:", files);
     if (!files || files.length === 0) {
       showErrorToast({ errors: "Please select files to upload" });
       return;
@@ -715,7 +768,9 @@ export default function ImportCommunicationsModal({
 
     // Validate all files before uploading
     for (const file of filesToUpload) {
+      console.log("[handleUpload] Validating file:", file.name);
       const validation = await validateFileContent(file);
+      console.log("[handleUpload] Validation result:", validation);
       if (!validation.isValid) {
         toast({
           variant: "destructive",
@@ -729,6 +784,7 @@ export default function ImportCommunicationsModal({
 
     // Only proceed to upload if all validations pass
     try {
+      console.log("[handleUpload] All validations passed, starting upload");
       const uploadPromises = filesToUpload.map((file) => uploadFile(file));
       await Promise.all(uploadPromises);
 
