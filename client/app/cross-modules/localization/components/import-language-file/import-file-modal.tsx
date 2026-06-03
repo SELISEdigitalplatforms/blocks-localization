@@ -443,12 +443,10 @@ const validateXlsxFileContent = (
         errorCount++;
       }
 
-      // Validate resources format - should be culture:value pairs separated by semicolons
-      // e.g., "en-US:Email;bn-BD:ইমেইল;de-DE:E-Mail"
+      // Validate resources format
       const resources = row[resourcesKey];
       if (resources && String(resources).trim() !== "") {
         const resourcesStr = String(resources);
-        // Check if it's a simple format (culture:value pairs)
         const resourcePairs = resourcesStr.split(";");
         for (const pair of resourcePairs) {
           if (pair.trim() && !pair.includes(":")) {
@@ -463,11 +461,19 @@ const validateXlsxFileContent = (
         }
       }
 
-      // Validate routes format - should be JSON array or empty
+      // Validate routes format
       const routes = row[routesKey];
-      if (routes !== undefined && routes !== null && String(routes).trim() !== "") {
+      if (
+        routes !== undefined &&
+        routes !== null &&
+        String(routes).trim() !== ""
+      ) {
         const routesStr = String(routes).trim();
-        if (routesStr !== "[]" && routesStr !== "{}" && !routesStr.startsWith("[")) {
+        if (
+          routesStr !== "[]" &&
+          routesStr !== "{}" &&
+          !routesStr.startsWith("[")
+        ) {
           if (errorCount < maxErrorsToReport) {
             errors.push(
               `Row ${rowNum}: Invalid 'routes' format. Expected empty or JSON array (e.g., '[]').`,
@@ -487,7 +493,9 @@ const validateXlsxFileContent = (
     return { isValid: errors.length === 0, errors };
   } catch (xlsxError) {
     console.error("XLSX parse error:", xlsxError);
-    errors.push("Failed to parse XLSX file. Please ensure it's a valid Excel file.");
+    errors.push(
+      "Failed to parse XLSX file. Please ensure it's a valid Excel file.",
+    );
     return { isValid: false, errors };
   }
 };
