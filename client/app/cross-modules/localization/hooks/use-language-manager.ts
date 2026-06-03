@@ -575,12 +575,11 @@ export const useGetKeysByGlossaryId = (
 
       console.log("[useGetKeysByGlossaryId] all keys from modules:", result);
 
-      // Filter keys that have this glossaryId in their glossaryIds array
-      const filteredKeys = result.keys.filter(key =>
-        key.glossaryIds && key.glossaryIds.includes(glossaryId)
-      );
+      // Show keys that belong to the glossary's modules (not filtered by glossaryId on keys)
+      // The glossary's moduleIds indicates which modules this glossary is associated with
+      const filteredKeys = result.keys;
 
-      console.log("[useGetKeysByGlossaryId] filtered keys:", filteredKeys);
+      console.log("[useGetKeysByGlossaryId] filtered keys (all from modules):", filteredKeys.length);
 
       // Return paginated result from filtered keys
       const startIndex = pageNumber * pageSize;

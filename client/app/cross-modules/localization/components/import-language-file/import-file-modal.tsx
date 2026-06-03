@@ -279,14 +279,28 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
     console.log("[CSV Validation] Normalized headers:", normalizedHeaders);
 
-    // Check for required headers (all 4 are required)
-    const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
-    const missingHeaders = requiredHeaders.filter(
-      (h) => !normalizedHeaders.includes(h),
-    );
+    // Check for required headers - keyName is required, but moduleName can be 'module' or 'modulename'
+    const hasKeyName = normalizedHeaders.includes("keyname");
+    const hasModuleName = normalizedHeaders.includes("modulename") || normalizedHeaders.includes("module");
+    const hasResources = normalizedHeaders.includes("resources");
+    const hasRoutes = normalizedHeaders.includes("routes");
 
-    if (missingHeaders.length > 0) {
-      console.log("[CSV Validation] Missing headers:", missingHeaders);
+    console.log("[CSV Validation] Header checks - keyName:", hasKeyName, "moduleName:", hasModuleName, "resources:", hasResources, "routes:", hasRoutes);
+
+    if (!hasKeyName) {
+      console.log("[CSV Validation] Missing keyName header");
+      errors.push("Invalid file structure.");
+      return { isValid: false, errors };
+    }
+
+    // Check if file has language columns (like bn-BD, en-US, etc.) - these can serve as resources
+    const languageColumnPattern = /^[a-z]{2}-[A-Z]{2}$/;
+    const hasLanguageColumns = headers.some(h => languageColumnPattern.test(h.trim()));
+    console.log("[CSV Validation] Has language columns:", hasLanguageColumns);
+
+    // resources is optional if language columns exist
+    if (!hasResources && !hasLanguageColumns) {
+      console.log("[CSV Validation] Missing resources and no language columns");
       errors.push("Invalid file structure.");
       return { isValid: false, errors };
     }
@@ -322,38 +336,43 @@ const validateCsvFileContent = (content: string): ValidationResult => {
         errorCount++;
       }
 
-      // Validate resources format - should be culture:value pairs separated by semicolons
-      // e.g., "en-US:Email;bn-BD:ইমেইল;de-DE:E-Mail"
-      const resources = row[resourcesIndex];
-      console.log(`[CSV Validation] Row ${rowNum} resources value:`, resources);
-      if (resources && resources.trim() !== "") {
-        // Check if it's a simple format (culture:value pairs)
-        const resourcePairs = resources.split(";");
-        console.log(`[CSV Validation] Row ${rowNum} resource pairs:`, resourcePairs);
-        for (const pair of resourcePairs) {
-          if (pair.trim() && !pair.includes(":")) {
-            if (errorCount < maxErrorsToReport) {
-              errors.push(`Row ${rowNum}: Invalid resource format.`);
+      // Validate resources format only if resources column exists
+      // If using language columns instead, skip this validation
+      if (resourcesIndex !== -1) {
+        const resources = row[resourcesIndex];
+        console.log(`[CSV Validation] Row ${rowNum} resources value:`, resources);
+        if (resources && resources.trim() !== "") {
+          // Check if it's a simple format (culture:value pairs)
+          const resourcePairs = resources.split(";");
+          console.log(`[CSV Validation] Row ${rowNum} resource pairs:`, resourcePairs);
+          for (const pair of resourcePairs) {
+            if (pair.trim() && !pair.includes(":")) {
+              if (errorCount < maxErrorsToReport) {
+                errors.push(`Row ${rowNum}: Invalid resource format.`);
+              }
+              errorCount++;
+              break;
             }
-            errorCount++;
-            break;
           }
         }
       }
 
-      // Validate routes format - should be JSON array or empty
-      const routes = row[routesIndex];
-      if (
-        routes &&
-        routes.trim() !== "" &&
-        routes !== "[]" &&
-        routes !== "{}"
-      ) {
-        if (!routes.startsWith("[")) {
-          if (errorCount < maxErrorsToReport) {
-            errors.push(`Row ${rowNum}: Invalid routes format.`);
+      // Validate routes format only if routes column exists
+      // Routes is optional
+      if (routesIndex !== -1) {
+        const routes = row[routesIndex];
+        if (
+          routes &&
+          routes.trim() !== "" &&
+          routes !== "[]" &&
+          routes !== "{}"
+        ) {
+          if (!routes.startsWith("[")) {
+            if (errorCount < maxErrorsToReport) {
+              errors.push(`Row ${rowNum}: Invalid routes format.`);
+            }
+            errorCount++;
           }
-          errorCount++;
         }
       }
     }
@@ -430,15 +449,34 @@ const validateXlsxFileContent = (
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
     console.log("[XLSX Validation] Normalized headers:", normalizedHeaders);
 
-    // Check for required headers (all 4 are required)
-    const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
-    const missingHeaders = requiredHeaders.filter(
-      (h) => !normalizedHeaders.includes(h),
-    );
+    // Check for required headers - keyName is required, but moduleName can be 'module' or 'modulename'
+    const hasKeyName = normalizedHeaders.includes("keyname");
+    const hasModuleName = normalizedHeaders.includes("modulename") || normalizedHeaders.includes("module");
+    const hasResources = normalizedHeaders.includes("resources");
+    const hasRoutes = normalizedHeaders.includes("routes");
 
-    if (missingHeaders.length > 0) {
-      console.log("[XLSX Validation] Missing headers:", missingHeaders);
+    console.log("[XLSX Validation] Header checks - keyName:", hasKeyName, "moduleName:", hasModuleName, "resources:", hasResources, "routes:", hasRoutes);
+
+    if (!hasKeyName) {
+      console.log("[XLSX Validation] Missing keyName header");
       errors.push("Invalid file structure.");
+      return { isValid: false, errors };
+    }
+
+    // Check if file has language columns (like bn-BD, en-US, etc.) - these can serve as resources
+    const languageColumnPattern = /^[a-z]{2}-[A-Z]{2}$/;
+    const hasLanguageColumns = headers.some(h => languageColumnPattern.test(h.trim()));
+    console.log("[XLSX Validation] Has language columns:", hasLanguageColumns);
+
+    // resources is optional if language columns exist
+    if (!hasResources && !hasLanguageColumns) {
+      console.log("[XLSX Validation] Missing resources and no language columns");
+      errors.push("Invalid file structure.");
+      return { isValid: false, errors };
+    }
+
+    if (sheetData.length === 0) {
+      errors.push("File has no data.");
       return { isValid: false, errors };
     }
 
@@ -476,41 +514,47 @@ const validateXlsxFileContent = (
         errorCount++;
       }
 
-      // Validate resources format
-      const resources = row[resourcesKey];
-      console.log(`[XLSX Validation] Row ${rowNum} resources:`, resources);
-      if (resources && String(resources).trim() !== "") {
-        const resourcesStr = String(resources);
-        const resourcePairs = resourcesStr.split(";");
-        console.log(`[XLSX Validation] Row ${rowNum} resource pairs:`, resourcePairs);
-        for (const pair of resourcePairs) {
-          if (pair.trim() && !pair.includes(":")) {
-            if (errorCount < maxErrorsToReport) {
-              errors.push(`Row ${rowNum}: Invalid resource format.`);
+      // Validate resources format only if resources column exists
+      // If using language columns instead, skip this validation
+      if (resourcesKey) {
+        const resources = row[resourcesKey];
+        console.log(`[XLSX Validation] Row ${rowNum} resources:`, resources);
+        if (resources && String(resources).trim() !== "") {
+          const resourcesStr = String(resources);
+          const resourcePairs = resourcesStr.split(";");
+          console.log(`[XLSX Validation] Row ${rowNum} resource pairs:`, resourcePairs);
+          for (const pair of resourcePairs) {
+            if (pair.trim() && !pair.includes(":")) {
+              if (errorCount < maxErrorsToReport) {
+                errors.push(`Row ${rowNum}: Invalid resource format.`);
+              }
+              errorCount++;
+              break;
             }
-            errorCount++;
-            break;
           }
         }
       }
 
-      // Validate routes format
-      const routes = row[routesKey];
-      if (
-        routes !== undefined &&
-        routes !== null &&
-        String(routes).trim() !== ""
-      ) {
-        const routesStr = String(routes).trim();
+      // Validate routes format only if routes column exists
+      // Routes is optional
+      if (routesKey) {
+        const routes = row[routesKey];
         if (
-          routesStr !== "[]" &&
-          routesStr !== "{}" &&
-          !routesStr.startsWith("[")
+          routes !== undefined &&
+          routes !== null &&
+          String(routes).trim() !== ""
         ) {
-          if (errorCount < maxErrorsToReport) {
-            errors.push(`Row ${rowNum}: Invalid routes format.`);
+          const routesStr = String(routes).trim();
+          if (
+            routesStr !== "[]" &&
+            routesStr !== "{}" &&
+            !routesStr.startsWith("[")
+          ) {
+            if (errorCount < maxErrorsToReport) {
+              errors.push(`Row ${rowNum}: Invalid routes format.`);
+            }
+            errorCount++;
           }
-          errorCount++;
         }
       }
     }
