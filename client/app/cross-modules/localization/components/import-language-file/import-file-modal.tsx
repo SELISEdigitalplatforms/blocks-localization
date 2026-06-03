@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui-kits/select/select";
-import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
+import { showErrorToast, showSuccessToast, toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile } from "@blocks-localization/models/language";
@@ -43,6 +43,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui-kits/tooltip/tooltip";
+import * as XLSX from "xlsx";
 
 // Allowed file extensions for import
 const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".json"];
@@ -75,21 +76,37 @@ const detectDelimiter = (line: string): string => {
 
 /**
  * Parses CSV content and returns array of records
+ * Handles quoted fields, escaped quotes, and various delimiters
  */
 const parseCSVContent = (
   content: string,
 ): { headers: string[]; rows: string[][] } => {
   // Remove BOM (Byte Order Mark) if present
   const cleanContent = content.replace(/^\uFEFF/, "");
-  const lines = cleanContent
-    .split(/\r?\n/)
-    .filter((line) => line.trim() !== "");
+  const lines = cleanContent.split(/\r?\n/);
+
   if (lines.length === 0) {
     return { headers: [], rows: [] };
   }
 
-  // Detect delimiter from the first line
-  const delimiter = detectDelimiter(lines[0]);
+  // Find the first non-empty line for header
+  let headerLine = "";
+  let firstDataLineIndex = 1;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed !== "") {
+      headerLine = lines[i];
+      firstDataLineIndex = i + 1;
+      break;
+    }
+  }
+
+  if (headerLine === "") {
+    return { headers: [], rows: [] };
+  }
+
+  // Detect delimiter from the header line
+  const delimiter = detectDelimiter(headerLine);
 
   const parseCSVLine = (line: string, delim: string): string[] => {
     const result: string[] = [];
@@ -116,8 +133,16 @@ const parseCSVContent = (
     return result;
   };
 
-  const headers = parseCSVLine(lines[0], delimiter);
-  const rows = lines.slice(1).map((line) => parseCSVLine(line, delimiter));
+  const headers = parseCSVLine(headerLine, delimiter);
+  const rows: string[][] = [];
+
+  // Parse remaining lines, only including non-empty lines
+  for (let i = firstDataLineIndex; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line !== "") {
+      rows.push(parseCSVLine(lines[i], delimiter));
+    }
+  }
 
   return { headers, rows };
 };
@@ -322,7 +347,8 @@ const validateCsvFileContent = (content: string): ValidationResult => {
 };
 
 /**
- * Validates XLSX file format by checking ZIP signature and internal structure
+ * Validates XLSX file content by parsing and checking the data structure
+ * Expected columns: keyName, moduleName, resources, routes
  */
 const validateXlsxFileContent = (
   arrayBuffer: ArrayBuffer,
@@ -346,12 +372,122 @@ const validateXlsxFileContent = (
       return { isValid: false, errors };
     }
 
-    // XLSX validation is limited without proper XLSX parsing library
-    // We can only verify it's a valid ZIP archive, not the actual spreadsheet data
-    // The server will validate the actual data content
-    return { isValid: true, errors: [] };
-  } catch {
-    errors.push("Failed to validate XLSX file. Please try again.");
+    // Parse the XLSX file
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+    // Get the first sheet
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      errors.push("The XLSX file contains no worksheets.");
+      return { isValid: false, errors };
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+
+    // Convert sheet to JSON
+    const sheetData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+    });
+
+    if (sheetData.length === 0) {
+      errors.push("The XLSX file contains no data rows.");
+      return { isValid: false, errors };
+    }
+
+    // Get headers from the first row
+    const headers = Object.keys(sheetData[0]);
+    const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
+
+    // Check for required headers (all 4 are required)
+    const requiredHeaders = ["keyname", "modulename", "resources", "routes"];
+    const missingHeaders = requiredHeaders.filter(
+      (h) => !normalizedHeaders.includes(h),
+    );
+
+    if (missingHeaders.length > 0) {
+      errors.push(
+        `Missing required columns: ${missingHeaders.join(", ")}. Expected columns: ${EXPECTED_CSV_HEADERS.join(", ")}`,
+      );
+      return { isValid: false, errors };
+    }
+
+    // Find column indices (case-insensitive)
+    const headerMap: Record<string, string> = {};
+    headers.forEach((h) => {
+      headerMap[h.toLowerCase().trim()] = h;
+    });
+    const keyNameKey = headerMap["keyname"];
+    const resourcesKey = headerMap["resources"];
+    const routesKey = headerMap["routes"];
+
+    // Validate each data row
+    let errorCount = 0;
+    const maxErrorsToReport = 5;
+
+    for (let i = 0; i < sheetData.length; i++) {
+      const row = sheetData[i];
+      const rowNum = i + 2; // +2 because of header row and 0-indexing
+
+      // Validate keyName is not empty (case-insensitive)
+      const keyName = row[keyNameKey];
+      if (
+        keyName === null ||
+        keyName === undefined ||
+        String(keyName).trim() === ""
+      ) {
+        if (errorCount < maxErrorsToReport) {
+          errors.push(
+            `Row ${rowNum}: Empty 'keyName' value. All entries must have a valid keyName.`,
+          );
+        }
+        errorCount++;
+      }
+
+      // Validate resources format - should be culture:value pairs separated by semicolons
+      // e.g., "en-US:Email;bn-BD:ইমেইল;de-DE:E-Mail"
+      const resources = row[resourcesKey];
+      if (resources && String(resources).trim() !== "") {
+        const resourcesStr = String(resources);
+        // Check if it's a simple format (culture:value pairs)
+        const resourcePairs = resourcesStr.split(";");
+        for (const pair of resourcePairs) {
+          if (pair.trim() && !pair.includes(":")) {
+            if (errorCount < maxErrorsToReport) {
+              errors.push(
+                `Row ${rowNum}: Invalid resource format. Expected 'culture:value' pairs separated by semicolons (e.g., 'en-US:Email;bn-BD:ইমেইল').`,
+              );
+            }
+            errorCount++;
+            break;
+          }
+        }
+      }
+
+      // Validate routes format - should be JSON array or empty
+      const routes = row[routesKey];
+      if (routes !== undefined && routes !== null && String(routes).trim() !== "") {
+        const routesStr = String(routes).trim();
+        if (routesStr !== "[]" && routesStr !== "{}" && !routesStr.startsWith("[")) {
+          if (errorCount < maxErrorsToReport) {
+            errors.push(
+              `Row ${rowNum}: Invalid 'routes' format. Expected empty or JSON array (e.g., '[]').`,
+            );
+          }
+          errorCount++;
+        }
+      }
+    }
+
+    if (errorCount > maxErrorsToReport) {
+      errors.push(
+        `And ${errorCount - maxErrorsToReport} more errors. Please fix the issues and re-upload.`,
+      );
+    }
+
+    return { isValid: errors.length === 0, errors };
+  } catch (xlsxError) {
+    console.error("XLSX parse error:", xlsxError);
+    errors.push("Failed to parse XLSX file. Please ensure it's a valid Excel file.");
     return { isValid: false, errors };
   }
 };
@@ -469,10 +605,11 @@ export default function ImportCommunicationsModal({
     for (const file of newFiles) {
       const validation = await validateFileContent(file);
       if (!validation.isValid) {
-        // File format is invalid, show error and don't add the file
-        showErrorToast({
-          errors:
-            "File data format is not correct. Please check the template and try again.",
+        // File format is invalid, show error with detailed validation errors
+        toast({
+          variant: "destructive",
+          title: "Invalid File Format",
+          description: validation.errors.join("\n"),
         });
         return;
       }
@@ -588,9 +725,10 @@ export default function ImportCommunicationsModal({
     for (const file of filesToUpload) {
       const validation = await validateFileContent(file);
       if (!validation.isValid) {
-        showErrorToast({
-          errors:
-            "File data format is not correct. Please check the template and try again.",
+        toast({
+          variant: "destructive",
+          title: "Invalid File Format",
+          description: validation.errors.join("\n"),
         });
         setIsUploadingBatch(false);
         return;

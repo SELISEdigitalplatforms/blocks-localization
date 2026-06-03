@@ -49,11 +49,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [keysPage, setKeysPage] = useState(0);
   const PAGE_SIZE = 10;
-  const { data: taggedKeysData, isLoading: isTaggedKeysLoading } = useGetKeysByGlossaryId(
-    itemId,
-    keysPage,
-    PAGE_SIZE,
-  );
+  const { data: taggedKeysData, isLoading: isTaggedKeysLoading } =
+    useGetKeysByGlossaryId(itemId, keysPage, PAGE_SIZE);
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
@@ -87,14 +84,17 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
   if (!glossary) {
     return (
-      <div className="mt-10 text-center text-medium-emphasis">Glossary item not found.</div>
+      <div className="mt-10 text-center text-medium-emphasis">
+        Glossary item not found.
+      </div>
     );
   }
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
 
   const resolvedLanguage =
-    languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ??
+    languageListData?.find((l) => l.languageCode === glossary.language)
+      ?.languageName ??
     glossary.language ??
     "-";
 
@@ -111,7 +111,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             <DialogTrigger asChild>
               <Button size="default" variant="outline" className="gap-2">
                 <Pencil className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Edit
+                </span>
               </Button>
             </DialogTrigger>
             {editModalOpen && (
@@ -151,8 +153,12 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           <CardContent className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Language</h3>
-                <p className="text-base font-normal text-high-emphasis">{resolvedLanguage}</p>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  Language
+                </h3>
+                <p className="text-base font-normal text-high-emphasis">
+                  {resolvedLanguage}
+                </p>
               </div>
               <div className="grid gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
@@ -163,13 +169,17 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">In global context</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  In global context
+                </h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {glossary.isGlobal ? "Yes" : "No"}
                 </p>
               </div>
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  Created on
+                </h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {glossary.createDate
                     ? new Date(glossary.createDate).toLocaleDateString()
@@ -180,7 +190,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
             {(glossary.moduleIds?.length ?? 0) > 0 && (
               <div className="grid gap-2">
-                <h3 className="text-sm font-medium text-low-emphasis">Tagged Modules</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  Tagged Modules
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {glossary.moduleIds?.map((id) => {
                     const mod = moduleListData?.find((m) => m.itemId === id);
@@ -199,7 +211,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <div className="flex flex-col gap-6">
           <Card className="rounded-sm shadow-none">
             <CardHeader>
-              <CardTitle className="text-xl">Context / Description</CardTitle>
+              <CardTitle className="text-xl">Context</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-base text-medium-emphasis">
@@ -215,12 +227,16 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-flex w-fit cursor-help items-center gap-1.5">
-                        Additional User Notes
+                        Additional Notes
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-80 text-sm font-normal">
-                      Not utilized for auto translation, only given for additional comments by the user
+                    <TooltipContent
+                      side="top"
+                      className="max-w-80 text-sm font-normal"
+                    >
+                      Not utilized for auto translation, only given for
+                      additional comments by the user
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -247,15 +263,21 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               ))}
             </div>
           ) : !taggedKeysData?.keys?.length ? (
-            <p className="px-6 pb-6 text-sm text-medium-emphasis">No keys tagged with this glossary.</p>
+            <p className="px-6 pb-6 text-sm text-medium-emphasis">
+              No keys tagged with this glossary.
+            </p>
           ) : (
             <>
               <div className="w-full overflow-x-auto">
                 <Table className="text-sm">
                   <TableHeader>
                     <TableRow className="border-none hover:bg-transparent">
-                      <TableHead className="font-bold text-medium-emphasis">Key Name</TableHead>
-                      <TableHead className="font-bold text-medium-emphasis">Module</TableHead>
+                      <TableHead className="font-bold text-medium-emphasis">
+                        Key Name
+                      </TableHead>
+                      <TableHead className="font-bold text-medium-emphasis">
+                        Module
+                      </TableHead>
                       <TableHead className="font-bold text-medium-emphasis">
                         {defaultLanguage
                           ? `${defaultLanguage.languageName} (Default)`
@@ -265,7 +287,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   </TableHeader>
                   <TableBody>
                     {taggedKeysData.keys.map((key) => {
-                      const mod = moduleListData?.find((m) => m.itemId === key.moduleId);
+                      const mod = moduleListData?.find(
+                        (m) => m.itemId === key.moduleId,
+                      );
                       const defaultResource = key.resources?.find(
                         (r) => r.culture === defaultLanguage?.languageCode,
                       );
@@ -273,12 +297,18 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                         <TableRow
                           key={key.itemId}
                           className="cursor-pointer font-normal text-medium-emphasis"
-                          onClick={() => navigate(`/services/language/translations/${key.itemId}`)}
+                          onClick={() =>
+                            navigate(
+                              `/services/language/translations/${key.itemId}`,
+                            )
+                          }
                         >
                           <TableCell className="font-mono text-xs text-high-emphasis">
                             {key.keyName}
                           </TableCell>
-                          <TableCell>{mod?.moduleName ?? key.moduleId}</TableCell>
+                          <TableCell>
+                            {mod?.moduleName ?? key.moduleId}
+                          </TableCell>
                           <TableCell className="line-clamp-2">
                             {defaultResource?.value || "-"}
                           </TableCell>
@@ -290,7 +320,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               </div>
               <div className="flex items-center justify-between border-t px-6 py-3">
                 <span className="text-sm text-medium-emphasis">
-                  {taggedKeysData.totalCount} key{taggedKeysData.totalCount !== 1 ? "s" : ""} total
+                  {taggedKeysData.totalCount} key
+                  {taggedKeysData.totalCount !== 1 ? "s" : ""} total
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -304,7 +335,10 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={(keysPage + 1) * PAGE_SIZE >= (taggedKeysData.totalCount ?? 0)}
+                    disabled={
+                      (keysPage + 1) * PAGE_SIZE >=
+                      (taggedKeysData.totalCount ?? 0)
+                    }
                     onClick={() => setKeysPage((p) => p + 1)}
                   >
                     Next

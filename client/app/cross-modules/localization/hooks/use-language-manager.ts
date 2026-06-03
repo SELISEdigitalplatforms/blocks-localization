@@ -565,6 +565,7 @@ export const useGetKeysByGlossaryId = (
       }),
     enabled: !!glossaryId && !!tenantId,
     staleTime: 0,
+    refetchOnMount: true,
   });
 };
 
