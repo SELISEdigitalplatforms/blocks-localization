@@ -545,11 +545,10 @@ interface IImportFilesModalProps {
 
 type TemplateFormat = "xlsx" | "csv" | "json";
 
-//TODO FE: add those file in the storage accordingly
 const TEMPLATE_URLS: Record<TemplateFormat, string> = {
-  xlsx: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.xlsx",
-  csv: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.csv",
-  json: "https://blocksdev.blob.core.windows.net/02d1397241f3489d8182a90ff1f2510a/Public/612067c1-090f-4659-9b56-f1e8fb88884f/4fae24d7-4258-4e70-8c60-7c913d5b6727/UILM_FILE.json",
+  xlsx: "https://az-cdn.selise.biz/selisecdn/cdn/blocks-cloud/localization_xlsx.xlsx",
+  csv: "https://az-cdn.selise.biz/selisecdn/cdn/blocks-cloud/localization_csv.csv",
+  json: "https://az-cdn.selise.biz/selisecdn/cdn/blocks-cloud/localization_json.json",
 };
 
 export default function ImportCommunicationsModal({
