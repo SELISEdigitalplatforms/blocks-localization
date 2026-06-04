@@ -672,20 +672,41 @@ export function LanguageTable() {
         : []),
       ...selectedLanguages.map((lang) => ({
         accessorKey: `resources.${lang}`,
-        header: () => (
-          <div className="w-[300px] md:w-[200px]">
-            <div className="font-bold text-medium-emphasis">
-              {languageListData?.find(
-                (language) => language.languageCode === lang,
-              )?.languageName ?? lang}{" "}
-              {languageListData?.find(
-                (language) => language.languageCode === lang,
-              )?.isDefault
-                ? "(Default)"
-                : null}
+        header: () => {
+          // Check if any translating key has this language missing
+          const hasTranslatingKey = Array.from(translatingKeys).some(
+            (keyId) => {
+              const keyData = blocksLanguageKeyData?.keys?.find(
+                (k) => k.itemId === keyId,
+              );
+              if (!keyData) return false;
+              const resource = keyData.resources?.find(
+                (r) => r.culture === lang,
+              );
+              return !resource?.value || resource.value.trim() === "";
+            },
+          );
+
+          return (
+            <div className="w-[300px] md:w-[200px]">
+              <div className="font-bold text-medium-emphasis flex items-center gap-1">
+                {languageListData?.find(
+                  (language) => language.languageCode === lang,
+                )?.languageName ?? lang}{" "}
+                {languageListData?.find(
+                  (language) => language.languageCode === lang,
+                )?.isDefault
+                  ? "(Default)"
+                  : null}
+                {hasTranslatingKey && (
+                  <span className="text-xs text-blue-600 font-normal animate-pulse">
+                    Translating...
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const keyId = row.original.itemId;
           const resource = row.original.resources?.find(
@@ -1328,7 +1349,11 @@ export function LanguageTable() {
               open={isAutoTranslateDialogOpen}
               onOpenChange={setIsAutoTranslateDialogOpen}
             >
-              <AutoTranslate />
+              <AutoTranslate
+                translatingKeys={translatingKeys}
+                setTranslatingKeys={setTranslatingKeys}
+                keysData={blocksLanguageKeyData}
+              />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">
