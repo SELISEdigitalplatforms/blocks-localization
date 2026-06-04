@@ -698,36 +698,23 @@ export function LanguageTable() {
                 )?.isDefault
                   ? "(Default)"
                   : null}
-                {hasTranslatingKey && (
-                  <span className="text-xs text-blue-600 font-normal animate-pulse">
-                    Translating...
-                  </span>
-                )}
               </div>
             </div>
           );
         },
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const keyId = row.original.itemId;
+          const isTranslating = translatingKeys.has(keyId);
+
+          if (isTranslating) {
+            return (
+              <span className="text-blue-600 font-medium">Translating...</span>
+            );
+          }
+
           const resource = row.original.resources?.find(
             (res) => res.culture === lang,
           );
-          const isTranslating = translatingKeys.has(keyId);
-
-          // Show skeleton loader if this key is being translated and resource is missing/empty
-          if (
-            isTranslating &&
-            (!resource?.value || resource.value.trim() === "")
-          ) {
-            return (
-              <div className="ml-2 line-clamp-4 sm:ml-0">
-                <Skeleton className="h-4 w-full animate-pulse" />
-                <span className="text-xs text-muted-foreground mt-1">
-                  Translating...
-                </span>
-              </div>
-            );
-          }
 
           return (
             <div className="ml-2 line-clamp-4 sm:ml-0">
