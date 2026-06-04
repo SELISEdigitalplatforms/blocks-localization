@@ -24,13 +24,13 @@ export interface User {
   userMfaType: number;
   isMfaVerified: boolean;
   userCreationType: number;
-  memberships: IMembership[]
+  memberships: IMembership[];
 }
 
 export interface IMembership {
-  organizationId: string,
-  roles: string[],
-  permissions: string[]
+  organizationId: string;
+  roles: string[];
+  permissions: string[];
 }
 export interface IGetUsersPayload {
   page: number;

@@ -554,7 +554,7 @@ export function BlocksAppLauncher() {
         </PopoverContent>
       </Popover>
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[93vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Manage Favourites</DialogTitle>
           </DialogHeader>
