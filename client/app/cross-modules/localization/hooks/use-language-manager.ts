@@ -2,6 +2,7 @@ import { useProjectStore } from "@/store/useProjectStore";
 import { localizationQueryKeys } from "../constants/query-keys";
 import { ExportHistoryFilters, IKeyUilmExport } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language.manager.service";
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetBlocksLanguageKey = (
@@ -181,6 +182,64 @@ export const useTranslateKey = () => {
       });
     },
   });
+};
+
+// Polls for a specific key's translation to complete, then invalidates list queries
+export const useTranslateKeyWithPolling = (
+  keyId: string,
+  tenantId: string,
+  onTranslationComplete?: () => void,
+) => {
+  const queryClient = useQueryClient();
+  const maxAttempts = 15; // 15 * 2 seconds = 30 seconds max wait
+  const pollInterval = 2000;
+
+  useEffect(() => {
+    // Early return if no keyId or tenantId - nothing to poll
+    if (!keyId || !tenantId) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const pollTranslation = async () => {
+      attempts++;
+
+      try {
+        const data = await languageManagerService.fetchBlocksLanguageKeyById({
+          projectKey: tenantId,
+          itemId: keyId,
+        });
+
+        // Check if this key has at least one non-null, non-empty translation
+        const hasTranslations = data?.resources?.some(
+          (r) => r.culture !== "en-US" && r.value !== null && r.value.trim() !== "",
+        );
+
+        if (hasTranslations) {
+          // Translation is complete, invalidate list queries to refresh table
+          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+          onTranslationComplete?.();
+          return;
+        }
+      } catch (error) {
+        // Continue polling even on error
+      }
+
+      // If not complete and within max attempts, poll again
+      if (attempts < maxAttempts) {
+        timeoutId = setTimeout(pollTranslation, pollInterval);
+      }
+    };
+
+    // Start polling after a short initial delay
+    timeoutId = setTimeout(pollTranslation, pollInterval);
+
+    // Cleanup function to clear timeout if effect re-runs or component unmounts
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [keyId, tenantId, queryClient, onTranslationComplete, maxAttempts, pollInterval]);
 };
 
 export const useSaveLanguage = () => {

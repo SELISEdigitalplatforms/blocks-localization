@@ -52,6 +52,7 @@ import {
   useGetLanguageModules,
   useGetLanguages,
   useTranslateKey,
+  useTranslateKeyWithPolling,
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
@@ -98,32 +99,35 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
 
 // Stable memoized components to avoid Radix Popper onAnchorChange infinite loop
-const KeyNameCell = React.memo(({ keyName }: { keyName: string | null | undefined }) => {
-  const CHAR_WIDTH = 7.5;
-  const PADDING = 8;
-  const CONTAINER = 150;
+const KeyNameCell = React.memo(
+  ({ keyName }: { keyName: string | null | undefined }) => {
+    const CHAR_WIDTH = 7.5;
+    const PADDING = 8;
+    const CONTAINER = 150;
 
-  // Handle null/undefined keyName gracefully
-  const displayValue = keyName ?? "(Unnamed Key)";
-  const shouldShowTooltip = displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
+    // Handle null/undefined keyName gracefully
+    const displayValue = keyName ?? "(Unnamed Key)";
+    const shouldShowTooltip =
+      displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
 
-  return (
-    <TooltipProvider key={displayValue}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
-            {displayValue}
-          </div>
-        </TooltipTrigger>
-        {shouldShowTooltip && (
-          <TooltipContent side="top">
-            <p>{displayValue}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
-  );
-});
+    return (
+      <TooltipProvider key={displayValue}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
+              {displayValue}
+            </div>
+          </TooltipTrigger>
+          {shouldShowTooltip && (
+            <TooltipContent side="top">
+              <p>{displayValue}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  },
+);
 KeyNameCell.displayName = "KeyNameCell";
 
 const RowActionsCell = React.memo(
@@ -314,6 +318,12 @@ export function LanguageTable() {
   const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
     useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
+  const [isPollingTranslation, setIsPollingTranslation] = useState(false);
+  const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
+  // Track keys that are currently being translated (for showing skeleton/loading state)
+  const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(
+    new Set(),
+  );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] =
@@ -324,7 +334,20 @@ export function LanguageTable() {
     useTranslateLanguageKeys();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Reset all filters and view state when the project changes
+  // Poll for translation completion when a key translation is in progress
+  useTranslateKeyWithPolling(pollingKeyId || "", tenantId, () => {
+    setIsPollingTranslation(false);
+    // Remove key from translating set once confirmed complete
+    if (pollingKeyId) {
+      setTranslatingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(pollingKeyId);
+        return next;
+      });
+    }
+  });
+
+  // Reset page number and view state when the project changes, but preserve filters like missingLanguages
   // Only reset if this is NOT the initial mount and store is hydrated
   const isInitialMountRef = useRef(true);
   useEffect(() => {
@@ -333,9 +356,12 @@ export function LanguageTable() {
       isInitialMountRef.current = false;
       return;
     }
-    // Only reset if tenantId actually has a value
+    // Only reset page number to 0 when tenantId changes, preserving all filters including missingLanguages
     if (tenantId) {
-      setQueryParams(null);
+      setQueryParams((prev) => ({
+        ...prev,
+        pageNumber: 0,
+      }));
       resetSelectedLanguages();
       sortReset();
     }
@@ -396,6 +422,11 @@ export function LanguageTable() {
           title: "Processing Translation",
           description: "Key translation in progress.",
         });
+        // Start polling to wait for translation to complete before refreshing table
+        // Also track this key as translating (for showing skeleton/loading state)
+        setPollingKeyId(selectedLanguageKeyId);
+        setIsPollingTranslation(true);
+        setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
         setIsTranslateDialogOpen(false);
       } else {
         toast({
@@ -607,14 +638,31 @@ export function LanguageTable() {
               accessorKey: "resources",
               header: () => <span>Completeness</span>,
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
+                const keyId = row.original.itemId;
+                const isTranslating = translatingKeys.has(keyId);
                 const resources = row.original.resources;
                 if (!resources || resources.length === 0)
                   return "No translation";
+
+                // Show Translating status if this key is being translated
+                if (isTranslating) {
+                  return (
+                    <span className="text-blue-600 font-medium">
+                      Translating...
+                    </span>
+                  );
+                }
+
                 const allLanguages =
                   languageListData?.map((lang) => lang.languageCode) || [];
                 const isComplete = allLanguages.every((lang) => {
                   const resource = resources.find((r) => r.culture === lang);
-                  return resource?.value?.trim() !== "";
+                  // Check if resource exists and has a non-null, non-empty value
+                  return (
+                    resource &&
+                    resource.value !== null &&
+                    resource.value.trim() !== ""
+                  );
                 });
                 return isComplete ? "Complete" : "Partial";
               },
@@ -639,9 +687,27 @@ export function LanguageTable() {
           </div>
         ),
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
+          const keyId = row.original.itemId;
           const resource = row.original.resources?.find(
             (res) => res.culture === lang,
           );
+          const isTranslating = translatingKeys.has(keyId);
+
+          // Show skeleton loader if this key is being translated and resource is missing/empty
+          if (
+            isTranslating &&
+            (!resource?.value || resource.value.trim() === "")
+          ) {
+            return (
+              <div className="ml-2 line-clamp-4 sm:ml-0">
+                <Skeleton className="h-4 w-full animate-pulse" />
+                <span className="text-xs text-muted-foreground mt-1">
+                  Translating...
+                </span>
+              </div>
+            );
+          }
+
           return (
             <div className="ml-2 line-clamp-4 sm:ml-0">
               {resource?.value ?? ""}
@@ -797,8 +863,24 @@ export function LanguageTable() {
           title: "Processing Translation",
           description: "Key translation in progress for selected keys.",
         });
+        // Track all selected keys as translating (for showing skeleton/loading state)
+        const keysToTranslate = new Set(selectedKeys);
+        setTranslatingKeys((prev) => {
+          const next = new Set(prev);
+          selectedKeys.forEach((keyId) => next.add(keyId));
+          return next;
+        });
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
+
+        // Clear translating state after timeout (bulk translate doesn't have individual polling)
+        setTimeout(() => {
+          setTranslatingKeys((prev) => {
+            const next = new Set(prev);
+            keysToTranslate.forEach((keyId) => next.delete(keyId));
+            return next;
+          });
+        }, 60000); // 60 seconds timeout
       } else {
         toast({
           variant: "destructive",
