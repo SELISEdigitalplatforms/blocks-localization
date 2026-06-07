@@ -5,7 +5,7 @@ import { AuthLayout } from './layouts/auth-layout'
 import { PublicLayout } from './layouts/public-layout'
 import { OidcLayout } from './layouts/oidc-layout'
 import { DashboardLayout } from './layouts/dashboard-layout'
-// import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
+import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
 // Auth routes (public, with auth layout)
 import SignupPage from './routes/auth/signup'
 import SsoActivatePage from './routes/auth/sso-activate'
@@ -67,8 +67,8 @@ import {
   ImpersonationChecker,
   ImpersonationTerminator,
   ImpersonationSynchronizer,
-  ProjectOverviewLayout,
 } from '@seliseblocks/blocks-kit'
+
 
 // ── Root redirect: conditionally redirects based on auth state ──
 // function RootRedirect() {
@@ -121,15 +121,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: (
-              <ImpersonationChecker>
-                <ImpersonationTerminator>
-                  <ProjectOverviewLayout>
-                    <Outlet />
-                  </ProjectOverviewLayout>
-                </ImpersonationTerminator>
-              </ImpersonationChecker>
-            ),
+            element: <ProjectOverviewLayout />,
             children: [
               {
                 path: '/project-overview',
