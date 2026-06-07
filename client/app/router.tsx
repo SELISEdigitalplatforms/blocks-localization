@@ -97,7 +97,7 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: '/login', element: <LoginPage /> },
-          { path: '/callback', element: <CallbackPage redirectUrl='/console' /> },
+          { path: '/login/callback', element: <CallbackPage redirectUrl='/console' /> },
         ],
       },
       {
