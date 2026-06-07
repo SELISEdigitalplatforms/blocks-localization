@@ -59,12 +59,12 @@ export class ProjectService {
 
   getProject(payload: IGetProjectPayload): Promise<IGetProjectResponse> {
     const url = `${PROJECT_ENDPOINTS.GET}?projectId=${payload.projectId}`
-    return http.get(url)
+    return http.get(url, undefined, { absoluteUrl: true })
   }
   getEnvRepositories(
     projectKey: string,
   ): Promise<APIResponse<IEnvRepository[]>> {
-    const url = `${API_BASES.CLOUD_BUILD}/build/repos-list?projectkey=${projectKey}`
+    const url = `${API_BASES.LOGIC}/build/repos-list?projectkey=${projectKey}`
     return http.get(url, undefined, { absoluteUrl: true })
   }
 

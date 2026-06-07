@@ -377,11 +377,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: '/project-overview',
                 element: <ProjectOverviewLayout />,
                 children: [
                   {
-                    path: 'environments',
+                    path: '/project-overview/environments',
                     element: <EnvironmentsPage />,
                   },
                 ],

@@ -1,5 +1,6 @@
+import { useProjectStore } from '@/store/useProjectStore'
+import { useGetProjects } from '@/hooks/use-project'
 import { AddEnvironmentModal } from '@/components/environment-card/add-environment-modal'
-import { ProjectCardLoading } from '@/components/project-card/loading'
 import {
   Dialog,
   DialogContent,
@@ -7,19 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui-kits/dialog/dialog'
+import { useState, useCallback } from 'react'
 import { Skeleton } from '@/components/ui-kits/skeleton/skeleton'
+import { ProjectCardLoading } from '@/components/project-card/loading'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui-kits/tooltip/tooltip'
-import { useNotificationListener } from '@/cross-modules/utilities/notification'
-import { useGetMigrationStatus, useGetProjects } from '@/hooks/use-project'
-import { useProjectStore } from '@/store/useProjectStore'
-import { EnvironmentCard } from '@seliseblocks/blocks-kit'
 import { CircleHelp } from 'lucide-react'
-import { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { EnvironmentCard } from '@seliseblocks/blocks-kit'
 
 const ProjectGroupLoading = () => (
   <main className='flex flex-1 flex-col gap-4 p-4 sm:mx-10 md:gap-6'>
@@ -49,77 +47,35 @@ export const EnvironmentsPage = () => {
     isLoading,
     isFetching,
   } = useGetProjects(groupId ?? '')
+  //   const { data: peopleData } = useGetPeople({
+  //     page: 0,
+  //     pageSize: 1,
+  //     filter: "",
+  //   });
+  const isViewerOwner = false
   const [addEnvModalOpen, setAddEnvModalOpen] = useState(false)
-  const navigate = useNavigate()
-
-  const { data: migrationStatus, refetch: refetchMigrationStatus } =
-    useGetMigrationStatus(groupId as string)
-
-  const handleMigrationNotification = useCallback(
-    (_: unknown) => {
-      void refetchMigrationStatus()
-    },
-    [refetchMigrationStatus],
-  )
-
-  useNotificationListener(
-    'EnvironmentDataMigration',
-    handleMigrationNotification,
-  )
 
   const handleAddEnvModalClose = () => {
     setAddEnvModalOpen(false)
   }
 
-  if (isLoading || isFetching) {
+  if (
+    isLoading ||
+    isFetching ||
+    !environmentList ||
+    !environmentList[0]?.projects[0]
+  ) {
     return <ProjectGroupLoading />
   }
 
-  if (!environmentList?.length || !environmentList[0]?.projects?.length) {
-    return (
-      <main className='flex flex-1 flex-col gap-4 p-6 md:gap-6'>
-        <div className='mb-6 flex flex-row justify-between'>
-          <h4 className='text-lg font-semibold md:text-xl'>Environments</h4>
-        </div>
-        <div className='rounded-md border py-12 text-center text-sm text-muted-foreground md:text-base'>
-          No environments found in this project.
-        </div>
-      </main>
-    )
-  }
-
   const canAddEnvironment =
-    environmentList &&
-    environmentList[0]?.projects?.length < 8 &&
-    !environmentList[0]?.isShared
+    environmentList && environmentList[0]?.projects?.length < 8 && isViewerOwner
 
   return (
     <main className='flex flex-1 flex-col gap-4 p-6 md:gap-6'>
       <div>
         <div className='mb-6 flex flex-row justify-between'>
           <h4 className='text-lg font-semibold md:text-xl'>Environments</h4>
-          {/* <div className="flex gap-2 sm:gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/data-migration")}
-              className="h-10 whitespace-nowrap text-sm"
-            >
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Start Migration</span>
-            </Button>
-            {canAddEnvironment && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setAddEnvModalOpen(true)}
-                className="h-10 whitespace-nowrap text-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">New Environment</span>
-              </Button>
-            )}
-          </div> */}
         </div>
 
         {environmentList[0]?.isShared && (
@@ -134,12 +90,7 @@ export const EnvironmentsPage = () => {
             <EnvironmentCard
               key={`shared-${project.itemId}`}
               project={project}
-              isMigrationOngoing={
-                Array.isArray(migrationStatus) &&
-                migrationStatus.some(
-                  (data) => data.targetedProjectKey === project.tenantId,
-                )
-              }
+              isMigrationOngoing={false}
             />
           ))}
         </div>
@@ -161,13 +112,7 @@ export const EnvironmentsPage = () => {
                     <EnvironmentCard
                       key={`others-${project.itemId}`}
                       project={project}
-                      isMigrationOngoing={
-                        Array.isArray(migrationStatus) &&
-                        migrationStatus.some(
-                          (data) =>
-                            data.targetedProjectKey === project.tenantId,
-                        )
-                      }
+                      isMigrationOngoing={false}
                       className='bg-muted'
                     />
                   </div>

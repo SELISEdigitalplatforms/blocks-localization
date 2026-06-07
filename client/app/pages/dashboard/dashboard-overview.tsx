@@ -1,13 +1,12 @@
 import { useCallback, useEffect } from 'react'
 import { useProjectStore } from '@/store/useProjectStore'
-// import { useGetProject, useValidateCNameProject } from '@/hooks/use-project'
+import { useGetProject, useValidateCNameProject } from '@/hooks/use-project'
 import { getDomain } from '@/lib/domain'
 import { showErrorToast } from '@/hooks/use-toast'
 import { ProjectDetail } from '@/components/project-detail/project-detail'
 import { ProjectRepoList } from '@/components/project-repo-list/project-repo-list'
 import { ProjectCliSnippet } from '@/components/project-cli-snippet/project-cli-snippet'
 import { GitCommandSnippet } from '@/components/git-command-snippet/git-command-snippet'
-import { useGetProject, useValidateCNameProject } from '@/hooks/use-project'
 // import { ActionsListProject } from "@/components/actions-list-project/actions-list-project";
 
 export const DashboardOverview = () => {
