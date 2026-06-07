@@ -46,7 +46,7 @@ import {
 import ProfilePage from './routes/dashboard/profile'
 
 // Console routes
-import { Console } from './pages/console/console'
+// import { Console } from './pages/console/console'
 import { CreateProjectWrapper } from './pages/create-project/create-project'
 
 // Project overview routes
@@ -56,7 +56,7 @@ import ProjectRepositoriesPage from './routes/project-overview/repositories'
 import ProjectSettingsPage from './routes/project-overview/settings'
 import LoginSimplePage from './routes/auth/login-simple'
 import LoginCallbackPage from './routes/auth/callback'
-import CallbackPage from './routes/callback/callback'
+// import CallbackPage from './routes/callback/callback'
 
 import {
   AuthResolver,
@@ -67,6 +67,8 @@ import {
   ImpersonationChecker,
   ImpersonationTerminator,
   ImpersonationSynchronizer,
+  CallbackPage,
+  ConsolePage,
 } from '@seliseblocks/blocks-kit'
 
 
@@ -95,7 +97,7 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: '/login', element: <LoginPage /> },
-          { path: '/callback', element: <LoginCallbackPage /> },
+          { path: '/callback', element: <CallbackPage redirectUrl='/console' /> },
         ],
       },
       {
@@ -117,26 +119,10 @@ export const router = createBrowserRouter([
             ),
             children: [
               { path: '/profile', element: <ProfilePage /> },
-              { path: '/console', element: <Console /> },
+              { path: '/console', element: <ConsolePage /> },
             ],
           },
           {
-            element: <ProjectOverviewLayout />,
-            children: [
-              {
-                path: '/project-overview',
-                element: (
-                  <Navigate to='/project-overview/environments' replace />
-                ),
-              },
-              {
-                path: '/project-overview/environments',
-                element: <EnvironmentsPage />,
-              },
-            ],
-          },
-          {
-            path: '/services',
             element: (
               <ImpersonationChecker>
                 <ImpersonationSynchronizer>
@@ -146,52 +132,58 @@ export const router = createBrowserRouter([
             ),
             children: [
               {
-                index: true,
-                element: <Navigate to='language' replace />,
-              },
-              {
-                path: 'language',
+                path: '/services/language',
                 element: <LocalizationLanguageHomePage />,
               },
               {
-                path: 'language/translations',
-                element: <Navigate to='..' replace />,
+                path: '/services/language/translations',
+                element: <Navigate to='/services/language' replace />,
               },
               {
-                path: 'language/export-history',
-                element: <LocalizationExportHistoryPage />,
-              },
-              {
-                path: 'language/logs',
-                element: <LocalizationLogsPage />,
-              },
-              {
-                path: 'language/translations/new-key',
-                element: <LocalizationNewKeyPage />,
-              },
-              {
-                path: 'language/translations/:keyId',
-                element: <LocalizationKeyDetailPage />,
-              },
-              {
-                path: 'configure',
+                path: '/services/configure',
                 element: <LocalizationConfigurePage />,
               },
               {
-                path: 'modules',
+                path: '/services/modules',
                 element: <LocalizationModulesPage />,
               },
               {
-                path: 'modules/:moduleId',
+                path: '/services/modules/:moduleId',
                 element: <LocalizationModuleDetailPage />,
               },
               {
-                path: 'glossary',
+                path: '/services/language/export-history',
+                element: <LocalizationExportHistoryPage />,
+              },
+              {
+                path: '/services/language/logs',
+                element: <LocalizationLogsPage />,
+              },
+              {
+                path: '/services/language/translations/new-key',
+                element: <LocalizationNewKeyPage />,
+              },
+              {
+                path: '/services/language/translations/:keyId',
+                element: <LocalizationKeyDetailPage />,
+              },
+              {
+                path: '/services/glossary',
                 element: <LocalizationGlossaryPage />,
               },
               {
-                path: 'glossary/:itemId',
+                path: '/services/glossary/:itemId',
                 element: <LocalizationGlossaryDetailPage />,
+              },
+              {
+                path: '/project-overview',
+                element: (
+                  <Navigate to='/project-overview/environments' replace />
+                ),
+              },
+              {
+                path: '/project-overview/environments',
+                element: <EnvironmentsPage />,
               },
             ],
           },
