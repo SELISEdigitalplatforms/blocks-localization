@@ -34,18 +34,24 @@ const projectOverviewMenuItems: Menu[] = [
   // },
 ];
 
-export const ProjectOverviewSidebarDesktop = () => {
+type ProjectOverviewSidebarDesktopProps = {
+  isSidebarOpen: boolean
+}
+
+export const ProjectOverviewSidebarDesktop = ({
+  isSidebarOpen,
+}: ProjectOverviewSidebarDesktopProps) => {
   return (
-    <aside className="sticky top-0 hidden h-full w-60 shrink-0 border-r bg-background md:block">
+    <div className="w-full flex-1">
       <nav className="grid w-full items-start gap-1 text-sm">
         {projectOverviewMenuItems.map((item) => (
           <Fragment key={item.id}>
             {item.type === "menu" && (
-              <DesktopMenuItem menu={item} isSidebarOpen={true} />
+              <DesktopMenuItem menu={item} isSidebarOpen={isSidebarOpen} />
             )}
           </Fragment>
         ))}
       </nav>
-    </aside>
-  );
-};
+    </div>
+  )
+}
