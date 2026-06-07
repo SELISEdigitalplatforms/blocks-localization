@@ -2,6 +2,7 @@ import { useProjectStore } from "@/store/useProjectStore";
 import { localizationQueryKeys } from "../constants/query-keys";
 import { ExportHistoryFilters, IKeyUilmExport } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language.manager.service";
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetBlocksLanguageKey = (
@@ -183,6 +184,64 @@ export const useTranslateKey = () => {
   });
 };
 
+// Polls for a specific key's translation to complete, then invalidates list queries
+export const useTranslateKeyWithPolling = (
+  keyId: string,
+  tenantId: string,
+  onTranslationComplete?: () => void,
+) => {
+  const queryClient = useQueryClient();
+  const maxAttempts = 15; // 15 * 2 seconds = 30 seconds max wait
+  const pollInterval = 2000;
+
+  useEffect(() => {
+    // Early return if no keyId or tenantId - nothing to poll
+    if (!keyId || !tenantId) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const pollTranslation = async () => {
+      attempts++;
+
+      try {
+        const data = await languageManagerService.fetchBlocksLanguageKeyById({
+          projectKey: tenantId,
+          itemId: keyId,
+        });
+
+        // Check if this key has at least one non-null, non-empty translation
+        const hasTranslations = data?.resources?.some(
+          (r) => r.culture !== "en-US" && r.value !== null && r.value.trim() !== "",
+        );
+
+        if (hasTranslations) {
+          // Translation is complete, invalidate list queries to refresh table
+          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+          onTranslationComplete?.();
+          return;
+        }
+      } catch (error) {
+        // Continue polling even on error
+      }
+
+      // If not complete and within max attempts, poll again
+      if (attempts < maxAttempts) {
+        timeoutId = setTimeout(pollTranslation, pollInterval);
+      }
+    };
+
+    // Start polling after a short initial delay
+    timeoutId = setTimeout(pollTranslation, pollInterval);
+
+    // Cleanup function to clear timeout if effect re-runs or component unmounts
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [keyId, tenantId, queryClient, onTranslationComplete, maxAttempts, pollInterval]);
+};
+
 export const useSaveLanguage = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -201,6 +260,35 @@ export const useDeleteLanguageKey = () => {
     mutationFn: languageManagerService.deleteLanguageKey,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    },
+  });
+};
+
+export const useDeleteLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["language-keys", "bulk-delete"],
+    mutationFn: languageManagerService.deleteLanguageKeys,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    },
+  });
+};
+
+export const useTranslateLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["translate-keys", "bulk"],
+    mutationFn: languageManagerService.translateLanguageKeys,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+      });
     },
   });
 };
@@ -252,11 +340,14 @@ export const useImportLanguageFile = () => {
 };
 
 export const useSaveLanguageKeyUilmExport = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["save-language-key-uilm-export"],
     mutationFn: (payload: IKeyUilmExport) =>
       languageManagerService.saveLanguageKeyUilmExport(payload),
-    onSuccess: () => {},
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.exportHistory.all });
+    },
   });
 };
 
@@ -508,31 +599,51 @@ export const useGetGlossaryById = (itemId: string) => {
 
 export const useGetKeysByGlossaryId = (
   glossaryId: string,
+  moduleIds: string[],
   pageNumber: number,
   pageSize: number,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  // Only enable query when moduleIds is available
+  const queryKey = localizationQueryKeys.languageKeys.byGlossary(
+    tenantId,
+    glossaryId,
+    pageNumber,
+    pageSize,
+  );
+
   return useQuery({
-    queryKey: localizationQueryKeys.languageKeys.byGlossary(
-      tenantId,
-      glossaryId,
-      pageNumber,
-      pageSize,
-    ),
-    queryFn: () =>
-      languageManagerService.fetchBlocksLanguageKey({
+    queryKey,
+    queryFn: async () => {
+      // Fetch keys by moduleIds
+      const result = await languageManagerService.fetchBlocksLanguageKey({
         projectKey: tenantId,
-        pageNumber,
-        pageSize,
+        pageNumber: 0, // Fetch from page 0 to get all keys for filtering
+        pageSize: 1000, // Large page size to get all keys
         searchKey: "",
-        moduleIds: [],
+        moduleIds: moduleIds,
         isPartiallyTranslated: false,
         sortProperty: "KeyName",
         isDescending: false,
-        glossaryId,
-      }),
-    enabled: !!glossaryId && !!tenantId,
+      });
+
+      // Show keys that belong to the glossary's modules (not filtered by glossaryId on keys)
+      // The glossary's moduleIds indicates which modules this glossary is associated with
+      const filteredKeys = result.keys;
+
+      // Return paginated result from filtered keys
+      const startIndex = pageNumber * pageSize;
+      const paginatedKeys = filteredKeys.slice(startIndex, startIndex + pageSize);
+
+      return {
+        totalCount: filteredKeys.length,
+        keys: paginatedKeys,
+      };
+    },
+    enabled: !!glossaryId && !!tenantId && moduleIds.length > 0,
     staleTime: 0,
+    refetchOnMount: true,
   });
 };
 

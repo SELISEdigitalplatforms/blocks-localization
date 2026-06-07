@@ -1,20 +1,15 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Button } from "@/components/ui-kits/button/button";
-import { useCreateProject } from "@blocks-identifier/hooks/use-project";
 import { environmentOptions } from "@/constants/environment-options";
 
-function shortGuidGenerator(length: number): string {
-  const letters = "abcdefghijklmnopqrstuvwxyz";
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(bytes, (b) => letters[b % letters.length]).join("");
-}
-
 interface AddEnvironmentModalProps {
-  onClose?: (selectedEnvironments: string[]) => void | Promise<void>;
+  onClose?: (selectedEnvironments?: string[]) => void | Promise<void>;
   preSelectedEnvironments?: string[];
   tenantGroupId?: string;
   projectName?: string;
+  onSave?: (selectedEnvironments: string[]) => void | Promise<void>;
+  isLoading?: boolean;
 }
 
 export const AddEnvironmentModal = ({
@@ -22,8 +17,9 @@ export const AddEnvironmentModal = ({
   preSelectedEnvironments = [],
   tenantGroupId,
   projectName,
+  onSave,
+  isLoading = false,
 }: AddEnvironmentModalProps) => {
-  const { isPending, mutateAsync } = useCreateProject();
   const [selected, setSelected] = useState<string[]>([]);
 
   const availableOptions = environmentOptions.filter(
@@ -35,32 +31,35 @@ export const AddEnvironmentModal = ({
     rows.push(availableOptions.slice(i, i + 2));
   }
 
-  const onSaveClick = () => {
-    if (selected.length > 0 && onClose && tenantGroupId) {
+  const onSaveClick = async () => {
+    if (selected.length === 0) return;
+
+    if (onSave) {
+      // Use external onSave handler (for localization module)
+      await onSave(selected);
+    } else if (selected.length > 0 && onClose && tenantGroupId) {
+      // Legacy internal handling (kept for backward compatibility)
       const sortedSelected = [...selected].sort((a, b) => {
         const aIndex = environmentOptions.find((opt) => opt.value === a)?.index ?? 0;
         const bIndex = environmentOptions.find((opt) => opt.value === b)?.index ?? 0;
         return aIndex - bIndex;
       });
       const domain = import.meta.env.VITE_BASE_DOMAIN || "seliseblocks.com";
-      const shortGuid = shortGuidGenerator(5);
+      const shortGuid = Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) =>
+        "abcdefghijklmnopqrstuvwxyz"[b % 26],
+      ).join("");
       const applicationContexts = sortedSelected.map((env: string) => ({
         environment: env,
         domain: `https://${env === "main" ? "" : env}-${shortGuid}.${domain}`,
         cookieDomain: domain,
       }));
-      mutateAsync({
-        name: projectName || "old Project",
-        isAcceptBlocksTerms: true,
-        isUseBlocksExclusively: true,
-        isProduction: false,
-        resources: [],
-        tenantGroupId: tenantGroupId || "default-tenant-group-id",
-        applicationContexts: applicationContexts,
-      });
 
       onClose(sortedSelected);
     }
+  };
+
+  const handleCancel = () => {
+    onClose?.(selected);
   };
 
   return (
@@ -98,15 +97,15 @@ export const AddEnvironmentModal = ({
         <Button
           type="button"
           variant="outline"
-          disabled={isPending}
-          onClick={() => onClose && onClose([])}
+          disabled={isLoading}
+          onClick={handleCancel}
         >
           Cancel
         </Button>
         <Button
           type="button"
-          disabled={isPending || selected.length === 0}
-          onClick={() => onSaveClick()}
+          disabled={isLoading || selected.length === 0}
+          onClick={() => void onSaveClick()}
         >
           Add
         </Button>

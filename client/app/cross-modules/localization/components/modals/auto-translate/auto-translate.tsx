@@ -11,8 +11,19 @@ import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@/store/useProjectStore";
 import { toast } from "@/hooks/use-toast";
+import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 
-const AutoTranslate = () => {
+interface AutoTranslateProps {
+  translatingKeys: Set<string>;
+  setTranslatingKeys: React.Dispatch<React.SetStateAction<Set<string>>>;
+  keysData?: { keys: IBlocksLanguageKey[] };
+}
+
+const AutoTranslate: React.FC<AutoTranslateProps> = ({
+  translatingKeys,
+  setTranslatingKeys,
+  keysData,
+}) => {
   const { isPending, mutateAsync } = useTranslateAll();
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
@@ -33,6 +44,25 @@ const AutoTranslate = () => {
           title: "Processing Translation",
           description: "Keys translation in progress.",
         });
+        
+        // Track all visible keys as translating (for showing skeleton/loading state)
+        if (keysData?.keys) {
+          const allKeyIds = new Set(keysData.keys.map((k) => k.itemId));
+          setTranslatingKeys((prev) => {
+            const next = new Set(prev);
+            allKeyIds.forEach((keyId) => next.add(keyId));
+            return next;
+          });
+          
+          // Clear translating state after timeout (auto-translate doesn't have individual polling)
+          setTimeout(() => {
+            setTranslatingKeys((prev) => {
+              const next = new Set(prev);
+              allKeyIds.forEach((keyId) => next.delete(keyId));
+              return next;
+            });
+          }, 120000); // 2 minutes timeout
+        }
       } else {
         toast({
           variant: "destructive",

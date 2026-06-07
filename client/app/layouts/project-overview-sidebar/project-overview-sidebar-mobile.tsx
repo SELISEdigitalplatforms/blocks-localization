@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { MenuIcon, Package } from "lucide-react";
+import { useState, Fragment } from "react";
+import { Settings, Users, MenuIcon, BookMinus, Package } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   Sheet,
@@ -20,6 +20,27 @@ const projectOverviewMenuItems: Menu[] = [
     path: "/project-overview/environments",
     icon: Package,
   },
+  // {
+  //   id: "people",
+  //   type: "menu" as const,
+  //   name: "People",
+  //   path: "/project-overview/people",
+  //   icon: Users,
+  // },
+  // {
+  //   id: "repositories",
+  //   type: "menu" as const,
+  //   name: "Repositories",
+  //   path: "/project-overview/repositories",
+  //   icon: BookMinus,
+  // },
+  // {
+  //   id: "settings",
+  //   type: "menu" as const,
+  //   name: "Project Settings",
+  //   path: "/project-overview/settings",
+  //   icon: Settings,
+  // },
 ];
 
 export const ProjectOverviewSidebarMobile = () => {
@@ -33,17 +54,23 @@ export const ProjectOverviewSidebarMobile = () => {
           <span className="sr-only">Toggle project overview menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-full p-0" aria-describedby={undefined}>
+      <SheetContent
+        side="left"
+        className="w-full p-0"
+        aria-describedby={undefined}
+      >
         <SheetHeader className="border-b px-4 py-5">
           <SheetTitle>Project Overview</SheetTitle>
         </SheetHeader>
         <Separator />
         <nav className="grid gap-2 p-4">
-          {projectOverviewMenuItems
-            .filter((item) => item.type === "menu")
-            .map((item) => (
-              <MobileMenuItem key={item.id} menu={item} onClick={() => setOpen(false)} />
-            ))}
+          {projectOverviewMenuItems.map((item) => (
+            <Fragment key={item.id}>
+              {item.type === "menu" && (
+                <MobileMenuItem menu={item} onClick={() => setOpen(false)} />
+              )}
+            </Fragment>
+          ))}
         </nav>
       </SheetContent>
     </Sheet>
