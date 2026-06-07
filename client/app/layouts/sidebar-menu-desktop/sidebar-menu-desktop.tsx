@@ -30,7 +30,10 @@ export function SidebarMenuDesktop() {
 
   return (
     <div
-      className={`hidden h-[calc(100vh)] flex-col border-r bg-background transition-all md:flex ${isSidebarOpen ? 'min-w-60' : 'w-14'}`}
+      className={cn(
+        'hidden h-screen flex-col border-r bg-background transition-all md:flex',
+        isSidebarOpen ? 'w-60 overflow-hidden' : 'w-14',
+      )}
     >
       <div className='flex h-[60px] shrink-0 items-center justify-between border-b bg-background px-3'>
         <Link
@@ -79,8 +82,8 @@ export function SidebarMenuDesktop() {
           </div>
         ))}
 
-      <div className='flex-1 overflow-auto'>
-        <nav className={cn('grid w-full items-start gap-0 py-2 text-sm')}>
+      <div className='w-full flex-1'>
+        <nav className={cn('grid w-full items-start gap-1 py-2 text-sm')}>
           {allowedMenu.map((menu) => (
             <Fragment key={menu.id}>
               {menu.type === 'menu' ? (
