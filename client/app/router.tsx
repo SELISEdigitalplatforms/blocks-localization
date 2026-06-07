@@ -67,8 +67,8 @@ import {
   ImpersonationChecker,
   ImpersonationTerminator,
   ImpersonationSynchronizer,
-  CallbackPage,
   ConsolePage,
+  CallbackPage,
 } from '@seliseblocks/blocks-kit'
 
 
@@ -81,237 +81,373 @@ import {
 //   return <Navigate to="/login" replace />;
 // }
 
+// export const router = createBrowserRouter([
+//   {
+//     element: (
+//       <AuthResolver>
+//         <Outlet />
+//       </AuthResolver>
+//     ),
+//     children: [
+//       {
+//         element: (
+//           <PublicGuard>
+//             <Outlet />
+//           </PublicGuard>
+//         ),
+//         children: [
+//           { path: '/login', element: <LoginPage /> },
+//           { path: '/login/callback', element: <CallbackPage redirectUrl='/console' /> },
+//         ],
+//       },
+//       {
+//         element: (
+//           <ProtectedGuard>
+//             <Outlet />
+//           </ProtectedGuard>
+//         ),
+//         children: [
+//           {
+//             element: (
+//               <ImpersonationChecker>
+//                 <ImpersonationTerminator>
+//                   <ConsoleLayout>
+//                     <Outlet />
+//                   </ConsoleLayout>
+//                 </ImpersonationTerminator>
+//               </ImpersonationChecker>
+//             ),
+//             children: [
+//               { path: '/profile', element: <ProfilePage /> },
+//               { path: '/console', element: <ConsolePage /> },
+//             ],
+//           },
+//           {
+//             element: (
+//               <ImpersonationChecker>
+//                 <ImpersonationSynchronizer>
+//                   <DashboardLayout />
+//                 </ImpersonationSynchronizer>
+//               </ImpersonationChecker>
+//             ),
+//             children: [
+//               {
+//                 path: '/services/language',
+//                 element: <LocalizationLanguageHomePage />,
+//               },
+//               {
+//                 path: '/services/language/translations',
+//                 element: <Navigate to='/services/language' replace />,
+//               },
+//               {
+//                 path: '/services/configure',
+//                 element: <LocalizationConfigurePage />,
+//               },
+//               {
+//                 path: '/services/modules',
+//                 element: <LocalizationModulesPage />,
+//               },
+//               {
+//                 path: '/services/modules/:moduleId',
+//                 element: <LocalizationModuleDetailPage />,
+//               },
+//               {
+//                 path: '/services/language/export-history',
+//                 element: <LocalizationExportHistoryPage />,
+//               },
+//               {
+//                 path: '/services/language/logs',
+//                 element: <LocalizationLogsPage />,
+//               },
+//               {
+//                 path: '/services/language/translations/new-key',
+//                 element: <LocalizationNewKeyPage />,
+//               },
+//               {
+//                 path: '/services/language/translations/:keyId',
+//                 element: <LocalizationKeyDetailPage />,
+//               },
+//               {
+//                 path: '/services/glossary',
+//                 element: <LocalizationGlossaryPage />,
+//               },
+//               {
+//                 path: '/services/glossary/:itemId',
+//                 element: <LocalizationGlossaryDetailPage />,
+//               },
+//               {
+//                 path: '/project-overview',
+//                 element: (
+//                   <Navigate to='/project-overview/environments' replace />
+//                 ),
+//               },
+//               {
+//                 path: '/project-overview/environments',
+//                 element: <EnvironmentsPage />,
+//               },
+//             ],
+//           },
+//         ],
+//       },
+//     ],
+//   },
+//   // ── Auth layout (login, signup, sso-activate) ──
+//   // {
+//   //   element: <AuthLayout />,
+//   //   children: [
+//   //     { path: '/signup', element: <SignupPage /> },
+//   //     { path: '/sso-activate', element: <SsoActivatePage /> },
+//   //   ],
+//   // },
+//   // ── Simple login (no guards, no API calls) ──
+//   // {
+//   //   path: '/login',
+//   //   children: [
+//   //     { index: true, element: <LoginSimplePage /> },
+//   //     { path: 'callback', element: <LoginCallbackPage /> },
+//   //   ],
+//   // },
+//   // ── Public layout (other public pages with PublicGuard) ──
+
+//   // {
+//   //   element: <PublicLayout />,
+//   //   children: [
+//   //     { path: '/activate', element: <ActivatePage /> },
+//   //     { path: '/forgot-password', element: <ForgotPasswordPage /> },
+//   //     { path: '/resetpassword', element: <ResetPasswordPage /> },
+//   //     { path: '/activate-success', element: <ActivateSuccessPage /> },
+//   //     { path: '/forgot-email-sent', element: <ForgotEmailSentPage /> },
+//   //     { path: '/signup-email-sent', element: <SignupEmailSentPage /> },
+//   //     { path: '/mfa-check', element: <MfaCheckPage /> },
+//   //     {
+//   //       path: '/reset-password-success',
+//   //       element: <ResetPasswordSuccessPage />,
+//   //     },
+//   //   ],
+//   // },
+
+//   // ── OIDC layout (un-guarded, themed) ──
+//   // {
+//   //   path: '/oidc',
+//   //   element: <OidcLayout />,
+//   //   children: [
+//   //     { index: true, element: <OidcIndexPage /> },
+//   //     { path: 'login', element: <OidcLoginPage /> },
+//   //     { path: 'permission', element: <OidcPermissionPage /> },
+//   //     { path: 'error', element: <OidcErrorPage /> },
+//   //     { path: 'forgot-password', element: <OidcForgotPasswordPage /> },
+//   //     {
+//   //       path: 'email-sent-confirmation',
+//   //       element: <OidcEmailSentConfirmationPage />,
+//   //     },
+//   //   ],
+//   // },
+
+//   // ── Dashboard layout (protected routes — no project required) ──
+//   // {
+//   //   element: <DashboardLayout />,
+//   //   children: [
+//   //     {
+//   //       path: '/services/authentication',
+//   //       element: <AuthenticationConfigPage />,
+//   //     },
+//   //     {
+//   //       path: '/services/authentication/sso-configuration',
+//   //       element: <SsoConfigurationPage />,
+//   //     },
+//   //     { path: '/services/language', element: <LocalizationLanguageHomePage /> },
+//   //     {
+//   //       path: '/services/language/translations',
+//   //       element: <Navigate to='/services/language' replace />,
+//   //     },
+//   //     { path: '/services/configure', element: <LocalizationConfigurePage /> },
+//   //     { path: '/services/modules', element: <LocalizationModulesPage /> },
+//   //     {
+//   //       path: '/services/modules/:moduleId',
+//   //       element: <LocalizationModuleDetailPage />,
+//   //     },
+//   //     {
+//   //       path: '/services/language/export-history',
+//   //       element: <LocalizationExportHistoryPage />,
+//   //     },
+//   //     { path: '/services/language/logs', element: <LocalizationLogsPage /> },
+//   //     {
+//   //       path: '/services/language/translations/new-key',
+//   //       element: <LocalizationNewKeyPage />,
+//   //     },
+//   //     {
+//   //       path: '/services/language/translations/:keyId',
+//   //       element: <LocalizationKeyDetailPage />,
+//   //     },
+//   //     { path: '/services/glossary', element: <LocalizationGlossaryPage /> },
+//   //     {
+//   //       path: '/services/glossary/:itemId',
+//   //       element: <LocalizationGlossaryDetailPage />,
+//   //     },
+//   //     {
+//   //       path: '/project-overview',
+//   //       element: <Navigate to='/project-overview/environments' replace />,
+//   //     },
+//   //     { path: '/project-overview/environments', element: <EnvironmentsPage /> },
+//   //     // { path: "/project-overview/people", element: <ProjectPeoplePage /> },
+//   //     // {
+//   //     //   path: "/project-overview/repositories",
+//   //     //   element: <ProjectRepositoriesPage />,
+//   //     // },
+//   //     // { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
+//   //   ],
+//   // },
+
+//   // ── Console layout (profile, console pages without sidebar) ──
+//   // {
+//   //   element: <ConsoleLayout />,
+//   //   children: [
+//   //     { path: '/profile', element: <ProfilePage /> },
+//   //     { path: '/console', element: <Console /> },
+//   //     { path: '/create-project', element: <CreateProjectWrapper /> },
+//   //     { path: '/callback', element: <CallbackPage /> },
+//   //   ],
+//   // },
+
+//   // ── Root redirect: check auth first, then redirect appropriately ──
+//   { path: '/', element: <Navigate to='/console' replace /> },
+
+//   // ── Catch-all: redirect to login ──
+//   { path: '*', element: <Navigate to='/login' replace /> },
+// ])
+
 export const router = createBrowserRouter([
   {
-    element: (
-      <AuthResolver>
-        <Outlet />
-      </AuthResolver>
-    ),
+    element: <Outlet />,
     children: [
+      // All Redirect Url Handle here
       {
-        element: (
-          <PublicGuard>
-            <Outlet />
-          </PublicGuard>
-        ),
+        element: <Outlet />,
         children: [
-          { path: '/login', element: <LoginPage /> },
-          { path: '/login/callback', element: <CallbackPage redirectUrl='/console' /> },
+          {
+            path: '/login/callback',
+            element: <CallbackPage redirectUrl='/console' />,
+          },
         ],
       },
       {
+        // Set User Auth Information and resolve authentication state before rendering any route
         element: (
-          <ProtectedGuard>
+          <AuthResolver>
             <Outlet />
-          </ProtectedGuard>
+          </AuthResolver>
         ),
         children: [
+          // publuc
           {
-            element: (
-              <ImpersonationChecker>
-                <ImpersonationTerminator>
-                  <ConsoleLayout>
-                    <Outlet />
-                  </ConsoleLayout>
-                </ImpersonationTerminator>
-              </ImpersonationChecker>
-            ),
-            children: [
-              { path: '/profile', element: <ProfilePage /> },
-              { path: '/console', element: <ConsolePage /> },
-            ],
+            path: '/dashboard/callback',
+            element: <CallbackPage redirectUrl='/dashboard' />,
           },
           {
             element: (
-              <ImpersonationChecker>
-                <ImpersonationSynchronizer>
-                  <DashboardLayout />
-                </ImpersonationSynchronizer>
-              </ImpersonationChecker>
+              <PublicGuard>
+                <Outlet />
+              </PublicGuard>
+            ),
+            children: [{ path: '/login', element: <LoginPage /> }],
+          },
+
+          // protected
+          {
+            element: (
+              <ProtectedGuard>
+                <Outlet />
+              </ProtectedGuard>
             ),
             children: [
               {
-                path: '/services/language',
-                element: <LocalizationLanguageHomePage />,
-              },
-              {
-                path: '/services/language/translations',
-                element: <Navigate to='/services/language' replace />,
-              },
-              {
-                path: '/services/configure',
-                element: <LocalizationConfigurePage />,
-              },
-              {
-                path: '/services/modules',
-                element: <LocalizationModulesPage />,
-              },
-              {
-                path: '/services/modules/:moduleId',
-                element: <LocalizationModuleDetailPage />,
-              },
-              {
-                path: '/services/language/export-history',
-                element: <LocalizationExportHistoryPage />,
-              },
-              {
-                path: '/services/language/logs',
-                element: <LocalizationLogsPage />,
-              },
-              {
-                path: '/services/language/translations/new-key',
-                element: <LocalizationNewKeyPage />,
-              },
-              {
-                path: '/services/language/translations/:keyId',
-                element: <LocalizationKeyDetailPage />,
-              },
-              {
-                path: '/services/glossary',
-                element: <LocalizationGlossaryPage />,
-              },
-              {
-                path: '/services/glossary/:itemId',
-                element: <LocalizationGlossaryDetailPage />,
-              },
-              {
-                path: '/project-overview',
                 element: (
-                  <Navigate to='/project-overview/environments' replace />
+                  <ImpersonationChecker>
+                    <ImpersonationTerminator>
+                      <ConsoleLayout>
+                        <Outlet />
+                      </ConsoleLayout>
+                    </ImpersonationTerminator>
+                  </ImpersonationChecker>
                 ),
+                children: [
+                  { path: '/profile', element: <ProfilePage /> },
+                  { path: '/console', element: <ConsolePage /> },
+                ],
               },
               {
-                path: '/project-overview/environments',
-                element: <EnvironmentsPage />,
+                // impersonate
+                element: (
+                  <ImpersonationChecker>
+                    <ImpersonationSynchronizer>
+                      <DashboardLayout />
+                    </ImpersonationSynchronizer>
+                  </ImpersonationChecker>
+                ),
+                children: [
+                  {
+                    path: '/services/language',
+                    element: <LocalizationLanguageHomePage />,
+                  },
+                  {
+                    path: '/services/language/translations',
+                    element: <Navigate to='/services/language' replace />,
+                  },
+                  {
+                    path: '/services/configure',
+                    element: <LocalizationConfigurePage />,
+                  },
+                  {
+                    path: '/services/modules',
+                    element: <LocalizationModulesPage />,
+                  },
+                  {
+                    path: '/services/modules/:moduleId',
+                    element: <LocalizationModuleDetailPage />,
+                  },
+                  {
+                    path: '/services/language/export-history',
+                    element: <LocalizationExportHistoryPage />,
+                  },
+                  {
+                    path: '/services/language/logs',
+                    element: <LocalizationLogsPage />,
+                  },
+                  {
+                    path: '/services/language/translations/new-key',
+                    element: <LocalizationNewKeyPage />,
+                  },
+                  {
+                    path: '/services/language/translations/:keyId',
+                    element: <LocalizationKeyDetailPage />,
+                  },
+                  {
+                    path: '/services/glossary',
+                    element: <LocalizationGlossaryPage />,
+                  },
+                  {
+                    path: '/services/glossary/:itemId',
+                    element: <LocalizationGlossaryDetailPage />,
+                  },
+                  {
+                    path: '/project-overview',
+                    element: (
+                      <Navigate to='/project-overview/environments' replace />
+                    ),
+                  },
+                  {
+                    path: '/project-overview/environments',
+                    element: <EnvironmentsPage />,
+                  },
+                ],
               },
             ],
           },
+
+          { path: '/', element: <Navigate to='/console' replace /> },
+          { path: '*', element: <Navigate to='/login' replace /> },
         ],
       },
     ],
   },
-  // ── Auth layout (login, signup, sso-activate) ──
-  // {
-  //   element: <AuthLayout />,
-  //   children: [
-  //     { path: '/signup', element: <SignupPage /> },
-  //     { path: '/sso-activate', element: <SsoActivatePage /> },
-  //   ],
-  // },
-  // ── Simple login (no guards, no API calls) ──
-  // {
-  //   path: '/login',
-  //   children: [
-  //     { index: true, element: <LoginSimplePage /> },
-  //     { path: 'callback', element: <LoginCallbackPage /> },
-  //   ],
-  // },
-  // ── Public layout (other public pages with PublicGuard) ──
-
-  // {
-  //   element: <PublicLayout />,
-  //   children: [
-  //     { path: '/activate', element: <ActivatePage /> },
-  //     { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  //     { path: '/resetpassword', element: <ResetPasswordPage /> },
-  //     { path: '/activate-success', element: <ActivateSuccessPage /> },
-  //     { path: '/forgot-email-sent', element: <ForgotEmailSentPage /> },
-  //     { path: '/signup-email-sent', element: <SignupEmailSentPage /> },
-  //     { path: '/mfa-check', element: <MfaCheckPage /> },
-  //     {
-  //       path: '/reset-password-success',
-  //       element: <ResetPasswordSuccessPage />,
-  //     },
-  //   ],
-  // },
-
-  // ── OIDC layout (un-guarded, themed) ──
-  // {
-  //   path: '/oidc',
-  //   element: <OidcLayout />,
-  //   children: [
-  //     { index: true, element: <OidcIndexPage /> },
-  //     { path: 'login', element: <OidcLoginPage /> },
-  //     { path: 'permission', element: <OidcPermissionPage /> },
-  //     { path: 'error', element: <OidcErrorPage /> },
-  //     { path: 'forgot-password', element: <OidcForgotPasswordPage /> },
-  //     {
-  //       path: 'email-sent-confirmation',
-  //       element: <OidcEmailSentConfirmationPage />,
-  //     },
-  //   ],
-  // },
-
-  // ── Dashboard layout (protected routes — no project required) ──
-  // {
-  //   element: <DashboardLayout />,
-  //   children: [
-  //     {
-  //       path: '/services/authentication',
-  //       element: <AuthenticationConfigPage />,
-  //     },
-  //     {
-  //       path: '/services/authentication/sso-configuration',
-  //       element: <SsoConfigurationPage />,
-  //     },
-  //     { path: '/services/language', element: <LocalizationLanguageHomePage /> },
-  //     {
-  //       path: '/services/language/translations',
-  //       element: <Navigate to='/services/language' replace />,
-  //     },
-  //     { path: '/services/configure', element: <LocalizationConfigurePage /> },
-  //     { path: '/services/modules', element: <LocalizationModulesPage /> },
-  //     {
-  //       path: '/services/modules/:moduleId',
-  //       element: <LocalizationModuleDetailPage />,
-  //     },
-  //     {
-  //       path: '/services/language/export-history',
-  //       element: <LocalizationExportHistoryPage />,
-  //     },
-  //     { path: '/services/language/logs', element: <LocalizationLogsPage /> },
-  //     {
-  //       path: '/services/language/translations/new-key',
-  //       element: <LocalizationNewKeyPage />,
-  //     },
-  //     {
-  //       path: '/services/language/translations/:keyId',
-  //       element: <LocalizationKeyDetailPage />,
-  //     },
-  //     { path: '/services/glossary', element: <LocalizationGlossaryPage /> },
-  //     {
-  //       path: '/services/glossary/:itemId',
-  //       element: <LocalizationGlossaryDetailPage />,
-  //     },
-  //     {
-  //       path: '/project-overview',
-  //       element: <Navigate to='/project-overview/environments' replace />,
-  //     },
-  //     { path: '/project-overview/environments', element: <EnvironmentsPage /> },
-  //     // { path: "/project-overview/people", element: <ProjectPeoplePage /> },
-  //     // {
-  //     //   path: "/project-overview/repositories",
-  //     //   element: <ProjectRepositoriesPage />,
-  //     // },
-  //     // { path: "/project-overview/settings", element: <ProjectSettingsPage /> },
-  //   ],
-  // },
-
-  // ── Console layout (profile, console pages without sidebar) ──
-  // {
-  //   element: <ConsoleLayout />,
-  //   children: [
-  //     { path: '/profile', element: <ProfilePage /> },
-  //     { path: '/console', element: <Console /> },
-  //     { path: '/create-project', element: <CreateProjectWrapper /> },
-  //     { path: '/callback', element: <CallbackPage /> },
-  //   ],
-  // },
-
-  // ── Root redirect: check auth first, then redirect appropriately ──
-  { path: '/', element: <Navigate to='/console' replace /> },
-
-  // ── Catch-all: redirect to login ──
-  { path: '*', element: <Navigate to='/login' replace /> },
 ])
