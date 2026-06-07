@@ -16,7 +16,10 @@ import {
   FormMessage,
 } from "@/components/ui-kits/form/form";
 import { Label } from "@/components/ui-kits/label/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui-kits/radio-group/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -25,19 +28,19 @@ import {
   useGetLanguages,
   useSaveLanguageKeyUilmExport,
 } from "@blocks-localization/hooks/use-language-manager";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ModuleName } from "@/constants/modules.constants";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
 import {
-  useGetFilesDownload,
   useGetPreSignedUrlForUpload,
   useUploadFile,
 } from "@blocks-storage/hooks/use-storage-file";
+import { storageService } from "@blocks-storage/services/storage.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -70,21 +73,19 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
 
   const [date] = useState<DateRangeType>();
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
-  const [selectedOutputType, setSelectedOutputType] = useState<number>(outputTypes[0].id);
+  const [selectedOutputType, setSelectedOutputType] = useState<number>(
+    outputTypes[0].id,
+  );
   const [downloadChecked, setDownloadChecked] = useState(false);
   const [referenceFileId, setReferenceFileId] = useState(uuidv4());
   const [xlfFile, setXlfFile] = useState<File | null>(null);
   const [isUploadingXlf, setIsUploadingXlf] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [downloadMeta, setDownloadMeta] = useState<{ fileId: string; projectKey: string }>({
-    fileId: "",
-    projectKey,
-  });
 
   const { mutateAsync: exportAsync } = useSaveLanguageKeyUilmExport();
   const { mutateAsync: getPresignedUrl } = useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFileMutate } = useUploadFile();
-  const { refetch } = useGetFilesDownload(downloadMeta, { enabled: false });
+  const queryClient = useQueryClient();
 
   const handleSelectFileType = () => {
     setCurrentStep(2);
@@ -218,50 +219,71 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
 
   const handleNotificationData = useCallback(
     async (notificationData: IUilmExportNotificationData) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let deploymentMessage: any;
+      let fileId: string | undefined;
 
       try {
-        if (typeof notificationData.message.denormalizedPayload === "string") {
-          deploymentMessage = JSON.parse(notificationData.message.denormalizedPayload).Message;
-        } else {
-          deploymentMessage = notificationData.message.denormalizedPayload.Message;
+        // First, try to get FileId directly from the notification data
+        fileId = notificationData.FileId;
+
+        // If not found, try to extract from denormalizedPayload
+        if (!fileId) {
+          const { denormalizedPayload } = notificationData.message;
+
+          if (typeof denormalizedPayload === "string") {
+            // If it's a string, try to parse it and extract FileId
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const parsed: any = JSON.parse(denormalizedPayload);
+            fileId = parsed.FileId || parsed.fileId;
+
+            // If still not found, try to get Message property and extract FileId from there
+            if (!fileId && parsed.Message) {
+              fileId = parsed.Message?.FileId || parsed.Message?.fileId;
+            }
+          } else if (
+            denormalizedPayload !== null &&
+            typeof denormalizedPayload === "object"
+          ) {
+            // If it's already an object (not null), try to get FileId directly or from Message
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const payloadObj = denormalizedPayload as any;
+            fileId =
+              payloadObj.FileId ||
+              payloadObj.fileId ||
+              payloadObj.Message?.FileId ||
+              payloadObj.Message?.fileId;
+          }
         }
 
-        if (deploymentMessage?.FileId) {
-          // Get fileId from the notification message
-          const fileId = deploymentMessage?.FileId || deploymentMessage?.fileId;
+        if (fileId) {
+          try {
+            // Fetch the download URL directly using queryClient
+            const fileIdToUse = fileId;
+            const result = await queryClient.fetchQuery({
+              queryKey: ["getFilesDownload", fileIdToUse, projectKey],
+              queryFn: () =>
+                storageService.file.getFilesDownloadUrl({
+                  fileId: fileIdToUse,
+                  projectKey,
+                }),
+            });
 
-          if (fileId) {
-            try {
-              // Force React to apply the new meta immediately
-              flushSync(() => {
-                setDownloadMeta({ fileId, projectKey });
-              });
-
-              // Now refetch uses the updated meta inside the hook
-              const { data: result } = await refetch();
-
-              if (result?.url) {
-                const link = document.createElement("a");
-                link.href = result.url;
-                link.download = result.name || "";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              } else {
-                console.error("No download URL found after all retries");
-                showErrorToast();
-              }
-            } catch (error) {
-              console.error(error);
+            if (result?.url) {
+              const link = document.createElement("a");
+              link.href = result.url;
+              link.download = result.name || "";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } else {
+              console.error("No download URL found after all retries");
+              showErrorToast();
             }
-          } else {
-            console.error("No fileId found in notification message");
+          } catch (error) {
+            console.error(error);
             showErrorToast();
           }
         } else {
-          console.error("Export was not successful or no FileId in message");
+          console.error("No fileId found in notification message");
           showErrorToast();
         }
       } catch (error) {
@@ -271,7 +293,7 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
       }
     },
 
-    [projectKey, refetch],
+    [projectKey, queryClient],
   );
 
   useNotificationListener("language-import-export", handleNotificationData);
@@ -363,7 +385,10 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                 </Popover>
               </div> */}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-8"
+              >
                 <FormField
                   control={form.control}
                   name="items"
@@ -376,22 +401,31 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                               <Checkbox
                                 id="select-all"
                                 checked={
-                                  field.value?.length === languageModules.length &&
+                                  field.value?.length ===
+                                    languageModules.length &&
                                   languageModules.length > 0
                                 }
                                 onCheckedChange={(checked) => {
                                   if (checked) {
-                                    field.onChange(languageModules.map((item) => item.itemId));
+                                    field.onChange(
+                                      languageModules.map(
+                                        (item) => item.itemId,
+                                      ),
+                                    );
                                   } else {
                                     field.onChange([]);
                                   }
                                 }}
                               />
                             </FormControl>
-                            <FormLabel className="font-normal">Select all</FormLabel>
+                            <FormLabel className="font-normal">
+                              Select all
+                            </FormLabel>
                           </FormItem>
                         ) : (
-                          <div className="text-sm text-medium-emphasis">No module found.</div>
+                          <div className="text-sm text-medium-emphasis">
+                            No module found.
+                          </div>
                         )}
                       </div>
                       <div className="max-h-80 overflow-y-auto">
@@ -409,19 +443,29 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                                   >
                                     <FormControl>
                                       <Checkbox
-                                        checked={field.value?.includes(item.itemId)}
+                                        checked={field.value?.includes(
+                                          item.itemId,
+                                        )}
                                         onCheckedChange={(checked) => {
                                           if (checked) {
-                                            field.onChange([...field.value, item.itemId]);
+                                            field.onChange([
+                                              ...field.value,
+                                              item.itemId,
+                                            ]);
                                           } else {
                                             field.onChange(
-                                              field.value?.filter((value) => value !== item.itemId),
+                                              field.value?.filter(
+                                                (value) =>
+                                                  value !== item.itemId,
+                                              ),
                                             );
                                           }
                                         }}
                                       />
                                     </FormControl>
-                                    <FormLabel className="font-normal">{item.moduleName}</FormLabel>
+                                    <FormLabel className="font-normal">
+                                      {item.moduleName}
+                                    </FormLabel>
                                   </FormItem>
                                 )}
                               />
@@ -437,19 +481,31 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
           </StepperWithoutIndicator>
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={2}>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4 pr-4"
+              >
                 <RadioGroup
-                  value={outputTypes.find((t) => t.id === selectedOutputType)?.label}
+                  value={
+                    outputTypes.find((t) => t.id === selectedOutputType)?.label
+                  }
                   onValueChange={(label) => {
-                    const selected = outputTypes.find((type) => type.label === label);
+                    const selected = outputTypes.find(
+                      (type) => type.label === label,
+                    );
                     if (selected) setSelectedOutputType(selected.id);
                   }}
                   className="space-y-4"
                 >
                   {outputTypes.map((type) => (
-                    <div key={type.label} className="flex items-center space-x-2">
+                    <div
+                      key={type.label}
+                      className="flex items-center space-x-2"
+                    >
                       <RadioGroupItem value={type.label} id={type.label} />
-                      <Label htmlFor={type.label}>{type.label.toUpperCase()}</Label>
+                      <Label htmlFor={type.label}>
+                        {type.label.toUpperCase()}
+                      </Label>
                     </div>
                   ))}
                 </RadioGroup>
@@ -457,7 +513,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                 {/* XLF File Upload Section */}
                 {selectedOutputType === 5 && (
                   <div className="mt-4 space-y-2 rounded-md border border-border-default p-4">
-                    <p className="text-sm font-medium text-high-emphasis">Upload XLF File</p>
+                    <p className="text-sm font-medium text-high-emphasis">
+                      Upload XLF File
+                    </p>
                     <p className="text-xs text-medium-emphasis">
                       Please upload an XLF file to use as a template for export.
                     </p>
@@ -468,7 +526,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                           className="bg-surface-default hover:bg-surface-hover flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-default px-4 py-3 text-sm"
                         >
                           <Upload className="h-4 w-4 text-medium-emphasis" />
-                          <span className="text-medium-emphasis">Click to select XLF file</span>
+                          <span className="text-medium-emphasis">
+                            Click to select XLF file
+                          </span>
                         </label>
                         <input
                           id="xlf-upload"
@@ -483,7 +543,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                       <div className="bg-surface-default mt-2 flex items-center justify-between rounded-md border border-border-default px-3 py-2">
                         <div className="flex items-center gap-2">
                           <Upload className="h-4 w-4 text-success" />
-                          <span className="text-sm text-high-emphasis">{xlfFile.name}</span>
+                          <span className="text-sm text-high-emphasis">
+                            {xlfFile.name}
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -497,7 +559,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
 
                     {/* Language Selection Section for XLF */}
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-high-emphasis">Select Languages</p>
+                      <p className="text-sm font-medium text-high-emphasis">
+                        Select Languages
+                      </p>
                       <p className="text-xs text-medium-emphasis">
                         Choose one or more languages to export.
                       </p>
@@ -508,20 +572,26 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                             <Checkbox
                               id="select-all-languages"
                               checked={
-                                selectedLanguages.length === availableLanguages.length &&
+                                selectedLanguages.length ===
+                                  availableLanguages.length &&
                                 availableLanguages.length > 0
                               }
                               onCheckedChange={(checked) => {
                                 if (checked) {
                                   setSelectedLanguages(
-                                    availableLanguages.map((lang) => lang.languageCode),
+                                    availableLanguages.map(
+                                      (lang) => lang.languageCode,
+                                    ),
                                   );
                                 } else {
                                   setSelectedLanguages([]);
                                 }
                               }}
                             />
-                            <Label htmlFor="select-all-languages" className="font-normal">
+                            <Label
+                              htmlFor="select-all-languages"
+                              className="font-normal"
+                            >
                               Select all
                             </Label>
                           </div>
@@ -529,10 +599,15 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                           {/* Individual Language Checkboxes */}
                           <div className="max-h-40 space-y-3 overflow-y-auto pl-6">
                             {availableLanguages.map((lang) => (
-                              <div key={lang.itemId} className="flex items-start space-x-3">
+                              <div
+                                key={lang.itemId}
+                                className="flex items-start space-x-3"
+                              >
                                 <Checkbox
                                   id={`lang-${lang.languageCode}`}
-                                  checked={selectedLanguages.includes(lang.languageCode)}
+                                  checked={selectedLanguages.includes(
+                                    lang.languageCode,
+                                  )}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       setSelectedLanguages([
@@ -559,7 +634,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-2 text-sm text-medium-emphasis">No languages found.</div>
+                        <div className="mt-2 text-sm text-medium-emphasis">
+                          No languages found.
+                        </div>
                       )}
                     </div>
                   </div>
@@ -594,7 +671,9 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                         <Checkbox
                           id="download"
                           checked={downloadChecked}
-                          onCheckedChange={(checked) => setDownloadChecked(checked === true)}
+                          onCheckedChange={(checked) =>
+                            setDownloadChecked(checked === true)
+                          }
                         />
                       </FormControl>
                       <FormLabel className="font-normal">Download</FormLabel>
@@ -657,7 +736,8 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
                 onClick={handleExport}
                 disabled={
                   downloadChecked === false ||
-                  (selectedOutputType === 5 && (!xlfFile || selectedLanguages.length === 0)) ||
+                  (selectedOutputType === 5 &&
+                    (!xlfFile || selectedLanguages.length === 0)) ||
                   isUploadingXlf
                 }
               >

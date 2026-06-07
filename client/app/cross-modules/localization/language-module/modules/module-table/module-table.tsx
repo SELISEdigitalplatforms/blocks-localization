@@ -1,4 +1,8 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -28,13 +32,9 @@ import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossar
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
-import { useMemo, useState } from "react";
-import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { useProjectStore } from "@/store/useProjectStore";
 import { userService } from "@blocks-idp/iam/services/user.service";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -109,49 +109,48 @@ export function ModuleTable() {
     return Array.from(ids);
   }, [modulesData]);
 
-  // Fetch users by IDs using useQuery
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
     queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
     queryFn: async () => {
-      if (uniqueCreatedByIds.length === 0) return {};
+      if (uniqueCreatedByIds.length === 0) return {}
 
       const map: Record<
         string,
         { firstName: string; lastName: string; email: string; userName: string }
-      > = {};
+      > = {}
 
-      // Fetch all users in parallel
-      const promises = uniqueCreatedByIds.map(async (userId) => {
-        try {
-          const response = await userService.getUserById({
-            id: userId,
-            projectKey: tenantId,
-          });
-          if (response?.data) {
-            map[userId] = {
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              email: response.data.email,
-              userName: response.data.userName,
-            };
+      await Promise.all(
+        uniqueCreatedByIds.map(async (userId) => {
+          try {
+            const response = await userService.getUserById({
+              id: userId,
+              projectKey: tenantId,
+            })
+            if (response?.data) {
+              map[userId] = {
+                firstName: response.data.firstName,
+                lastName: response.data.lastName,
+                email: response.data.email,
+                userName: response.data.userName,
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user ${userId}:`, error)
           }
-        } catch (error) {
-          console.error(`Failed to fetch user ${userId}:`, error);
-        }
-      });
+        }),
+      )
 
-      await Promise.all(promises);
-      return map;
+      return map
     },
     enabled: !!tenantId && uniqueCreatedByIds.length > 0,
     staleTime: Infinity,
-  });
+  })
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "_";
+    if (!userId) return "—";
     if (isUsersLoading || !userMap) {
-      return "_";
+      return "—";
     }
     const user = userMap[userId];
     if (user) {
@@ -171,10 +170,10 @@ export function ModuleTable() {
         (typeof user.userName === "string" && user.userName
           ? user.userName
           : null) ||
-        "_"
+        "—"
       );
     }
-    return "_";
+    return "—";
   };
 
   const [searchValue, setSearchValue] = useState("");

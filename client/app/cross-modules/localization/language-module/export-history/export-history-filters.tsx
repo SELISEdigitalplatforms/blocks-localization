@@ -78,7 +78,7 @@ export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onCh
       <FilterToolbar
         filters={[
           { key: "search", type: "SearchInput", label: "Search" },
-          { key: "created", type: "DateRange", label: "Date", props: {} },
+          { key: "created", type: "DateRange", label: "Date", props: { disableFutureDates: true } },
         ]}
         values={{
           search: queryParams.search,
