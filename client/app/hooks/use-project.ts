@@ -25,6 +25,12 @@ export const useGetProjects = (tenantGroupId = '') => {
 
   return query
 }
+export const useGetMigrationStatus = (tenantGroupId: string) => {
+  return useQuery({
+    queryKey: ['identifier', 'migration-status', tenantGroupId],
+    queryFn: () => crossProjectService.getMigrationStatus(tenantGroupId),
+  })
+}
 
 export const useGetProject = (options: { projectId: string }) => {
   return useQuery({

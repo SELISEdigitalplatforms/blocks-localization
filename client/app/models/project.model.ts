@@ -122,4 +122,35 @@ export type LoginOption = {
   allowedGrantTypes: GRANT_TYPES[]
   ssoInfo: SSO_INFO[]
 }
+
+export interface IMigrationServiceDetails {
+  shouldOverWriteExistingData: boolean
+  serviceName: number
+}
+export interface IMigrationRequest {
+  projectKey: string
+  targetedProjectKey: string
+  tenantGroupId: string
+  services: IMigrationServiceDetails[]
+}
+
+export interface IMigrationInitiateResponse {
+  verificationId: string
+  isSuccess: boolean
+}
+
+export interface IVerifyMigrationRequest {
+  verificationId: string
+  verificationCode: string
+}
+
+export interface IMigrationVerificationResponse {
+  isValid: boolean
+  isSuccess: boolean
+  errors: unknown | null
+}
+
+export type IMigrationStatusResponse = Array<{
+  targetedProjectKey: string
+}>
 export type IGetProjectLoginOptionResponse = LoginOption
