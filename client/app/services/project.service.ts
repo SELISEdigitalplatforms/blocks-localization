@@ -15,9 +15,14 @@ import {
   IDisableProjectPayload,
   IDisableProjectResponse,
   IEnvRepository,
+  IMigrationRequest,
+  IMigrationInitiateResponse,
+  IVerifyMigrationRequest,
+  IMigrationVerificationResponse,
+  IMigrationStatusResponse,
 } from '@/models/project.model'
 import { APIResponse } from '@/models/api-response'
-import { PROJECT_ENDPOINTS } from '@/constants/projects'
+import { MIGRATION_ENDPOINTS, PROJECT_ENDPOINTS } from '@/constants/projects'
 
 
 export class ProjectService {
@@ -27,7 +32,29 @@ export class ProjectService {
     tenantGroupId = '',
   ): Promise<IProjectGroup[]> {
     const url = `${PROJECT_ENDPOINTS.GETS}?page=${page}&pageSize=${pageSize}&tenantGroupId=${tenantGroupId}`
-      return http.get(url, undefined, { absoluteUrl: true })
+    return http.get(url, undefined, { absoluteUrl: true })
+  }
+
+  // Data Migration Methods
+  initiateMigration(
+    payload: IMigrationRequest,
+  ): Promise<IMigrationInitiateResponse> {
+    return http.post(MIGRATION_ENDPOINTS.MIGRATE, payload, undefined, {
+      absoluteUrl: true,
+    })
+  }
+
+  verifyMigration(
+    payload: IVerifyMigrationRequest,
+  ): Promise<IMigrationVerificationResponse> {
+    return http.post(MIGRATION_ENDPOINTS.VERIFY, payload, undefined, {
+      absoluteUrl: true,
+    })
+  }
+
+  getMigrationStatus(tenantGroupId: string): Promise<IMigrationStatusResponse> {
+    const url = `${MIGRATION_ENDPOINTS.GET_STATUS}?tenantGroupId=${tenantGroupId}`
+    return http.get(url, undefined, { absoluteUrl: true })
   }
 
   getProject(payload: IGetProjectPayload): Promise<IGetProjectResponse> {

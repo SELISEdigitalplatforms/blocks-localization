@@ -377,6 +377,16 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: '/project-overview',
+                element: <ProjectOverviewLayout />,
+                children: [
+                  {
+                    path: 'environments',
+                    element: <EnvironmentsPage />,
+                  },
+                ],
+              },
+              {
                 // impersonate
                 element: (
                   <ImpersonationChecker>
@@ -387,6 +397,7 @@ export const router = createBrowserRouter([
                 ),
                 children: [
                   { path: '/dashboard', element: <DashboardOverview /> },
+
                   {
                     path: '/services/language',
                     element: <LocalizationLanguageHomePage />,
@@ -430,16 +441,6 @@ export const router = createBrowserRouter([
                   {
                     path: '/services/glossary/:itemId',
                     element: <LocalizationGlossaryDetailPage />,
-                  },
-                  {
-                    path: '/project-overview',
-                    element: (
-                      <Navigate to='/project-overview/environments' replace />
-                    ),
-                  },
-                  {
-                    path: '/project-overview/environments',
-                    element: <EnvironmentsPage />,
                   },
                 ],
               },
