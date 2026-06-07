@@ -70,6 +70,7 @@ import {
   ConsolePage,
   CallbackPage,
 } from '@seliseblocks/blocks-kit'
+import { DashboardOverview } from './pages/dashboard/dashboard-overview'
 
 
 // ── Root redirect: conditionally redirects based on auth state ──
@@ -385,6 +386,7 @@ export const router = createBrowserRouter([
                   </ImpersonationChecker>
                 ),
                 children: [
+                  { path: '/dashboard', element: <DashboardOverview /> },
                   {
                     path: '/services/language',
                     element: <LocalizationLanguageHomePage />,
