@@ -76,6 +76,6 @@ export const SERVICE_REGISTRY_ENDPOINTS = {
 const BUILD_SUBPATH = "/build";
 
 export const CLOUD_BUILD_ENDPOINTS = {
-  REPOS_LIST: `${API_BASES.CLOUD_BUILD}${BUILD_SUBPATH}/repos-list`,
-  REPO_UPDATE: `${API_BASES.CLOUD_BUILD}${BUILD_SUBPATH}/repo-update`,
+  REPOS_LIST: `${API_BASES.LOGIC}${BUILD_SUBPATH}/repos-list`,
+  REPO_UPDATE: `${API_BASES.LOGIC}${BUILD_SUBPATH}/repo-update`,
 } as const;

@@ -83,6 +83,7 @@ export const localizationQueryKeys = {
     byProject: (projectKey: string) => ["language-modules", projectKey] as const,
   },
   exportHistory: {
+    all: ["export-history"] as const,
     list: (
       projectKey: string,
       pageNumber: number,

@@ -34,7 +34,9 @@ export function LanguageTableToolbar({
     value
   ) => {
     if (key === "createDate") {
-      const { from, to } = value as { from?: Date; to?: Date };
+      const dateValue = value as { from?: Date; to?: Date } | null;
+      const from = dateValue?.from;
+      const to = dateValue?.to;
 
       return setQueryParams((prev) => ({
         ...prev,
@@ -44,7 +46,9 @@ export function LanguageTableToolbar({
       }));
     }
     if (key === "lastUpdateDate") {
-      const { from, to } = value as { from?: Date; to?: Date };
+      const dateValue = value as { from?: Date; to?: Date } | null;
+      const from = dateValue?.from;
+      const to = dateValue?.to;
 
       return setQueryParams((prev) => ({
         ...prev,
@@ -92,13 +96,17 @@ export function LanguageTableToolbar({
           key: "createDate",
           type: "DateRange",
           label: "Create Date",
-          props: {},
+          props: {
+            disableFutureDates: true,
+          },
         },
         {
           key: "lastUpdateDate",
           type: "DateRange",
           label: "Last Update Date",
-          props: {},
+          props: {
+            disableFutureDates: true,
+          },
         },
       ]}
       values={{

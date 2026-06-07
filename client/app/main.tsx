@@ -5,18 +5,36 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v6";
 import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";
-import { ThemeProvider } from "./hooks/use-theme";
+import { BlocksAppLayout } from '@seliseblocks/blocks-kit'
+import { ThemeProvider } from '@/hooks/use-theme'
+import { TooltipProvider } from "./components/ui-kits/tooltip/tooltip";
 import "./styles/globals.css";
 
-createRoot(document.getElementById("root")!).render(
+const darkLogoUrl = '/localization_logo_white.svg'
+const lightLogoUrl = '/localization_logo_black.svg'
+
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryProvider>
-      <ThemeProvider>
-        <NuqsAdapter>
-          <RouterProvider router={router} />
+      <NuqsAdapter>
+        <ThemeProvider>
+        <TooltipProvider>
+          <BlocksAppLayout
+            config={{
+              userBaseUrlKey: 'BLOCKS_IAM_BASE_URL',
+              projectBaseUrlKey: 'BLOCKS_LOGIC_BASE_URL',
+              appLogoUrl: {
+                dark: darkLogoUrl,
+                light: lightLogoUrl,
+              },
+            }}
+          >
+            <RouterProvider router={router} />
+          </BlocksAppLayout>
           <Toaster />
-        </NuqsAdapter>
-      </ThemeProvider>
+        </TooltipProvider>
+        </ThemeProvider>
+      </NuqsAdapter>
     </QueryProvider>
   </StrictMode>,
-);
+)

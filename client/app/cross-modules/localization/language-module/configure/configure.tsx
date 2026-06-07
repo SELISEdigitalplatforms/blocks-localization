@@ -492,7 +492,11 @@ function Configure() {
                     <FormItem>
                       <FormLabel>Secret Header Key</FormLabel>
                       <FormControl>
-                        <Input placeholder="X-Webhook-Secret" {...field} />
+                        <Input
+                          placeholder="X-Webhook-Secret"
+                          {...field}
+                          autoComplete="off"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -508,6 +512,7 @@ function Configure() {
                         <Input
                           type="password"
                           placeholder="********"
+                          autoComplete="off"
                           {...field}
                         />
                       </FormControl>

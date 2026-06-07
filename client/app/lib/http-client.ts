@@ -255,10 +255,16 @@ class HttpClient {
 
   delete<T = unknown>(
     url: string,
+    body?: RequestBody,
     headers?: HeadersInit,
     options?: Options,
   ): Promise<T> {
-    return this.request<T>(url, { method: "DELETE", headers, ...options });
+    return this.request<T>(url, {
+      method: "DELETE",
+      body,
+      headers,
+      ...options,
+    });
   }
 
   async stream(

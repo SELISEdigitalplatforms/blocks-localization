@@ -285,7 +285,7 @@ export function ModuleDetails() {
       return map;
     },
     enabled: !!tenantId && uniqueUserIds.length > 0,
-    staleTime: Infinity,
+    refetchOnMount: true,
   });
 
   if (module?.moduleName) {
