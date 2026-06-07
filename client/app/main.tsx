@@ -6,17 +6,25 @@ import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";
 import { ThemeProvider } from "./hooks/use-theme";
+import { BlocksAppLayout } from '@seliseblocks/blocks-kit'
 import "./styles/globals.css";
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryProvider>
       <ThemeProvider>
         <NuqsAdapter>
-          <RouterProvider router={router} />
+          <BlocksAppLayout
+            config={{
+              userBaseUrlKey: 'BLOCKS_IAM_BASE_URL',
+              projectBaseUrlKey: 'BLOCKS_LOCALIZATION_BASE_URL',
+            }}
+          >
+            <RouterProvider router={router} />
+          </BlocksAppLayout>
           <Toaster />
         </NuqsAdapter>
       </ThemeProvider>
     </QueryProvider>
   </StrictMode>,
-);
+)
