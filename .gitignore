@@ -156,6 +156,10 @@ server/Api/wwwroot/**
 
 /server/.claude
 
+# Puku AI assistant files
+.puku
+*.puku
+
 # Ignore environment-specific app settings, keep base appsettings.json
 # **/appsettings.*.json
 # **/appsetting.*.json
