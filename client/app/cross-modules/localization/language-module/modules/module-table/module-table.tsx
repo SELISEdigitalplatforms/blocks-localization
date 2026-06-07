@@ -109,58 +109,42 @@ export function ModuleTable() {
     return Array.from(ids);
   }, [modulesData]);
 
-  // Fetch all users for the project
-  const { data: allUsersData, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["project-users", tenantId],
+  const { data: userMap, isLoading: isUsersLoading } = useQuery({
+    queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
     queryFn: async () => {
-      const allUsers: Array<{
-        itemId: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-        userName: string;
-      }> = [];
-      const pageSize = 100;
-      let page = 0;
-      let hasMore = true;
+      if (uniqueCreatedByIds.length === 0) return {}
 
-      while (hasMore) {
-        const response = await userService.getUsers({
-          page,
-          pageSize,
-          projectKey: tenantId,
-        });
-        if (response?.data) {
-          allUsers.push(...response.data);
-          hasMore = allUsers.length < response.totalCount;
-          page++;
-        } else {
-          hasMore = false;
-        }
-      }
-      return allUsers;
+      const map: Record<
+        string,
+        { firstName: string; lastName: string; email: string; userName: string }
+      > = {}
+
+      await Promise.all(
+        uniqueCreatedByIds.map(async (userId) => {
+          try {
+            const response = await userService.getUserById({
+              id: userId,
+              projectKey: tenantId,
+            })
+            if (response?.data) {
+              map[userId] = {
+                firstName: response.data.firstName,
+                lastName: response.data.lastName,
+                email: response.data.email,
+                userName: response.data.userName,
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user ${userId}:`, error)
+          }
+        }),
+      )
+
+      return map
     },
-    enabled: !!tenantId,
-    refetchOnMount: true,
-  });
-
-  // Build userMap from allUsersData where key is itemId
-  const userMap = useMemo(() => {
-    if (!allUsersData) return undefined;
-    const map: Record<
-      string,
-      { firstName: string; lastName: string; email: string; userName: string }
-    > = {};
-    allUsersData.forEach((user) => {
-      map[user.itemId] = {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        userName: user.userName,
-      };
-    });
-    return map;
-  }, [allUsersData]);
+    enabled: !!tenantId && uniqueCreatedByIds.length > 0,
+    staleTime: Infinity,
+  })
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
@@ -329,7 +313,7 @@ export function ModuleTable() {
               setIsNewModuleDialogOpen(false);
               refetch().then(() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["project-users", tenantId],
+                  queryKey: ["module-users", tenantId],
                 });
               });
             }}

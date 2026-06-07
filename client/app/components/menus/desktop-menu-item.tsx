@@ -118,14 +118,8 @@ export function DesktopMenuItem({
         ) : null}
       </div>
       {!isSidebarOpen ? (
-        <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
-          {menu.name.length >= 8 ? (
-            <div className="max-w-[50px] break-words text-center">
-              <span>{menu.name}</span>
-            </div>
-          ) : (
-            <span className="whitespace-nowrap">{menu.name}</span>
-          )}
+        <div className="pointer-events-none absolute left-full top-0 z-20 ml-2 min-w-max whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
+          {menu.name}
         </div>
       ) : null}
       {isSidebarOpen ? <ChevronRight className="ml-auto h-4 w-4" /> : null}
