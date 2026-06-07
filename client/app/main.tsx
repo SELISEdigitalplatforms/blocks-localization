@@ -17,7 +17,7 @@ createRoot(document.getElementById('root')!).render(
           <BlocksAppLayout
             config={{
               userBaseUrlKey: 'BLOCKS_IAM_BASE_URL',
-              projectBaseUrlKey: 'BLOCKS_LOCALIZATION_BASE_URL',
+              projectBaseUrlKey: 'BLOCKS_API_BASE_URL',
             }}
           >
             <RouterProvider router={router} />
