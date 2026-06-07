@@ -9,6 +9,9 @@ import { BlocksAppLayout } from '@seliseblocks/blocks-kit'
 import { TooltipProvider } from "./components/ui-kits/tooltip/tooltip";
 import "./styles/globals.css";
 
+const darkLogoUrl = '/localization_logo_white.svg'
+const lightLogoUrl = '/localization_logo_black.svg'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryProvider>
@@ -17,7 +20,11 @@ createRoot(document.getElementById('root')!).render(
           <BlocksAppLayout
             config={{
               userBaseUrlKey: 'BLOCKS_IAM_BASE_URL',
-              projectBaseUrlKey: 'BLOCKS_API_BASE_URL',
+              projectBaseUrlKey: 'BLOCKS_LOGIC_BASE_URL',
+              appLogoUrl: {
+                dark: darkLogoUrl,
+                light: lightLogoUrl,
+              },
             }}
           >
             <RouterProvider router={router} />
