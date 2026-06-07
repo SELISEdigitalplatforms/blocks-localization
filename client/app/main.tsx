@@ -6,6 +6,7 @@ import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";
 import { BlocksAppLayout } from '@seliseblocks/blocks-kit'
+import { ThemeProvider } from '@/hooks/use-theme'
 import { TooltipProvider } from "./components/ui-kits/tooltip/tooltip";
 import "./styles/globals.css";
 
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryProvider>
       <NuqsAdapter>
+        <ThemeProvider>
         <TooltipProvider>
           <BlocksAppLayout
             config={{
@@ -31,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
           </BlocksAppLayout>
           <Toaster />
         </TooltipProvider>
+        </ThemeProvider>
       </NuqsAdapter>
     </QueryProvider>
   </StrictMode>,
