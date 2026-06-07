@@ -1,5 +1,4 @@
 import { AddEnvironmentModal } from '@/components/environment-card/add-environment-modal'
-import { EnvironmentCard } from '@/components/environment-card/environment-card'
 import { ProjectCardLoading } from '@/components/project-card/loading'
 import {
   Dialog,
@@ -15,9 +14,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui-kits/tooltip/tooltip'
 import { useNotificationListener } from '@/cross-modules/utilities/notification'
-
 import { useGetMigrationStatus, useGetProjects } from '@/hooks/use-project'
 import { useProjectStore } from '@/store/useProjectStore'
+import { EnvironmentCard } from '@seliseblocks/blocks-kit'
 import { CircleHelp } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
