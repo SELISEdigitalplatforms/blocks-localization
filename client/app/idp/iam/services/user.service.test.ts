@@ -49,14 +49,19 @@ describe("UserService", () => {
 
       const result = await service.getUsers(mockGetUsersPayload);
 
-      expect(http.post).toHaveBeenCalledWith(USER_ENDPOINTS.GET_USERS, mockGetUsersPayload);
+      expect(http.post).toHaveBeenCalledWith(
+        USER_ENDPOINTS.GET_USERS,
+        mockGetUsersPayload,
+      );
       expect(result).toEqual(mockUsersResponse);
     });
 
     it("should throw when the API call fails", async () => {
       vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getUsers(mockGetUsersPayload)).rejects.toThrow("Network error");
+      await expect(service.getUsers(mockGetUsersPayload)).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
@@ -97,7 +102,10 @@ describe("UserService", () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
       await expect(
-        service.getUserById({ id: MOCK_USER_ITEM_ID, projectKey: TEST_PROJECT_KEY }),
+        service.getUserById({
+          id: MOCK_USER_ITEM_ID,
+          projectKey: TEST_PROJECT_KEY,
+        }),
       ).rejects.toThrow("Network error");
     });
   });
@@ -109,32 +117,80 @@ describe("UserService", () => {
 
       const result = await service.addUser(mockCreateUserPayload);
 
-      expect(http.post).toHaveBeenCalledWith(USER_ENDPOINTS.CREATE, mockCreateUserPayload);
+      expect(http.post).toHaveBeenCalledWith(
+        USER_ENDPOINTS.CREATE,
+        mockCreateUserPayload,
+      );
       expect(result).toEqual(mockSuccessResponse);
     });
 
     it("should throw when the API call fails", async () => {
       vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.addUser(mockCreateUserPayload)).rejects.toThrow("Network error");
+      await expect(service.addUser(mockCreateUserPayload)).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
   // ─── updateUser ───────────────────────────────────────────────────────────
   describe("updateUser", () => {
-    it("should POST to the correct endpoint with payload", async () => {
-      vi.mocked(http.post).mockResolvedValue(mockSuccessResponse);
+    it("should PUT to the correct endpoint with normalized payload", async () => {
+      vi.mocked(http.put).mockResolvedValue(mockSuccessResponse);
 
       const result = await service.updateUser(mockUpdateUserPayload);
 
-      expect(http.post).toHaveBeenCalledWith(USER_ENDPOINTS.UPDATE, mockUpdateUserPayload);
+      expect(http.put).toHaveBeenCalledWith(
+        `${USER_ENDPOINTS.UPDATE}/${mockUpdateUserPayload.itemId}`,
+        { ...mockUpdateUserPayload, roles: [], permissions: [] },
+      );
       expect(result).toEqual(mockSuccessResponse);
     });
 
-    it("should throw when the API call fails", async () => {
-      vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
+    it("should normalize org-keyed roles/permissions to flat arrays", async () => {
+      vi.mocked(http.put).mockResolvedValue(mockSuccessResponse);
 
-      await expect(service.updateUser(mockUpdateUserPayload)).rejects.toThrow("Network error");
+      const orgKeyedPayload = {
+        ...mockUpdateUserPayload,
+        roles: { default: ["admin", "editor"] } as unknown as string[],
+        permissions: { default: ["read", "write"] } as unknown as string[],
+      };
+
+      await service.updateUser(orgKeyedPayload);
+
+      expect(http.put).toHaveBeenCalledWith(
+        `${USER_ENDPOINTS.UPDATE}/${mockUpdateUserPayload.itemId}`,
+        {
+          ...mockUpdateUserPayload,
+          roles: ["admin", "editor"],
+          permissions: ["read", "write"],
+        },
+      );
+    });
+
+    it("should pass through flat string arrays as-is", async () => {
+      vi.mocked(http.put).mockResolvedValue(mockSuccessResponse);
+
+      const payloadWithArrays = {
+        ...mockUpdateUserPayload,
+        roles: ["admin"],
+        permissions: ["read"],
+      };
+
+      await service.updateUser(payloadWithArrays);
+
+      expect(http.put).toHaveBeenCalledWith(
+        `${USER_ENDPOINTS.UPDATE}/${mockUpdateUserPayload.itemId}`,
+        payloadWithArrays,
+      );
+    });
+
+    it("should throw when the API call fails", async () => {
+      vi.mocked(http.put).mockRejectedValue(new Error("Network error"));
+
+      await expect(service.updateUser(mockUpdateUserPayload)).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
@@ -143,7 +199,9 @@ describe("UserService", () => {
     it("should GET with correct query params", async () => {
       vi.mocked(http.get).mockResolvedValue(mockSignUpSettingResponse);
 
-      const result = await service.getSignUpSetting(mockGetSignUpSettingPayload);
+      const result = await service.getSignUpSetting(
+        mockGetSignUpSettingPayload,
+      );
 
       expect(http.get).toHaveBeenCalledWith(
         `${USER_ENDPOINTS.GET_SIGNUP_SETTING}?ProjectKey=${mockGetSignUpSettingPayload.projectKey}`,
@@ -154,9 +212,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getSignUpSetting(mockGetSignUpSettingPayload)).rejects.toThrow(
-        "Network error",
-      );
+      await expect(
+        service.getSignUpSetting(mockGetSignUpSettingPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -165,7 +223,9 @@ describe("UserService", () => {
     it("should POST to the correct endpoint with payload", async () => {
       vi.mocked(http.post).mockResolvedValue(mockSuccessResponse);
 
-      const result = await service.saveSignUpSetting(mockSaveSignUpSettingPayload);
+      const result = await service.saveSignUpSetting(
+        mockSaveSignUpSettingPayload,
+      );
 
       expect(http.post).toHaveBeenCalledWith(
         USER_ENDPOINTS.SAVE_SIGNUP_SETTING,
@@ -177,9 +237,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.saveSignUpSetting(mockSaveSignUpSettingPayload)).rejects.toThrow(
-        "Network error",
-      );
+      await expect(
+        service.saveSignUpSetting(mockSaveSignUpSettingPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -188,7 +248,9 @@ describe("UserService", () => {
     it("should POST to the correct endpoint with payload", async () => {
       vi.mocked(http.post).mockResolvedValue(mockSuccessResponse);
 
-      const result = await service.saveRolesAndPermissions(mockSaveRolesAndPermissionsPayload);
+      const result = await service.saveRolesAndPermissions(
+        mockSaveRolesAndPermissionsPayload,
+      );
 
       expect(http.post).toHaveBeenCalledWith(
         USER_ENDPOINTS.SAVE_ROLES_AND_PERMISSIONS,
@@ -227,7 +289,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getSessions(mockGetSessionsPayload)).rejects.toThrow("Network error");
+      await expect(service.getSessions(mockGetSessionsPayload)).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
@@ -252,7 +316,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getHistories(mockGetHistoriesPayload)).rejects.toThrow("Network error");
+      await expect(
+        service.getHistories(mockGetHistoriesPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -292,7 +358,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.generatePats(mockGeneratePATPayload)).rejects.toThrow("Network error");
+      await expect(
+        service.generatePats(mockGeneratePATPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -313,7 +381,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getUserRoles(mockGetUserRolesPayload)).rejects.toThrow("Network error");
+      await expect(
+        service.getUserRoles(mockGetUserRolesPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -323,7 +393,9 @@ describe("UserService", () => {
       const mockResponse = { data: ["read"], errors: null };
       vi.mocked(http.get).mockResolvedValue(mockResponse);
 
-      const result = await service.getUserPermissions(mockGetUserPermissionsPayload);
+      const result = await service.getUserPermissions(
+        mockGetUserPermissionsPayload,
+      );
 
       expect(http.get).toHaveBeenCalledWith(
         `${USER_ENDPOINTS.GET_USER_PERMISSIONS}?Id=${mockGetUserPermissionsPayload.userId}&ProjectKey=${mockGetUserPermissionsPayload.projectKey}`,
@@ -334,9 +406,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.get).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.getUserPermissions(mockGetUserPermissionsPayload)).rejects.toThrow(
-        "Network error",
-      );
+      await expect(
+        service.getUserPermissions(mockGetUserPermissionsPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 
@@ -345,7 +417,9 @@ describe("UserService", () => {
     it("should POST to the correct endpoint with payload", async () => {
       vi.mocked(http.post).mockResolvedValue(mockSuccessResponse);
 
-      const result = await service.accountDeactivate(mockResendActivationPayload);
+      const result = await service.accountDeactivate(
+        mockResendActivationPayload,
+      );
 
       expect(http.post).toHaveBeenCalledWith(
         USER_ENDPOINTS.DEACTIVATE,
@@ -357,9 +431,9 @@ describe("UserService", () => {
     it("should throw when the API call fails", async () => {
       vi.mocked(http.post).mockRejectedValue(new Error("Network error"));
 
-      await expect(service.accountDeactivate(mockResendActivationPayload)).rejects.toThrow(
-        "Network error",
-      );
+      await expect(
+        service.accountDeactivate(mockResendActivationPayload),
+      ).rejects.toThrow("Network error");
     });
   });
 });

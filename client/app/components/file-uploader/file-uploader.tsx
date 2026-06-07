@@ -289,8 +289,8 @@ FileUploaderContent.displayName = "FileUploaderContent";
 export const FileUploaderItem = forwardRef<
   HTMLDivElement,
   // eslint-disable-next-line no-undef
-  { index: number } & React.HTMLAttributes<HTMLDivElement>
->(({ className, index, children, ...props }, ref) => {
+  { index: number; disabled?: boolean } & React.HTMLAttributes<HTMLDivElement>
+>(({ className, index, disabled = false, children, ...props }, ref) => {
   const { removeFileFromSet, activeIndex, direction } = useFileUpload();
   const isSelected = index === activeIndex;
   return (
@@ -298,9 +298,10 @@ export const FileUploaderItem = forwardRef<
       ref={ref}
       className={cn(
         buttonVariants({ variant: "ghost" }),
-        "relative h-6 cursor-pointer justify-between p-1",
+        "relative h-6 justify-between p-1",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         className,
-        isSelected ? "bg-muted" : "",
+        isSelected && !disabled ? "bg-muted" : "",
       )}
       {...props}
     >
@@ -309,11 +310,21 @@ export const FileUploaderItem = forwardRef<
       </div>
       <button
         type="button"
-        className={cn("absolute", direction === "rtl" ? "left-1 top-1" : "right-1 top-1")}
-        onClick={() => removeFileFromSet(index)}
+        disabled={disabled}
+        className={cn(
+          "absolute",
+          direction === "rtl" ? "left-1 top-1" : "right-1 top-1",
+          disabled ? "cursor-not-allowed" : "cursor-pointer",
+        )}
+        onClick={() => !disabled && removeFileFromSet(index)}
       >
         <span className="sr-only">remove item {index}</span>
-        <RemoveIcon className="h-4 w-4 duration-200 ease-in-out hover:stroke-destructive" />
+        <RemoveIcon
+          className={cn(
+            "h-4 w-4 duration-200 ease-in-out",
+            disabled ? "" : "hover:stroke-destructive",
+          )}
+        />
       </button>
     </div>
   );

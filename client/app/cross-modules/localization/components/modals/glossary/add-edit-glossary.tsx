@@ -4,6 +4,8 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogDescription,
+  DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
 import {
   Popover,
@@ -190,11 +192,12 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
   };
 
   return (
-    <DialogContent className="sm:max-w-[500px]">
+    <DialogContent className="sm:max-w-[500px] max-h-[93vh] overflow-y-auto">
       <DialogHeader>
-        <h2 className="text-lg font-semibold">
+        <DialogTitle className="text-lg font-semibold">
           {isEditMode ? "Edit Glossary" : "Add Glossary"}
-        </h2>
+        </DialogTitle>
+        <DialogDescription />
       </DialogHeader>
 
       <Form {...form}>
@@ -401,7 +404,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-left font-medium text-high-emphasis">
-                  Context / Description
+                  Context
                 </FormLabel>
                 <FormControl>
                   <Textarea
@@ -425,7 +428,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <FormLabel className="flex w-fit cursor-help items-center gap-1.5 text-left font-medium text-high-emphasis">
-                        Additional User Notes
+                        Additional Notes
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </FormLabel>
                     </TooltipTrigger>

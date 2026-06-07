@@ -135,7 +135,7 @@ const GlossaryTable: React.FC = () => {
         header: () => (
           <div className="flex items-center">
             <span className="font-bold text-medium-emphasis">
-              Context / Description
+              Context
             </span>
           </div>
         ),
