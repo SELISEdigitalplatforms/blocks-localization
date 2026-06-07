@@ -108,7 +108,7 @@ export function SidebarMenuDesktop() {
         ))}
 
       {isProjectOverviewRoute ? (
-        <ProjectOverviewSidebarDesktop isSidebarOpen={isSidebarOpen} />
+        <ProjectOverviewSidebarDesktop />
       ) : (
         <div className="w-full flex-1">
           <nav className="grid w-full items-start gap-1 text-sm">
