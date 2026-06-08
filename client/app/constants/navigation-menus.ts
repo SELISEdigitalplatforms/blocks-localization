@@ -10,6 +10,10 @@ export const navigationMenus: Menu[] = [
     icon: Home,
   },
   {
+    type: "separator",
+    id: "separator-overview",
+  },
+  {
     type: "menu",
     id: "service-localization__language",
     name: "Translations",
