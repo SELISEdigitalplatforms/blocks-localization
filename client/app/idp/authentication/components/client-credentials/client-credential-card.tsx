@@ -1,6 +1,10 @@
-
 import { Badge } from "@/components/ui-kits/badge/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui-kits/card/card";
 import { MaskedText } from "@/components/masked-text";
 import { ReactNode, useState } from "react";
 import { CopyToClipboardButton } from "@/components/copy-to-clipboard-button";
@@ -8,7 +12,7 @@ import { format } from "date-fns";
 import { IClientCredentialsConfig } from "@blocks-idp/authentication/models/auth.oidc.model";
 import { Button } from "@/components/ui-kits/button/button";
 import { useDeleteAuthClient } from "@blocks-idp/authentication/hooks/use-auth-clients";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
@@ -18,7 +22,9 @@ const Item = ({ label, children }: { label: string; children: ReactNode }) => {
   return (
     <div className="min-w-0">
       <p className="mb-2 text-sm font-medium text-low-emphasis">{label}</p>
-      <div className="break-words text-base font-normal text-high-emphasis">{children}</div>
+      <div className="break-words text-base font-normal text-high-emphasis">
+        {children}
+      </div>
     </div>
   );
 };
@@ -27,7 +33,9 @@ type ClientInfoCardProps = {
   clientCredential: IClientCredentialsConfig;
 };
 
-export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps) => {
+export const ClientCredentialsCard = ({
+  clientCredential,
+}: ClientInfoCardProps) => {
   const [open, setOpen] = useState<boolean>(false);
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
   const { mutateAsync, isPending } = useDeleteAuthClient({
@@ -42,10 +50,13 @@ export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps)
       };
       const res = await mutateAsync(payload);
       if (!res.isSuccess) return showErrorToast({ errors: res.error });
-      showSuccessToast({ description: "Client credential deleted successfully" });
+      showSuccessToast({
+        description: "Client credential deleted successfully",
+      });
       setOpen(false);
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       return showErrorToast({ errors: "Something went wrong" });
     }
   };
@@ -57,7 +68,9 @@ export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps)
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-3">
               <CardTitle> {clientCredential.name} </CardTitle>
-              {clientCredential.isActive && <Badge variant="success">Active</Badge>}
+              {clientCredential.isActive && (
+                <Badge variant="success">Active</Badge>
+              )}
             </div>
             <div>
               <Button
@@ -88,7 +101,9 @@ export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps)
               </Item>
 
               <Item label="Client Secret">
-                <CopyToClipboardButton textToCopy={clientCredential.clientSecret}>
+                <CopyToClipboardButton
+                  textToCopy={clientCredential.clientSecret}
+                >
                   <MaskedText
                     text={clientCredential.clientSecret}
                     length={30}
@@ -104,9 +119,11 @@ export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps)
                   clientCredential.audiences &&
                   clientCredential.audiences.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {clientCredential.audiences.map((audience: string, index) => (
-                        <span key={index}>{audience}</span>
-                      ))}
+                      {clientCredential.audiences.map(
+                        (audience: string, index) => (
+                          <span key={index}>{audience}</span>
+                        ),
+                      )}
                     </div>
                   ) : (
                     <span>N/A</span>
@@ -116,10 +133,15 @@ export const ClientCredentialsCard = ({ clientCredential }: ClientInfoCardProps)
 
               <Item label="Role(s)">
                 <div className="flex items-center gap-2">
-                  {clientCredential.roles && clientCredential.roles.length > 0 ? (
+                  {clientCredential.roles &&
+                  clientCredential.roles.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
                       {clientCredential.roles.map((role: string, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {role}
                         </Badge>
                       ))}

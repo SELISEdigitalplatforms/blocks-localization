@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { DefaultDoc } from "./default-doc";
 import { SelfProject } from "./self-project";
 
@@ -8,7 +8,7 @@ export const Console = () => {
   useEffect(() => {
     resetSelectedProject();
   }, [resetSelectedProject]);
-  
+
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="relative flex flex-1 flex-col gap-12 px-6 py-10 sm:px-10 xl:px-[154px]">
