@@ -1,7 +1,18 @@
-import { BookText, Languages, Blocks, Cog } from "lucide-react";
+import { BookText, Languages, Blocks, Cog, Home } from "lucide-react";
 import { Menu } from "@/models/menu-models";
 
 export const navigationMenus: Menu[] = [
+  {
+    id: "overview-project",
+    type: "menu",
+    name: "Overview",
+    path: "/dashboard",
+    icon: Home,
+  },
+  {
+    type: "separator",
+    id: "separator-overview",
+  },
   {
     type: "menu",
     id: "service-localization__language",
