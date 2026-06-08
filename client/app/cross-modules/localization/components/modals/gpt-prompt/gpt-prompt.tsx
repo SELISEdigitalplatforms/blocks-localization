@@ -14,12 +14,12 @@ import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
-const GptPrompt: React.FC<{ defaultValue?: string; keyDetails: IBlocksLanguageKey }> = ({
-  defaultValue: propDefaultValue,
-  keyDetails,
-}) => {
+const GptPrompt: React.FC<{
+  defaultValue?: string;
+  keyDetails: IBlocksLanguageKey;
+}> = ({ defaultValue: propDefaultValue, keyDetails }) => {
   const defaultValue =
     propDefaultValue ||
     "The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
@@ -63,7 +63,9 @@ const GptPrompt: React.FC<{ defaultValue?: string; keyDetails: IBlocksLanguageKe
             ? keyDetails.resources
             : [],
         routes:
-          keyDetails?.routes?.length && keyDetails?.routes?.length > 0 ? keyDetails.routes : [],
+          keyDetails?.routes?.length && keyDetails?.routes?.length > 0
+            ? keyDetails.routes
+            : [],
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
         projectKey: tenantId,
@@ -95,7 +97,10 @@ const GptPrompt: React.FC<{ defaultValue?: string; keyDetails: IBlocksLanguageKe
   }
 
   return (
-    <DialogContent className="md:min-w-[720px]" aria-describedby="dialog-description">
+    <DialogContent
+      className="md:min-w-[720px]"
+      aria-describedby="dialog-description"
+    >
       <DialogHeader className="mb-2">
         <DialogTitle>Auto translation prompt</DialogTitle>
         <DialogDescription></DialogDescription>
@@ -109,7 +114,11 @@ const GptPrompt: React.FC<{ defaultValue?: string; keyDetails: IBlocksLanguageKe
               <Undo2 className="mr-2 h-5 w-5" />
               Restore default
             </Button>
-            <Button variant="secondary" className="ml-[16px]" onClick={clearValue}>
+            <Button
+              variant="secondary"
+              className="ml-[16px]"
+              onClick={clearValue}
+            >
               <Delete className="mr-2 h-5 w-5" />
               Clear
             </Button>
@@ -123,7 +132,8 @@ const GptPrompt: React.FC<{ defaultValue?: string; keyDetails: IBlocksLanguageKe
               className="h-28 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <div className="border-0 bg-background px-3 py-2 text-sm text-muted-foreground">
-              Translate the following from {"{CurrentLanguage}"} to {"{DestinationLanguage}"}:&apos;
+              Translate the following from {"{CurrentLanguage}"} to{" "}
+              {"{DestinationLanguage}"}:&apos;
               {"{SourceText}"}&apos;.
             </div>
           </div>

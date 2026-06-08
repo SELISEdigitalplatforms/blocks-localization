@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import {
   Card,
@@ -9,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui-kits/card/card";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetSavedPublicCertificates } from "@blocks-idp/authentication/hooks/use-identifier";
 import { Waypoints } from "lucide-react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
@@ -62,12 +60,14 @@ const LoadingSkelton = () => {
 
 export const Certificates = () => {
   const projectKey = useProjectStore().selectedProject?.tenantId ?? "";
-  const { isLoading, data: existingCertificate } = useGetSavedPublicCertificates(projectKey);
+  const { isLoading, data: existingCertificate } =
+    useGetSavedPublicCertificates(projectKey);
   const { data: jwtClaimData, isLoading: isJwtClaimLoading } = useGetJwtClaim(
     { projectKey, itemId: "" },
     !!projectKey && !!existingCertificate?.isConfigured,
   );
-  const [isJwtClaimModalOpen, setIsJwtClaimModalOpen] = useState<boolean>(false);
+  const [isJwtClaimModalOpen, setIsJwtClaimModalOpen] =
+    useState<boolean>(false);
   const handleJwtClaim = () => {
     setIsJwtClaimModalOpen(true);
   };
@@ -86,8 +86,8 @@ export const Certificates = () => {
     <>
       {!isLoading && !isJwtClaimLoading && !hasJwtClaimData && (
         <div className="text-blocks-error mb-4 flex flex-col items-center justify-center gap-1 rounded-sm border border-base-error bg-blocks-error-100 px-4 py-4 text-base font-normal text-blocks-error-800 md:flex-row">
-          You didn&apos;t map the jwt claims. To ignore 401(Unauthorized) in api request please{" "}
-          <span className="underline">Map JWT Claims</span>.
+          You didn&apos;t map the jwt claims. To ignore 401(Unauthorized) in api
+          request please <span className="underline">Map JWT Claims</span>.
         </div>
       )}
       <Card>
@@ -95,7 +95,9 @@ export const Certificates = () => {
           <div className="flex items-start justify-between">
             <div className="flex flex-col gap-2">
               <CardTitle>External IdP</CardTitle>
-              <CardDescription>Your connected identity provider</CardDescription>
+              <CardDescription>
+                Your connected identity provider
+              </CardDescription>
             </div>
             <div className="flex gap-2">
               <div className="flex gap-2">
@@ -116,13 +118,19 @@ export const Certificates = () => {
           <div className="flex flex-col gap-4 md:flex-row md:gap-8">
             {/* Provider Section */}
             <div className="md:w-[20%]">
-              <label className="mb-2 block text-sm text-gray-600">Provider</label>
+              <label className="mb-2 block text-sm text-gray-600">
+                Provider
+              </label>
               <div className="flex items-center gap-2 text-sm font-medium">
                 {(() => {
                   const provider = providers.find(
-                    (p) => p.name.toLowerCase() === existingCertificate.providerName?.toLowerCase(),
+                    (p) =>
+                      p.name.toLowerCase() ===
+                      existingCertificate.providerName?.toLowerCase(),
                   );
-                  const isOthers = existingCertificate.providerName?.toLowerCase() === "others";
+                  const isOthers =
+                    existingCertificate.providerName?.toLowerCase() ===
+                    "others";
 
                   if (isOthers) {
                     return (
@@ -151,7 +159,9 @@ export const Certificates = () => {
             <div className="flex-1">
               <label className="mb-2 block text-sm text-gray-600">URL</label>
               <div className="break-all text-sm font-medium">
-                {existingCertificate.jwksUrl || existingCertificate.publicCertificatePath || "-"}
+                {existingCertificate.jwksUrl ||
+                  existingCertificate.publicCertificatePath ||
+                  "-"}
               </div>
             </div>
           </div>
@@ -168,7 +178,9 @@ export const Certificates = () => {
 
             {/* Audience Section */}
             <div className="flex-1">
-              <label className="mb-2 block text-sm text-gray-600">Audience</label>
+              <label className="mb-2 block text-sm text-gray-600">
+                Audience
+              </label>
               <div className="break-all text-sm font-medium">
                 {existingCertificate.audiences?.length
                   ? existingCertificate.audiences.join(", ")
@@ -179,7 +191,10 @@ export const Certificates = () => {
         </CardContent>
       </Card>
 
-      <MapJwtClaimModal open={isJwtClaimModalOpen} onOpenChange={setIsJwtClaimModalOpen} />
+      <MapJwtClaimModal
+        open={isJwtClaimModalOpen}
+        onOpenChange={setIsJwtClaimModalOpen}
+      />
     </>
   );
 };
