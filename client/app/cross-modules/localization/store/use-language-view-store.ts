@@ -25,7 +25,6 @@ const isValidOptionalColumn = (column: string): boolean => {
 };
 
 interface LanguageViewState {
-  // Include tenantId in state so persist middleware can detect project changes
   tenantId: string;
   selectedLanguages: string[];
   setSelectedLanguages: (languages: string[]) => void;
@@ -46,7 +45,7 @@ const cookieStorage = {
       const value = getCookie(COOKIE_NAME);
       if (!value) return null;
 
-      // Parse the stored data - it contains all tenant settings
+      // Parse the stored data - it contains all tenant settings keyed by tenantId
       const parsed = JSON.parse(decodeURIComponent(value)) as Record<
         string,
         {
@@ -55,21 +54,21 @@ const cookieStorage = {
         }
       >;
 
-      // Get tenantId from the state being rehydrated (passed via the value parameter)
-      // The value contains the full persisted state including tenantId
-      const stateValue = JSON.parse(value);
-      const tenantId = stateValue?.state?.tenantId || "";
+      // The value parameter contains the zustand persist format: { state: { tenantId, ... }, version }
+      // Extract tenantId from the incoming state to know which tenant's settings to read
+      const stateToRehydrate = JSON.parse(value);
+      const tenantId = stateToRehydrate?.state?.tenantId || "";
 
       // If no tenantId in state, return null to use defaults
       if (!tenantId) return null;
 
-      // Get the settings for the current tenant, or use defaults
+      // Get the settings for the current tenant from our cookie storage, or use defaults
       const tenantSettings = parsed[tenantId] || {
         selectedLanguages: [],
         selectedOptionalColumns: [],
       };
 
-      // Validate and sanitize data on read
+      // Validate and sanitize data on read, then return in zustand persist format
       const sanitized = {
         state: {
           tenantId,
@@ -133,7 +132,7 @@ const cookieStorage = {
 
 export const useLanguageViewStore = create<LanguageViewState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       tenantId: "",
       selectedLanguages: [],
       isHydrated: false,
@@ -192,7 +191,6 @@ export const useLanguageViewStore = create<LanguageViewState>()(
         state?.setIsHydrated(true);
       },
       // Partialize to only persist selectedLanguages and selectedOptionalColumns
-      // tenantId is used for cookie key lookup but not persisted as part of state
       partialize: (state) => ({
         tenantId: state.tenantId,
         selectedLanguages: state.selectedLanguages,
@@ -202,12 +200,8 @@ export const useLanguageViewStore = create<LanguageViewState>()(
   ),
 );
 
-// Helper function to update tenantId and trigger re-persist
-// Call this when the project changes to ensure correct settings are loaded
+// Helper function to update tenantId
+// Call this when the project changes to ensure persist middleware loads correct settings
 export const updateLanguageViewTenantId = (tenantId: string) => {
-  useLanguageViewStore.setState({
-    tenantId,
-    selectedLanguages: [],
-    selectedOptionalColumns: [],
-  });
+  useLanguageViewStore.setState({ tenantId });
 };

@@ -357,18 +357,26 @@ export function LanguageTable() {
     setTranslatingKeys(new Set());
   });
 
-  // Reset page number and view state when the project changes, but preserve filters like missingLanguages
-  // Only reset if this is NOT the initial mount and store is hydrated
-  const isInitialMountRef = useRef(true);
+  // Track the previous tenantId to detect actual project changes
+  const prevTenantIdRef = useRef<string | null>(null);
+
+  // Handle project changes - only reset when switching to a DIFFERENT project
   useEffect(() => {
-    // Skip reset on initial mount or if store is not yet hydrated
-    if (isInitialMountRef.current || !isHydrated) {
-      isInitialMountRef.current = false;
+    if (!isHydrated || !tenantId) return;
+
+    const prevTenantId = prevTenantIdRef.current;
+
+    // If this is the initial mount or the same project, don't reset settings
+    if (prevTenantId === null || prevTenantId === tenantId) {
+      // Just update the tenantId in the store for cookie key lookup
+      updateLanguageViewTenantId(tenantId);
+      prevTenantIdRef.current = tenantId;
       return;
     }
-    // Only reset page number to 0 when tenantId changes, preserving all filters including missingLanguages
-    if (tenantId) {
-      // Update the store's tenantId to load correct project-specific settings from cookie
+
+    // Only reset when switching to a different project
+    if (prevTenantId !== tenantId) {
+      prevTenantIdRef.current = tenantId;
       updateLanguageViewTenantId(tenantId);
       setQueryParams((prev) => ({
         ...prev,
@@ -378,18 +386,6 @@ export function LanguageTable() {
       sortReset();
     }
   }, [tenantId, isHydrated, setQueryParams, resetSelectedLanguages, sortReset]);
-
-  // Set tenantId on initial hydration to ensure correct cookie settings are loaded
-  const isInitialHydrationRef = useRef(true);
-  useEffect(() => {
-    if (!isHydrated || !tenantId) return;
-
-    if (isInitialHydrationRef.current) {
-      // On initial hydration, set the tenantId so persist middleware reads correct settings
-      updateLanguageViewTenantId(tenantId);
-      isInitialHydrationRef.current = false;
-    }
-  }, [isHydrated, tenantId]);
 
   const deleteLanguageKeyModalData = {
     dialogTitle: "Delete language key?",
