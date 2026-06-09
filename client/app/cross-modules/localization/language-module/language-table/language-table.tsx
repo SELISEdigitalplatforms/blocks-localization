@@ -504,7 +504,7 @@ export function LanguageTable() {
   // Only resets to defaults if the current tenant has no persisted view settings.
   // Wait for store to hydrate from the cookie before applying any logic.
   useEffect(() => {
-    if (!languageListData || !isHydrated) return;
+    if (!languageListData?.length || !isHydrated) return;
 
     const current = selectedLanguagesRef.current;
     const availableLanguageCodes = languageListData.map(
