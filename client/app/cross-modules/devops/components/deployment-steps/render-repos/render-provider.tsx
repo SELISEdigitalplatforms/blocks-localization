@@ -12,7 +12,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { useNavigate } from "react-router-dom";
 import { useValidateAuthorization } from "@/cross-modules/devops/hooks/github-info";
 import { IProviderDestination } from "@/cross-modules/devops/models/utils";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 interface ProviderButtonsProps extends IProviderDestination {
   onClose?: (verifyAuth?: boolean) => void | Promise<void>;
@@ -31,9 +31,9 @@ const ProviderButtons = ({
 
   const { data: verifyAuth } = useValidateAuthorization();
   const [, setSelectedProvider] = useState<string | null>(null);
-  
+
   const targetDestination = destination || "/devops/configure";
-  
+
   if (destination) {
     localStorage.setItem("destination", destination);
   }
@@ -101,7 +101,9 @@ const ProviderButtons = ({
                   height={18}
                   className="object-contain"
                 />
-                <span className="text-foreground">Continue with {provider.name}</span>
+                <span className="text-foreground">
+                  Continue with {provider.name}
+                </span>
               </Button>
             );
           })}

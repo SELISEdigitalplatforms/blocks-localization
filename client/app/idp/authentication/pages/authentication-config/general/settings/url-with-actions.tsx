@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Check, Copy, Download } from "lucide-react";
 import { getApiUrl } from "@/lib/get-api-path";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 interface UrlWithActionsProps {
   url: string;
@@ -65,7 +65,10 @@ export const UrlWithActions = ({ url }: UrlWithActionsProps) => {
 
   return (
     <div className="group flex min-w-0 items-center gap-1">
-      <span className="text-base font-normal text-high-emphasis underline" title={jwksUrl}>
+      <span
+        className="text-base font-normal text-high-emphasis underline"
+        title={jwksUrl}
+      >
         certificate
       </span>
       <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">

@@ -52,7 +52,7 @@ import {
   useGetLanguages,
   useSaveGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";

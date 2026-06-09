@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui-kits/badge/badge";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import {
   useSaveBlocksLanguageKey,
   useSearchGlossaries,
@@ -36,12 +36,19 @@ interface EditKeyGlossaryProps {
   onClose: () => void;
 }
 
-function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlossaryProps) {
+function EditKeyGlossary({
+  keyDetails,
+  resolvedGlossaries,
+  onClose,
+}: EditKeyGlossaryProps) {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  const [selectedIds, setSelectedIds] = useState<string[]>(keyDetails.glossaryIds ?? []);
-  const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>(resolvedGlossaries);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    keyDetails.glossaryIds ?? [],
+  );
+  const [selectedGlossaries, setSelectedGlossaries] =
+    useState<IGlossary[]>(resolvedGlossaries);
   const [searchText, setSearchText] = useState("");
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -57,7 +64,9 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
       const alreadySelected = selectedIds.includes(glossary.itemId);
       if (alreadySelected) {
         setSelectedIds((prev) => prev.filter((id) => id !== glossary.itemId));
-        setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossary.itemId));
+        setSelectedGlossaries((prev) =>
+          prev.filter((g) => g.itemId !== glossary.itemId),
+        );
       } else {
         setSelectedIds((prev) => [...prev, glossary.itemId]);
         setSelectedGlossaries((prev) => [...prev, glossary]);
@@ -68,7 +77,9 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
 
   const handleRemove = useCallback((glossaryId: string) => {
     setSelectedIds((prev) => prev.filter((id) => id !== glossaryId));
-    setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossaryId));
+    setSelectedGlossaries((prev) =>
+      prev.filter((g) => g.itemId !== glossaryId),
+    );
   }, []);
 
   async function handleSave() {
@@ -125,7 +136,11 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
         {selectedGlossaries.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {selectedGlossaries.map((glossary) => (
-              <Badge key={glossary.itemId} variant="secondary" className="gap-1 pr-1">
+              <Badge
+                key={glossary.itemId}
+                variant="secondary"
+                className="gap-1 pr-1"
+              >
                 {glossary.name}
                 <button
                   type="button"
@@ -172,7 +187,9 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
                       <div className="flex flex-1 items-center gap-2">
                         <span>{glossary.name}</span>
                         {glossary.type && (
-                          <span className="text-xs text-muted-foreground">({glossary.type})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({glossary.type})
+                          </span>
                         )}
                       </div>
                       {selectedIds.includes(glossary.itemId) && (

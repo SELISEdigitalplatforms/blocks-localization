@@ -14,14 +14,16 @@ import { useMemo } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useSaveBlocksLanguageKey } from "../../../hooks/use-language-manager";
 import { IBlocksLanguageKey } from "../../../models/language";
 
 const schema = z.object({
-  routes: z.array(z.string()).refine((routes) => routes.some((route) => route.trim() !== ""), {
-    message: "At least one route is required",
-  }),
+  routes: z
+    .array(z.string())
+    .refine((routes) => routes.some((route) => route.trim() !== ""), {
+      message: "At least one route is required",
+    }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -66,7 +68,9 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
     remove(index);
 
     // Get updated routes after removal
-    const updatedRoutes = form.getValues("routes").filter((_, i) => i !== index);
+    const updatedRoutes = form
+      .getValues("routes")
+      .filter((_, i) => i !== index);
     const filteredRoutes = updatedRoutes.filter((route) => route.trim() !== "");
 
     try {
@@ -111,7 +115,9 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
 
   async function handleSave() {
     // Filter out empty routes before saving
-    const filteredRoutes = form.getValues("routes").filter((route) => route.trim() !== "");
+    const filteredRoutes = form
+      .getValues("routes")
+      .filter((route) => route.trim() !== "");
     keyDetails.routes = filteredRoutes;
 
     try {
@@ -161,14 +167,19 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="space-y-1 text-xs text-muted-foreground">
             <p>
-              Add routes after <span className="font-semibold text-foreground">hostname/</span>
+              Add routes after{" "}
+              <span className="font-semibold text-foreground">hostname/</span>
             </p>
             <p>
-              Use <span className="font-mono text-foreground">{`{{ dynamic_routing }}`}</span> for
-              dynamic segments
+              Use{" "}
+              <span className="font-mono text-foreground">{`{{ dynamic_routing }}`}</span>{" "}
+              for dynamic segments
             </p>
             <p className="text-[11px]">
-              Example: <span className="font-mono">release-note/{`{{ dynamic_routing }}`}</span>
+              Example:{" "}
+              <span className="font-mono">
+                release-note/{`{{ dynamic_routing }}`}
+              </span>
             </p>
           </div>
         </DialogDescription>
@@ -186,8 +197,12 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
               <div className="mb-2 rounded-full bg-muted p-3 group-hover:bg-primary/10">
                 <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No routes added yet</p>
-              <p className="text-xs text-muted-foreground">Click here to add a route</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                No routes added yet
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Click here to add a route
+              </p>
             </button>
           ) : (
             <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
@@ -206,7 +221,9 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
                         placeholder="e.g., dashboard/settings"
                         className="h-9 border-input bg-background shadow-none focus-visible:border-primary"
                         value={form.watch(`routes.${index}`)}
-                        onChange={(e) => form.setValue(`routes.${index}`, e.target.value)}
+                        onChange={(e) =>
+                          form.setValue(`routes.${index}`, e.target.value)
+                        }
                         disabled={isPending}
                       />
                     </div>

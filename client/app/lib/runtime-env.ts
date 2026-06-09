@@ -1,6 +1,7 @@
 const PLACEHOLDER_PREFIX = "__BLOCKS_";
 
 type RuntimeKey =
+  | "BLOCKS_PUBLIC_API_BASE_URL"
   | "BLOCKS_IAM_BASE_URL"
   | "BLOCKS_X_BLOCKS_KEY"
   | "BLOCKS_GOOGLE_SITE_KEY"
@@ -37,7 +38,7 @@ type RuntimeKey =
   | "BLOCKS_STUDIO_BASE_URL"
   | "BLOCKS_STUDIO_CALLBACK_URL";
 
-type BlocksEnv = Partial<Record<RuntimeKey, string>>
+type BlocksEnv = Partial<Record<RuntimeKey, string>>;
 
 const isPlaceholder = (value?: string) =>
   !!value && value.startsWith(PLACEHOLDER_PREFIX) && value.endsWith("__");

@@ -1,21 +1,44 @@
 import { Button } from "@/components/ui-kits/button/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
-import { useProjectStore } from "@/store/useProjectStore";
-import { selfSignUpFormDefaultValues, selfSignUpFormSchema, SelfSignUpFormType } from "./utils";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
+import {
+  selfSignUpFormDefaultValues,
+  selfSignUpFormSchema,
+  SelfSignUpFormType,
+} from "./utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui-kits/form/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui-kits/form/form";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useGetAuthConfig, useSaveAuthConfig } from "@blocks-idp/authentication/hooks/use-auth-config";
+import {
+  useGetAuthConfig,
+  useSaveAuthConfig,
+} from "@blocks-idp/authentication/hooks/use-auth-config";
 
 export const SelfSignup = () => {
-  const { tenantId } = useProjectStore().selectedProject || { tenantId: "", itemId: "" };
+  const { tenantId } = useProjectStore().selectedProject || {
+    tenantId: "",
+    itemId: "",
+  };
   const { data, isLoading } = useGetAuthConfig({ projectKey: tenantId });
 
-  const { mutateAsync, isPending } = useSaveAuthConfig({ projectKey: tenantId });
+  const { mutateAsync, isPending } = useSaveAuthConfig({
+    projectKey: tenantId,
+  });
 
   const form = useForm<SelfSignUpFormType>({
     defaultValues: selfSignUpFormDefaultValues,
@@ -25,7 +48,8 @@ export const SelfSignup = () => {
 
   const submitHandler = async (values: SelfSignUpFormType) => {
     try {
-      if (!tenantId || !data) return showErrorToast({ errors: "Something went wrong" });
+      if (!tenantId || !data)
+        return showErrorToast({ errors: "Something went wrong" });
 
       const res = await mutateAsync({
         ...data,
@@ -34,9 +58,12 @@ export const SelfSignup = () => {
       });
 
       if (!res.isSuccess) return showErrorToast({ errors: res.errors });
-      showSuccessToast({ description: "Self sign-up settings updated successfully" });
+      showSuccessToast({
+        description: "Self sign-up settings updated successfully",
+      });
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       showErrorToast({ errors: "Something went wrong" });
     }
   };
@@ -50,7 +77,10 @@ export const SelfSignup = () => {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitHandler)} className="grid grid-cols-1 gap-4">
+          <form
+            onSubmit={form.handleSubmit(submitHandler)}
+            className="grid grid-cols-1 gap-4"
+          >
             <FormField
               control={form.control}
               name="isSelfSignUpAllowed"
@@ -71,7 +101,9 @@ export const SelfSignup = () => {
                           value={undefined}
                         />
                       </FormControl>
-                      <FormLabel className={`!mt-0`}>Allow Self Sign-Up</FormLabel>
+                      <FormLabel className={`!mt-0`}>
+                        Allow Self Sign-Up
+                      </FormLabel>
                     </FormItem>
                   )}
                 </>
@@ -79,7 +111,9 @@ export const SelfSignup = () => {
             />
             {!isLoading && (
               <div>
-                <Button disabled={isPending || !isValid || !isDirty}>Save</Button>
+                <Button disabled={isPending || !isValid || !isDirty}>
+                  Save
+                </Button>
               </div>
             )}
           </form>
