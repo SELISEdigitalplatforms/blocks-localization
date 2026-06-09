@@ -53,15 +53,6 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({
             allKeyIds.forEach((keyId) => next.add(keyId));
             return next;
           });
-
-          // Clear translating state after timeout (auto-translate doesn't have individual polling)
-          setTimeout(() => {
-            setTranslatingKeys((prev) => {
-              const next = new Set(prev);
-              allKeyIds.forEach((keyId) => next.delete(keyId));
-              return next;
-            });
-          }, 120000); // 2 minutes timeout
         }
       } else {
         toast({

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { getJsonCookie, setJsonCookie, removeCookie, setCookie } from "@/lib/cookie";
+import { getCookie, setJsonCookie, removeCookie, setCookie } from "@/lib/cookie";
 
 const COOKIE_NAME = "language-view-storage";
 const COOKIE_DAYS = 365;
@@ -31,48 +31,52 @@ interface LanguageViewState {
 }
 
 // Custom storage adapter using cookies for cross-subdomain persistence
-// TODO: Re-enable cookie storage after OIDC work is complete
 const cookieStorage = {
   getItem: (): string | null => {
-    // Temporarily disabled for OIDC work
-    return null;
-    // const value = getJsonCookie<{ state: { selectedLanguages: string[]; selectedOptionalColumns: string[] }; version: number }>(COOKIE_NAME);
-    // if (!value) return null;
+    try {
+      const value = getCookie(COOKIE_NAME);
+      if (!value) return null;
 
-    // // Validate and sanitize data on read
-    // const sanitized = {
-    //   state: {
-    //     selectedLanguages: (value.state?.selectedLanguages || []).filter(isValidLanguageCode),
-    //     selectedOptionalColumns: (value.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-    //   },
-    //   version: value.version || 0,
-    // };
+      // Parse and validate the stored data
+      const parsed = JSON.parse(decodeURIComponent(value)) as {
+        state?: { selectedLanguages?: string[]; selectedOptionalColumns?: string[] };
+        version?: number;
+      };
 
-    // return JSON.stringify(sanitized);
+      // Validate and sanitize data on read
+      const sanitized = {
+        state: {
+          selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
+          selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
+        },
+        version: parsed.version || 0,
+      };
+
+      return JSON.stringify(sanitized);
+    } catch {
+      // If parsing fails, return null to use default state
+      return null;
+    }
   },
   setItem: (name: string, value: string): void => {
-    // Temporarily disabled for OIDC work
-    return;
-    // try {
-    //   const parsed = JSON.parse(value);
-    //   // Additional validation on write
-    //   const validated = {
-    //     ...parsed,
-    //     state: {
-    //       selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
-    //       selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-    //     },
-    //   };
-    //   setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
-    // } catch {
-    //   // If parsing fails, store as-is
-    //   setCookie(COOKIE_NAME, value, COOKIE_DAYS);
-    // }
+    try {
+      const parsed = JSON.parse(value);
+      // Additional validation on write
+      const validated = {
+        ...parsed,
+        state: {
+          selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
+          selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
+        },
+      };
+      setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
+    } catch {
+      // If parsing fails, store as-is
+      setCookie(COOKIE_NAME, value, COOKIE_DAYS);
+    }
   },
   removeItem: (): void => {
-    // Temporarily disabled for OIDC work
-    return;
-    // removeCookie(COOKIE_NAME);
+    removeCookie(COOKIE_NAME);
   },
 };
 
