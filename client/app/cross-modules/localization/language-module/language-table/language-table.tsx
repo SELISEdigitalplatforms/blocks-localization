@@ -56,7 +56,10 @@ import {
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
-import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
+import {
+  useLanguageViewStore,
+  updateLanguageViewTenantId,
+} from "@blocks-localization/store/use-language-view-store";
 import {
   ColumnDef,
   Row,
@@ -365,6 +368,8 @@ export function LanguageTable() {
     }
     // Only reset page number to 0 when tenantId changes, preserving all filters including missingLanguages
     if (tenantId) {
+      // Update the store's tenantId to load correct project-specific settings from cookie
+      updateLanguageViewTenantId(tenantId);
       setQueryParams((prev) => ({
         ...prev,
         pageNumber: 0,
@@ -373,6 +378,18 @@ export function LanguageTable() {
       sortReset();
     }
   }, [tenantId, isHydrated, setQueryParams, resetSelectedLanguages, sortReset]);
+
+  // Set tenantId on initial hydration to ensure correct cookie settings are loaded
+  const isInitialHydrationRef = useRef(true);
+  useEffect(() => {
+    if (!isHydrated || !tenantId) return;
+
+    if (isInitialHydrationRef.current) {
+      // On initial hydration, set the tenantId so persist middleware reads correct settings
+      updateLanguageViewTenantId(tenantId);
+      isInitialHydrationRef.current = false;
+    }
+  }, [isHydrated, tenantId]);
 
   const deleteLanguageKeyModalData = {
     dialogTitle: "Delete language key?",
@@ -636,20 +653,9 @@ export function LanguageTable() {
               accessorKey: "resources",
               header: () => <span>Completeness</span>,
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const keyId = row.original.itemId;
-                const isTranslating = translatingKeys.has(keyId);
                 const resources = row.original.resources;
                 if (!resources || resources.length === 0)
                   return "No translation";
-
-                // Show Translating status if this key is being translated
-                if (isTranslating) {
-                  return (
-                    <span className="text-blue-600 font-medium">
-                      Translating...
-                    </span>
-                  );
-                }
 
                 const allLanguages =
                   languageListData?.map((lang) => lang.languageCode) || [];
@@ -703,16 +709,17 @@ export function LanguageTable() {
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const keyId = row.original.itemId;
           const isTranslating = translatingKeys.has(keyId);
+          const resource = row.original.resources?.find(
+            (res) => res.culture === lang,
+          );
+          const hasValue = resource?.value && resource.value.trim() !== "";
 
-          if (isTranslating) {
+          // Only show "Translating..." if this key is being translated AND the language has no value
+          if (isTranslating && !hasValue) {
             return (
               <span className="text-blue-600 font-medium">Translating...</span>
             );
           }
-
-          const resource = row.original.resources?.find(
-            (res) => res.culture === lang,
-          );
 
           return (
             <div className="ml-2 line-clamp-4 sm:ml-0">
@@ -1334,11 +1341,7 @@ export function LanguageTable() {
               open={isAutoTranslateDialogOpen}
               onOpenChange={setIsAutoTranslateDialogOpen}
             >
-              <AutoTranslate
-                translatingKeys={translatingKeys}
-                setTranslatingKeys={setTranslatingKeys}
-                keysData={blocksLanguageKeyData}
-              />
+              <AutoTranslate />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">

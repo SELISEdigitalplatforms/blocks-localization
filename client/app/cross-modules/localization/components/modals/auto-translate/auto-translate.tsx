@@ -11,19 +11,8 @@ import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { toast } from "@/hooks/use-toast";
-import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 
-interface AutoTranslateProps {
-  translatingKeys: Set<string>;
-  setTranslatingKeys: React.Dispatch<React.SetStateAction<Set<string>>>;
-  keysData?: { keys: IBlocksLanguageKey[] };
-}
-
-const AutoTranslate: React.FC<AutoTranslateProps> = ({
-  translatingKeys,
-  setTranslatingKeys,
-  keysData,
-}) => {
+const AutoTranslate: React.FC = () => {
   const { isPending, mutateAsync } = useTranslateAll();
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
@@ -44,16 +33,6 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({
           title: "Processing Translation",
           description: "Keys translation in progress.",
         });
-
-        // Track all visible keys as translating (for showing skeleton/loading state)
-        if (keysData?.keys) {
-          const allKeyIds = new Set(keysData.keys.map((k) => k.itemId));
-          setTranslatingKeys((prev) => {
-            const next = new Set(prev);
-            allKeyIds.forEach((keyId) => next.add(keyId));
-            return next;
-          });
-        }
       } else {
         toast({
           variant: "destructive",
