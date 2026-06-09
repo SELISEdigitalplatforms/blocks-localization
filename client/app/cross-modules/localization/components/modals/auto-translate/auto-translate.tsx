@@ -9,7 +9,7 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { toast } from "@/hooks/use-toast";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 
@@ -44,7 +44,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({
           title: "Processing Translation",
           description: "Keys translation in progress.",
         });
-        
+
         // Track all visible keys as translating (for showing skeleton/loading state)
         if (keysData?.keys) {
           const allKeyIds = new Set(keysData.keys.map((k) => k.itemId));
@@ -53,7 +53,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({
             allKeyIds.forEach((keyId) => next.add(keyId));
             return next;
           });
-          
+
           // Clear translating state after timeout (auto-translate doesn't have individual polling)
           setTimeout(() => {
             setTranslatingKeys((prev) => {
@@ -89,12 +89,20 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({
       </DialogHeader>
       <DialogFooter className="mt-6">
         <DialogTrigger asChild>
-          <Button disabled={isPending} variant="secondary" className="min-w-[80px]">
+          <Button
+            disabled={isPending}
+            variant="secondary"
+            className="min-w-[80px]"
+          >
             Cancel
           </Button>
         </DialogTrigger>
         <DialogTrigger asChild>
-          <Button disabled={isPending} className="min-w-[80px]" onClick={handleTranslate}>
+          <Button
+            disabled={isPending}
+            className="min-w-[80px]"
+            onClick={handleTranslate}
+          >
             Yes
           </Button>
         </DialogTrigger>

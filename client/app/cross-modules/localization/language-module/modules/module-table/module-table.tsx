@@ -33,7 +33,7 @@ import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-m
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { userService } from "@blocks-idp/iam/services/user.service";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
@@ -112,12 +112,12 @@ export function ModuleTable() {
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
     queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
     queryFn: async () => {
-      if (uniqueCreatedByIds.length === 0) return {}
+      if (uniqueCreatedByIds.length === 0) return {};
 
       const map: Record<
         string,
         { firstName: string; lastName: string; email: string; userName: string }
-      > = {}
+      > = {};
 
       await Promise.all(
         uniqueCreatedByIds.map(async (userId) => {
@@ -125,26 +125,26 @@ export function ModuleTable() {
             const response = await userService.getUserById({
               id: userId,
               projectKey: tenantId,
-            })
+            });
             if (response?.data) {
               map[userId] = {
                 firstName: response.data.firstName,
                 lastName: response.data.lastName,
                 email: response.data.email,
                 userName: response.data.userName,
-              }
+              };
             }
           } catch (error) {
-            console.error(`Failed to fetch user ${userId}:`, error)
+            console.error(`Failed to fetch user ${userId}:`, error);
           }
         }),
-      )
+      );
 
-      return map
+      return map;
     },
     enabled: !!tenantId && uniqueCreatedByIds.length > 0,
     staleTime: Infinity,
-  })
+  });
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {

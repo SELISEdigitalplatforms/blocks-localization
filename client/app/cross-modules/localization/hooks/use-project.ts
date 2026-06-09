@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { projectService } from "@/cross-modules/identifier/services/project.service";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { environmentOptions } from "@/constants/environment-options";
 
@@ -13,7 +13,8 @@ function shortGuidGenerator(length: number): string {
 }
 
 export const useGetProjects = (tenantGroupId = "") => {
-  const { setProjects, selectedProject, setSelectedProject } = useProjectStore();
+  const { setProjects, selectedProject, setSelectedProject } =
+    useProjectStore();
 
   const query = useQuery({
     queryKey: ["localization", "projects", tenantGroupId],
@@ -52,7 +53,11 @@ export const useCreateProject = () => {
       isUseBlocksExclusively: boolean;
       isProduction: boolean;
       resources: { name: string; link: string; resourceId: string }[];
-      applicationContexts: { environment: string; domain: string; cookieDomain: string }[];
+      applicationContexts: {
+        environment: string;
+        domain: string;
+        cookieDomain: string;
+      }[];
       tenantGroupId?: string;
     }) => projectService.createProject(payload),
     onSuccess: () => {
@@ -78,8 +83,10 @@ export const useAddProjectEnvironment = () => {
     if (selectedEnvironments.length === 0 || !tenantGroupId) return;
 
     const sortedSelected = [...selectedEnvironments].sort((a, b) => {
-      const aIndex = environmentOptions.find((opt) => opt.value === a)?.index ?? 0;
-      const bIndex = environmentOptions.find((opt) => opt.value === b)?.index ?? 0;
+      const aIndex =
+        environmentOptions.find((opt) => opt.value === a)?.index ?? 0;
+      const bIndex =
+        environmentOptions.find((opt) => opt.value === b)?.index ?? 0;
       return aIndex - bIndex;
     });
 
@@ -120,7 +127,7 @@ export const useAddProjectEnvironment = () => {
 export const useProjectForm = () => {
   const navigate = useNavigate();
   const { isPending, mutateAsync } = useCreateProject();
-  const { setTennantGroup, setSelectedProject } = useProjectStore();
+  const { setTenantGroup, setSelectedProject } = useProjectStore();
   const queryClient = useQueryClient();
 
   const saveProject = async (formData: {
@@ -133,7 +140,8 @@ export const useProjectForm = () => {
     try {
       const environments = formData.environments || [];
       const shortGuid = shortGuidGenerator(5);
-      const baseDomain = import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
+      const baseDomain =
+        import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
       const applicationContexts =
         environments.map((env: { value: string }) => ({
           environment: env.value,
@@ -158,12 +166,13 @@ export const useProjectForm = () => {
 
       if (response?.isSuccess) {
         showSuccessToast({ description: "Your project has been created." });
-        setTennantGroup(response.tenantGroupId);
+        setTenantGroup(response.tenantGroupId);
 
         try {
           const projectGroups = await queryClient.fetchQuery({
             queryKey: ["localization", "projects", response.tenantGroupId],
-            queryFn: () => projectService.getProjects(0, 100, response.tenantGroupId),
+            queryFn: () =>
+              projectService.getProjects(0, 100, response.tenantGroupId),
             staleTime: 0,
           });
 

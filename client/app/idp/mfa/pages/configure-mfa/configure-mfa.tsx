@@ -1,7 +1,10 @@
-
-
 import { useMemo, useState } from "react";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import { Button } from "@/components/ui-kits/button/button";
 import { EllipsisVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui-kits/card/card";
@@ -21,7 +24,7 @@ import {
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { useGetMFAConfig, useSaveMFAConfig } from "../../hooks/use-mfa-config";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { MFA_Provider_Data } from "../../utils/mfa-config";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
@@ -47,8 +50,11 @@ const LoadingSkelton = () => {
 
 export const ConfigureMFA = () => {
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
-  const { isLoading, isFetching, data } = useGetMFAConfig({ projectKey: tenantId });
-  const [openEnableDisableModal, setOpenEnableDisableModal] = useState<boolean>(false);
+  const { isLoading, isFetching, data } = useGetMFAConfig({
+    projectKey: tenantId,
+  });
+  const [openEnableDisableModal, setOpenEnableDisableModal] =
+    useState<boolean>(false);
 
   const [methodInfo, setMethodInfo] = useState<MethodInfo>({
     enable: false,
@@ -73,8 +79,16 @@ export const ConfigureMFA = () => {
         header: "Status",
         cell: ({ row }) => (
           <div className="flex max-w-[200px]">
-            <Badge variant={data?.userMfaType.includes(row.original.type) ? "success" : "error"}>
-              {data?.userMfaType.includes(row.original.type) ? "Enabled" : "Disabled"}
+            <Badge
+              variant={
+                data?.userMfaType.includes(row.original.type)
+                  ? "success"
+                  : "error"
+              }
+            >
+              {data?.userMfaType.includes(row.original.type)
+                ? "Enabled"
+                : "Disabled"}
             </Badge>
           </div>
         ),
@@ -90,15 +104,16 @@ export const ConfigureMFA = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {row.original.type === 2 && data?.userMfaType.includes(row.original.type) && (
-                  <DropdownMenuItem>
-                    <Link
-                      to={`/utilities/email/communications/${data.mfaTemplate.templateId}/edit`}
-                    >
-                      Update Template
-                    </Link>
-                  </DropdownMenuItem>
-                )}
+                {row.original.type === 2 &&
+                  data?.userMfaType.includes(row.original.type) && (
+                    <DropdownMenuItem>
+                      <Link
+                        to={`/utilities/email/communications/${data.mfaTemplate.templateId}/edit`}
+                      >
+                        Update Template
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
                 <DropdownMenuItem
                   onClick={async (e) => {
@@ -111,7 +126,9 @@ export const ConfigureMFA = () => {
                     }));
                   }}
                 >
-                  {data?.userMfaType.includes(row.original.type) ? "Disable" : "Enable"}
+                  {data?.userMfaType.includes(row.original.type)
+                    ? "Disable"
+                    : "Enable"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -168,44 +185,59 @@ export const ConfigureMFA = () => {
   return (
     <>
       <div>
-          <Card className="border-none shadow-none">
-            <CardContent>
-              {loading ? (
-                <LoadingSkelton />
-              ) : mfaConfigData.length === 0 ? (
-                <div className="flex h-32 flex-wrap items-center justify-center rounded-sm border-none bg-background p-4 text-center">
-                  <p className="text-muted-foreground">No configurations found. MFA is not yet configured for this project.</p>
-                </div>
-              ) : (
-                <Table className="text-sm md:table-fixed">
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                        {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id}>
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      <Dialog open={openEnableDisableModal} onOpenChange={setOpenEnableDisableModal}>
+        <Card className="border-none shadow-none">
+          <CardContent>
+            {loading ? (
+              <LoadingSkelton />
+            ) : mfaConfigData.length === 0 ? (
+              <div className="flex h-32 flex-wrap items-center justify-center rounded-sm border-none bg-background p-4 text-center">
+                <p className="text-muted-foreground">
+                  No configurations found. MFA is not yet configured for this
+                  project.
+                </p>
+              </div>
+            ) : (
+              <Table className="text-sm md:table-fixed">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:bg-transparent"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      <Dialog
+        open={openEnableDisableModal}
+        onOpenChange={setOpenEnableDisableModal}
+      >
         <ConfirmationModal
           onCancel={() => {}}
           onConfirm={() => onSaveHandler(methodInfo)}

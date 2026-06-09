@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
@@ -11,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { useToggleCaptchaConfigStatus } from "../hooks/use-captcha-config";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { CAPTCHA_PROVIDERS, ICaptchaConfig } from "../models/captcha";
 import { isErrorWithErrors } from "@/lib/error";
@@ -21,14 +20,17 @@ type ToggleCaptchaStatusModalProps = {
   configuration: ICaptchaConfig;
 };
 
-export const ToggleCaptchaStatusModal = ({ configuration }: ToggleCaptchaStatusModalProps) => {
+export const ToggleCaptchaStatusModal = ({
+  configuration,
+}: ToggleCaptchaStatusModalProps) => {
   const [open, setOpen] = useState<boolean>(false);
   const { isPending, mutateAsync } = useToggleCaptchaConfigStatus();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const providerType = CAPTCHA_PROVIDERS[configuration.provider];
   const onConfirm = async () => {
     try {
-      if (!configuration) return showErrorToast({ errors: "Something went wrong" });
+      if (!configuration)
+        return showErrorToast({ errors: "Something went wrong" });
 
       const res = await mutateAsync({
         projectKey: tenantId,
@@ -55,14 +57,19 @@ export const ToggleCaptchaStatusModal = ({ configuration }: ToggleCaptchaStatusM
       <DialogTrigger>
         <Button size="sm" variant="outline">
           <IconComponent className="h-4 w-4" />
-          <span className="ml-2.5">{configuration?.isEnable ? "Disable" : "Enable"}</span>
+          <span className="ml-2.5">
+            {configuration?.isEnable ? "Disable" : "Enable"}
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{configuration?.isEnable ? "Disable" : "Enable"} CAPTCHA?</DialogTitle>
+          <DialogTitle>
+            {configuration?.isEnable ? "Disable" : "Enable"} CAPTCHA?
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to {configuration?.isEnable ? "disable" : "enable"}{" "}
+            Are you sure you want to{" "}
+            {configuration?.isEnable ? "disable" : "enable"}{" "}
             {providerType.label}
           </DialogDescription>
         </DialogHeader>

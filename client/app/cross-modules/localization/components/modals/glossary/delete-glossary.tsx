@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useDeleteGlossary } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 
@@ -18,7 +18,11 @@ interface DeleteGlossaryProps {
   onClose: () => void;
 }
 
-const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, onClose }) => {
+const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
+  itemId,
+  glossaryName,
+  onClose,
+}) => {
   const { isPending, mutateAsync } = useDeleteGlossary();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
@@ -54,7 +58,8 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
       <DialogHeader>
         <DialogTitle>Delete Glossary Item</DialogTitle>
         <DialogDescription>
-          Are you sure you want to delete &quot;{glossaryName}&quot;? This action cannot be undone.
+          Are you sure you want to delete &quot;{glossaryName}&quot;? This
+          action cannot be undone.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter className="mt-4">
@@ -63,7 +68,11 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
             Cancel
           </Button>
         </DialogTrigger>
-        <Button variant="destructive" onClick={deleteGlossary} disabled={isPending}>
+        <Button
+          variant="destructive"
+          onClick={deleteGlossary}
+          disabled={isPending}
+        >
           Delete
         </Button>
       </DialogFooter>
