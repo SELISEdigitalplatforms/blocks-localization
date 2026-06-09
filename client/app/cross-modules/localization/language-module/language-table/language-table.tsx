@@ -91,6 +91,7 @@ import { v4 as uuidv4 } from "uuid";
 import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
+import { useNotificationListener } from "@blocks-utilities/notification";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
@@ -345,6 +346,12 @@ export function LanguageTable() {
         return next;
       });
     }
+  });
+
+  // Listen for translate-all completion notification to clear translatingKeys
+  // This clears the "Translating..." state when the backend signals completion via WebSocket
+  useNotificationListener("translate-all", () => {
+    setTranslatingKeys(new Set());
   });
 
   // Reset page number and view state when the project changes, but preserve filters like missingLanguages
