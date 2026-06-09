@@ -378,12 +378,42 @@ export function LanguageTable() {
     if (prevTenantId !== tenantId) {
       prevTenantIdRef.current = tenantId;
       updateLanguageViewTenantId(tenantId);
-      setQueryParams((prev) => ({
-        ...prev,
-        pageNumber: 0,
-      }));
-      resetSelectedLanguages();
-      sortReset();
+
+      // Check if this tenant has stored data in the cookie
+      // If yes, preserve it by not resetting - getItem will load the stored data
+      // If no, reset to defaults
+      const storedCookie = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("language-view-storage="));
+
+      const hasStoredData = (() => {
+        if (!storedCookie) return false;
+        try {
+          const cookieValue = decodeURIComponent(
+            storedCookie.split("=")[1] || ""
+          );
+          const parsed = JSON.parse(cookieValue);
+          const tenantData = parsed[tenantId];
+          return (
+            tenantData &&
+            (tenantData.selectedLanguages?.length > 0 ||
+              tenantData.selectedOptionalColumns?.length > 0)
+          );
+        } catch {
+          return false;
+        }
+      })();
+
+      // Only reset if no stored data exists for this tenant
+      if (!hasStoredData) {
+        setQueryParams((prev) => ({
+          ...prev,
+          pageNumber: 0,
+        }));
+        resetSelectedLanguages();
+        sortReset();
+      }
+      // If hasStoredData is true, don't reset - let the store's getItem load the stored data
     }
   }, [tenantId, isHydrated, setQueryParams, resetSelectedLanguages, sortReset]);
 
