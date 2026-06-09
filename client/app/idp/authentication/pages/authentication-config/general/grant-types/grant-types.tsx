@@ -1,22 +1,45 @@
 import { Button } from "@/components/ui-kits/button/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
-import { useProjectStore } from "@/store/useProjectStore";
-import { authGrantTypeFormDefaultValues, authGrantTypeFormSchema, authGrantTypeFormType } from "./utils";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
+import {
+  authGrantTypeFormDefaultValues,
+  authGrantTypeFormSchema,
+  authGrantTypeFormType,
+} from "./utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui-kits/form/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui-kits/form/form";
 import { GRANT_TYPES_OPTIONS } from "@blocks-idp/authentication/constants/authentication.constant";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useGetAuthConfig, useSaveAuthConfig } from "@blocks-idp/authentication/hooks/use-auth-config";
+import {
+  useGetAuthConfig,
+  useSaveAuthConfig,
+} from "@blocks-idp/authentication/hooks/use-auth-config";
 
 export const GrantTypes = () => {
-  const { tenantId } = useProjectStore().selectedProject || { tenantId: "", itemId: "" };
+  const { tenantId } = useProjectStore().selectedProject || {
+    tenantId: "",
+    itemId: "",
+  };
   const { data, isLoading } = useGetAuthConfig({ projectKey: tenantId });
 
-  const { mutateAsync, isPending } = useSaveAuthConfig({ projectKey: tenantId });
+  const { mutateAsync, isPending } = useSaveAuthConfig({
+    projectKey: tenantId,
+  });
 
   const form = useForm<authGrantTypeFormType>({
     defaultValues: authGrantTypeFormDefaultValues,
@@ -26,7 +49,8 @@ export const GrantTypes = () => {
 
   const submitHandler = async (values: authGrantTypeFormType) => {
     try {
-      if (!tenantId || !data) return showErrorToast({ errors: "Something went wrong" });
+      if (!tenantId || !data)
+        return showErrorToast({ errors: "Something went wrong" });
 
       const res = await mutateAsync({
         ...data,
@@ -37,7 +61,8 @@ export const GrantTypes = () => {
       if (!res.isSuccess) return showErrorToast({ errors: res.errors });
       showSuccessToast({ description: "Grant types updated successfully" });
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       showErrorToast({ errors: "Something went wrong" });
     }
   };
@@ -49,7 +74,10 @@ export const GrantTypes = () => {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitHandler)} className="grid grid-cols-1 gap-4">
+          <form
+            onSubmit={form.handleSubmit(submitHandler)}
+            className="grid grid-cols-1 gap-4"
+          >
             {GRANT_TYPES_OPTIONS.map((item) => (
               <FormField
                 key={item.id}
@@ -69,8 +97,15 @@ export const GrantTypes = () => {
                             {...field}
                             checked={field.value?.includes(item.value)}
                             onCheckedChange={(checked) => {
-                              if (checked) return field.onChange([...field.value, item.value]);
-                              field.value.splice(field.value.indexOf(item.value), 1);
+                              if (checked)
+                                return field.onChange([
+                                  ...field.value,
+                                  item.value,
+                                ]);
+                              field.value.splice(
+                                field.value.indexOf(item.value),
+                                1,
+                              );
                               field.onChange([...field.value]);
                             }}
                           />
@@ -84,7 +119,9 @@ export const GrantTypes = () => {
             ))}
             {!isLoading && (
               <div>
-                <Button disabled={isPending || !isValid || !isDirty}>Save</Button>
+                <Button disabled={isPending || !isValid || !isDirty}>
+                  Save
+                </Button>
               </div>
             )}
           </form>

@@ -9,10 +9,10 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { toast } from "@/hooks/use-toast";
 
-const AutoTranslate = () => {
+const AutoTranslate: React.FC = () => {
   const { isPending, mutateAsync } = useTranslateAll();
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
@@ -59,12 +59,20 @@ const AutoTranslate = () => {
       </DialogHeader>
       <DialogFooter className="mt-6">
         <DialogTrigger asChild>
-          <Button disabled={isPending} variant="secondary" className="min-w-[80px]">
+          <Button
+            disabled={isPending}
+            variant="secondary"
+            className="min-w-[80px]"
+          >
             Cancel
           </Button>
         </DialogTrigger>
         <DialogTrigger asChild>
-          <Button disabled={isPending} className="min-w-[80px]" onClick={handleTranslate}>
+          <Button
+            disabled={isPending}
+            className="min-w-[80px]"
+            onClick={handleTranslate}
+          >
             Yes
           </Button>
         </DialogTrigger>

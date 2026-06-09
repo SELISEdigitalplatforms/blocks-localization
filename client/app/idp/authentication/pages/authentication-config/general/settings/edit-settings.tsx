@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui-kits/input/input";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import {
   useGetAuthConfig,
   useSaveAuthConfig,
@@ -36,7 +36,9 @@ export const EditGeneralSettings = () => {
   const { tenantId } = useProjectStore().selectedProject || { tenantId: "" };
   const { data } = useGetAuthConfig({ projectKey: tenantId });
 
-  const { mutateAsync, isPending } = useSaveAuthConfig({ projectKey: tenantId });
+  const { mutateAsync, isPending } = useSaveAuthConfig({
+    projectKey: tenantId,
+  });
 
   const form = useForm<z.infer<typeof authConfigFormSchema>>({
     defaultValues: authConfigFormDefaultValues,
@@ -54,9 +56,12 @@ export const EditGeneralSettings = () => {
     setOpen(isOpen);
   };
 
-  const submitHandler = async (values: z.infer<typeof authConfigFormSchema>) => {
+  const submitHandler = async (
+    values: z.infer<typeof authConfigFormSchema>,
+  ) => {
     try {
-      if (!tenantId || !data) return showErrorToast({ errors: "Something went wrong" });
+      if (!tenantId || !data)
+        return showErrorToast({ errors: "Something went wrong" });
 
       const res = await mutateAsync({
         ...data,
@@ -70,7 +75,8 @@ export const EditGeneralSettings = () => {
       form.reset();
       setOpen(false);
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       showErrorToast({ errors: "Something went wrong" });
     }
   };
@@ -84,7 +90,10 @@ export const EditGeneralSettings = () => {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitHandler)} onReset={() => form.reset()}>
+          <form
+            onSubmit={form.handleSubmit(submitHandler)}
+            onReset={() => form.reset()}
+          >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 name="accessTokenValidForNumberMinutes"
@@ -95,7 +104,11 @@ export const EditGeneralSettings = () => {
                       Access Token Validity (minutes)
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Set a duration in minutes" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Set a duration in minutes"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,7 +123,11 @@ export const EditGeneralSettings = () => {
                       Refresh Token Validity (minutes)
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Set a duration in minutes" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Set a duration in minutes"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -125,7 +142,11 @@ export const EditGeneralSettings = () => {
                       &#39;Remember Me&#39; Token Validity (minutes)
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Set a duration in minutes" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Set a duration in minutes"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -140,7 +161,11 @@ export const EditGeneralSettings = () => {
                       Max Wrong Attempts Before Lock
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Enter number" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Enter number"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -156,7 +181,11 @@ export const EditGeneralSettings = () => {
                       Account Lock Duration (minutes)
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Set a duration in minutes" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Set a duration in minutes"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,7 +194,12 @@ export const EditGeneralSettings = () => {
             </div>
             <div className="mt-5 flex items-center justify-end gap-4">
               <DialogClose>
-                <Button variant="outline" className="h-9 w-20" size="sm" type="reset">
+                <Button
+                  variant="outline"
+                  className="h-9 w-20"
+                  size="sm"
+                  type="reset"
+                >
                   Cancel
                 </Button>
               </DialogClose>

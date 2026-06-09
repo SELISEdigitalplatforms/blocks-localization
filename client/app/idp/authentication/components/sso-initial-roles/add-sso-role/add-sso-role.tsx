@@ -14,7 +14,7 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetRoles } from "@blocks-idp/iam/hooks/use-roles";
 import { IRole } from "@blocks-idp/iam/models/role";
 import { CirclePlus } from "lucide-react";
@@ -45,10 +45,13 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
     if (checked) {
       return setSelectedRoles((roles) => [...roles, role]);
     }
-    setSelectedRoles((roles) => roles.filter((item) => item.slug !== role.slug));
+    setSelectedRoles((roles) =>
+      roles.filter((item) => item.slug !== role.slug),
+    );
   };
 
-  const pageChangeHandler = (page: number) => setFilter((prev) => ({ ...prev, page }));
+  const pageChangeHandler = (page: number) =>
+    setFilter((prev) => ({ ...prev, page }));
 
   const reset = () => {
     setSelectedRoles([]);
@@ -72,7 +75,12 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="default" className="h-10 bg-primary text-sm" type="button">
+        <Button
+          size="sm"
+          variant="default"
+          className="h-10 bg-primary text-sm"
+          type="button"
+        >
           <CirclePlus className="h-5 w-5 md:mr-2.5" />
           <span className="sr-only sm:not-sr-only">Assign Role</span>
         </Button>
@@ -85,7 +93,9 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
         <div>
           <FilterControls.SearchInput
             value={filter.search}
-            onChange={(value) => setFilter((prev) => ({ ...prev, search: value, page: 0 }))}
+            onChange={(value) =>
+              setFilter((prev) => ({ ...prev, search: value, page: 0 }))
+            }
             className="h-fit w-full py-3"
             placeholder="Search by role name"
           />
@@ -96,7 +106,10 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
               {isLoading ? (
                 // Show skeletons while loading
                 Array.from({ length: filter.pageSize }).map((_, idx) => (
-                  <div key={idx} className="flex animate-pulse items-center space-x-2 py-2">
+                  <div
+                    key={idx}
+                    className="flex animate-pulse items-center space-x-2 py-2"
+                  >
                     <div className="h-4 w-4 rounded bg-gray-200" />
                     <div className="h-4 w-24 rounded bg-gray-200" />
                     <div className="h-4 w-20 rounded bg-gray-200" />
@@ -104,13 +117,19 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
                 ))
               ) : data && data.data && data.data.length > 0 ? (
                 data.data.map((item) => (
-                  <div key={item.itemId} className="col-span-1 flex items-center py-2">
+                  <div
+                    key={item.itemId}
+                    className="col-span-1 flex items-center py-2"
+                  >
                     <Checkbox
                       checked={
-                        rolesSlug.includes(item.slug) || selectedRolesSlug.includes(item.slug)
+                        rolesSlug.includes(item.slug) ||
+                        selectedRolesSlug.includes(item.slug)
                       }
                       disabled={rolesSlug.includes(item.slug)}
-                      onCheckedChange={(value) => onCheckedChangeHandler(!!value, item)}
+                      onCheckedChange={(value) =>
+                        onCheckedChangeHandler(!!value, item)
+                      }
                     />
                     <div className="ml-2 flex flex-col">
                       <div className="max-w-[150px] truncate" title={item.name}>
@@ -126,7 +145,9 @@ export const AddSSORole = ({ onAdd, roles }: AddSSORoleProps) => {
                   </div>
                 ))
               ) : (
-                <div className="flex h-24 items-center justify-center">No roles are found</div>
+                <div className="flex h-24 items-center justify-center">
+                  No roles are found
+                </div>
               )}
             </div>
             {/* <Table>

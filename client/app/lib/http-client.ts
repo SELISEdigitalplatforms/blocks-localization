@@ -2,7 +2,7 @@ import { AUTH_OIDC_ENDPOINTS } from "@/idp/authentication/constants/endpoint.con
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { getQueryClient } from "@/providers/query-provider";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 class HttpError extends Error {
   status: number;
@@ -255,10 +255,16 @@ class HttpClient {
 
   delete<T = unknown>(
     url: string,
+    body?: RequestBody,
     headers?: HeadersInit,
     options?: Options,
   ): Promise<T> {
-    return this.request<T>(url, { method: "DELETE", headers, ...options });
+    return this.request<T>(url, {
+      method: "DELETE",
+      body,
+      headers,
+      ...options,
+    });
   }
 
   async stream(

@@ -46,14 +46,20 @@ import AutoTranslate from "@blocks-localization/components/modals/auto-translate
 import ExportKey from "@blocks-localization/components/modals/export-key/export-key";
 import {
   useDeleteLanguageKey,
+  useDeleteLanguageKeys,
   useGenerateUilmFile,
   useGetBlocksLanguageKey,
   useGetLanguageModules,
   useGetLanguages,
   useTranslateKey,
+  useTranslateKeyWithPolling,
+  useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
-import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
+import {
+  useLanguageViewStore,
+  updateLanguageViewTenantId,
+} from "@blocks-localization/store/use-language-view-store";
 import {
   ColumnDef,
   Row,
@@ -61,6 +67,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { RowSelectionState } from "@tanstack/react-table";
 import {
   AlignLeft,
   EllipsisVertical,
@@ -87,7 +94,8 @@ import { v4 as uuidv4 } from "uuid";
 import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useNotificationListener } from "@blocks-utilities/notification";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
@@ -95,33 +103,47 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
 
 // Stable memoized components to avoid Radix Popper onAnchorChange infinite loop
-const KeyNameCell = React.memo(({ keyName }: { keyName: string }) => {
-  const CHAR_WIDTH = 7.5;
-  const PADDING = 8;
-  const CONTAINER = 150;
-  const shouldShowTooltip = keyName.length * CHAR_WIDTH + PADDING > CONTAINER;
+const KeyNameCell = React.memo(
+  ({ keyName }: { keyName: string | null | undefined }) => {
+    const CHAR_WIDTH = 7.5;
+    const PADDING = 8;
+    const CONTAINER = 150;
 
-  return (
-    <TooltipProvider key={keyName}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
-            {keyName}
-          </div>
-        </TooltipTrigger>
-        {shouldShowTooltip && (
-          <TooltipContent side="top">
-            <p>{keyName}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
-  );
-});
+    // Handle null/undefined keyName gracefully
+    const displayValue = keyName ?? "(Unnamed Key)";
+    const shouldShowTooltip =
+      displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
+
+    return (
+      <TooltipProvider key={displayValue}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
+              {displayValue}
+            </div>
+          </TooltipTrigger>
+          {shouldShowTooltip && (
+            <TooltipContent side="top">
+              <p>{displayValue}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  },
+);
 KeyNameCell.displayName = "KeyNameCell";
 
 const RowActionsCell = React.memo(
-  ({ onView, onDelete, onTranslate }: { onView: () => void; onDelete: () => void; onTranslate: () => void }) => (
+  ({
+    onView,
+    onDelete,
+    onTranslate,
+  }: {
+    onView: () => void;
+    onDelete: () => void;
+    onTranslate: () => void;
+  }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -133,10 +155,13 @@ const RowActionsCell = React.memo(
           <AlignLeft className="mr-2 h-4 w-4" />
           <span>View details</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
-          e.stopPropagation();
-          onTranslate();
-        }}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTranslate();
+          }}
+        >
           <Languages className="mr-2 h-4 w-4" />
           <span>Translate</span>
         </DropdownMenuItem>
@@ -271,6 +296,12 @@ export function LanguageTable() {
     useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
 
+  const defaultLanguageCode = useMemo(() => {
+    if (!languageListData) return "en-US";
+    const defaultLang = languageListData.find((lang) => lang.isDefault);
+    return defaultLang?.languageCode ?? "en-US";
+  }, [languageListData]);
+
   const navigate = useNavigate();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -288,22 +319,69 @@ export function LanguageTable() {
   >(null);
   const { isPending: isDeleteLanguageKeyPending, mutateAsync: deleteAsync } =
     useDeleteLanguageKey();
-  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } = useTranslateKey();
+  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
+    useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
+  const [isPollingTranslation, setIsPollingTranslation] = useState(false);
+  const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
+  // Track keys that are currently being translated (for showing skeleton/loading state)
+  const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(
+    new Set(),
+  );
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] =
+    useState(false);
+  const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } =
+    useDeleteLanguageKeys();
+  const { isPending: isBulkTranslatingKeys, mutateAsync: bulkTranslateAsync } =
+    useTranslateLanguageKeys();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Reset all filters and view state when the project changes
-  // Only reset if this is NOT the initial mount and store is hydrated
-  const isInitialMountRef = useRef(true);
+  // Poll for translation completion when a key translation is in progress
+  useTranslateKeyWithPolling(pollingKeyId || "", tenantId, () => {
+    setIsPollingTranslation(false);
+    // Remove key from translating set once confirmed complete
+    if (pollingKeyId) {
+      setTranslatingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(pollingKeyId);
+        return next;
+      });
+    }
+  });
+
+  // Listen for translate-all completion notification to clear translatingKeys
+  // This clears the "Translating..." state when the backend signals completion via WebSocket
+  useNotificationListener("translate-all", () => {
+    setTranslatingKeys(new Set());
+  });
+
+  // Track the previous tenantId to detect actual project changes
+  const prevTenantIdRef = useRef<string | null>(null);
+
+  // Handle project changes - only reset when switching to a DIFFERENT project
   useEffect(() => {
-    // Skip reset on initial mount or if store is not yet hydrated
-    if (isInitialMountRef.current || !isHydrated) {
-      isInitialMountRef.current = false;
+    if (!isHydrated || !tenantId) return;
+
+    const prevTenantId = prevTenantIdRef.current;
+
+    // If this is the initial mount or the same project, don't reset settings
+    if (prevTenantId === null || prevTenantId === tenantId) {
+      // Just update the tenantId in the store for cookie key lookup
+      updateLanguageViewTenantId(tenantId);
+      prevTenantIdRef.current = tenantId;
       return;
     }
-    // Only reset if tenantId actually has a value
-    if (tenantId) {
-      setQueryParams(null);
+
+    // Only reset when switching to a different project
+    if (prevTenantId !== tenantId) {
+      prevTenantIdRef.current = tenantId;
+      updateLanguageViewTenantId(tenantId);
+      setQueryParams((prev) => ({
+        ...prev,
+        pageNumber: 0,
+      }));
       resetSelectedLanguages();
       sortReset();
     }
@@ -325,7 +403,8 @@ export function LanguageTable() {
 
   const translateKeyModalData = {
     dialogTitle: "Auto-translate this key?",
-    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
+    dialogSubtitle:
+      "Are you sure you want to automatically translate this language key?",
     confirmButton: "Translate",
     cancelButton: "Cancel",
   };
@@ -351,7 +430,7 @@ export function LanguageTable() {
       keyId: selectedLanguageKeyId,
       projectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
-      defaultLanguage: "en-US",
+      defaultLanguage: defaultLanguageCode,
     };
 
     try {
@@ -363,6 +442,11 @@ export function LanguageTable() {
           title: "Processing Translation",
           description: "Key translation in progress.",
         });
+        // Start polling to wait for translation to complete before refreshing table
+        // Also track this key as translating (for showing skeleton/loading state)
+        setPollingKeyId(selectedLanguageKeyId);
+        setIsPollingTranslation(true);
+        setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
         setIsTranslateDialogOpen(false);
       } else {
         toast({
@@ -462,8 +546,59 @@ export function LanguageTable() {
     }));
   };
 
+  const onPageSizeChangeHandler = (pageSize: number) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      pageSize,
+      pageNumber: 0,
+    }));
+  };
+
+  // Fixed standard page size options plus "All" showing total count
+  const pageSizeOptions = useMemo(() => {
+    const totalCount = blocksLanguageKeyData?.totalCount || 0;
+    const fixedOptions = [10, 30, 50, 100];
+    // Always include "All" (totalCount) as the last option if there are more items than 100
+    if (totalCount > 100) {
+      return [...fixedOptions, totalCount];
+    }
+    // If totalCount is between 10 and 100, cap at totalCount as the last option
+    if (totalCount > 0) {
+      return fixedOptions.filter((opt) => opt <= totalCount).concat(totalCount);
+    }
+    return [10];
+  }, [blocksLanguageKeyData?.totalCount]);
+
   const columns = useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected()
+                ? true
+                : table.getIsSomePageRowsSelected()
+                  ? "indeterminate"
+                  : false
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
       {
         accessorKey: "keyName",
         header: () => (
@@ -517,14 +652,18 @@ export function LanguageTable() {
                 const resources = row.original.resources;
                 if (!resources || resources.length === 0)
                   return "No translation";
-                const translatedLanguages = resources.map(
-                  (resource) => resource.culture,
-                );
+
                 const allLanguages =
                   languageListData?.map((lang) => lang.languageCode) || [];
-                const isComplete = allLanguages.every((lang) =>
-                  translatedLanguages.includes(lang),
-                );
+                const isComplete = allLanguages.every((lang) => {
+                  const resource = resources.find((r) => r.culture === lang);
+                  // Check if resource exists and has a non-null, non-empty value
+                  return (
+                    resource &&
+                    resource.value !== null &&
+                    resource.value.trim() !== ""
+                  );
+                });
                 return isComplete ? "Complete" : "Partial";
               },
               enableHiding: true,
@@ -533,24 +672,51 @@ export function LanguageTable() {
         : []),
       ...selectedLanguages.map((lang) => ({
         accessorKey: `resources.${lang}`,
-        header: () => (
-          <div className="w-[300px] md:w-[200px]">
-            <div className="font-bold text-medium-emphasis">
-              {languageListData?.find(
-                (language) => language.languageCode === lang,
-              )?.languageName ?? lang}{" "}
-              {languageListData?.find(
-                (language) => language.languageCode === lang,
-              )?.isDefault
-                ? "(Default)"
-                : null}
+        header: () => {
+          // Check if any translating key has this language missing
+          const hasTranslatingKey = Array.from(translatingKeys).some(
+            (keyId) => {
+              const keyData = blocksLanguageKeyData?.keys?.find(
+                (k) => k.itemId === keyId,
+              );
+              if (!keyData) return false;
+              const resource = keyData.resources?.find(
+                (r) => r.culture === lang,
+              );
+              return !resource?.value || resource.value.trim() === "";
+            },
+          );
+
+          return (
+            <div className="w-[300px] md:w-[200px]">
+              <div className="font-bold text-medium-emphasis flex items-center gap-1">
+                {languageListData?.find(
+                  (language) => language.languageCode === lang,
+                )?.languageName ?? lang}{" "}
+                {languageListData?.find(
+                  (language) => language.languageCode === lang,
+                )?.isDefault
+                  ? "(Default)"
+                  : null}
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
+          const keyId = row.original.itemId;
+          const isTranslating = translatingKeys.has(keyId);
           const resource = row.original.resources?.find(
             (res) => res.culture === lang,
           );
+          const hasValue = resource?.value && resource.value.trim() !== "";
+
+          // Only show "Translating..." if this key is being translated AND the language has no value
+          if (isTranslating && !hasValue) {
+            return (
+              <span className="text-blue-600 font-medium">Translating...</span>
+            );
+          }
+
           return (
             <div className="ml-2 line-clamp-4 sm:ml-0">
               {resource?.value ?? ""}
@@ -629,7 +795,116 @@ export function LanguageTable() {
     data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    state: {
+      rowSelection,
+    },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
   });
+
+  const selectedKeys = useMemo(() => {
+    return table.getSelectedRowModel().rows.map((row) => row.original.itemId);
+  }, [table.getSelectedRowModel().rows]);
+
+  const bulkDeleteModalData = {
+    dialogTitle: "Delete language keys?",
+    dialogSubtitle: `Are you sure you want to delete ${selectedKeys.length} selected language key(s)?`,
+    confirmButton: "Delete",
+    cancelButton: "Cancel",
+  };
+
+  const bulkTranslateModalData = {
+    dialogTitle: "Auto-translate selected keys?",
+    dialogSubtitle: `Are you sure you want to automatically translate ${selectedKeys.length} selected language key(s)?`,
+    confirmButton: "Translate",
+    cancelButton: "Cancel",
+  };
+
+  const onConfirmBulkDelete = async () => {
+    if (!tenantId || selectedKeys.length === 0) return;
+
+    const payload = {
+      itemIds: selectedKeys,
+      ProjectKey: tenantId,
+    };
+
+    try {
+      const res = await bulkDeleteAsync(payload);
+      if (res?.isSuccess) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Keys deleted successfully",
+        });
+        setIsBulkDeleteDialogOpen(false);
+        setRowSelection({});
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  };
+
+  const onConfirmBulkTranslate = async () => {
+    if (!tenantId || selectedKeys.length === 0) return;
+
+    const payload = {
+      keyIds: selectedKeys,
+      ProjectKey: tenantId,
+      messageCoRelationId: shortGuidGenerator(8),
+      defaultLanguage: defaultLanguageCode,
+    };
+
+    try {
+      const res = await bulkTranslateAsync(payload);
+      if (res?.isSuccess) {
+        toast({
+          variant: "success",
+          title: "Processing Translation",
+          description: "Key translation in progress for selected keys.",
+        });
+        // Track all selected keys as translating (for showing skeleton/loading state)
+        const keysToTranslate = new Set(selectedKeys);
+        setTranslatingKeys((prev) => {
+          const next = new Set(prev);
+          selectedKeys.forEach((keyId) => next.add(keyId));
+          return next;
+        });
+        setIsBulkTranslateDialogOpen(false);
+        setRowSelection({});
+
+        // Clear translating state after timeout (bulk translate doesn't have individual polling)
+        setTimeout(() => {
+          setTranslatingKeys((prev) => {
+            const next = new Set(prev);
+            keysToTranslate.forEach((keyId) => next.delete(keyId));
+            return next;
+          });
+        }, 60000); // 60 seconds timeout
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  };
 
   const handleExportClick = () => {
     setIsExportDialogOpen(true);
@@ -884,6 +1159,41 @@ export function LanguageTable() {
                   </DropdownMenu>
                 </div>
               </CardHeader>
+              {selectedKeys.length > 0 && (
+                <div className="mb-4 flex items-center justify-between rounded bg-blocks-primary-shades-300 px-4 py-2">
+                  <span className="text-sm font-medium">
+                    {selectedKeys.length} key
+                    {selectedKeys.length > 1 ? "s" : ""} selected
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsBulkTranslateDialogOpen(true)}
+                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Languages className="mr-1 h-4 w-4" />
+                      Translate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsBulkDeleteDialogOpen(true)}
+                      className="border-error text-error hover:bg-error hover:text-primary-foreground"
+                    >
+                      <Trash className="mr-1 h-4 w-4" />
+                      Delete
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setRowSelection({})}
+                    >
+                      Clear selection
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
                   <Skeleton className="h-12 w-full rounded" />
@@ -1010,14 +1320,15 @@ export function LanguageTable() {
               </CardContent>
               {!isLoading &&
                 blocksLanguageKeyData &&
-                blocksLanguageKeyData.totalCount > queryParams.pageSize && (
+                blocksLanguageKeyData.totalCount > 0 && (
                   <div className="mt-5 flex items-center md:justify-end">
                     <Pagination
                       page={queryParams.pageNumber}
                       pageSize={queryParams.pageSize}
                       totalCount={blocksLanguageKeyData?.totalCount || 0}
-                      pageSizeOptions={[10]}
+                      pageSizeOptions={pageSizeOptions}
                       onChange={onPageChangeHandler}
+                      onPageSizeChange={onPageSizeChangeHandler}
                     />
                   </div>
                 )}
@@ -1063,6 +1374,28 @@ export function LanguageTable() {
               onConfirm={onConfirmTranslate}
               data={translateKeyModalData}
               buttonState={{ confirm: { disable: isTranslatingKey } }}
+            />
+          </Dialog>
+          <Dialog
+            open={isBulkDeleteDialogOpen}
+            onOpenChange={setIsBulkDeleteDialogOpen}
+          >
+            <ConfirmationModal
+              onCancel={() => {}}
+              onConfirm={onConfirmBulkDelete}
+              data={bulkDeleteModalData}
+              buttonState={{ confirm: { disable: isBulkDeletingKeys } }}
+            />
+          </Dialog>
+          <Dialog
+            open={isBulkTranslateDialogOpen}
+            onOpenChange={setIsBulkTranslateDialogOpen}
+          >
+            <ConfirmationModal
+              onCancel={() => {}}
+              onConfirm={onConfirmBulkTranslate}
+              data={bulkTranslateModalData}
+              buttonState={{ confirm: { disable: isBulkTranslatingKeys } }}
             />
           </Dialog>
         </Tabs>

@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui-kits/form/form";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 interface NewModuleProps {
   onClose: Function;
@@ -70,7 +70,10 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         onClose(false);
       } else {
         debugger;
-        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
+        if (
+          Array.isArray(res?.validationErrors) &&
+          res.validationErrors.length > 0
+        ) {
           res?.validationErrors?.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
