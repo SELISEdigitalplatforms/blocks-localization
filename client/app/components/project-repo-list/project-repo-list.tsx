@@ -5,7 +5,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { Card, CardTitle } from "@/components/ui-kits/card/card";
 import { IProject } from "@blocks-identifier/models/project.model";
-import { useGetEnvRepositories, useUpdateProject } from "@blocks-identifier/hooks/use-project";
+import {
+  useGetEnvRepositories,
+  useUpdateProject,
+} from "@blocks-identifier/hooks/use-project";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   Dialog,
@@ -18,7 +21,7 @@ import {
 import { formatFullDate } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { EditDomainForm } from "@/components/edit-domain-form/edit-domain-form";
 
 export const ProjectRepoList = ({
@@ -33,7 +36,9 @@ export const ProjectRepoList = ({
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const itemId = useProjectStore().selectedProject?.itemId || "";
   const [open, setOpen] = useState<boolean>(false);
-  const { mutateAsync, isPending } = useUpdateProject({ projectKey: projectKey || "" });
+  const { mutateAsync, isPending } = useUpdateProject({
+    projectKey: projectKey || "",
+  });
   const {
     data: envRepositoriesResponse,
     isLoading: isLoadingEnvRepos,
@@ -48,20 +53,29 @@ export const ProjectRepoList = ({
 
   const confirmationModalData = {
     dialogTitle: "Set as application domain?",
-    dialogSubtitle: "Are you sure you want to set it as the application domain?",
+    dialogSubtitle:
+      "Are you sure you want to set it as the application domain?",
     confirmButton: "Set",
     cancelButton: "Cancel",
   };
 
   const saveApplicationDomain = async () => {
     try {
-      if (!project?.itemId || !projectKey || !applicationDomain || applicationDomain === "") return;
+      if (
+        !project?.itemId ||
+        !projectKey ||
+        !applicationDomain ||
+        applicationDomain === ""
+      )
+        return;
       const res = await mutateAsync({
         name: project.name,
         tenantGroupId: projectKey || "",
       });
       if (res.isSuccess) {
-        showSuccessToast({ description: "Application Domain is updated successfully" });
+        showSuccessToast({
+          description: "Application Domain is updated successfully",
+        });
         queryClient.invalidateQueries({
           queryKey: ["identifier", "project", { projectId: itemId }],
         });
@@ -132,33 +146,45 @@ export const ProjectRepoList = ({
             {/* Mobile & Tablet Card Layout */}
             <div className="lg:hidden">
               {envRepositoriesResponse.data.map((repo, index) => {
-                const isDefaultDate = repo.lastDeploymentDate === "0001-01-01T00:00:00";
+                const isDefaultDate =
+                  repo.lastDeploymentDate === "0001-01-01T00:00:00";
                 return (
                   <div
                     key={index}
                     className="mt-4 space-y-3 rounded-sm border border-border p-4"
                   >
                     <div>
-                      <div className="text-xs font-medium text-medium-emphasis">Name</div>
-                      <div className="mt-1 break-words text-sm font-medium">{repo.repoName}</div>
+                      <div className="text-xs font-medium text-medium-emphasis">
+                        Name
+                      </div>
+                      <div className="mt-1 break-words text-sm font-medium">
+                        {repo.repoName}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-medium-emphasis">Deployment Domain</div>
+                      <div className="text-xs font-medium text-medium-emphasis">
+                        Deployment Domain
+                      </div>
                       <div className="mt-1 break-words text-sm text-medium-emphasis">
-                        {repo.customDeploymentUrl && repo.customDeploymentUrl !== ""
+                        {repo.customDeploymentUrl &&
+                        repo.customDeploymentUrl !== ""
                           ? repo.customDeploymentUrl
                           : repo.defaultDeploymentUrl}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-medium-emphasis">Application Domain</div>
+                      <div className="text-xs font-medium text-medium-emphasis">
+                        Application Domain
+                      </div>
                       <div className="mt-1">
                         {(() => {
                           const hasCustomUrl = !!repo.customDeploymentUrl;
                           const activeDomain = hasCustomUrl
                             ? repo.customDeploymentUrl
                             : repo.defaultDeploymentUrl;
-                          const cd = hasCustomUrl ? repo.customDeploymentUrl : "";
+                          const cd = hasCustomUrl
+                            ? repo.customDeploymentUrl
+                            : "";
                           return activeDomain !== project?.applicationDomain ? (
                             <Button
                               variant="outline"
@@ -175,18 +201,24 @@ export const ProjectRepoList = ({
                           ) : (
                             <div className="flex items-center gap-2">
                               <Check className="h-4 w-4 text-green-500" />
-                              <span className="text-sm text-green-600">Active</span>
+                              <span className="text-sm text-green-600">
+                                Active
+                              </span>
                             </div>
                           );
                         })()}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-medium-emphasis">Last Deployment Date</div>
+                      <div className="text-xs font-medium text-medium-emphasis">
+                        Last Deployment Date
+                      </div>
                       <div className="mt-1">
                         <div
                           className="cursor-pointer text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                          onClick={() => navigate(`/devops/repo/${repo.itemId}`)}
+                          onClick={() =>
+                            navigate(`/devops/repo/${repo.itemId}`)
+                          }
                         >
                           {!repo.lastDeploymentDate || isDefaultDate
                             ? "Not deployed"
@@ -202,19 +234,25 @@ export const ProjectRepoList = ({
             <div className="hidden lg:block">
               <div className="mt-2 grid grid-cols-6 gap-2">
                 <div className="col-span-2 text-sm font-medium">Name</div>
-                <div className="col-span-2 text-sm font-medium">Deployment Domain</div>
-                <div className="flex items-center justify-center text-sm font-medium">Application Domain</div>
+                <div className="col-span-2 text-sm font-medium">
+                  Deployment Domain
+                </div>
+                <div className="flex items-center justify-center text-sm font-medium">
+                  Application Domain
+                </div>
                 <div className="text-sm font-medium">Last Deployment Date</div>
               </div>
               {envRepositoriesResponse.data.map((repo, index) => {
-                const isDefaultDate = repo.lastDeploymentDate === "0001-01-01T00:00:00";
+                const isDefaultDate =
+                  repo.lastDeploymentDate === "0001-01-01T00:00:00";
                 return (
                   <div key={index} className="mt-4 grid grid-cols-6 gap-2">
                     <div className="col-span-2 overflow-hidden text-ellipsis text-sm font-medium">
                       {repo.repoName}
                     </div>
                     <div className="col-span-2 overflow-hidden text-ellipsis text-sm text-medium-emphasis">
-                      {repo.customDeploymentUrl && repo.customDeploymentUrl !== ""
+                      {repo.customDeploymentUrl &&
+                      repo.customDeploymentUrl !== ""
                         ? repo.customDeploymentUrl
                         : repo.defaultDeploymentUrl}
                     </div>
@@ -259,7 +297,9 @@ export const ProjectRepoList = ({
             </div>
           </>
         ) : (
-          <div className="text-medium-emphasis">No repositories found for this project.</div>
+          <div className="text-medium-emphasis">
+            No repositories found for this project.
+          </div>
         )}
       </div>
       <Dialog

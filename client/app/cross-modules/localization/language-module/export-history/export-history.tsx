@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
@@ -12,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui-kits/table/table";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetExportHistory } from "@blocks-localization/hooks/use-language-manager";
 import { IExportFileDetails } from "@blocks-localization/models/language";
 import { ArrowLeft, Download } from "lucide-react";
@@ -43,28 +42,28 @@ export const ExportHistory: React.FC = () => {
   const formattedStartDate = filters.startDate ? filters.startDate : "";
 
   const formattedEndDate = filters.endDate
-    ? (() => {        const dateStr = filters.endDate.split("T")[0];
+    ? (() => {
+        const dateStr = filters.endDate.split("T")[0];
         return `${dateStr}T23:59:59.999Z`;
       })()
     : filters.startDate
-    ? (() => {
-        const dateStr = filters.startDate.split("T")[0];
-        return `${dateStr}T23:59:59.999Z`;
-      })()
-    : "";
+      ? (() => {
+          const dateStr = filters.startDate.split("T")[0];
+          return `${dateStr}T23:59:59.999Z`;
+        })()
+      : "";
 
-  const { data: exportHistoryData, isLoading: isLoadingExportHistory } = useGetExportHistory(
-    pageNumber,
-    pageSize,
-    projectKey,
-    {
+  const { data: exportHistoryData, isLoading: isLoadingExportHistory } =
+    useGetExportHistory(pageNumber, pageSize, projectKey, {
       searchText: filters.searchText,
       startDate: formattedStartDate,
       endDate: formattedEndDate,
-    },
-  );
+    });
 
-  const [downloadMeta, setDownloadMeta] = useState<{ fileId: string; projectKey: string }>({
+  const [downloadMeta, setDownloadMeta] = useState<{
+    fileId: string;
+    projectKey: string;
+  }>({
     fileId: "",
     projectKey,
   });
@@ -99,7 +98,11 @@ export const ExportHistory: React.FC = () => {
       <PageBreadcrumb breadcrumbIndex={2} />
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => window.history.back()}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-semibold">Export History</h1>
@@ -156,26 +159,31 @@ export const ExportHistory: React.FC = () => {
                 </TableRow>
               ) : (
                 // Data
-                exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
-                  <TableRow key={item.fileId}>
-                    <TableCell>{item.fileName || "--"}</TableCell>
-                    <TableCell>
-                      {item.createDate
-                        ? new Date(item.createDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "--"}
-                    </TableCell>
-                    <TableCell>
-                      <Download
-                        className="cursor-pointer"
-                        onClick={() => downloadSelectedFile(item.fileId)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+                exportHistoryData?.uilmExportedFiles?.map(
+                  (item: IExportFileDetails) => (
+                    <TableRow key={item.fileId}>
+                      <TableCell>{item.fileName || "--"}</TableCell>
+                      <TableCell>
+                        {item.createDate
+                          ? new Date(item.createDate).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )
+                          : "--"}
+                      </TableCell>
+                      <TableCell>
+                        <Download
+                          className="cursor-pointer"
+                          onClick={() => downloadSelectedFile(item.fileId)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ),
+                )
               )}
             </TableBody>
           </Table>
@@ -183,14 +191,16 @@ export const ExportHistory: React.FC = () => {
 
         {/* Pagination Footer */}
         <div className="mt-4 flex items-center justify-end">
-          {!isLoadingExportHistory && exportHistoryData && totalCount > pageSize && (
-            <Pagination
-              page={pageNumber}
-              pageSize={pageSize}
-              totalCount={totalCount}
-              onChange={(page: number) => setPageNumber(page)}
-            />
-          )}
+          {!isLoadingExportHistory &&
+            exportHistoryData &&
+            totalCount > pageSize && (
+              <Pagination
+                page={pageNumber}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onChange={(page: number) => setPageNumber(page)}
+              />
+            )}
         </div>
       </Card>
     </div>

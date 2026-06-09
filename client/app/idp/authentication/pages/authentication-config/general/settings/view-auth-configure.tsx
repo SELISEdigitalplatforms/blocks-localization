@@ -1,10 +1,16 @@
 import { ReactNode } from "react";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetAuthConfig } from "@blocks-idp/authentication/hooks/use-auth-config";
 import { UrlWithActions } from "./url-with-actions";
 
-const DetailItem = ({ label, children }: { label: string; children: ReactNode }) => {
+const DetailItem = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) => {
   return (
     <div className="flex flex-col gap-1">
       <p className="text-sm font-medium text-low-emphasis">{label}</p>
@@ -28,7 +34,9 @@ const LoadingSkelton = () => {
 
 export const ViewAuthConfigure = () => {
   const { tenantId } = useProjectStore().selectedProject || { tenantId: "" };
-  const { data, isLoading, isFetching } = useGetAuthConfig({ projectKey: tenantId });
+  const { data, isLoading, isFetching } = useGetAuthConfig({
+    projectKey: tenantId,
+  });
 
   if (isLoading || isFetching) return <LoadingSkelton />;
 

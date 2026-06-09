@@ -22,7 +22,7 @@ import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Search } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useSaveAuthClient } from "@blocks-idp/authentication/hooks/use-auth-clients";
 import { useForm } from "react-hook-form";
 import { Plus } from "lucide-react";
@@ -60,7 +60,9 @@ export const CreateClientCredential = () => {
   useEffect(() => {
     if (data?.data) {
       setFilteredRoles(
-        data.data.filter((role) => role.slug.toLowerCase().includes(filter.toLowerCase())),
+        data.data.filter((role) =>
+          role.slug.toLowerCase().includes(filter.toLowerCase()),
+        ),
       );
     } else {
       setFilteredRoles([]);
@@ -98,7 +100,8 @@ export const CreateClientCredential = () => {
       setOpen(false);
       return;
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       return showErrorToast({ errors: "Something went wrong" });
     } finally {
       form.reset();
@@ -116,7 +119,9 @@ export const CreateClientCredential = () => {
       <DialogContent className="max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>New Access Token</DialogTitle>
-          <DialogDescription>Enter details to create a new key.</DialogDescription>
+          <DialogDescription>
+            Enter details to create a new key.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -172,18 +177,26 @@ export const CreateClientCredential = () => {
                         const isChecked = field.value?.includes(type.slug);
 
                         return (
-                          <div key={type.slug} className="flex items-center gap-2">
+                          <div
+                            key={type.slug}
+                            className="flex items-center gap-2"
+                          >
                             <Checkbox
                               checked={isChecked}
                               onCheckedChange={(checked) => {
                                 const updated = checked
                                   ? [...field.value, type.slug]
-                                  : field.value.filter((role: string) => role !== type.slug);
+                                  : field.value.filter(
+                                      (role: string) => role !== type.slug,
+                                    );
 
                                 field.onChange(updated);
                               }}
                             />
-                            <label htmlFor={type.slug} className="cursor-pointer">
+                            <label
+                              htmlFor={type.slug}
+                              className="cursor-pointer"
+                            >
                               {type.slug}
                             </label>
                           </div>
@@ -209,7 +222,11 @@ export const CreateClientCredential = () => {
 
             <DialogFooter>
               <DialogClose>
-                <Button onClick={() => setOpen(false)} type="button" variant="outline">
+                <Button
+                  onClick={() => setOpen(false)}
+                  type="button"
+                  variant="outline"
+                >
                   Cancel
                 </Button>
               </DialogClose>
