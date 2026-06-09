@@ -1,8 +1,7 @@
-
 import { useGetAuthOidcCredentials } from "@blocks-idp/authentication/hooks/use-auth-oidc";
 import { OIDCCard } from "./oidc-card";
 import { useMemo } from "react";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { Card, CardContent, CardHeader } from "@/components/ui-kits/card/card";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 
@@ -80,13 +79,17 @@ export const OidcList = () => {
   if (!sortedOidcData.length)
     return (
       <div className="flex min-h-[min(40vh,280px)] w-full flex-wrap items-center justify-center rounded-lg border border-dashed bg-card px-6 py-10 text-center text-sm text-muted-foreground">
-        No OIDC configuration found. Use <strong className="text-foreground">Add OIDC</strong> in the header to create one.
+        No OIDC configuration found. Use{" "}
+        <strong className="text-foreground">Add OIDC</strong> in the header to
+        create one.
       </div>
     );
 
   return (
     <div className="grid gap-4">
-      {sortedOidcData?.map((item) => <OIDCCard key={item.itemId} oidc={item} />)}
+      {sortedOidcData?.map((item) => (
+        <OIDCCard key={item.itemId} oidc={item} />
+      ))}
     </div>
   );
 };

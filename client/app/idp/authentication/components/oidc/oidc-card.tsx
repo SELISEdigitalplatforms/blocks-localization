@@ -1,6 +1,10 @@
-
 import { Badge } from "@/components/ui-kits/badge/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui-kits/card/card";
 import { MaskedText } from "@/components/masked-text";
 import { ReactNode, useState } from "react";
 import { getApiUrl } from "@/lib/get-api-path";
@@ -11,7 +15,7 @@ import {
   IOidcConfig,
 } from "@blocks-idp/authentication/models/auth.oidc.model";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
@@ -24,7 +28,9 @@ const Item = ({ label, children }: { label: string; children: ReactNode }) => {
   return (
     <div className="min-w-0">
       <p className="mb-2 text-sm font-medium text-low-emphasis">{label}</p>
-      <div className="break-words text-base font-normal text-high-emphasis">{children}</div>
+      <div className="break-words text-base font-normal text-high-emphasis">
+        {children}
+      </div>
     </div>
   );
 };
@@ -53,7 +59,8 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
       showSuccessToast({ description: "OIDC credential deleted successfully" });
       setOpen(false);
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       return showErrorToast({ errors: "Something went wrong" });
     }
   };
@@ -66,7 +73,11 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
             <div className="flex items-center gap-4">
               {oidc.clientLogoUrl && (
                 <div className="relative h-12 w-12 overflow-hidden rounded-lg">
-                  <img src={oidc.clientLogoUrl} alt="OIDC Logo" className="object-cover" />
+                  <img
+                    src={oidc.clientLogoUrl}
+                    alt="OIDC Logo"
+                    className="object-cover"
+                  />
                 </div>
               )}
               <CardTitle>{oidc.clientDisplayName}</CardTitle>
@@ -75,7 +86,11 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
               <div className="mt-0.5">
                 <CreateOIDC itemId={oidc.itemId} triggerVariant="ghost" />
               </div>
-              <Button onClick={() => setOpen(true)} variant="ghost" className="hover:text-error">
+              <Button
+                onClick={() => setOpen(true)}
+                variant="ghost"
+                className="hover:text-error"
+              >
                 <Trash size={16} />
               </Button>
             </div>
@@ -87,13 +102,23 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Item label="Client Id">
                 <CopyToClipboardButton textToCopy={oidc.itemId}>
-                  <MaskedText text={oidc.itemId} length={30} showFirstN={4} showLastN={4} />
+                  <MaskedText
+                    text={oidc.itemId}
+                    length={30}
+                    showFirstN={4}
+                    showLastN={4}
+                  />
                 </CopyToClipboardButton>
               </Item>
 
               <Item label="Client Secret">
                 <CopyToClipboardButton textToCopy={oidc.clientSecret}>
-                  <MaskedText text={oidc.clientSecret} length={30} showFirstN={4} showLastN={4} />
+                  <MaskedText
+                    text={oidc.clientSecret}
+                    length={30}
+                    showFirstN={4}
+                    showLastN={4}
+                  />
                 </CopyToClipboardButton>
               </Item>
 
@@ -106,7 +131,9 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
               <Item label="Audience">
                 <CopyToClipboardButton textToCopy={oidc.audience}>
                   <div className="flex items-center gap-2">
-                    <div className="flex flex-wrap gap-1.5">{oidc.audience}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {oidc.audience}
+                    </div>
                   </div>
                 </CopyToClipboardButton>
               </Item>
@@ -140,7 +167,9 @@ export const OIDCCard = ({ oidc }: OIDCCardProps) => {
                       title={oidc.clientBrandColor}
                     />
                   )}
-                  <span className="font-mono">{oidc.clientBrandColor || "N/A"}</span>
+                  <span className="font-mono">
+                    {oidc.clientBrandColor || "N/A"}
+                  </span>
                 </div>
               </Item>
 

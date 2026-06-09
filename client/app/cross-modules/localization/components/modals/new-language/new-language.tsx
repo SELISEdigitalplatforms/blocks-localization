@@ -30,7 +30,7 @@ import {
 } from "@/components/ui-kits/command/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { toast } from "@/hooks/use-toast";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
@@ -39,7 +39,10 @@ interface NewLanguageProps {
   existingLanguages?: ILanguageConfig[];
 }
 
-const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = [] }) => {
+const NewLanguage: React.FC<NewLanguageProps> = ({
+  onClose,
+  existingLanguages = [],
+}) => {
   const schema = z.object({
     languageCode: z.string().min(1, { message: "Language is required" }),
   });
@@ -51,7 +54,9 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   const { isPending, mutateAsync } = useSaveLanguage();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [open, setOpen] = React.useState(false);
-  const [selectedLanguage, setSelectedLanguage] = React.useState(form.getValues("languageCode"));
+  const [selectedLanguage, setSelectedLanguage] = React.useState(
+    form.getValues("languageCode"),
+  );
   const formSubmitHandler = async (data: any) => {
     try {
       const isDuplicate = existingLanguages.some(
@@ -61,14 +66,16 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Language is already added. You can't add this language.",
+          description:
+            "Language is already added. You can't add this language.",
         });
         return;
       }
       const payload = {
         ...data,
-        languageName: langConfigureData.find((lang) => lang.languageCode === data.languageCode)
-          ?.languageName,
+        languageName: langConfigureData.find(
+          (lang) => lang.languageCode === data.languageCode,
+        )?.languageName,
         projectKey: tenantId,
       };
       const res = await mutateAsync(payload);
@@ -120,8 +127,9 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                       onClick={() => setOpen(true)}
                     >
                       {selectedLanguage
-                        ? langConfigureData.find((lang) => lang.languageCode === selectedLanguage)
-                          ?.languageName
+                        ? langConfigureData.find(
+                            (lang) => lang.languageCode === selectedLanguage,
+                          )?.languageName
                         : "Select language"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
