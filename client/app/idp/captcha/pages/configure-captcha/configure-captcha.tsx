@@ -1,12 +1,12 @@
-
-
 import { ConfigureCaptchaList } from "./configure-captcha-list";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetCaptchaConfigs } from "../../hooks/use-captcha-config";
 
 export const ConfigureCaptcha = () => {
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
-  const { isLoading, isFetching, data } = useGetCaptchaConfigs({ projectKey: tenantId });
+  const { isLoading, isFetching, data } = useGetCaptchaConfigs({
+    projectKey: tenantId,
+  });
 
   return (
     <div className="flex w-full flex-col">

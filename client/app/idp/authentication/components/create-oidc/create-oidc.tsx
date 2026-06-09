@@ -17,7 +17,7 @@ import {
 } from "@/components/ui-kits/form/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useForm } from "react-hook-form";
 import { Plus, Camera, Pencil } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
@@ -26,12 +26,19 @@ import {
   useGetAuthOidcCredential,
   useSaveAuthOidc,
 } from "@blocks-idp/authentication/hooks/use-auth-oidc";
-import { createOIDCFormDefaultValue, CreateOIDCFormValues, createOidcSchema } from "./utils";
+import {
+  createOIDCFormDefaultValue,
+  CreateOIDCFormValues,
+  createOidcSchema,
+} from "./utils";
 import { Input } from "@/components/ui-kits/input/input";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Button } from "@/components/ui-kits/button/button";
 import { isErrorWithErrors } from "@/lib/error";
-import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
+import {
+  useGetPreSignedUrlForUpload,
+  useUploadFile,
+} from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { ColorSwatch } from "@/components/color-swatch/color-swatch";
 import { ModuleName } from "@/constants/modules.constants";
@@ -41,7 +48,10 @@ type CreateOIDCProps = {
   triggerVariant?: "default" | "ghost" | "outline";
 };
 
-export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCProps) => {
+export const CreateOIDC = ({
+  itemId,
+  triggerVariant = "default",
+}: CreateOIDCProps) => {
   const [open, setOpen] = useState<boolean>(false);
   const [clientLogoUrl, setClientLogoUrl] = useState<string>("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -49,10 +59,11 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
   const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
   const { mutateAsync, isPending } = useSaveAuthOidc();
-  const { data: existingOidc, isLoading: isLoadingOidc } = useGetAuthOidcCredential(
-    { projectKey: tenantId, clientId: itemId! },
-    open && !!itemId,
-  );
+  const { data: existingOidc, isLoading: isLoadingOidc } =
+    useGetAuthOidcCredential(
+      { projectKey: tenantId, clientId: itemId! },
+      open && !!itemId,
+    );
   const { mutateAsync: getPreSign } = useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFile } = useUploadFile();
 
@@ -103,7 +114,14 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
       "image/webp",
       "image/svg+xml",
     ];
-    const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
+    const allowedExtensions = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".webp",
+      ".svg",
+    ];
     const fileName = file.name.toLowerCase();
 
     if (
@@ -111,7 +129,8 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
       !allowedExtensions.some((ext) => fileName.endsWith(ext))
     ) {
       showErrorToast({
-        errors: "Invalid file type. Only JPG, JPEG, PNG, GIF, and WEBP files are allowed.",
+        errors:
+          "Invalid file type. Only JPG, JPEG, PNG, GIF, and WEBP files are allowed.",
       });
       e.target.value = "";
       return;
@@ -181,7 +200,8 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
       showSuccessToast({ description: message });
       setOpen(false);
     } catch (error) {
-      if (isErrorWithErrors(error)) return showErrorToast({ errors: error.errors });
+      if (isErrorWithErrors(error))
+        return showErrorToast({ errors: error.errors });
       return showErrorToast({ errors: "Something went wrong" });
     } finally {
       form.reset();
@@ -210,17 +230,27 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
         </DialogHeader>
         <div className="flex-1 overflow-y-auto">
           <Form {...form}>
-            <form id="oidc-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 px-4">
+            <form
+              id="oidc-form"
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-6 px-4"
+            >
               <div className="flex flex-col items-center gap-4">
                 <div className="relative h-32 w-32 overflow-hidden rounded-lg border border-dashed border-border bg-muted">
                   {clientLogoUrl ? (
-                    <img src={clientLogoUrl} alt="OIDC Logo" className="object-cover" />
+                    <img
+                      src={clientLogoUrl}
+                      alt="OIDC Logo"
+                      className="object-cover"
+                    />
                   ) : (
                     <div className="flex h-full items-center justify-center">
                       <Camera className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  {isUploadingImage && <div className="absolute inset-0 bg-muted/50" />}
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-muted/50" />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -273,7 +303,10 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
                   <FormItem>
                     <FormLabel>Redirect URL</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com/oidc" {...field} />
+                      <Input
+                        placeholder="https://example.com/oidc"
+                        {...field}
+                      />
                     </FormControl>
 
                     <FormMessage />
@@ -303,7 +336,10 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
                   <FormItem>
                     <FormLabel>Color Theme Picker</FormLabel>
                     <FormControl>
-                      <ColorSwatch value={field.value || "#124091"} onChange={field.onChange} />
+                      <ColorSwatch
+                        value={field.value || "#124091"}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -318,7 +354,12 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
                     <FormLabel>Scope(s)</FormLabel>
                     <FormControl>
                       <div className="flex items-center gap-2 rounded border p-4">
-                        <Checkbox {...field} id="scope" checked={true} disabled={true} />
+                        <Checkbox
+                          {...field}
+                          id="scope"
+                          checked={true}
+                          disabled={true}
+                        />
                         <label htmlFor="scope" className="cursor-pointer">
                           OpenID
                         </label>
@@ -332,7 +373,11 @@ export const CreateOIDC = ({ itemId, triggerVariant = "default" }: CreateOIDCPro
           </Form>
         </div>
         <DialogFooter>
-          <Button onClick={() => setOpen(false)} type="button" variant="outline">
+          <Button
+            onClick={() => setOpen(false)}
+            type="button"
+            variant="outline"
+          >
             Cancel
           </Button>
           <Button

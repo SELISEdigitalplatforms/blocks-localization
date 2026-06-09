@@ -62,7 +62,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">
@@ -492,7 +492,11 @@ function Configure() {
                     <FormItem>
                       <FormLabel>Secret Header Key</FormLabel>
                       <FormControl>
-                        <Input placeholder="X-Webhook-Secret" {...field} />
+                        <Input
+                          placeholder="X-Webhook-Secret"
+                          {...field}
+                          autoComplete="off"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -508,6 +512,7 @@ function Configure() {
                         <Input
                           type="password"
                           placeholder="********"
+                          autoComplete="off"
                           {...field}
                         />
                       </FormControl>

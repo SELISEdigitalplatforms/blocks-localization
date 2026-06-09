@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -18,7 +18,10 @@ interface DeleteLanguageKeyProps {
   onClose: () => void;
 }
 
-const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }) => {
+const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
+  itemId,
+  onClose,
+}) => {
   const navigate = useNavigate();
   const { isPending, mutateAsync } = useDeleteLanguageKey();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
@@ -49,7 +52,6 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
         description: JSON.stringify(error),
       });
     }
-
   };
 
   return (
@@ -65,14 +67,19 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
       <DialogFooter className="flex flex-row gap-2">
         <DialogTrigger>
           <Button variant="outline" size="default" disabled={false}>
-          Cancel
-        </Button>
+            Cancel
+          </Button>
         </DialogTrigger>
-        <Button size="default" className="bg-error" onClick={deleteKey} disabled={isPending}>
+        <Button
+          size="default"
+          className="bg-error"
+          onClick={deleteKey}
+          disabled={isPending}
+        >
           Delete Key
         </Button>
       </DialogFooter>
     </DialogContent>
-  )
+  );
 };
 export default DeleteLanguageKey;

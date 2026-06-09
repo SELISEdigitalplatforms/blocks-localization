@@ -1,5 +1,3 @@
-
-
 import {
   FileInput,
   FileUploader,
@@ -18,10 +16,13 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Input } from "@/components/ui-kits/input/input";
 import { Label } from "@/components/ui-kits/label/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui-kits/radio-group/radio-group";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { IGetPublicCertificateResponse } from "@blocks-identifier/models/project.model";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { providers } from "@blocks-idp/authentication/constants/authentication.constant";
 import {
   useSavePublicCertificates,
@@ -47,7 +48,9 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps) => {
+export const AddEditProviderModal = ({
+  existingData,
+}: AddEditProviderModalProps) => {
   const projectKey = useProjectStore().selectedProject?.tenantId ?? "";
 
   const [open, setOpen] = useState(false);
@@ -135,7 +138,8 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
         const validationResult = await validateJwksUrl(urlValue);
         if (!validationResult.isValid) {
           form.setError("url", {
-            message: validationResult.error || "Invalid, provide a valid jwks URL",
+            message:
+              validationResult.error || "Invalid, provide a valid jwks URL",
           });
           return;
         }
@@ -210,7 +214,9 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
         });
 
         if (res?.isSuccess) {
-          showSuccessToast({ description: "Public certificate saved successfully." });
+          showSuccessToast({
+            description: "Public certificate saved successfully.",
+          });
           setOpen(false);
         } else {
           showErrorToast({ errors: res.errors });
@@ -232,7 +238,10 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
     }
 
     try {
-      const uploadResponse = await uploadFileMutate({ TenantId: projectKey, file: certificate });
+      const uploadResponse = await uploadFileMutate({
+        TenantId: projectKey,
+        file: certificate,
+      });
 
       if (!uploadResponse || !uploadResponse.downloadUrl) {
         showErrorToast({ errors: "Failed to get upload URL" });
@@ -251,7 +260,9 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
       });
 
       if (res?.isSuccess) {
-        showSuccessToast({ description: "Public certificate saved successfully." });
+        showSuccessToast({
+          description: "Public certificate saved successfully.",
+        });
         setOpen(false);
       } else {
         showErrorToast({ errors: res.errors });
@@ -291,19 +302,32 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
       </DialogTrigger>
       <DialogContent className="flex max-h-[80vh] w-[95vw] max-w-md flex-col sm:w-full">
         <DialogHeader>
-          <DialogTitle>{existingData ? "Edit provider" : "Add provider"}</DialogTitle>
-          <DialogDescription>Configure your identity provider</DialogDescription>
+          <DialogTitle>
+            {existingData ? "Edit provider" : "Add provider"}
+          </DialogTitle>
+          <DialogDescription>
+            Configure your identity provider
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-2 pb-1">
           {/* Provider Selection */}
           <div className="space-y-3">
-            <RadioGroup value={selectedProvider} onValueChange={setSelectedProvider}>
+            <RadioGroup
+              value={selectedProvider}
+              onValueChange={setSelectedProvider}
+            >
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                 {providers.map((provider) => (
-                  <div key={provider.id} className="flex items-center space-x-2">
+                  <div
+                    key={provider.id}
+                    className="flex items-center space-x-2"
+                  >
                     <RadioGroupItem value={provider.name} id={provider.id} />
-                    <Label htmlFor={provider.id} className="flex cursor-pointer items-center gap-2">
+                    <Label
+                      htmlFor={provider.id}
+                      className="flex cursor-pointer items-center gap-2"
+                    >
                       {provider.icon && (
                         <div className="flex h-7 w-7 items-center justify-center rounded-full p-1 dark:bg-white">
                           <img
@@ -315,7 +339,9 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                           />
                         </div>
                       )}
-                      <span className="text-sm sm:text-base">{provider.name}</span>
+                      <span className="text-sm sm:text-base">
+                        {provider.name}
+                      </span>
                     </Label>
                   </div>
                 ))}
@@ -328,7 +354,10 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
             <Label className="text-sm sm:text-base">
               Choose how you want to add the certificate
             </Label>
-            <RadioGroup value={certificateMethod} onValueChange={setCertificateMethod}>
+            <RadioGroup
+              value={certificateMethod}
+              onValueChange={setCertificateMethod}
+            >
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div
                   className={`flex cursor-pointer items-center space-x-2 rounded-md border p-3 ${
@@ -339,7 +368,10 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                   onClick={() => setCertificateMethod("public-url")}
                 >
                   <RadioGroupItem value="public-url" id="public-url" />
-                  <Label htmlFor="public-url" className="cursor-pointer text-sm sm:text-base">
+                  <Label
+                    htmlFor="public-url"
+                    className="cursor-pointer text-sm sm:text-base"
+                  >
                     Public URL
                   </Label>
                 </div>
@@ -354,7 +386,10 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                     onClick={() => setCertificateMethod("upload-file")}
                   >
                     <RadioGroupItem value="upload-file" id="upload-file" />
-                    <Label htmlFor="upload-file" className="cursor-pointer text-sm sm:text-base">
+                    <Label
+                      htmlFor="upload-file"
+                      className="cursor-pointer text-sm sm:text-base"
+                    >
                       Upload file
                     </Label>
                   </div>
@@ -401,7 +436,9 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                         className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 text-sm"
                       >
                         <Paperclip className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate text-foreground">{file.name}</span>
+                        <span className="truncate text-foreground">
+                          {file.name}
+                        </span>
                       </FileUploaderItem>
                     ))}
                   </FileUploaderContent>
@@ -424,7 +461,11 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                   autoComplete="off"
                   {...register("url")}
                 />
-                {errors.url && <p className="text-sm text-destructive">{errors.url.message}</p>}
+                {errors.url && (
+                  <p className="text-sm text-destructive">
+                    {errors.url.message}
+                  </p>
+                )}
               </div>
             )}
 
@@ -450,15 +491,25 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                   </Button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="issuer">Issuer (Optional)</Label>
-              <Input id="issuer" placeholder="Enter issuer" {...register("issuer")} />
-              {errors.issuer && <p className="text-sm text-destructive">{errors.issuer.message}</p>}
+              <Input
+                id="issuer"
+                placeholder="Enter issuer"
+                {...register("issuer")}
+              />
+              {errors.issuer && (
+                <p className="text-sm text-destructive">
+                  {errors.issuer.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -469,7 +520,9 @@ export const AddEditProviderModal = ({ existingData }: AddEditProviderModalProps
                 {...register("audience")}
               />
               {errors.audience && (
-                <p className="text-sm text-destructive">{errors.audience.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.audience.message}
+                </p>
               )}
             </div>
           </div>

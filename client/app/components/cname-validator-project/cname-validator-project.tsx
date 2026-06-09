@@ -1,12 +1,18 @@
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
-import { useGetProject, useValidateCNameProject } from "@blocks-identifier/hooks/use-project";
-import { useProjectStore } from "@/store/useProjectStore";
+import {
+  useGetProject,
+  useValidateCNameProject,
+} from "@blocks-identifier/hooks/use-project";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const CnameValidatorProject = () => {
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
-  const { itemId } = useProjectStore().selectedProject || { itemId: "", tenantId: "" };
+  const { itemId } = useProjectStore().selectedProject || {
+    itemId: "",
+    tenantId: "",
+  };
   const { data } = useGetProject({ projectId: itemId });
   const { mutateAsync, isPending } = useValidateCNameProject({ projectKey });
 
@@ -18,13 +24,18 @@ export const CnameValidatorProject = () => {
         cookieDomain: data?.data.applicationDomain.split("//")[1],
       });
       if (res.isSuccess)
-        return showSuccessToast({ description: "CName is validated successfully" });
+        return showSuccessToast({
+          description: "CName is validated successfully",
+        });
       showErrorToast({
-        errors: "Could not verify the domain. Please make sure it is valid and try again",
+        errors:
+          "Could not verify the domain. Please make sure it is valid and try again",
       });
     } catch (error) {
       if (error && typeof error === "object" && "errors" in error) {
-        showErrorToast({ errors: (error as unknown as { errors: unknown }).errors });
+        showErrorToast({
+          errors: (error as unknown as { errors: unknown }).errors,
+        });
       }
     }
   };
