@@ -35,63 +35,79 @@ interface LanguageViewState {
   toggleOptionalColumn: (column: string) => void;
   isHydrated: boolean;
   setIsHydrated: (hydrated: boolean) => void;
+  hasStoredViewSettings: boolean;
 }
+
+let skipNextPersist = false;
+
+const setStateWithoutPersist = (
+  state: Partial<LanguageViewState>,
+  replace?: false,
+) => {
+  skipNextPersist = true;
+  try {
+    useLanguageViewStore.setState(state, replace);
+  } finally {
+    skipNextPersist = false;
+  }
+};
+
+// Helper to read cookie data for a specific tenantId
+// This is used by both the storage adapter and manual rehydration
+const getStoredDataForTenant = (tenantId: string) => {
+  if (!tenantId) return null;
+
+  try {
+    const value = getCookie(COOKIE_NAME);
+    if (!value) return null;
+
+    const parsed = JSON.parse(decodeURIComponent(value)) as Record<
+      string,
+      {
+        selectedLanguages?: string[];
+        selectedOptionalColumns?: string[];
+      }
+    >;
+
+    const tenantSettings = parsed[tenantId];
+    if (!tenantSettings) return null;
+
+    return {
+      selectedLanguages: (tenantSettings.selectedLanguages || []).filter(
+        isValidLanguageCode,
+      ),
+      selectedOptionalColumns: (
+        tenantSettings.selectedOptionalColumns || []
+      ).filter(isValidOptionalColumn),
+    };
+  } catch {
+    return null;
+  }
+};
 
 // Custom storage adapter using cookies for cross-subdomain persistence
 // Stores view settings per tenantId (project)
 const cookieStorage = {
   getItem: (): string | null => {
-    try {
-      const value = getCookie(COOKIE_NAME);
-      if (!value) return null;
-
-      // Parse the stored data - it contains all tenant settings keyed by tenantId
-      const parsed = JSON.parse(decodeURIComponent(value)) as Record<
-        string,
-        {
-          selectedLanguages?: string[];
-          selectedOptionalColumns?: string[];
-        }
-      >;
-
-      // The value parameter contains the zustand persist format: { state: { tenantId, ... }, version }
-      // Extract tenantId from the incoming state to know which tenant's settings to read
-      const stateToRehydrate = JSON.parse(value);
-      const tenantId = stateToRehydrate?.state?.tenantId || "";
-
-      // If no tenantId in state, return null to use defaults
-      if (!tenantId) return null;
-
-      // Get the settings for the current tenant from our cookie storage, or use defaults
-      const tenantSettings = parsed[tenantId] || {
-        selectedLanguages: [],
-        selectedOptionalColumns: [],
-      };
-
-      // Validate and sanitize data on read, then return in zustand persist format
-      const sanitized = {
-        state: {
-          tenantId,
-          selectedLanguages: (tenantSettings.selectedLanguages || []).filter(
-            isValidLanguageCode,
-          ),
-          selectedOptionalColumns: (
-            tenantSettings.selectedOptionalColumns || []
-          ).filter(isValidOptionalColumn),
-        },
-        version: 0,
-      };
-
-      return JSON.stringify(sanitized);
-    } catch {
-      // If parsing fails, return null to use default state
-      return null;
-    }
+    // NOTE: This is called during zustand persist's automatic rehydration
+    // which happens BEFORE we can set the correct tenantId.
+    // We return null here to prevent incorrect rehydration.
+    // Manual rehydration is done via rehydrateLanguageViewStore() AFTER setting tenantId.
+    return null;
   },
   setItem: (name: string, value: string): void => {
     try {
+      if (skipNextPersist) return;
+
       const parsed = JSON.parse(value);
-      const tenantId = parsed.state?.tenantId || "";
+      // Note: tenantId is NOT persisted anymore - it's controlled by the component
+      const selectedLanguages = parsed.state?.selectedLanguages || [];
+      const selectedOptionalColumns =
+        parsed.state?.selectedOptionalColumns || [];
+
+      // Get tenantId from the store's current state
+      const currentState = useLanguageViewStore.getState();
+      const tenantId = currentState.tenantId;
 
       // If no tenantId, don't store anything
       if (!tenantId) return;
@@ -111,12 +127,9 @@ const cookieStorage = {
       const validated = {
         ...existingData,
         [tenantId]: {
-          selectedLanguages: (parsed.state?.selectedLanguages || []).filter(
-            isValidLanguageCode,
-          ),
-          selectedOptionalColumns: (
-            parsed.state?.selectedOptionalColumns || []
-          ).filter(isValidOptionalColumn),
+          selectedLanguages: selectedLanguages.filter(isValidLanguageCode),
+          selectedOptionalColumns:
+            selectedOptionalColumns.filter(isValidOptionalColumn),
         },
       };
 
@@ -136,11 +149,15 @@ export const useLanguageViewStore = create<LanguageViewState>()(
       tenantId: "",
       selectedLanguages: [],
       isHydrated: false,
+      hasStoredViewSettings: false,
 
       setSelectedLanguages: (languages: string[]) => {
         // Only accept valid language codes
         const validLanguages = languages.filter(isValidLanguageCode);
-        set({ selectedLanguages: validLanguages });
+        set({
+          selectedLanguages: validLanguages,
+          hasStoredViewSettings: true,
+        });
       },
 
       toggleLanguage: (languageCode: string) => {
@@ -151,11 +168,16 @@ export const useLanguageViewStore = create<LanguageViewState>()(
           selectedLanguages: state.selectedLanguages.includes(languageCode)
             ? state.selectedLanguages.filter((lang) => lang !== languageCode)
             : [...state.selectedLanguages, languageCode],
+          hasStoredViewSettings: true,
         }));
       },
 
       resetSelectedLanguages: () => {
-        set({ selectedLanguages: [], selectedOptionalColumns: [] });
+        set({
+          selectedLanguages: [],
+          selectedOptionalColumns: [],
+          hasStoredViewSettings: true,
+        });
       },
 
       selectedOptionalColumns: [],
@@ -163,7 +185,10 @@ export const useLanguageViewStore = create<LanguageViewState>()(
       setSelectedOptionalColumns: (columns: string[]) => {
         // Only accept valid column values
         const validColumns = columns.filter(isValidOptionalColumn);
-        set({ selectedOptionalColumns: validColumns });
+        set({
+          selectedOptionalColumns: validColumns,
+          hasStoredViewSettings: true,
+        });
       },
 
       toggleOptionalColumn: (column: string) => {
@@ -176,6 +201,7 @@ export const useLanguageViewStore = create<LanguageViewState>()(
           )
             ? state.selectedOptionalColumns.filter((col) => col !== column)
             : [...state.selectedOptionalColumns, column],
+          hasStoredViewSettings: true,
         }));
       },
 
@@ -186,13 +212,12 @@ export const useLanguageViewStore = create<LanguageViewState>()(
     {
       name: COOKIE_NAME,
       storage: createJSONStorage(() => cookieStorage),
-      onRehydrateStorage: () => (state) => {
-        // Called after state is rehydrated from cookie
-        state?.setIsHydrated(true);
-      },
-      // Partialize to only persist selectedLanguages and selectedOptionalColumns
+      // IMPORTANT: Skip automatic rehydration to prevent race condition
+      // We manually rehydrate via rehydrateLanguageViewStore() AFTER setting tenantId
+      skipHydration: true,
+      // Only persist language settings, NOT tenantId
+      // tenantId is controlled entirely by the component
       partialize: (state) => ({
-        tenantId: state.tenantId,
         selectedLanguages: state.selectedLanguages,
         selectedOptionalColumns: state.selectedOptionalColumns,
       }),
@@ -200,8 +225,41 @@ export const useLanguageViewStore = create<LanguageViewState>()(
   ),
 );
 
-// Helper function to update tenantId
-// Call this when the project changes to ensure persist middleware loads correct settings
+/**
+ * Manually rehydrate the store for a specific tenantId
+ * Call this AFTER updateLanguageViewTenantId() to load the correct tenant's settings
+ */
+export const rehydrateLanguageViewStore = () => {
+  const state = useLanguageViewStore.getState();
+  const storedData = getStoredDataForTenant(state.tenantId);
+
+  if (storedData) {
+    setStateWithoutPersist({
+      ...storedData,
+      isHydrated: true,
+      hasStoredViewSettings: true,
+    });
+  } else {
+    // No stored data for this tenant, use defaults
+    setStateWithoutPersist({
+      selectedLanguages: [],
+      selectedOptionalColumns: [],
+      isHydrated: true,
+      hasStoredViewSettings: false,
+    });
+  }
+};
+
+/**
+ * Update tenantId and load the corresponding tenant's stored settings
+ * This should be called when switching projects
+ */
 export const updateLanguageViewTenantId = (tenantId: string) => {
-  useLanguageViewStore.setState({ tenantId });
+  setStateWithoutPersist({
+    tenantId,
+    isHydrated: false,
+    hasStoredViewSettings: false,
+  });
+  // After setting tenantId, manually rehydrate to get the correct tenant's settings
+  rehydrateLanguageViewStore();
 };
