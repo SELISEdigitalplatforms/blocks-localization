@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { projectService } from "@blocks-identifier/services/project.service";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import {
   useCreateProjectFormState,
   shortGuidGenerator,
 } from "@/components/create-project/utils";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const useGetProjects = (tenantGroupId = "") => {
   const { setProjects, selectedProject, setSelectedProject } =
