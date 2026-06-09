@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { getJsonCookie, setJsonCookie, removeCookie, setCookie } from "@/lib/cookie";
+import { getCookie, setJsonCookie, removeCookie } from "@/lib/cookie";
 
 const COOKIE_NAME = "language-view-storage";
 const COOKIE_DAYS = 365;
 
 // Valid optional column values
-const VALID_OPTIONAL_COLUMNS = ["completeness", "createDate", "lastUpdateDate"] as const;
+const VALID_OPTIONAL_COLUMNS = [
+  "completeness",
+  "createDate",
+  "lastUpdateDate",
+] as const;
 
 // Validate and sanitize language codes (ISO format like "en-US", "bn-BD")
 const isValidLanguageCode = (code: string): boolean => {
@@ -15,10 +19,13 @@ const isValidLanguageCode = (code: string): boolean => {
 
 // Validate optional column values
 const isValidOptionalColumn = (column: string): boolean => {
-  return VALID_OPTIONAL_COLUMNS.includes(column as typeof VALID_OPTIONAL_COLUMNS[number]);
+  return VALID_OPTIONAL_COLUMNS.includes(
+    column as (typeof VALID_OPTIONAL_COLUMNS)[number],
+  );
 };
 
 interface LanguageViewState {
+  tenantId: string;
   selectedLanguages: string[];
   setSelectedLanguages: (languages: string[]) => void;
   toggleLanguage: (languageCode: string) => void;
@@ -31,54 +38,102 @@ interface LanguageViewState {
 }
 
 // Custom storage adapter using cookies for cross-subdomain persistence
-// TODO: Re-enable cookie storage after OIDC work is complete
+// Stores view settings per tenantId (project)
 const cookieStorage = {
   getItem: (): string | null => {
-    // Temporarily disabled for OIDC work
-    return null;
-    // const value = getJsonCookie<{ state: { selectedLanguages: string[]; selectedOptionalColumns: string[] }; version: number }>(COOKIE_NAME);
-    // if (!value) return null;
+    try {
+      const value = getCookie(COOKIE_NAME);
+      if (!value) return null;
 
-    // // Validate and sanitize data on read
-    // const sanitized = {
-    //   state: {
-    //     selectedLanguages: (value.state?.selectedLanguages || []).filter(isValidLanguageCode),
-    //     selectedOptionalColumns: (value.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-    //   },
-    //   version: value.version || 0,
-    // };
+      // Parse the stored data - it contains all tenant settings keyed by tenantId
+      const parsed = JSON.parse(decodeURIComponent(value)) as Record<
+        string,
+        {
+          selectedLanguages?: string[];
+          selectedOptionalColumns?: string[];
+        }
+      >;
 
-    // return JSON.stringify(sanitized);
+      // The value parameter contains the zustand persist format: { state: { tenantId, ... }, version }
+      // Extract tenantId from the incoming state to know which tenant's settings to read
+      const stateToRehydrate = JSON.parse(value);
+      const tenantId = stateToRehydrate?.state?.tenantId || "";
+
+      // If no tenantId in state, return null to use defaults
+      if (!tenantId) return null;
+
+      // Get the settings for the current tenant from our cookie storage, or use defaults
+      const tenantSettings = parsed[tenantId] || {
+        selectedLanguages: [],
+        selectedOptionalColumns: [],
+      };
+
+      // Validate and sanitize data on read, then return in zustand persist format
+      const sanitized = {
+        state: {
+          tenantId,
+          selectedLanguages: (tenantSettings.selectedLanguages || []).filter(
+            isValidLanguageCode,
+          ),
+          selectedOptionalColumns: (
+            tenantSettings.selectedOptionalColumns || []
+          ).filter(isValidOptionalColumn),
+        },
+        version: 0,
+      };
+
+      return JSON.stringify(sanitized);
+    } catch {
+      // If parsing fails, return null to use default state
+      return null;
+    }
   },
   setItem: (name: string, value: string): void => {
-    // Temporarily disabled for OIDC work
-    return;
-    // try {
-    //   const parsed = JSON.parse(value);
-    //   // Additional validation on write
-    //   const validated = {
-    //     ...parsed,
-    //     state: {
-    //       selectedLanguages: (parsed.state?.selectedLanguages || []).filter(isValidLanguageCode),
-    //       selectedOptionalColumns: (parsed.state?.selectedOptionalColumns || []).filter(isValidOptionalColumn),
-    //     },
-    //   };
-    //   setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
-    // } catch {
-    //   // If parsing fails, store as-is
-    //   setCookie(COOKIE_NAME, value, COOKIE_DAYS);
-    // }
+    try {
+      const parsed = JSON.parse(value);
+      const tenantId = parsed.state?.tenantId || "";
+
+      // If no tenantId, don't store anything
+      if (!tenantId) return;
+
+      // Get existing stored data
+      const existingData = (() => {
+        const cookieValue = getCookie(COOKIE_NAME);
+        if (!cookieValue) return {};
+        try {
+          return JSON.parse(decodeURIComponent(cookieValue)) || {};
+        } catch {
+          return {};
+        }
+      })();
+
+      // Update only the current tenant's settings
+      const validated = {
+        ...existingData,
+        [tenantId]: {
+          selectedLanguages: (parsed.state?.selectedLanguages || []).filter(
+            isValidLanguageCode,
+          ),
+          selectedOptionalColumns: (
+            parsed.state?.selectedOptionalColumns || []
+          ).filter(isValidOptionalColumn),
+        },
+      };
+
+      setJsonCookie(COOKIE_NAME, validated, COOKIE_DAYS);
+    } catch {
+      // If parsing fails, do nothing
+    }
   },
   removeItem: (): void => {
-    // Temporarily disabled for OIDC work
-    return;
-    // removeCookie(COOKIE_NAME);
+    removeCookie(COOKIE_NAME);
   },
 };
 
 export const useLanguageViewStore = create<LanguageViewState>()(
   persist(
     (set) => ({
+      tenantId: "",
       selectedLanguages: [],
       isHydrated: false,
 
@@ -100,8 +155,7 @@ export const useLanguageViewStore = create<LanguageViewState>()(
       },
 
       resetSelectedLanguages: () => {
-        set({ selectedLanguages: [] });
-        set({ selectedOptionalColumns: [] });
+        set({ selectedLanguages: [], selectedOptionalColumns: [] });
       },
 
       selectedOptionalColumns: [],
@@ -117,7 +171,9 @@ export const useLanguageViewStore = create<LanguageViewState>()(
         if (!isValidOptionalColumn(column)) return;
 
         set((state) => ({
-          selectedOptionalColumns: state.selectedOptionalColumns.includes(column)
+          selectedOptionalColumns: state.selectedOptionalColumns.includes(
+            column,
+          )
             ? state.selectedOptionalColumns.filter((col) => col !== column)
             : [...state.selectedOptionalColumns, column],
         }));
@@ -134,6 +190,18 @@ export const useLanguageViewStore = create<LanguageViewState>()(
         // Called after state is rehydrated from cookie
         state?.setIsHydrated(true);
       },
+      // Partialize to only persist selectedLanguages and selectedOptionalColumns
+      partialize: (state) => ({
+        tenantId: state.tenantId,
+        selectedLanguages: state.selectedLanguages,
+        selectedOptionalColumns: state.selectedOptionalColumns,
+      }),
     },
   ),
 );
+
+// Helper function to update tenantId
+// Call this when the project changes to ensure persist middleware loads correct settings
+export const updateLanguageViewTenantId = (tenantId: string) => {
+  useLanguageViewStore.setState({ tenantId });
+};

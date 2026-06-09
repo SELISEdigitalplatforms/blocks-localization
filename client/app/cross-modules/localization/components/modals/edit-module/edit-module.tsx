@@ -17,7 +17,7 @@ import {
 } from "@/components/ui-kits/form/form";
 import { useSaveLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -67,7 +67,10 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
         form.reset();
         onClose(false);
       } else {
-        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
+        if (
+          Array.isArray(res?.validationErrors) &&
+          res.validationErrors.length > 0
+        ) {
           res.validationErrors.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
@@ -122,7 +125,9 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
             >
               Cancel
             </Button>
-            <Button disabled={isPending || !form.formState.isValid}>Save</Button>
+            <Button disabled={isPending || !form.formState.isValid}>
+              Save
+            </Button>
           </DialogFooter>
         </form>
       </Form>
