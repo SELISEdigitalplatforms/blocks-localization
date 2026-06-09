@@ -62,7 +62,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">

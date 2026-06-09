@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { storageService } from "../services/storage.service";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const useGetStorageConfigurations = () => {
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
@@ -17,7 +17,9 @@ export const useSaveStorageConfiguration = () => {
     mutationFn: storageService.configuration.save,
     onSuccess: (data) => {
       if (data.isSuccess)
-        queryClient.invalidateQueries({ queryKey: ["storage", "configuration", "gets"] });
+        queryClient.invalidateQueries({
+          queryKey: ["storage", "configuration", "gets"],
+        });
     },
   });
 };
@@ -27,7 +29,9 @@ export const useDeleteStorageConfiguration = () => {
     mutationKey: ["storage", "configuration", "delete"],
     mutationFn: storageService.configuration.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["storage", "configuration", "gets"] });
+      queryClient.invalidateQueries({
+        queryKey: ["storage", "configuration", "gets"],
+      });
     },
   });
 };

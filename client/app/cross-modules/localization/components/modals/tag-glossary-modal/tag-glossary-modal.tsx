@@ -16,7 +16,7 @@ import {
   useTagGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { IModuleGets } from "@blocks-localization/models/language";
 
 interface TagGlossaryModalProps {

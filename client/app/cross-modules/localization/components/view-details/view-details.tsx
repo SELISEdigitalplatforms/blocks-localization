@@ -24,7 +24,7 @@ import { IBlocksLanguageKey } from "../../models/language";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";

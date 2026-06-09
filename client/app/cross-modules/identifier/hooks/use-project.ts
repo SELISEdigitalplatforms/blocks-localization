@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { projectService } from "@blocks-identifier/services/project.service";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import {
   useCreateProjectFormState,
   shortGuidGenerator,
@@ -10,7 +10,8 @@ import {
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 
 export const useGetProjects = (tenantGroupId = "") => {
-  const { setProjects, selectedProject, setSelectedProject } = useProjectStore();
+  const { setProjects, selectedProject, setSelectedProject } =
+    useProjectStore();
 
   const query = useQuery({
     queryKey: ["identifier", "projects", tenantGroupId],
@@ -114,7 +115,9 @@ export const useValidateCNameProject = (options: { projectKey: string }) => {
     mutationKey: ["identifier", "projects", "validate cname"],
     mutationFn: projectService.validateCNameProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["identifier", "project", options] });
+      queryClient.invalidateQueries({
+        queryKey: ["identifier", "project", options],
+      });
     },
   });
 };
@@ -125,7 +128,9 @@ export const useDisableProject = (options: { projectKey: string }) => {
     mutationKey: ["identifier", "projects", "disable"],
     mutationFn: projectService.disableProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["identifier", "project", options] });
+      queryClient.invalidateQueries({
+        queryKey: ["identifier", "project", options],
+      });
       queryClient.invalidateQueries({ queryKey: ["identifier", "projects"] });
     },
   });
@@ -155,14 +160,15 @@ export const useProjectForm = () => {
   const navigate = useNavigate();
   const { isPending, mutateAsync } = useCreateProject();
   const { formData, resetFormData } = useCreateProjectFormState();
-  const { setTennantGroup, setSelectedProject } = useProjectStore();
+  const { setTenantGroup, setSelectedProject } = useProjectStore();
   const queryClient = useQueryClient();
 
   const saveProject = async () => {
     try {
       const environments = formData[2]?.environments || [];
       const shortGuid = shortGuidGenerator(5);
-      const baseDomain = import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
+      const baseDomain =
+        import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
       const applicationContexts =
         environments.map((env: { value: string }) => ({
           environment: env.value,
@@ -186,12 +192,13 @@ export const useProjectForm = () => {
       });
       if (response?.isSuccess) {
         showSuccessToast({ description: "Your project has been created." });
-        setTennantGroup(response.tenantGroupId);
+        setTenantGroup(response.tenantGroupId);
 
         try {
           const projectGroups = await queryClient.fetchQuery({
             queryKey: ["identifier", "projects", response.tenantGroupId],
-            queryFn: () => projectService.getProjects(0, 100, response.tenantGroupId),
+            queryFn: () =>
+              projectService.getProjects(0, 100, response.tenantGroupId),
             staleTime: 0,
           });
 

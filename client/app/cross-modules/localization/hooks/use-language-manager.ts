@@ -1,6 +1,9 @@
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { localizationQueryKeys } from "../constants/query-keys";
-import { ExportHistoryFilters, IKeyUilmExport } from "@blocks-localization/models/language";
+import {
+  ExportHistoryFilters,
+  IKeyUilmExport,
+} from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language.manager.service";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,8 +103,12 @@ export const useSaveBlocksLanguageKey = () => {
     mutationKey: ["add-blocksLanguageKey"],
     mutationFn: languageManagerService.saveBlocksLanguageKey,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -118,7 +125,9 @@ export const useSaveLanguageModule = () => {
     mutationKey: ["add-language-module"],
     mutationFn: languageManagerService.saveLanguageModule,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.modules.all,
+      });
     },
   });
 };
@@ -129,7 +138,9 @@ export const useDeleteLanguageModule = () => {
     mutationKey: ["language-module", "delete"],
     mutationFn: languageManagerService.deleteLanguageModule,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.modules.all,
+      });
     },
   });
 };
@@ -140,8 +151,12 @@ export const useTagGlossary = () => {
     mutationKey: ["language-module", "tag-glossary"],
     mutationFn: languageManagerService.tagGlossary,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.modules.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.all,
+      });
     },
   });
 };
@@ -160,8 +175,12 @@ export const useTranslateAll = () => {
     mutationKey: ["translate-all"],
     mutationFn: languageManagerService.translateAll,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
     },
   });
 };
@@ -172,8 +191,12 @@ export const useTranslateKey = () => {
     mutationKey: ["translate-key"],
     mutationFn: languageManagerService.translateKey,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -212,13 +235,18 @@ export const useTranslateKeyWithPolling = (
 
         // Check if this key has at least one non-null, non-empty translation
         const hasTranslations = data?.resources?.some(
-          (r) => r.culture !== "en-US" && r.value !== null && r.value.trim() !== "",
+          (r) =>
+            r.culture !== "en-US" && r.value !== null && r.value.trim() !== "",
         );
 
         if (hasTranslations) {
           // Translation is complete, invalidate list queries to refresh table
-          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
-          queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+          queryClient.invalidateQueries({
+            queryKey: localizationQueryKeys.languageKeys.all,
+          });
+          queryClient.invalidateQueries({
+            queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+          });
           onTranslationComplete?.();
           return;
         }
@@ -239,7 +267,14 @@ export const useTranslateKeyWithPolling = (
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [keyId, tenantId, queryClient, onTranslationComplete, maxAttempts, pollInterval]);
+  }, [
+    keyId,
+    tenantId,
+    queryClient,
+    onTranslationComplete,
+    maxAttempts,
+    pollInterval,
+  ]);
 };
 
 export const useSaveLanguage = () => {
@@ -248,7 +283,9 @@ export const useSaveLanguage = () => {
     mutationKey: ["add-language"],
     mutationFn: languageManagerService.saveLanguage,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languages.all,
+      });
     },
   });
 };
@@ -259,7 +296,9 @@ export const useDeleteLanguageKey = () => {
     mutationKey: ["language-key", "delete"],
     mutationFn: languageManagerService.deleteLanguageKey,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
     },
   });
 };
@@ -270,7 +309,9 @@ export const useDeleteLanguageKeys = () => {
     mutationKey: ["language-keys", "bulk-delete"],
     mutationFn: languageManagerService.deleteLanguageKeys,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
     },
   });
 };
@@ -281,8 +322,12 @@ export const useTranslateLanguageKeys = () => {
     mutationKey: ["translate-keys", "bulk"],
     mutationFn: languageManagerService.translateLanguageKeys,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -299,7 +344,9 @@ export const useDeleteLanguage = () => {
     mutationKey: ["language-config", "delete"],
     mutationFn: languageManagerService.deleteLanguage,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languages.all,
+      });
     },
   });
 };
@@ -310,7 +357,9 @@ export const useSetDefaultLanguage = () => {
     mutationKey: ["language-config", "set-default"],
     mutationFn: languageManagerService.setDefault,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languages.all,
+      });
     },
   });
 };
@@ -346,16 +395,27 @@ export const useSaveLanguageKeyUilmExport = () => {
     mutationFn: (payload: IKeyUilmExport) =>
       languageManagerService.saveLanguageKeyUilmExport(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.exportHistory.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.exportHistory.all,
+      });
     },
   });
 };
 
-export const useGetLanguageKeysTimeline = (pageNumber: number, pageSize: number, keyId: string) => {
+export const useGetLanguageKeysTimeline = (
+  pageNumber: number,
+  pageSize: number,
+  keyId: string,
+) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const enabled = Boolean(tenantId && keyId);
   return useQuery({
-    queryKey: localizationQueryKeys.languageKeys.timeline(tenantId, pageNumber, pageSize, keyId),
+    queryKey: localizationQueryKeys.languageKeys.timeline(
+      tenantId,
+      pageNumber,
+      pageSize,
+      keyId,
+    ),
     enabled,
     queryFn: () =>
       languageManagerService.getKeysTimeline({
@@ -473,7 +533,11 @@ export const useGetTimelineByOperationId = (
 
 // Glossary hooks
 
-export const useGetGlossaries = (pageNumber: number, pageSize: number, searchText?: string) => {
+export const useGetGlossaries = (
+  pageNumber: number,
+  pageSize: number,
+  searchText?: string,
+) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.glossaries.list(
@@ -500,9 +564,15 @@ export const useSaveGlossary = () => {
     mutationKey: ["save-glossary"],
     mutationFn: languageManagerService.saveGlossary,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.all });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.suggestedPrefix });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.detailPrefix });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.suggestedPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.detailPrefix,
+      });
     },
   });
 };
@@ -513,8 +583,12 @@ export const useDeleteGlossary = () => {
     mutationKey: ["glossary", "delete"],
     mutationFn: languageManagerService.deleteGlossary,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.all });
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.suggestedPrefix });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.glossaries.suggestedPrefix,
+      });
     },
   });
 };
@@ -634,7 +708,10 @@ export const useGetKeysByGlossaryId = (
 
       // Return paginated result from filtered keys
       const startIndex = pageNumber * pageSize;
-      const paginatedKeys = filteredKeys.slice(startIndex, startIndex + pageSize);
+      const paginatedKeys = filteredKeys.slice(
+        startIndex,
+        startIndex + pageSize,
+      );
 
       return {
         totalCount: filteredKeys.length,
@@ -663,7 +740,9 @@ export const useSaveWebhook = () => {
     mutationKey: ["save-webhook"],
     mutationFn: languageManagerService.saveWebhook,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: localizationQueryKeys.webhook.all });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.webhook.all,
+      });
     },
   });
 };

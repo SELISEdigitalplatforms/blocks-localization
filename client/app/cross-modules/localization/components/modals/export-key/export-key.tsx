@@ -22,7 +22,7 @@ import {
 } from "@/components/ui-kits/radio-group/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import {
   useGetLanguageModule,
   useGetLanguages,

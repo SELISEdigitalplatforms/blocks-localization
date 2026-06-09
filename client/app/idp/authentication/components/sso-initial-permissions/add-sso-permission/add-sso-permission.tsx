@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { cn } from "@/lib/utils";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetPermissions } from "@blocks-idp/iam/hooks/use-permission";
 import { IPermission, RESOURCE_TYPE } from "@blocks-idp/iam/models/permission";
 import { CirclePlus } from "lucide-react";
@@ -34,10 +34,15 @@ type AddSSOPermissionProps = {
   onAdd: (data: IPermission[]) => void;
 };
 
-export const AddSSOPermission = ({ onAdd, permissions }: AddSSOPermissionProps) => {
+export const AddSSOPermission = ({
+  onAdd,
+  permissions,
+}: AddSSOPermissionProps) => {
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
   const [open, setOpen] = useState<boolean>(false);
-  const [selectedPermission, setSelectedPermissions] = useState<IPermission[]>([]);
+  const [selectedPermission, setSelectedPermissions] = useState<IPermission[]>(
+    [],
+  );
   const [filter, setFilter] = useState({
     page: 0,
     pageSize: 5,
@@ -56,15 +61,26 @@ export const AddSSOPermission = ({ onAdd, permissions }: AddSSOPermissionProps) 
     setOpen(false);
   };
 
-  const onCheckedChangeHandler = (checked: boolean, permission: IPermission) => {
+  const onCheckedChangeHandler = (
+    checked: boolean,
+    permission: IPermission,
+  ) => {
     if (checked) {
       return setSelectedPermissions((prev) => [...prev, permission]);
     }
-    setSelectedPermissions((prev) => prev.filter((item) => item.resource !== permission.resource));
+    setSelectedPermissions((prev) =>
+      prev.filter((item) => item.resource !== permission.resource),
+    );
   };
 
-  const handlePermissionCheckboxChange = (checked: boolean, permission: IPermission) => {
-    if (checked && permissionsResource.length + selectedPermission.length >= 5) {
+  const handlePermissionCheckboxChange = (
+    checked: boolean,
+    permission: IPermission,
+  ) => {
+    if (
+      checked &&
+      permissionsResource.length + selectedPermission.length >= 5
+    ) {
       return;
     }
     onCheckedChangeHandler(checked, permission);
@@ -119,15 +135,21 @@ export const AddSSOPermission = ({ onAdd, permissions }: AddSSOPermissionProps) 
         <div>
           <FilterControls.SearchInput
             placeholder="Search by permission name"
-            onChange={(search) => setFilter((prev) => ({ ...prev, search, page: 0 }))}
+            onChange={(search) =>
+              setFilter((prev) => ({ ...prev, search, page: 0 }))
+            }
             value={filter.search}
             className="h-fit w-full py-3"
           />
         </div>
         <h1
-          className={cn("text-sm font-semibold", selectedPermission.length === 5 && "text-error")}
+          className={cn(
+            "text-sm font-semibold",
+            selectedPermission.length === 5 && "text-error",
+          )}
         >
-          *You can select up to 5 permissions. <span>{`(${selectedPermission.length}/5)`}</span>
+          *You can select up to 5 permissions.{" "}
+          <span>{`(${selectedPermission.length}/5)`}</span>
         </h1>
         <Card>
           <CardContent>
@@ -150,7 +172,10 @@ export const AddSSOPermission = ({ onAdd, permissions }: AddSSOPermissionProps) 
                         }
                         disabled={permissionsResource.includes(item.resource)}
                         onCheckedChange={(checked) => {
-                          handlePermissionCheckboxChange(checked as boolean, item);
+                          handlePermissionCheckboxChange(
+                            checked as boolean,
+                            item,
+                          );
                         }}
                       />
                     </TableCell>
@@ -161,8 +186,9 @@ export const AddSSOPermission = ({ onAdd, permissions }: AddSSOPermissionProps) 
                     </TableCell>
                     <TableCell>
                       {
-                        RESOURCE_TYPE.find((resource) => resource.value === item.type.toString())
-                          ?.label
+                        RESOURCE_TYPE.find(
+                          (resource) => resource.value === item.type.toString(),
+                        )?.label
                       }
                     </TableCell>
                   </TableRow>
