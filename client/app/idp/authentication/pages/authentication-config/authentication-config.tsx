@@ -7,16 +7,27 @@ import { useQueryState } from "nuqs";
 // import { GeneralSettings } from "./general/settings";
 import { SSO } from "./sso";
 import { Certificates } from "./general/certificates/certificates";
-import { AuthenticationTabs, GRANT_TYPES } from "@blocks-idp/authentication/constants/authentication.constant";
+import {
+  AuthenticationTabs,
+  GRANT_TYPES,
+} from "@blocks-idp/authentication/constants/authentication.constant";
 import { OIDC } from "@blocks-idp/authentication/components/oidc";
 import { ClientCredentials } from "@blocks-idp/authentication/components/client-credentials";
 import { CreateClientCredential } from "@blocks-idp/authentication/components/create-client-credential";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui-kits/select/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui-kits/select/select";
 import { CreateOIDC } from "@blocks-idp/authentication/components/create-oidc";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const AuthenticationConfig = () => {
-  const [selectedTab, setSelectedTab] = useQueryState("tab", { defaultValue: GRANT_TYPES.social });
+  const [selectedTab, setSelectedTab] = useQueryState("tab", {
+    defaultValue: GRANT_TYPES.social,
+  });
   const tenantId = useProjectStore().selectedProject?.tenantId || "";
 
   return (
@@ -24,7 +35,10 @@ export const AuthenticationConfig = () => {
       <div className="mb-[18px] flex items-center justify-between md:mb-[24px]">
         <h1 className="text-lg font-semibold md:text-2xl">IDP</h1>
       </div>
-      <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value)}>
+      <Tabs
+        value={selectedTab}
+        onValueChange={(value) => setSelectedTab(value)}
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <>
             <TabsList className="hidden w-auto sm:inline-flex">
@@ -35,7 +49,10 @@ export const AuthenticationConfig = () => {
               ))}
             </TabsList>
             <div className="sm:hidden">
-              <Select value={selectedTab} onValueChange={(value) => setSelectedTab(value)}>
+              <Select
+                value={selectedTab}
+                onValueChange={(value) => setSelectedTab(value)}
+              >
                 <SelectTrigger className="w-32 gap-2">
                   <SelectValue />
                 </SelectTrigger>
@@ -51,7 +68,9 @@ export const AuthenticationConfig = () => {
           </>
 
           <>
-            {selectedTab === GRANT_TYPES.clientCredential && <CreateClientCredential />}
+            {selectedTab === GRANT_TYPES.clientCredential && (
+              <CreateClientCredential />
+            )}
             {selectedTab === GRANT_TYPES.authorizationCode && <CreateOIDC />}
           </>
         </div>

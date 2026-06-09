@@ -6,7 +6,7 @@ import {
   IChangeSettings,
   IManualDeploymentPayload,
 } from "../models/utils";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const useGithubVerification = (code: string) => {
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
@@ -44,7 +44,8 @@ export const useGetGithubRepos = (
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   return useQuery({
     queryKey: ["github-repos", isVerificationSuccessful, search, page, perPage],
-    queryFn: () => githubInfoService.getGithubRepos(projectKey, search, page, perPage),
+    queryFn: () =>
+      githubInfoService.getGithubRepos(projectKey, search, page, perPage),
     enabled: isVerificationSuccessful && !!projectKey,
     retry: false,
     staleTime: 0, // Always fetch fresh data
@@ -92,12 +93,16 @@ export const useGithubBranches = (repo: string) => {
   });
 };
 
-export const useRepoAndGitBranchMatch = (repoId: string, enabled: boolean = true) => {
+export const useRepoAndGitBranchMatch = (
+  repoId: string,
+  enabled: boolean = true,
+) => {
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
   return useQuery({
     queryKey: ["git-branch-match", repoId],
-    queryFn: () => githubInfoService.getRepoAndGitBranchMatch(repoId, projectKey),
+    queryFn: () =>
+      githubInfoService.getRepoAndGitBranchMatch(repoId, projectKey),
     enabled: !!repoId && enabled && !!projectKey,
     retry: false,
     refetchOnMount: true,
@@ -181,7 +186,8 @@ export const useInitialRepoDeployment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: IChangeRepoSpecs) => githubInfoService.repoInitialDeploy(payload),
+    mutationFn: (payload: IChangeRepoSpecs) =>
+      githubInfoService.repoInitialDeploy(payload),
     onSuccess: (data) => {
       queryClient.setQueryData(["repo-id"], data);
       queryClient.invalidateQueries({ queryKey: ["repo-details"] });
@@ -196,7 +202,8 @@ export const useManualDeployment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (options: IManualDeploymentPayload) => githubInfoService.manualDeploy(options),
+    mutationFn: (options: IManualDeploymentPayload) =>
+      githubInfoService.manualDeploy(options),
     onSuccess: (data) => {
       queryClient.setQueryData(["repo-id"], data);
       queryClient.invalidateQueries({ queryKey: ["github-repos"] });
@@ -237,7 +244,8 @@ export const useChangeBuildSpecs = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: IChangeSettings) => githubInfoService.changeBuildSpecs(payload),
+    mutationFn: (payload: IChangeSettings) =>
+      githubInfoService.changeBuildSpecs(payload),
     onSuccess: (data) => {
       queryClient.setQueryData(["build-specs"], data);
       queryClient.invalidateQueries({ queryKey: ["repo-specs"] });
@@ -253,7 +261,8 @@ export const useChangeRepoSpecs = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: IChangeRepoSpecs) => githubInfoService.changeRepoSpecs(payload),
+    mutationFn: (payload: IChangeRepoSpecs) =>
+      githubInfoService.changeRepoSpecs(payload),
     onSuccess: (data) => {
       queryClient.setQueryData(["repo-specs"], data);
       queryClient.invalidateQueries({ queryKey: ["repo-builds"] });

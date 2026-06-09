@@ -50,7 +50,7 @@ export function Pagination({
             <SelectContent side="top">
               {pageSizeOptions?.map((pageSize) => (
                 <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
+                  {pageSize === totalCount ? `All (${totalCount})` : pageSize}
                 </SelectItem>
               ))}
             </SelectContent>

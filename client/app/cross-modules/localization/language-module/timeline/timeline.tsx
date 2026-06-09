@@ -3,7 +3,10 @@
 import React, { useState } from "react";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { EllipsisVertical, RotateCcw } from "lucide-react";
-import { TimelineEvents, IBlocksLanguageKey } from "@blocks-localization/models/language";
+import {
+  TimelineEvents,
+  IBlocksLanguageKey,
+} from "@blocks-localization/models/language";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { useRevertKeyTimeline } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 
@@ -45,19 +48,27 @@ const getCultures = (
   prev?: IBlocksLanguageKey | IBlocksLanguageKey[],
   curr?: IBlocksLanguageKey | IBlocksLanguageKey[],
 ) => {
-  const prevCultures = asArray(prev).flatMap((d) => d.resources?.map((r) => r.culture) ?? []);
-  const currCultures = asArray(curr).flatMap((d) => d.resources?.map((r) => r.culture) ?? []);
+  const prevCultures = asArray(prev).flatMap(
+    (d) => d.resources?.map((r) => r.culture) ?? [],
+  );
+  const currCultures = asArray(curr).flatMap(
+    (d) => d.resources?.map((r) => r.culture) ?? [],
+  );
   return Array.from(new Set([...prevCultures, ...currCultures]));
 };
 
 const Timeline = (props: TimelineProps) => {
   const isMobile = useIsMobile();
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
-  const [selectedEvent, setSelectedEvent] = useState<TimelineEvents | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvents | null>(
+    null,
+  );
   const [isRevertDialogOpen, setIsRevertDialogOpen] = useState(false);
-  const [selectedRevertEvent, setSelectedRevertEvent] = useState<TimelineEvents | null>(null);
+  const [selectedRevertEvent, setSelectedRevertEvent] =
+    useState<TimelineEvents | null>(null);
 
-  const { isPending: isRevertPending, mutateAsync: rollbackUilmKey } = useRevertKeyTimeline();
+  const { isPending: isRevertPending, mutateAsync: rollbackUilmKey } =
+    useRevertKeyTimeline();
 
   const handleRevert = async (row: TimelineEvents) => {
     const payload = {
@@ -138,7 +149,10 @@ const Timeline = (props: TimelineProps) => {
                       {isMobile && event.previousData ? (
                         <div className="flex w-[25%] justify-end">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button variant="ghost" className="h-5 w-5 p-0">
                                 <EllipsisVertical width={20} height={20} />
                               </Button>
@@ -192,15 +206,22 @@ const Timeline = (props: TimelineProps) => {
       </div>
 
       {/* Differences Modal */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+      <Dialog
+        open={!!selectedEvent}
+        onOpenChange={() => setSelectedEvent(null)}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Language Difference</DialogTitle>
           </DialogHeader>
 
-          {selectedEvent && (
-            selectedEvent.logFrom === "Published" && !selectedEvent.currentData && !selectedEvent.previousData ? (
-              <p className="py-4 text-sm text-muted-foreground">No changes published.</p>
+          {selectedEvent &&
+            (selectedEvent.logFrom === "Published" &&
+            !selectedEvent.currentData &&
+            !selectedEvent.previousData ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                No changes published.
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -235,8 +256,7 @@ const Timeline = (props: TimelineProps) => {
                   })}
                 </TableBody>
               </Table>
-            )
-          )}
+            ))}
         </DialogContent>
       </Dialog>
 

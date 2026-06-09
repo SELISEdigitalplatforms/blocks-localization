@@ -21,8 +21,8 @@
       /* =========================================================
         DEV environment — comment out this block when using STG
          ========================================================= */
-      /*
       window.__BLOCKS_ENV__ = {
+        BLOCKS_PUBLIC_API_BASE_URL: "https://dev-api.blocksdevelopers.com",
         BLOCKS_LOCALIZATION_BASE_URL:
           "https://dev-localization.blocksdevelopers.com",
         BLOCKS_X_BLOCKS_KEY: "f080a1bea04280a72149fd689d50a48c",
@@ -70,14 +70,13 @@
         BLOCKS_STUDIO_CALLBACK_URL:
           "https://dev-studio.blocksdevelopers.com/login/callback",
       };
-      */
 
       /* =========================================================
         STG environment — comment out this block when using DEV
          ========================================================= */
-      window.__BLOCKS_ENV__ = {
-        BLOCKS_LOCALIZATION_BASE_URL:
-          "https://stg-localization.blocksdevelopers.com",
+      /* window.__BLOCKS_ENV__ = {
+        BLOCKS_PUBLIC_API_BASE_URL: "https://stg-api.blocksdevelopers.com",
+        BLOCKS_LOCALIZATION_BASE_URL: "https://stg-localization.blocksdevelopers.com",
         BLOCKS_X_BLOCKS_KEY: "acf19d8d8841400a8999f0a5337fadf5",
         BLOCKS_GOOGLE_SITE_KEY: "6LeE8uEqAAAAAM-9mzdFO8sajdin-DsVdxh3RT8c",
         BLOCKS_CONSTRUCT_URL: "https://stg-construct.blocksdevelopers.com",
@@ -123,6 +122,7 @@
         BLOCKS_STUDIO_CALLBACK_URL:
           "https://stg-studio.blocksdevelopers.com/login/callback",
       };
+    */
     </script>
     <script type="module" src="/app/main.tsx"></script>
   </body>
