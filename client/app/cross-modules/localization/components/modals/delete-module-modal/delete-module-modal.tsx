@@ -10,7 +10,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui-kits/dialog/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui-kits/radio-group/radio-group";
 import { Label } from "@/components/ui-kits/label/label";
 import {
   Command,
@@ -20,12 +23,16 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui-kits/command/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui-kits/popover/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeleteLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { IModuleGets } from "@blocks-localization/models/language";
 
 interface DeleteModuleModalProps {
@@ -34,7 +41,11 @@ interface DeleteModuleModalProps {
   onClose: (open: boolean) => void;
 }
 
-const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModules, onClose }) => {
+const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({
+  module,
+  allModules,
+  onClose,
+}) => {
   const [deleteMode, setDeleteMode] = useState<"cascade" | "move">("cascade");
   const [targetModuleId, setTargetModuleId] = useState<string>("");
   const [comboOpen, setComboOpen] = useState(false);
@@ -45,7 +56,8 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
   const availableModules = allModules.filter((m) => m.itemId !== module.itemId);
 
   const canSubmit =
-    !isPending && (deleteMode === "cascade" || (deleteMode === "move" && !!targetModuleId));
+    !isPending &&
+    (deleteMode === "cascade" || (deleteMode === "move" && !!targetModuleId));
 
   const handleSubmit = async () => {
     try {
@@ -56,17 +68,31 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
       };
       const res = await mutateAsync(payload);
       if (res?.isSuccess) {
-        toast({ variant: "success", title: "Success", description: "Module deleted" });
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Module deleted",
+        });
         onClose(false);
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete module" });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete module",
+        });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: JSON.stringify(error) });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
     }
   };
 
-  const selectedTarget = availableModules.find((m) => m.itemId === targetModuleId);
+  const selectedTarget = availableModules.find(
+    (m) => m.itemId === targetModuleId,
+  );
 
   return (
     <DialogContent>
@@ -115,7 +141,10 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
                 </PopoverTrigger>
                 <PopoverContent className="p-0">
                   <Command>
-                    <CommandInput placeholder="Search module..." ref={inputRef} />
+                    <CommandInput
+                      placeholder="Search module..."
+                      ref={inputRef}
+                    />
                     <CommandList>
                       <CommandEmpty>No module found.</CommandEmpty>
                       <CommandGroup>
@@ -124,14 +153,18 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
                             key={m.itemId}
                             value={m.moduleName}
                             onSelect={() => {
-                              setTargetModuleId(m.itemId === targetModuleId ? "" : m.itemId);
+                              setTargetModuleId(
+                                m.itemId === targetModuleId ? "" : m.itemId,
+                              );
                               setComboOpen(false);
                             }}
                           >
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                targetModuleId === m.itemId ? "opacity-100" : "opacity-0",
+                                targetModuleId === m.itemId
+                                  ? "opacity-100"
+                                  : "opacity-0",
                               )}
                             />
                             {m.moduleName}
@@ -156,7 +189,11 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
         >
           Cancel
         </Button>
-        <Button variant="destructive" disabled={!canSubmit} onClick={handleSubmit}>
+        <Button
+          variant="destructive"
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+        >
           {isPending ? "Deleting..." : "Delete"}
         </Button>
       </DialogFooter>

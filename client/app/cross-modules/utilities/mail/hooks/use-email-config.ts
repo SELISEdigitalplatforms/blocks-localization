@@ -1,4 +1,4 @@
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { emailService } from "@blocks-utilities/mail/services/email.services";
 
@@ -6,7 +6,8 @@ export const useGetEmailConfigs = (pageNumber: number, pageSize: number) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: ["email-configs", tenantId, pageNumber, pageSize],
-    queryFn: () => emailService.fetchEmailConfigs(tenantId, pageNumber, pageSize),
+    queryFn: () =>
+      emailService.fetchEmailConfigs(tenantId, pageNumber, pageSize),
   });
 };
 

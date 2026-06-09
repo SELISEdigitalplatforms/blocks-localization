@@ -56,7 +56,10 @@ import {
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
-import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
+import {
+  useLanguageViewStore,
+  updateLanguageViewTenantId,
+} from "@blocks-localization/store/use-language-view-store";
 import {
   ColumnDef,
   Row,
@@ -91,7 +94,8 @@ import { v4 as uuidv4 } from "uuid";
 import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useNotificationListener } from "@blocks-utilities/notification";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
@@ -347,17 +351,33 @@ export function LanguageTable() {
     }
   });
 
-  // Reset page number and view state when the project changes, but preserve filters like missingLanguages
-  // Only reset if this is NOT the initial mount and store is hydrated
-  const isInitialMountRef = useRef(true);
+  // Listen for translate-all completion notification to clear translatingKeys
+  // This clears the "Translating..." state when the backend signals completion via WebSocket
+  useNotificationListener("translate-all", () => {
+    setTranslatingKeys(new Set());
+  });
+
+  // Track the previous tenantId to detect actual project changes
+  const prevTenantIdRef = useRef<string | null>(null);
+
+  // Handle project changes - only reset when switching to a DIFFERENT project
   useEffect(() => {
-    // Skip reset on initial mount or if store is not yet hydrated
-    if (isInitialMountRef.current || !isHydrated) {
-      isInitialMountRef.current = false;
+    if (!isHydrated || !tenantId) return;
+
+    const prevTenantId = prevTenantIdRef.current;
+
+    // If this is the initial mount or the same project, don't reset settings
+    if (prevTenantId === null || prevTenantId === tenantId) {
+      // Just update the tenantId in the store for cookie key lookup
+      updateLanguageViewTenantId(tenantId);
+      prevTenantIdRef.current = tenantId;
       return;
     }
-    // Only reset page number to 0 when tenantId changes, preserving all filters including missingLanguages
-    if (tenantId) {
+
+    // Only reset when switching to a different project
+    if (prevTenantId !== tenantId) {
+      prevTenantIdRef.current = tenantId;
+      updateLanguageViewTenantId(tenantId);
       setQueryParams((prev) => ({
         ...prev,
         pageNumber: 0,
@@ -534,28 +554,19 @@ export function LanguageTable() {
     }));
   };
 
-  // Generate dynamic page size options based on total count
+  // Fixed standard page size options plus "All" showing total count
   const pageSizeOptions = useMemo(() => {
     const totalCount = blocksLanguageKeyData?.totalCount || 0;
-    if (totalCount === 0) return [10];
-
-    // Dynamically generate page size options based on total count
-    const options: number[] = [];
-    // Start from 10 and increment by 10 until we reach or exceed the total (up to 100)
-    const upperLimit = Math.min(100, totalCount);
-    for (let size = 10; size <= upperLimit; size += 10) {
-      options.push(size);
+    const fixedOptions = [10, 30, 50, 100];
+    // Always include "All" (totalCount) as the last option if there are more items than 100
+    if (totalCount > 100) {
+      return [...fixedOptions, totalCount];
     }
-    // Ensure at least 10 is included
-    if (options.length === 0) {
-      options.push(10);
+    // If totalCount is between 10 and 100, cap at totalCount as the last option
+    if (totalCount > 0) {
+      return fixedOptions.filter((opt) => opt <= totalCount).concat(totalCount);
     }
-    // Always include totalCount as an option if it's greater than the last generated option
-    const lastOption = options[options.length - 1];
-    if (totalCount > lastOption) {
-      options.push(totalCount);
-    }
-    return options;
+    return [10];
   }, [blocksLanguageKeyData?.totalCount]);
 
   const columns = useMemo<ColumnDef<IBlocksLanguageKey>[]>(
@@ -638,20 +649,9 @@ export function LanguageTable() {
               accessorKey: "resources",
               header: () => <span>Completeness</span>,
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const keyId = row.original.itemId;
-                const isTranslating = translatingKeys.has(keyId);
                 const resources = row.original.resources;
                 if (!resources || resources.length === 0)
                   return "No translation";
-
-                // Show Translating status if this key is being translated
-                if (isTranslating) {
-                  return (
-                    <span className="text-blue-600 font-medium">
-                      Translating...
-                    </span>
-                  );
-                }
 
                 const allLanguages =
                   languageListData?.map((lang) => lang.languageCode) || [];
@@ -705,16 +705,17 @@ export function LanguageTable() {
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const keyId = row.original.itemId;
           const isTranslating = translatingKeys.has(keyId);
+          const resource = row.original.resources?.find(
+            (res) => res.culture === lang,
+          );
+          const hasValue = resource?.value && resource.value.trim() !== "";
 
-          if (isTranslating) {
+          // Only show "Translating..." if this key is being translated AND the language has no value
+          if (isTranslating && !hasValue) {
             return (
               <span className="text-blue-600 font-medium">Translating...</span>
             );
           }
-
-          const resource = row.original.resources?.find(
-            (res) => res.culture === lang,
-          );
 
           return (
             <div className="ml-2 line-clamp-4 sm:ml-0">
@@ -1336,11 +1337,7 @@ export function LanguageTable() {
               open={isAutoTranslateDialogOpen}
               onOpenChange={setIsAutoTranslateDialogOpen}
             >
-              <AutoTranslate
-                translatingKeys={translatingKeys}
-                setTranslatingKeys={setTranslatingKeys}
-                keysData={blocksLanguageKeyData}
-              />
+              <AutoTranslate />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">

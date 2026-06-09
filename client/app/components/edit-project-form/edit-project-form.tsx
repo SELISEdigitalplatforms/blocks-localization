@@ -16,10 +16,17 @@ import { getDomain } from "@/lib/domain";
 import { editProjectFormDefaultValue, editProjectFormSchema } from "./utils";
 import { DialogClose, DialogFooter } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@/store/useProjectStore";
-import { useGetProject, useUpdateProject } from "@blocks-identifier/hooks/use-project";
+import { useProjectStore } from "@seliseblocks/blocks-kit";
+import {
+  useGetProject,
+  useUpdateProject,
+} from "@blocks-identifier/hooks/use-project";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui-kits/tooltip/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui-kits/tooltip/tooltip";
 import {
   Card,
   CardContent,
@@ -33,7 +40,10 @@ type EditProjectFormProps = {
 };
 
 export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
-  const { itemId } = useProjectStore().selectedProject || { itemId: "", tenantId: "" };
+  const { itemId } = useProjectStore().selectedProject || {
+    itemId: "",
+    tenantId: "",
+  };
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const { data } = useGetProject({ projectId: itemId });
   const { mutateAsync, isPending } = useUpdateProject({ projectKey });
@@ -46,17 +56,24 @@ export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
       ? {
           ...data.data,
           useCustomDomain:
-            data.data.customDomain && data.data.customDomain.trim() !== "" ? true : false,
+            data.data.customDomain && data.data.customDomain.trim() !== ""
+              ? true
+              : false,
           customDomain: data.data.customDomain || "",
           applicationDomain: data.data.applicationDomain
-            ? data.data.applicationDomain.replace(`.${getDomain(data.data.applicationDomain)}`, "")
+            ? data.data.applicationDomain.replace(
+                `.${getDomain(data.data.applicationDomain)}`,
+                "",
+              )
             : "",
         }
       : undefined,
     resolver: zodResolver(editProjectFormSchema),
   });
 
-  const onSubmitHandler = async (values: typeof editProjectFormDefaultValue) => {
+  const onSubmitHandler = async (
+    values: typeof editProjectFormDefaultValue,
+  ) => {
     try {
       if (!itemId || !projectKey) return;
       const res = await mutateAsync({
@@ -72,7 +89,9 @@ export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
       }
     } catch (error) {
       if (error && typeof error === "object" && "errors" in error) {
-        showErrorToast({ errors: (error as unknown as { errors: unknown }).errors });
+        showErrorToast({
+          errors: (error as unknown as { errors: unknown }).errors,
+        });
       }
     }
   };
@@ -82,10 +101,15 @@ export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmitHandler)} className="flex flex-col gap-4">
+      <form
+        onSubmit={form.handleSubmit(onSubmitHandler)}
+        className="flex flex-col gap-4"
+      >
         <div className="flex flex-col gap-1">
           <div className="text-sm font-medium">Application Domain</div>
-          <div className="text-sm text-muted-foreground">{data?.data.applicationDomain}</div>
+          <div className="text-sm text-muted-foreground">
+            {data?.data.applicationDomain}
+          </div>
         </div>
 
         <FormField
@@ -94,9 +118,14 @@ export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel className="text-sm font-medium">Use a custom domain?</FormLabel>
+                <FormLabel className="text-sm font-medium">
+                  Use a custom domain?
+                </FormLabel>
                 <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
                 </FormControl>
               </div>
               <FormMessage />
@@ -122,13 +151,18 @@ export const EditProjectForm = ({ onAfterSubmit }: EditProjectFormProps) => {
                       <CircleHelp className="h-4 w-4" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-96 text-sm font-normal">
-                      Enter the full URL of the custom domain or subdomain where your app will be
-                      hosted (e.g., https://example.com or https://app.example.com).
+                      Enter the full URL of the custom domain or subdomain where
+                      your app will be hosted (e.g., https://example.com or
+                      https://app.example.com).
                     </TooltipContent>
                   </Tooltip>
                 </FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Custom domain URL" className="mt-2" />
+                  <Input
+                    {...field}
+                    placeholder="Custom domain URL"
+                    className="mt-2"
+                  />
                 </FormControl>
                 <FormMessage />
                 <CNameInstruction
@@ -175,19 +209,25 @@ const CNameInstruction = ({
         <div>
           <h4>
             Please add the following
-            {cookieDomainName ? " two CNAME records" : " CNAME record"} to your DNS configuration to
-            complete domain validation:
+            {cookieDomainName ? " two CNAME records" : " CNAME record"} to your
+            DNS configuration to complete domain validation:
           </h4>
           {cookieDomainName && (
             <>
               <p className="mt-3 font-semibold">CNAME configuration 1</p>
               <ul className="mt-2 list-disc pl-5">
                 <li>
-                  Host: <span className="font-semibold">{customDomain?.split("//")[1]}</span>
+                  Host:{" "}
+                  <span className="font-semibold">
+                    {customDomain?.split("//")[1]}
+                  </span>
                 </li>
                 <li className="my-2">Type: CNAME</li>
                 <li>
-                  Value: <span className="font-semibold">blocksapi.seliseblocks.com</span>
+                  Value:{" "}
+                  <span className="font-semibold">
+                    blocksapi.seliseblocks.com
+                  </span>
                 </li>
               </ul>
               <p className="mt-3 font-semibold">CNAME configuration 2</p>
@@ -199,7 +239,8 @@ const CNameInstruction = ({
             </li>
             <li className="my-2">Type: CNAME</li>
             <li>
-              Value: <span className="font-semibold">blocksapi.seliseblocks.com</span>
+              Value:{" "}
+              <span className="font-semibold">blocksapi.seliseblocks.com</span>
             </li>
           </ul>
         </div>
