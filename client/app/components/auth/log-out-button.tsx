@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui-kits/button/button";
-import { useLanguageViewStore } from "@/cross-modules/localization/store/use-language-view-store";
 import { useLogout } from "@/idp/authentication/hooks/use-auth";
 import { getQueryClient } from "@/providers/query-provider";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -8,14 +7,12 @@ export function LogOutButton() {
   const queryClient = getQueryClient();
   const { reset } = useProjectStore();
   const { reset: resetAuth } = useAuthStore();
-  const { resetSelectedLanguages } = useLanguageViewStore();
   const { isPending, mutateAsync } = useLogout();
   const handleLogout = async () => {
     try {
       await mutateAsync();
       reset();
       resetAuth();
-      resetSelectedLanguages();
       queryClient.clear();
       window.location.replace(`${window.location.origin}/login`);
     } catch (error) {

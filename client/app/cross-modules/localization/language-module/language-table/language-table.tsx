@@ -188,8 +188,8 @@ export function LanguageTable() {
     toggleLanguage: toggleLanguageInStore,
     selectedOptionalColumns,
     toggleOptionalColumn,
-    resetSelectedLanguages,
     isHydrated,
+    hasStoredViewSettings,
   } = useLanguageViewStore();
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const {
@@ -360,32 +360,37 @@ export function LanguageTable() {
   // Track the previous tenantId to detect actual project changes
   const prevTenantIdRef = useRef<string | null>(null);
 
-  // Handle project changes - only reset when switching to a DIFFERENT project
+  // Handle project changes - update tenantId and rehydrate for the new tenant
   useEffect(() => {
-    if (!isHydrated || !tenantId) return;
+    if (!tenantId) return;
 
     const prevTenantId = prevTenantIdRef.current;
 
-    // If this is the initial mount or the same project, don't reset settings
-    if (prevTenantId === null || prevTenantId === tenantId) {
-      // Just update the tenantId in the store for cookie key lookup
-      updateLanguageViewTenantId(tenantId);
+    // On initial mount, load settings for the selected tenant without resetting filters.
+    if (prevTenantId === null) {
       prevTenantIdRef.current = tenantId;
+      updateLanguageViewTenantId(tenantId);
       return;
     }
 
-    // Only reset when switching to a different project
-    if (prevTenantId !== tenantId) {
-      prevTenantIdRef.current = tenantId;
-      updateLanguageViewTenantId(tenantId);
-      setQueryParams((prev) => ({
-        ...prev,
-        pageNumber: 0,
-      }));
-      resetSelectedLanguages();
-      sortReset();
+    // If same project, no action needed
+    if (prevTenantId === tenantId) {
+      return;
     }
-  }, [tenantId, isHydrated, setQueryParams, resetSelectedLanguages, sortReset]);
+
+    // Different project - update tenantId and rehydrate
+    prevTenantIdRef.current = tenantId;
+    updateLanguageViewTenantId(tenantId);
+
+    // Reset page number when switching projects
+    setQueryParams((prev) => ({
+      ...prev,
+      pageNumber: 0,
+    }));
+    // Note: resetSelectedLanguages is NOT called here because rehydrateLanguageViewStore
+    // will load the tenant's stored settings. If no stored settings exist, the store
+    // will use defaults (empty arrays), which is the correct behavior.
+  }, [tenantId, setQueryParams]);
 
   const deleteLanguageKeyModalData = {
     dialogTitle: "Delete language key?",
@@ -494,15 +499,12 @@ export function LanguageTable() {
     }
   };
 
-  // Track if this is the initial load to preserve user-persisted selections
-  const isInitialLoadRef = useRef(true);
-
   // Sync selectedLanguages with the available languages for the current project.
   // Also runs on tenantId change to reset stale language codes from the previous project.
-  // Only resets to defaults on initial load if user has no persisted selection.
-  // Wait for store to hydrate from localStorage before applying any logic.
+  // Only resets to defaults if the current tenant has no persisted view settings.
+  // Wait for store to hydrate from the cookie before applying any logic.
   useEffect(() => {
-    if (!languageListData || !isHydrated) return;
+    if (!languageListData?.length || !isHydrated) return;
 
     const current = selectedLanguagesRef.current;
     const availableLanguageCodes = languageListData.map(
@@ -512,12 +514,10 @@ export function LanguageTable() {
       availableLanguageCodes.includes(langCode),
     );
 
-    // Only reset to defaults if:
-    // 1. This is initial load with no selection (current.length === 0) - user hasn't set preferences yet
-    // 2. OR there are invalid language codes from a different project (stale codes)
-    // Do NOT reset if user has explicitly deselected all languages (valid empty selection)
+    // Only reset to defaults when this tenant has no saved settings yet, or
+    // when stored language codes are no longer valid for the current tenant.
     if (
-      (isInitialLoadRef.current && current.length === 0) ||
+      (!hasStoredViewSettings && current.length === 0) ||
       validSelectedLanguages.length !== current.length
     ) {
       const defaultLanguages = languageListData
@@ -527,10 +527,13 @@ export function LanguageTable() {
         defaultLanguages.length > 0 ? defaultLanguages : availableLanguageCodes,
       );
     }
-
-    // After first run, mark that initial load is complete so we don't override user preferences
-    isInitialLoadRef.current = false;
-  }, [languageListData, setSelectedLanguages, tenantId, isHydrated]);
+  }, [
+    languageListData,
+    setSelectedLanguages,
+    tenantId,
+    isHydrated,
+    hasStoredViewSettings,
+  ]);
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
