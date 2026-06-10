@@ -6,7 +6,6 @@ import {
 } from "@/components/file-uploader/file-uploader";
 import { Button } from "@/components/ui-kits/button/button";
 import {
-  Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
