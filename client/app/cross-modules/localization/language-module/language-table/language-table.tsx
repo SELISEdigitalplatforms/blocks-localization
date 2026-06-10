@@ -987,7 +987,11 @@ export function LanguageTable() {
               <div className="ml-auto flex items-center gap-2">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-10 w-10 p-0">
+                    <Button
+                      onClick={(e) => e.stopPropagation()}
+                      variant="outline"
+                      className="h-10 w-10 p-0"
+                    >
                       <EllipsisVertical width={20} height={20} />
                     </Button>
                   </DropdownMenuTrigger>
@@ -1165,8 +1169,8 @@ export function LanguageTable() {
                       onClick={() => setIsBulkTranslateDialogOpen(true)}
                       className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                     >
-                      <Languages className="mr-1 h-4 w-4" />
-                      Translate
+                      <Languages className="lg:mr-1 h-4 w-4" />
+                      <span className="sr-only lg:not-sr-only">Translate</span>
                     </Button>
                     <Button
                       size="sm"
@@ -1174,15 +1178,15 @@ export function LanguageTable() {
                       onClick={() => setIsBulkDeleteDialogOpen(true)}
                       className="border-error text-error hover:bg-error hover:text-primary-foreground"
                     >
-                      <Trash className="mr-1 h-4 w-4" />
-                      Delete
+                      <Trash className="lg:mr-1 h-4 w-4" />
+                      <span className="sr-only lg:not-sr-only">Delete</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setRowSelection({})}
                     >
-                      Clear selection
+                      Clear
                     </Button>
                   </div>
                 </div>
