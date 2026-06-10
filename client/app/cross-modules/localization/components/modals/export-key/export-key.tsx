@@ -2,6 +2,7 @@ import StepperWithoutIndicator from "../../../../../components/stepper/stepper-w
 import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import {
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -63,7 +64,7 @@ const FormSchema = z.object({
   }),
 });
 
-export default function ExportKey({ onClose }: { onClose: () => void }) {
+export default function ExportKey() {
   const [currentStep, setCurrentStep] = useState(1);
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const { data: languageModules } = useGetLanguageModule(projectKey);
@@ -181,14 +182,13 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
 
       showSuccessToast();
 
-      // Reset and close modal after export
+      // Reset modal after export
       setCurrentStep(1);
       form.reset();
       setSelectedModuleIds([]);
       setDownloadChecked(false);
       setXlfFile(null);
       setSelectedLanguages([]);
-      onClose();
     } catch (error) {
       console.error("Error during export:", error);
       if (isErrorWithErrors(error)) return showErrorToast();
@@ -714,19 +714,19 @@ export default function ExportKey({ onClose }: { onClose: () => void }) {
             >
               Select file type
             </Button>
-            <DialogTrigger asChild>
+            <DialogClose asChild>
               <Button variant="outline" size="default">
                 Cancel
               </Button>
-            </DialogTrigger>
+            </DialogClose>
           </div>
         ) : (
           <div className="flex justify-between">
-            <DialogTrigger asChild>
+            <DialogClose asChild>
               <Button variant="outline" size="default">
                 Cancel
               </Button>
-            </DialogTrigger>
+            </DialogClose>
             <div className="space-x-2">
               <Button size="default" variant="outline" onClick={handleBack}>
                 Back
