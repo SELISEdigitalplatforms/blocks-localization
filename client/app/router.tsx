@@ -1,6 +1,4 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
-import { DashboardLayout } from "./layouts/dashboard-layout";
-import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
 import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
@@ -14,10 +12,7 @@ import {
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
 import ProfilePage from "./routes/dashboard/profile";
-
-// Project overview routes
 import { EnvironmentsPage } from "./pages/environments/environments";
-
 import {
   AuthResolver,
   PublicGuard,
@@ -29,6 +24,8 @@ import {
   ImpersonationSynchronizer,
   ConsolePage,
   CallbackPage,
+  ProjectOverviewLayout,
+  DashboardLayout,
 } from "@seliseblocks/blocks-kit";
 import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
 
