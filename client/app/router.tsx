@@ -13,7 +13,6 @@ import {
 } from "./routes/dashboard/localization-pages";
 import { DashboardLayout } from "./layouts/dashboard-layout";
 import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
-import ProfilePage from "./routes/dashboard/profile";
 import { EnvironmentsPage } from "./pages/environments/environments";
 import {
   AuthResolver,
@@ -26,6 +25,7 @@ import {
   ImpersonationSynchronizer,
   ConsolePage,
   CallbackPage,
+  ProfilePage,
 } from "@seliseblocks/blocks-kit";
 import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
 
@@ -61,7 +61,7 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: "/login",
-                element: <LoginPage name="blocks-localization" />,
+                element: <LoginPage />,
               },
             ],
           },
