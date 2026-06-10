@@ -18,6 +18,7 @@ import {
   IGetTimelineByOperationIdResponse,
   IGetTimelineResponse,
   IImportFile,
+  IBaseMutationResponse,
   IKeyUilmExport,
   ILanguageConfig,
   IDeleteModuleRequest,
@@ -298,9 +299,11 @@ class LanguageManagerService {
     return http.post(url, payload);
   };
 
-  saveLanguageKeyUilmExport = (payload: IKeyUilmExport) => {
+  saveLanguageKeyUilmExport = (
+    payload: IKeyUilmExport,
+  ): Promise<IBaseMutationResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT;
-    return http.post(url, payload);
+    return http.post<IBaseMutationResponse>(url, payload);
   };
 
   getKeysTimeline = (payload: {
