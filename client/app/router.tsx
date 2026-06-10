@@ -11,6 +11,8 @@ import {
   LocalizationModulesPage,
   LocalizationNewKeyPage,
 } from "./routes/dashboard/localization-pages";
+import { DashboardLayout } from "./layouts/dashboard-layout";
+import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
 import ProfilePage from "./routes/dashboard/profile";
 import { EnvironmentsPage } from "./pages/environments/environments";
 import {
@@ -24,8 +26,6 @@ import {
   ImpersonationSynchronizer,
   ConsolePage,
   CallbackPage,
-  ProjectOverviewLayout,
-  DashboardLayout,
 } from "@seliseblocks/blocks-kit";
 import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
 
