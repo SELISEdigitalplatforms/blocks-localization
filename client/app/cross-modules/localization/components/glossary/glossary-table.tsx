@@ -134,9 +134,7 @@ const GlossaryTable: React.FC = () => {
         accessorKey: "context",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              Context
-            </span>
+            <span className="font-bold text-medium-emphasis">Context</span>
           </div>
         ),
         cell: ({ row }) => (
@@ -242,7 +240,10 @@ const GlossaryTable: React.FC = () => {
               <span className="sr-only sm:not-sr-only">New Glossary</span>
             </Button>
           </DialogTrigger>
-          <AddEditGlossary onClose={() => setAddModalOpen(false)} isOpen={addModalOpen} />
+          <AddEditGlossary
+            onClose={() => setAddModalOpen(false)}
+            isOpen={addModalOpen}
+          />
         </Dialog>
       </div>
 
@@ -252,7 +253,7 @@ const GlossaryTable: React.FC = () => {
             Glossary
           </CardTitle>
         </CardHeader>
-        <div className="mb-4 px-5">
+        <div className="mb-4">
           <Input
             placeholder="Search glossary..."
             value={searchText}
