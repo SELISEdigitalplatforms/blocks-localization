@@ -1,3 +1,28 @@
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryState } from "nuqs";
+import { v4 as uuidv4 } from "uuid";
+import {
+  ColumnDef,
+  Row,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import type { RowSelectionState } from "@tanstack/react-table";
+import {
+  AlignLeft,
+  EllipsisVertical,
+  FolderInput,
+  FolderOutput,
+  History,
+  Plus,
+  Rocket,
+  Settings2,
+  Trash,
+  Wand,
+  Languages,
+} from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   Card,
@@ -7,7 +32,6 @@ import {
 } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
-import { Label } from "@/components/ui-kits/label/label";
 import {
   Tooltip,
   TooltipContent,
@@ -60,37 +84,6 @@ import {
   useLanguageViewStore,
   updateLanguageViewTenantId,
 } from "@blocks-localization/store/use-language-view-store";
-import {
-  ColumnDef,
-  Row,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import type { RowSelectionState } from "@tanstack/react-table";
-import {
-  AlignLeft,
-  EllipsisVertical,
-  FolderInput,
-  FolderOutput,
-  History,
-  Plus,
-  Rocket,
-  Settings2,
-  Trash,
-  Wand,
-  Languages,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useQueryState } from "nuqs";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { v4 as uuidv4 } from "uuid";
 import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
@@ -102,8 +95,7 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
 
-// Stable memoized components to avoid Radix Popper onAnchorChange infinite loop
-const KeyNameCell = React.memo(
+const KeyNameCell = memo(
   ({ keyName }: { keyName: string | null | undefined }) => {
     const CHAR_WIDTH = 7.5;
     const PADDING = 8;
@@ -134,7 +126,7 @@ const KeyNameCell = React.memo(
 );
 KeyNameCell.displayName = "KeyNameCell";
 
-const RowActionsCell = React.memo(
+const RowActionsCell = memo(
   ({
     onView,
     onDelete,
@@ -144,7 +136,7 @@ const RowActionsCell = React.memo(
     onDelete: () => void;
     onTranslate: () => void;
   }) => (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
           <EllipsisVertical width={20} height={20} />
@@ -322,9 +314,7 @@ export function LanguageTable() {
   const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
     useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
-  const [isPollingTranslation, setIsPollingTranslation] = useState(false);
   const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
-  // Track keys that are currently being translated (for showing skeleton/loading state)
   const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(
     new Set(),
   );
@@ -340,7 +330,6 @@ export function LanguageTable() {
 
   // Poll for translation completion when a key translation is in progress
   useTranslateKeyWithPolling(pollingKeyId || "", tenantId, () => {
-    setIsPollingTranslation(false);
     // Remove key from translating set once confirmed complete
     if (pollingKeyId) {
       setTranslatingKeys((prev) => {
@@ -349,6 +338,7 @@ export function LanguageTable() {
         return next;
       });
     }
+    setPollingKeyId(null);
   });
 
   // Listen for translate-all completion notification to clear translatingKeys
@@ -387,9 +377,6 @@ export function LanguageTable() {
       ...prev,
       pageNumber: 0,
     }));
-    // Note: resetSelectedLanguages is NOT called here because rehydrateLanguageViewStore
-    // will load the tenant's stored settings. If no stored settings exist, the store
-    // will use defaults (empty arrays), which is the correct behavior.
   }, [tenantId, setQueryParams]);
 
   const deleteLanguageKeyModalData = {
@@ -450,7 +437,6 @@ export function LanguageTable() {
         // Start polling to wait for translation to complete before refreshing table
         // Also track this key as translating (for showing skeleton/loading state)
         setPollingKeyId(selectedLanguageKeyId);
-        setIsPollingTranslation(true);
         setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
         setIsTranslateDialogOpen(false);
       } else {
@@ -561,7 +547,6 @@ export function LanguageTable() {
   const pageSizeOptions = useMemo(() => {
     const totalCount = blocksLanguageKeyData?.totalCount || 0;
     const fixedOptions = [10, 30, 50, 100];
-    // Always include "All" (totalCount) as the last option if there are more items than 100
     if (totalCount > 100) {
       return [...fixedOptions, totalCount];
     }
@@ -1000,7 +985,7 @@ export function LanguageTable() {
             </TabsList>
             {tabId === "keys" ? (
               <div className="ml-auto flex items-center gap-2">
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-10 w-10 p-0">
                       <EllipsisVertical width={20} height={20} />
@@ -1009,14 +994,20 @@ export function LanguageTable() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={handleImportClick}
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleImportClick();
+                      }}
                     >
                       <FolderInput className="mr-2 h-4 w-4" />
                       <span>Import keys</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={handleExportClick}
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleExportClick();
+                      }}
                     >
                       <FolderOutput className="mr-2 h-4 w-4" />
                       <span>Export keys</span>
