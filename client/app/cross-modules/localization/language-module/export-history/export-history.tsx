@@ -137,7 +137,6 @@ export const ExportHistory: React.FC = () => {
 
             <TableBody>
               {isLoadingExportHistory ? (
-                // Loading: skeleton rows, one cell per column
                 Array.from({ length: pageSize }).map((_, rowIdx) => (
                   <TableRow key={rowIdx}>
                     {columns.map((_, colIdx) => (
@@ -181,7 +180,7 @@ export const ExportHistory: React.FC = () => {
                             e.stopPropagation();
                             downloadSelectedFile(item.fileId);
                           }}
-                          variant="outline"
+                          variant="ghost"
                           className="h-10 w-10 p-0"
                         >
                           <Download width={20} height={20} />
