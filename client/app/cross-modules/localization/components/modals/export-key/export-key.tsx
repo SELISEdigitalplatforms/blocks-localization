@@ -41,7 +41,7 @@ import { storageService } from "@blocks-storage/services/storage.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Upload, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -82,6 +82,7 @@ export default function ExportKey() {
   const [xlfFile, setXlfFile] = useState<File | null>(null);
   const [isUploadingXlf, setIsUploadingXlf] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const pendingExportCorrelationIdRef = useRef<string | null>(null);
 
   const { mutateAsync: exportAsync } = useSaveLanguageKeyUilmExport();
   const { mutateAsync: getPresignedUrl } = useGetPreSignedUrlForUpload();
@@ -161,9 +162,12 @@ export default function ExportKey() {
         exportReferenceFileId = fileId;
       }
 
+      const messageCoRelationId = uuidv4();
+      pendingExportCorrelationIdRef.current = messageCoRelationId;
+
       const payload = {
         outputType: selectedOutputType,
-        messageCoRelationId: uuidv4(),
+        messageCoRelationId,
         appIds: selectedModuleIds,
         languages:
           selectedOutputType === 5
@@ -178,9 +182,19 @@ export default function ExportKey() {
         projectKey: projectKey,
       };
 
-      await exportAsync(payload);
+      const exportResult = await exportAsync(payload);
 
-      showSuccessToast();
+      if (exportResult?.isSuccess === false) {
+        pendingExportCorrelationIdRef.current = null;
+        showErrorToast();
+        return;
+      }
+
+      toast({
+        title: "Export Started",
+        description: "Your export is being prepared. The download will start when the file is ready.",
+        variant: "success",
+      });
 
       // Reset modal after export
       setCurrentStep(1);
@@ -190,6 +204,7 @@ export default function ExportKey() {
       setXlfFile(null);
       setSelectedLanguages([]);
     } catch (error) {
+      pendingExportCorrelationIdRef.current = null;
       console.error("Error during export:", error);
       if (isErrorWithErrors(error)) return showErrorToast();
       showErrorToast();
@@ -213,45 +228,107 @@ export default function ExportKey() {
   //   router.push(`/services/language?languageActivity=activity`);
   // };
 
+  const parseJson = (value: unknown): Record<string, unknown> | null => {
+    if (!value) return null;
+    if (typeof value === "object") return value as Record<string, unknown>;
+    if (typeof value !== "string") return null;
+
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getStringValue = (
+    source: Record<string, unknown> | null | undefined,
+    keys: string[],
+  ) => {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === "string" && value.trim() !== "") {
+        return value;
+      }
+    }
+    return undefined;
+  };
+
+  const getBooleanValue = (
+    source: Record<string, unknown> | null | undefined,
+    keys: string[],
+  ) => {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") return value.toLowerCase() === "true";
+    }
+    return undefined;
+  };
+
+  const extractExportNotification = (
+    notificationData: IUilmExportNotificationData,
+  ) => {
+    const root = parseJson(notificationData);
+    const message = parseJson(root?.message ?? root?.Message);
+    const notification = message ?? root;
+    const payload = parseJson(notification?.payload ?? notification?.Payload);
+    const denormalizedPayload = parseJson(
+      notification?.denormalizedPayload ??
+        notification?.DenormalizedPayload ??
+        root?.denormalizedPayload ??
+        root?.DenormalizedPayload,
+    );
+    const denormalizedMessage = parseJson(
+      denormalizedPayload?.Message ?? denormalizedPayload?.message,
+    );
+
+    return {
+      correlationId: getStringValue(payload, [
+        "responseKey",
+        "ResponseKey",
+        "correlationId",
+        "CorrelationId",
+      ]),
+      fileId:
+        getStringValue(root, ["FileId", "fileId"]) ??
+        getStringValue(notification, ["FileId", "fileId"]) ??
+        getStringValue(denormalizedPayload, ["FileId", "fileId"]) ??
+        getStringValue(denormalizedMessage, ["FileId", "fileId"]),
+      isSuccess:
+        getBooleanValue(denormalizedPayload, ["IsSuccess", "isSuccess"]) ??
+        getBooleanValue(denormalizedMessage, ["IsSuccess", "isSuccess"]),
+    };
+  };
+
   useEffect(() => {
     setSelectedModuleIds(form.getValues("items") || []);
   }, [form.watch("items")]);
 
   const handleNotificationData = useCallback(
     async (notificationData: IUilmExportNotificationData) => {
-      let fileId: string | undefined;
+      const { correlationId, fileId, isSuccess } =
+        extractExportNotification(notificationData);
+      const pendingCorrelationId = pendingExportCorrelationIdRef.current;
+
+      if (!pendingCorrelationId) {
+        return;
+      }
+
+      if (
+        correlationId &&
+        correlationId !== pendingCorrelationId
+      ) {
+        return;
+      }
 
       try {
-        // First, try to get FileId directly from the notification data
-        fileId = notificationData.FileId;
-
-        // If not found, try to extract from denormalizedPayload
-        if (!fileId) {
-          const { denormalizedPayload } = notificationData.message;
-
-          if (typeof denormalizedPayload === "string") {
-            // If it's a string, try to parse it and extract FileId
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const parsed: any = JSON.parse(denormalizedPayload);
-            fileId = parsed.FileId || parsed.fileId;
-
-            // If still not found, try to get Message property and extract FileId from there
-            if (!fileId && parsed.Message) {
-              fileId = parsed.Message?.FileId || parsed.Message?.fileId;
-            }
-          } else if (
-            denormalizedPayload !== null &&
-            typeof denormalizedPayload === "object"
-          ) {
-            // If it's already an object (not null), try to get FileId directly or from Message
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const payloadObj = denormalizedPayload as any;
-            fileId =
-              payloadObj.FileId ||
-              payloadObj.fileId ||
-              payloadObj.Message?.FileId ||
-              payloadObj.Message?.fileId;
-          }
+        if (isSuccess === false) {
+          pendingExportCorrelationIdRef.current = null;
+          showErrorToast();
+          return;
         }
 
         if (fileId) {
@@ -274,6 +351,8 @@ export default function ExportKey() {
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
+              pendingExportCorrelationIdRef.current = null;
+              showSuccessToast();
             } else {
               console.error("No download URL found after all retries");
               showErrorToast();
