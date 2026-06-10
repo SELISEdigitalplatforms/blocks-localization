@@ -6,6 +6,8 @@ import {
 } from "@/components/file-uploader/file-uploader";
 import { Button } from "@/components/ui-kits/button/button";
 import {
+  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -540,7 +542,6 @@ interface IImportFilesModalProps {
   dialogTitle: string;
   data: [];
   projectKey: string;
-  onClose(): void;
 }
 
 type TemplateFormat = "xlsx" | "csv" | "json";
@@ -554,7 +555,6 @@ const TEMPLATE_URLS: Record<TemplateFormat, string> = {
 export default function ImportCommunicationsModal({
   dialogTitle,
   projectKey,
-  onClose,
 }: IImportFilesModalProps) {
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
@@ -717,9 +717,8 @@ export default function ImportCommunicationsModal({
       const uploadPromises = filesToUpload.map((file) => uploadFile(file));
       await Promise.all(uploadPromises);
 
-      // reset & close
+      // reset after successful upload
       setFiles(null);
-      onClose();
 
       showSuccessToast({ description: "Files uploaded successfully" });
     } catch (error) {
@@ -740,98 +739,100 @@ export default function ImportCommunicationsModal({
 
   return (
     <DialogContent className="rounded-md max-w-[450px] md:max-w-[490px]">
-      <>
-        <DialogHeader>
-          <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
-          <DialogDescription className="text-left">
-            Import language keys from a file.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
-          <div className="flex flex-row items-center">
-            <TriangleAlert className="h-4 w-4 text-icon-warning" />
-            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
-              JSON Format
+        <>
+          <DialogHeader>
+            <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
+            <DialogDescription className="text-left">
+              Import language keys from a file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
+            <div className="flex flex-row items-center">
+              <TriangleAlert className="h-4 w-4 text-icon-warning" />
+              <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
+                JSON Format
+              </p>
+            </div>
+            <p className="mt-[8px] text-[14px] text-high-emphasis">
+              Please download the JSON Template and re-upload with your data to
+              avoid any error.
             </p>
           </div>
-          <p className="mt-[8px] text-[14px] text-high-emphasis">
-            Please download the JSON Template and re-upload with your data to
-            avoid any error.
-          </p>
-        </div>
-        <FileUploader
-          value={files}
-          onValueChange={handleFilesChange}
-          dropzoneOptions={dropZoneConfig}
-          className="relative my-2 rounded-lg"
-        >
-          <FileInput className="rounded border border-dashed border-border">
-            <div className="flex w-full flex-col items-center justify-center py-4">
-              <FileSvgDraw />
-            </div>
-          </FileInput>
-          <FileUploaderContent>
-            {files &&
-              files.length > 0 &&
-              files.map((file, i) => (
-                <FileUploaderItem key={i} index={i} disabled={isBusy}>
-                  <Paperclip className="h-4 w-4 stroke-current" />
-                  <span>{file.name}</span>
-                </FileUploaderItem>
-              ))}
-          </FileUploaderContent>
-        </FileUploader>
+          <FileUploader
+            value={files}
+            onValueChange={handleFilesChange}
+            dropzoneOptions={dropZoneConfig}
+            className="relative my-2 rounded-lg"
+          >
+            <FileInput className="rounded border border-dashed border-border">
+              <div className="flex w-full flex-col items-center justify-center py-4">
+                <FileSvgDraw />
+              </div>
+            </FileInput>
+            <FileUploaderContent>
+              {files &&
+                files.length > 0 &&
+                files.map((file, i) => (
+                  <FileUploaderItem key={i} index={i} disabled={isBusy}>
+                    <Paperclip className="h-4 w-4 stroke-current" />
+                    <span>{file.name}</span>
+                  </FileUploaderItem>
+                ))}
+            </FileUploaderContent>
+          </FileUploader>
 
-        <DialogFooter className="mr-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-row items-center gap-2">
-            <Select
-              value={selectedFormat}
-              onValueChange={(value) =>
-                setSelectedFormat(value as TemplateFormat)
-              }
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="xlsx">XLSX</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="json">JSON</SelectItem>
-              </SelectContent>
-            </Select>
-            <div
-              className="flex cursor-pointer flex-row gap-2 text-primary"
-              onClick={downloadTemplate}
-            >
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost">
-                      <ArrowDownToLine size={20} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
-                    Download Template
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+          <DialogFooter className="mr-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-row items-center gap-2">
+              <Select
+                value={selectedFormat}
+                onValueChange={(value) =>
+                  setSelectedFormat(value as TemplateFormat)
+                }
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xlsx">XLSX</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                  <SelectItem value="json">JSON</SelectItem>
+                </SelectContent>
+              </Select>
+              <div
+                className="flex cursor-pointer flex-row gap-2 text-primary"
+                onClick={downloadTemplate}
+              >
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="ghost">
+                        <ArrowDownToLine size={20} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
+                      Download Template
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              size="default"
-              className="bg-primary"
-              onClick={handleUpload}
-              disabled={!files || files.length === 0 || isBusy}
-            >
-              {isBusy ? "Uploading..." : "Upload"}
-            </Button>
-          </div>
-        </DialogFooter>
-      </>
-    </DialogContent>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button variant="outline" size="default">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                size="default"
+                className="bg-primary"
+                onClick={handleUpload}
+                disabled={!files || files.length === 0 || isBusy}
+              >
+                {isBusy ? "Uploading..." : "Upload"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </>
+      </DialogContent>
   );
 }
