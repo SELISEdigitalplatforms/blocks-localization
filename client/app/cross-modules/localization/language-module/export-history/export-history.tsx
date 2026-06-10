@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ArrowLeft, Download } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
@@ -14,7 +15,6 @@ import {
 import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useGetExportHistory } from "@blocks-localization/hooks/use-language-manager";
 import { IExportFileDetails } from "@blocks-localization/models/language";
-import { ArrowLeft, Download } from "lucide-react";
 import { ExportHistoryFilters } from "./export-history-filters";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
@@ -176,10 +176,16 @@ export const ExportHistory: React.FC = () => {
                           : "--"}
                       </TableCell>
                       <TableCell>
-                        <Download
-                          className="cursor-pointer"
-                          onClick={() => downloadSelectedFile(item.fileId)}
-                        />
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadSelectedFile(item.fileId);
+                          }}
+                          variant="outline"
+                          className="h-10 w-10 p-0"
+                        >
+                          <Download width={20} height={20} />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ),
