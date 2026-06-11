@@ -1,6 +1,8 @@
 /** UILM export SSE payload shape (self-contained for Vite client). */
 export interface IUilmExportNotificationMessage {
-  denormalizedPayload: string | { Message?: string; FileId?: string; fileId?: string };
+  denormalizedPayload:
+    | string
+    | { Message?: string; FileId?: string; fileId?: string };
 }
 
 export type LanguageKeys = { en?: string; de?: string; fr?: string };
@@ -148,6 +150,11 @@ export interface IKeyUilmExport {
   startDate?: string;
   endDate?: string;
   projectKey: string;
+}
+
+export interface IBaseMutationResponse {
+  errors: null | unknown;
+  isSuccess: boolean;
 }
 
 export interface IGetTimelineResponse {
