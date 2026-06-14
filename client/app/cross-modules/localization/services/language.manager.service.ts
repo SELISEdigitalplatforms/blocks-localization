@@ -29,7 +29,7 @@ import {
   IWebhookConfig,
 } from "@blocks-localization/models/language";
 
-class LanguageManagerService {
+export class LanguageManagerService {
   fetchBlocksLanguageKey = (request: {
     projectKey: string;
     pageNumber: number;
@@ -85,8 +85,12 @@ class LanguageManagerService {
     );
   };
 
-  fetchBlocksLanguages = (projectKey: string): Promise<ILanguageConfig[]> => {
-    return http.get(`${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`);
+  fetchBlocksLanguages = async (
+    projectKey: string,
+  ): Promise<ILanguageConfig[]> => {
+    const url = `${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`;
+    await http.refreshSession();
+    return http.get<ILanguageConfig[]>(url);
   };
 
   saveBlocksLanguageKey = (payload: {
