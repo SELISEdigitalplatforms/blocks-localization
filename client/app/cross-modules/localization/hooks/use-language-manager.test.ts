@@ -217,7 +217,9 @@ describe("Language Manager Hooks", () => {
 
   describe("useGetLanguageModule", () => {
     it("should fetch language module when projectKey is provided", async () => {
-      vi.mocked(languageManagerService.getLanguageModule).mockResolvedValue(mockModuleGetsList);
+      vi.mocked(languageManagerService.fetchBlocksLanguageModules).mockResolvedValue(
+        mockModuleGetsList,
+      );
 
       const { result } = renderHook(() => useGetLanguageModule(TEST_PROJECT_KEY), {
         wrapper: createWrapper(),
@@ -226,11 +228,15 @@ describe("Language Manager Hooks", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toEqual(mockModuleGetsList);
-      expect(languageManagerService.getLanguageModule).toHaveBeenCalledWith(TEST_PROJECT_KEY);
+      expect(languageManagerService.fetchBlocksLanguageModules).toHaveBeenCalledWith(
+        TEST_PROJECT_KEY,
+      );
     });
 
     it("should be disabled when projectKey is empty string", async () => {
-      vi.mocked(languageManagerService.getLanguageModule).mockResolvedValue(mockModuleGetsList);
+      vi.mocked(languageManagerService.fetchBlocksLanguageModules).mockResolvedValue(
+        mockModuleGetsList,
+      );
 
       const { result } = renderHook(() => useGetLanguageModule(""), {
         wrapper: createWrapper(),
@@ -239,7 +245,7 @@ describe("Language Manager Hooks", () => {
       // Should remain pending (not fetching) because enabled: !!projectKey = false
       expect(result.current.isLoading).toBe(false);
       expect(result.current.fetchStatus).toBe("idle");
-      expect(languageManagerService.getLanguageModule).not.toHaveBeenCalled();
+      expect(languageManagerService.fetchBlocksLanguageModules).not.toHaveBeenCalled();
     });
   });
 

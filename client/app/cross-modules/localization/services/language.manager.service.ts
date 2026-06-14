@@ -81,7 +81,7 @@ export class LanguageManagerService {
 
   fetchBlocksLanguageModules = (projectKey: string): Promise<IModuleGets[]> => {
     return http.get(
-      `${LANGUAGE_MODULE_ENDPOINTS.GETS}?projectKey=${projectKey}`,
+      `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${projectKey}`,
     );
   };
 
@@ -130,8 +130,7 @@ export class LanguageManagerService {
   };
 
   getLanguageModule = (ProjectKey: string): Promise<IModuleGets[]> => {
-    const url = `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${ProjectKey}`;
-    return http.get(url);
+    return this.fetchBlocksLanguageModules(ProjectKey);
   };
 
   deleteLanguageModule(payload: IDeleteModuleRequest): Promise<{
