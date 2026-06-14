@@ -49,6 +49,7 @@ interface RequestQueue<T> {
 }
 let isRefreshing = false;
 let requestQueue: RequestQueue<unknown>[] = [];
+let refreshPromise: Promise<void> | null = null;
 
 class HttpClient {
   constructor(
@@ -81,10 +82,14 @@ class HttpClient {
     return normalizedHeaders;
   }
 
-  private async refreshAccessToken() {
-    if (isRefreshing) return;
+  async refreshSession() {
+    return this.refreshAccessToken();
+  }
 
-    try {
+  private async refreshAccessToken() {
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = (async () => {
       isRefreshing = true;
 
       const formData = new URLSearchParams();
@@ -112,17 +117,24 @@ class HttpClient {
         const { url, requestOption, resolve, reject } = requestQueue.shift()!;
         this.request(url, requestOption).then(resolve).catch(reject);
       }
-    } catch (_error) {
+
+      isRefreshing = false;
+      refreshPromise = null;
+    })().catch((error) => {
+      isRefreshing = false;
+      refreshPromise = null;
+      requestQueue = [];
+
       const queryClient = getQueryClient();
       useAuthStore.getState().reset();
       useProjectStore.getState().reset();
       queryClient.cancelQueries();
       queryClient.clear();
       window.location.href = `/login`;
-    } finally {
-      isRefreshing = false;
-      requestQueue = [];
-    }
+      throw error;
+    });
+
+    return refreshPromise;
   }
 
   private async request<T = unknown>(
