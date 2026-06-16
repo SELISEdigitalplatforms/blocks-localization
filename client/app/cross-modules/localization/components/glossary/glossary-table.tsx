@@ -182,7 +182,7 @@ const GlossaryTable: React.FC = () => {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               asChild
               onClick={(e) => e.stopPropagation()}
