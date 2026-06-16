@@ -36,7 +36,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <ErrorBoundary>
-        <Outlet />,
+        <Outlet />
       </ErrorBoundary>
     ),
     children: [
