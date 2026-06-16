@@ -2,42 +2,72 @@ import {
   HttpTransportType,
   HubConnection,
   HubConnectionBuilder,
+  HubConnectionState,
 } from "@microsoft/signalr";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
+import { http } from "@/lib/http-client";
 
 export class NotificationClientService {
   public connection: HubConnection;
-  private connectionStarted = false;
+  private connectPromise: Promise<void> | null = null;
 
   constructor() {
+    this.connection = this.createConnection();
+  }
+
+  private createConnection() {
     const logicApiBaseUrl = deriveLogicBaseUrl();
     const xBlocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
 
-    this.connection = new HubConnectionBuilder()
+    const connection = new HubConnectionBuilder()
       .withUrl(
-        `${logicApiBaseUrl}/NotificationHub?x-blocks-key=${xBlocksKey}`,
+        `${logicApiBaseUrl}/api/NotificationHub?x-blocks-key=${xBlocksKey}`,
         {
           transport: HttpTransportType.WebSockets,
+          skipNegotiation: true,
+          withCredentials: true,
         },
       )
       .withAutomaticReconnect()
       .build();
+
+    connection.onclose(() => {
+      this.connectPromise = null;
+    });
+
+    return connection;
   }
 
   async connect() {
-    // Only start the connection once
-    if (this.connectionStarted) {
+    if (
+      this.connection.state === HubConnectionState.Connected ||
+      this.connection.state === HubConnectionState.Connecting ||
+      this.connection.state === HubConnectionState.Reconnecting
+    ) {
       return;
     }
-    this.connectionStarted = true;
-    await this.connection.start();
+
+    if (this.connectPromise) {
+      return this.connectPromise;
+    }
+
+    this.connectPromise = (async () => {
+      await http.refreshSession();
+      await this.connection.start();
+    })().catch((error) => {
+      this.connectPromise = null;
+      throw error;
+    });
+
+    return this.connectPromise;
   }
 
   async disconnect() {
-    if (this.connection.state !== "Disconnected") {
+    if (this.connection.state !== HubConnectionState.Disconnected) {
       await this.connection.stop();
     }
+    this.connectPromise = null;
   }
 }
 
