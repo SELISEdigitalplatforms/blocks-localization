@@ -121,7 +121,6 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
         context: "",
         additionalNote: "",
       });
-      setSelectedModuleIds([]);
     }
     prevIsOpenRef.current = isOpen ?? false;
   }, [form, glossary, isOpen]);
@@ -136,21 +135,9 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
       context: glossary?.context ?? "",
       additionalNote: glossary?.additionalNote ?? "",
     });
-    setSelectedModuleIds(glossary?.moduleIds ?? []);
   }, [form, glossary]);
 
   const selectedLanguage = form.watch("language");
-  const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>(
-    glossary?.moduleIds ?? [],
-  );
-
-  const toggleModule = (moduleId: string) => {
-    const next = selectedModuleIds.includes(moduleId)
-      ? selectedModuleIds.filter((id) => id !== moduleId)
-      : [...selectedModuleIds, moduleId];
-    setSelectedModuleIds(next);
-    form.setValue("moduleIds", next, { shouldDirty: true });
-  };
 
   const formSubmitHandler = async (data: IGlossaryFormData) => {
     try {
@@ -327,14 +314,14 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
           <FormField
             name="moduleIds"
             control={form.control}
-            render={() => (
+            render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-left font-medium text-high-emphasis">
                   Tagged Modules
                 </FormLabel>
-                {selectedModuleIds.length > 0 && (
+                {field.value && field.value.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {selectedModuleIds.map((id) => {
+                    {field.value.map((id) => {
                       const mod = moduleListData?.find((m) => m.itemId === id);
                       return (
                         <Badge
@@ -345,7 +332,14 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                           {mod?.moduleName ?? id}
                           <button
                             type="button"
-                            onClick={() => toggleModule(id)}
+                            onClick={() => {
+                              const current = field.value || [];
+                              const next = current.includes(id)
+                                ? current.filter((mid) => mid !== id)
+                                : [...current, id];
+                              field.onChange(next);
+                              void form.trigger("moduleIds");
+                            }}
                             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
                           >
                             <X className="h-3 w-3" />
@@ -380,10 +374,18 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                             <CommandItem
                               key={mod.itemId}
                               value={mod.moduleName}
-                              onSelect={() => toggleModule(mod.itemId)}
+                              keywords={[mod.moduleName, mod.itemId]}
+                              onSelect={() => {
+                                const current = field.value || [];
+                                const next = current.includes(mod.itemId)
+                                  ? current.filter((id) => id !== mod.itemId)
+                                  : [...current, mod.itemId];
+                                field.onChange(next);
+                                void form.trigger("moduleIds");
+                              }}
                             >
                               {mod.moduleName}
-                              {selectedModuleIds.includes(mod.itemId) && (
+                              {field.value?.includes(mod.itemId) && (
                                 <Check className="ml-auto h-4 w-4" />
                               )}
                             </CommandItem>
