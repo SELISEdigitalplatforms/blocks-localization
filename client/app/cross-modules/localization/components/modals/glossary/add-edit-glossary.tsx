@@ -350,6 +350,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                   </div>
                 )}
                 <Popover
+                  modal={true}
                   open={modulePopoverOpen}
                   onOpenChange={setModulePopoverOpen}
                 >
@@ -370,26 +371,44 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                       <CommandList>
                         <CommandEmpty>No modules found.</CommandEmpty>
                         <CommandGroup>
-                          {moduleListData?.map((mod) => (
-                            <CommandItem
-                              key={mod.itemId}
-                              value={mod.moduleName}
-                              keywords={[mod.moduleName, mod.itemId]}
-                              onSelect={() => {
-                                const current = field.value || [];
-                                const next = current.includes(mod.itemId)
-                                  ? current.filter((id) => id !== mod.itemId)
-                                  : [...current, mod.itemId];
-                                field.onChange(next);
-                                void form.trigger("moduleIds");
-                              }}
-                            >
-                              {mod.moduleName}
-                              {field.value?.includes(mod.itemId) && (
-                                <Check className="ml-auto h-4 w-4" />
-                              )}
-                            </CommandItem>
-                          ))}
+                          {moduleListData?.map((mod) => {
+                            const moduleSearchValue = [
+                              mod.moduleName,
+                              mod.itemId,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")
+                              .toLowerCase();
+                            const selectedModuleIds = field.value ?? [];
+                            const isSelected = selectedModuleIds.includes(
+                              mod.itemId,
+                            );
+
+                            return (
+                              <CommandItem
+                                key={mod.itemId}
+                                value={moduleSearchValue}
+                                keywords={[
+                                  mod.moduleName ?? "",
+                                  mod.itemId ?? "",
+                                ]}
+                                onSelect={() => {
+                                  const current =
+                                    form.getValues("moduleIds") ?? [];
+                                  const next = current.includes(mod.itemId)
+                                    ? current.filter((id) => id !== mod.itemId)
+                                    : [...current, mod.itemId];
+                                  field.onChange(next);
+                                  void form.trigger("moduleIds");
+                                }}
+                              >
+                                {mod.moduleName}
+                                {isSelected && (
+                                  <Check className="ml-auto h-4 w-4" />
+                                )}
+                              </CommandItem>
+                            );
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>
