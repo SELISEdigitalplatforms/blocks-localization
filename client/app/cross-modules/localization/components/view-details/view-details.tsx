@@ -354,7 +354,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 {contextGlossaries.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">
-                      Global &amp; module glossaries
+                      Global & module glossaries
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {contextGlossaries.map((glossary) => (
