@@ -25,8 +25,18 @@ export function Notification() {
 
   // Connect to SignalR hub when component mounts (after authentication)
   useEffect(() => {
-    notificationClientService.connect();
+    void notificationClientService.connect().catch((error) => {
+      console.error("Failed to connect notification hub:", error);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!configData) return;
+
+    void notificationClientService.connect().catch((error) => {
+      console.error("Failed to connect notification hub:", error);
+    });
+  }, [configData]);
 
   useEffect(() => {
     configData?.configurations.forEach((config) => {
