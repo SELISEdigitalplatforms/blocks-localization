@@ -46,17 +46,23 @@ const RowActionsCell = ({
   onTagGlossary: () => void;
   // onDelete: () => void;
 }) => (
-  <DropdownMenu>
+  <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="h-8 w-8 p-0">
+      <Button
+        variant="ghost"
+        className="h-8 w-8 p-0"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <EllipsisVertical width={20} height={20} />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
       <DropdownMenuItem
         className="cursor-pointer"
         onClick={(e) => {
-          e.stopPropagation();
+          e.preventDefault();
           onEdit();
         }}
       >
@@ -66,7 +72,7 @@ const RowActionsCell = ({
       <DropdownMenuItem
         className="cursor-pointer"
         onClick={(e) => {
-          e.stopPropagation();
+          e.preventDefault();
           onTagGlossary();
         }}
       >
