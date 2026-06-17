@@ -1,18 +1,18 @@
 import { Button } from "@/components/ui-kits/button/button";
 import { useLogout } from "@/idp/authentication/hooks/use-auth";
 import { getQueryClient } from "@/providers/query-provider";
-import { useAuthStore } from "@/store/useAuthStore";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useAuthStore, useProjectStore } from "@seliseblocks/blocks-kit";
 export function LogOutButton() {
   const queryClient = getQueryClient();
-  const { reset } = useProjectStore();
-  const { reset: resetAuth } = useAuthStore();
+  const { resetProjectStore } = useProjectStore();
+  const { setUnAuthenticated, clearTokens } = useAuthStore();
   const { isPending, mutateAsync } = useLogout();
   const handleLogout = async () => {
     try {
       await mutateAsync();
-      reset();
-      resetAuth();
+      resetProjectStore();
+      setUnAuthenticated();
+      clearTokens();
       queryClient.clear();
       window.location.replace(`${window.location.origin}/login`);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 import {
   IGetMagicUrlByIdPayload,
   IGetMagicUrlsPayload,
@@ -14,10 +14,12 @@ import { IAPIResponse } from "@/models/api-response";
 import { MAGIC_URL_ENDPOINTS } from "@blocks-utilities/magic-url/constants/endpoint.constant";
 
 export class MagicUrlService {
+  private readonly httpClient = serviceInstances.logicService;
+
   async getMagicUrl(payload: IGetMagicUrlByIdPayload): Promise<MagicUrl> {
     try {
       const { ItemId, projectKey } = payload;
-      const response = await http.get<IAPIResponse<MagicUrl>>(
+      const response = await this.httpClient.get<IAPIResponse<MagicUrl>>(
         `${MAGIC_URL_ENDPOINTS.GET_LINK}?ItemId=${ItemId}&ProjectKey=${projectKey}`,
       );
       return response.data;
@@ -58,7 +60,7 @@ export class MagicUrlService {
       if (expiryDateRangeEndDate)
         params.append("ExpiryDateRange.EndDate", expiryDateRangeEndDate);
 
-      const response = await http.get<IAPIResponse<MagicUrl[]>>(
+      const response = await this.httpClient.get<IAPIResponse<MagicUrl[]>>(
         `${MAGIC_URL_ENDPOINTS.GET_LINKS}?${params.toString()}`,
       );
 
@@ -75,7 +77,7 @@ export class MagicUrlService {
 
   async createMagicUrl(payload: ICreateMagicUrlPayload): Promise<MagicUrl> {
     try {
-      const response = await http.post<MagicUrl>(
+      const response = await this.httpClient.post<MagicUrl>(
         MAGIC_URL_ENDPOINTS.CREATE_LINK,
         payload,
       );
@@ -90,7 +92,7 @@ export class MagicUrlService {
     payload: ISaveMagicUrlConfigPayload,
   ): Promise<ISaveMagicUrlConfigResponse> {
     try {
-      const response = await http.post<ISaveMagicUrlConfigResponse>(
+      const response = await this.httpClient.post<ISaveMagicUrlConfigResponse>(
         MAGIC_URL_ENDPOINTS.SAVE_CONFIG,
         payload,
       );
@@ -105,7 +107,7 @@ export class MagicUrlService {
     projectKey: string,
   ): Promise<ISaveMagicUrlConfigResponse> {
     try {
-      const response = await http.get<ISaveMagicUrlConfigResponse>(
+      const response = await this.httpClient.get<ISaveMagicUrlConfigResponse>(
         `${MAGIC_URL_ENDPOINTS.GET_CONFIG}?ProjectKey=${projectKey}`,
       );
       return response;
@@ -120,7 +122,7 @@ export class MagicUrlService {
     projectKey: string;
   }): Promise<void> {
     try {
-      await http.post(MAGIC_URL_ENDPOINTS.REMOVE_LINKS, payload);
+      await this.httpClient.post(MAGIC_URL_ENDPOINTS.REMOVE_LINKS, payload);
     } catch (error) {
       console.error("Failed to remove short URL:", error);
       throw error;

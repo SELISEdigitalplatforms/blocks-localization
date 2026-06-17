@@ -6,9 +6,10 @@ import {
 } from "@microsoft/signalr";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { deriveLogicBaseUrl } from "@/lib/blocks-url.util";
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 
 export class NotificationClientService {
+  private readonly httpClient = serviceInstances.logicService;
   public connection: HubConnection;
   private connectPromise: Promise<void> | null = null;
 
@@ -53,7 +54,6 @@ export class NotificationClientService {
     }
 
     this.connectPromise = (async () => {
-      await http.refreshSession();
       await this.connection.start();
     })().catch((error) => {
       this.connectPromise = null;

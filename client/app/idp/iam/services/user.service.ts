@@ -1,4 +1,3 @@
-import { http } from "@/lib/http-client";
 import { parseMongoDBString } from "@/lib/utils";
 import {
   IAccountResendActivationPayload,
@@ -31,30 +30,33 @@ import {
 } from "@blocks-idp/iam/models/user";
 import { USER_ENDPOINTS } from "../constants/endpoint.constant";
 import { UserAccountService } from "./account.service";
+import { serviceInstances } from "@/lib/http-client";
 
 export class UserService {
+  private readonly httpClient = serviceInstances.idpService;
+  
   constructor(public account: UserAccountService) {}
 
   getUsers(payload: IGetUsersPayload): Promise<IGetUsersResponse> {
-    return http.post(USER_ENDPOINTS.GET_USERS, payload, undefined, {
+    return this.httpClient.post(USER_ENDPOINTS.GET_USERS, payload, undefined, {
       absoluteUrl: true,
     });
   }
 
   getUser(): Promise<{ data: User }> {
-    return http.get(`${USER_ENDPOINTS.GET_USER}`, undefined, {
+    return this.httpClient.get(`${USER_ENDPOINTS.GET_USER}`, undefined, {
       absoluteUrl: true,
     });
   }
 
   getUserInfo(): Promise<User> {
-    return http.get(`${USER_ENDPOINTS.USER_INFO}`, undefined, {
+    return this.httpClient.get(`${USER_ENDPOINTS.USER_INFO}`, undefined, {
       absoluteUrl: true,
     });
   }
 
   getUserById(payload: IGetUserByIdPayload): Promise<IGetUserByIdResponse> {
-    return http.get(
+    return this.httpClient.get(
       `${USER_ENDPOINTS.GET_USERS}?id=${payload.id}&ProjectKey=${payload.projectKey}`,
       undefined,
       { absoluteUrl: true },
@@ -62,13 +64,12 @@ export class UserService {
   }
 
   addUser(createPayload: ICreateUserPayload): Promise<ICreateUserResponse> {
-    return http.post(USER_ENDPOINTS.CREATE, createPayload, undefined, {
+    return this.httpClient.post(USER_ENDPOINTS.CREATE, createPayload, undefined, {
       absoluteUrl: true,
     });
   }
 
   updateUser(payload: IUpdateUserPayload): Promise<IUpdateUserResponse> {
-    // Extract roles/permissions to normalize them (API expects flat arrays, not org-keyed objects)
     const { roles, permissions, ...rest } = payload;
 
     const normalizedRoles = Array.isArray(roles)
@@ -84,7 +85,7 @@ export class UserService {
           ).flat()
       : [];
 
-    return http.post(
+    return this.httpClient.post(
       `${USER_ENDPOINTS.UPDATE}/${payload.itemId}`,
       { ...rest, roles: normalizedRoles, permissions: normalizedPermissions },
       undefined,
@@ -95,7 +96,7 @@ export class UserService {
   getSignUpSetting(
     payload: IGetSignUpSettingPayload,
   ): Promise<IGetSignUpSettingResponse> {
-    return http.get(
+    return this.httpClient.get(
       `${USER_ENDPOINTS.GET_SIGNUP_SETTING}?ProjectKey=${payload.projectKey}`,
       undefined,
       { absoluteUrl: true },
@@ -105,7 +106,7 @@ export class UserService {
   saveSignUpSetting(
     payload: ISaveSignUpSettingPayload,
   ): Promise<ISaveSignUpSettingResponse> {
-    return http.post(USER_ENDPOINTS.SAVE_SIGNUP_SETTING, payload, undefined, {
+    return this.httpClient.post(USER_ENDPOINTS.SAVE_SIGNUP_SETTING, payload, undefined, {
       absoluteUrl: true,
     });
   }
@@ -113,7 +114,7 @@ export class UserService {
   saveRolesAndPermissions(
     payload: ISaveRolesAndPermissionsPayload,
   ): Promise<ISaveRolesAndPermissionsResponse> {
-    return http.post(
+    return this.httpClient.post(
       USER_ENDPOINTS.SAVE_ROLES_AND_PERMISSIONS,
       payload,
       undefined,
@@ -124,7 +125,7 @@ export class UserService {
   async getSessions(
     payload: IGetSessionPayload,
   ): Promise<IDeviceSessionResponse> {
-    const res = await http.get<{
+    const res = await this.httpClient.get<{
       data: string[];
       errors: unknown;
       totalCount: number;
@@ -143,7 +144,7 @@ export class UserService {
   async getHistories(
     payload: IGetHistoriesPayload,
   ): Promise<IHistoriesResponse> {
-    const res = await http.get<{
+    const res = await this.httpClient.get<{
       data: string[];
       errors: unknown;
       totalCount: number;
@@ -160,19 +161,19 @@ export class UserService {
   }
 
   async getPats(): Promise<IPATResponse> {
-    return http.get(USER_ENDPOINTS.GET_USER_CODES, undefined, {
+    return this.httpClient.get(USER_ENDPOINTS.GET_USER_CODES, undefined, {
       absoluteUrl: true,
     });
   }
 
   async generatePats(payload: IGeneratePATPayload): Promise<IPATResponse> {
-    return http.post(USER_ENDPOINTS.GENERATE_USER_CODE, payload, undefined, {
+    return this.httpClient.post(USER_ENDPOINTS.GENERATE_USER_CODE, payload, undefined, {
       absoluteUrl: true,
     });
   }
 
   getUserRoles(payload: IGetUserRolesPayload): Promise<IGetUserRolesResponse> {
-    return http.get(
+    return this.httpClient.get(
       `${USER_ENDPOINTS.GET_USER_ROLES}?Id=${payload.userId}&ProjectKey=${payload.projectKey}`,
       undefined,
       { absoluteUrl: true },
@@ -182,7 +183,7 @@ export class UserService {
   getUserPermissions(
     payload: IGetUserPermissionsPayload,
   ): Promise<IGetUserPermissionsResponse> {
-    return http.get(
+    return this.httpClient.get(
       `${USER_ENDPOINTS.GET_USER_PERMISSIONS}?Id=${payload.userId}&ProjectKey=${payload.projectKey}`,
       undefined,
       { absoluteUrl: true },
@@ -192,13 +193,13 @@ export class UserService {
   accountDeactivate(
     payload: IAccountResendActivationPayload,
   ): Promise<IAccountResendActivationResponse> {
-    return http.post(USER_ENDPOINTS.DEACTIVATE, payload, undefined, {
+    return this.httpClient.post(USER_ENDPOINTS.DEACTIVATE, payload, undefined, {
       absoluteUrl: true,
     });
   }
 
   me(): Promise<{ data: User }> {
-    return http.get(`${USER_ENDPOINTS.ME}`, undefined, { absoluteUrl: true });
+    return this.httpClient.get(`${USER_ENDPOINTS.ME}`, undefined, { absoluteUrl: true });
   }
 }
 

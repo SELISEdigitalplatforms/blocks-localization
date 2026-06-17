@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 import {
   CONFIG_ENDPOINTS,
   LANGUAGE_ASSISTANT_ENDPOINTS,
@@ -30,6 +30,7 @@ import {
 } from "@blocks-localization/models/language";
 
 export class LanguageManagerService {
+  private readonly httpClient = serviceInstances.localizationService;
   fetchBlocksLanguageKey = (request: {
     projectKey: string;
     pageNumber: number;
@@ -67,20 +68,20 @@ export class LanguageManagerService {
     } else if (payload?.lastUpdateDateRange?.endDate === "") {
       delete payload.lastUpdateDateRange.endDate;
     }
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   fetchBlocksLanguageKeyById = (request: {
     projectKey: string;
     itemId: string;
   }): Promise<IBlocksLanguageKey> => {
-    return http.get(
+    return this.httpClient.get(
       `${LANGUAGE_KEY_ENDPOINTS.GET}?projectKey=${request.projectKey}&itemId=${request.itemId}`,
     );
   };
 
   fetchBlocksLanguageModules = (projectKey: string): Promise<IModuleGets[]> => {
-    return http.get(
+    return this.httpClient.get(
       `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${projectKey}`,
     );
   };
@@ -89,8 +90,7 @@ export class LanguageManagerService {
     projectKey: string,
   ): Promise<ILanguageConfig[]> => {
     const url = `${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`;
-    await http.refreshSession();
-    return http.get<ILanguageConfig[]>(url);
+    return this.httpClient.get<ILanguageConfig[]>(url);
   };
 
   saveBlocksLanguageKey = (payload: {
@@ -114,7 +114,7 @@ export class LanguageManagerService {
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.SAVE;
     const updatedPayload = { ...payload, isNewKey: payload.isNewKey ?? false };
-    return http.post(url, updatedPayload);
+    return this.httpClient.post(url, updatedPayload);
   };
 
   saveLanguageModule = (payload: {
@@ -126,7 +126,7 @@ export class LanguageManagerService {
     validationErrors: IValidationError[] | null;
   }> => {
     const url = LANGUAGE_MODULE_ENDPOINTS.SAVE;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   getLanguageModule = (ProjectKey: string): Promise<IModuleGets[]> => {
@@ -144,7 +144,7 @@ export class LanguageManagerService {
     if (payload.targetModuleId) {
       params.set("targetModuleId", payload.targetModuleId);
     }
-    return http
+    return this.httpClient
       .delete<{
         errors: unknown;
         isSuccess: boolean;
@@ -156,7 +156,10 @@ export class LanguageManagerService {
     errors: null | unknown;
     isSuccess: boolean;
   }> {
-    return http.post(LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY, payload);
+    return this.httpClient.post(
+      LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY,
+      payload,
+    );
   }
 
   saveLanguage = (payload: {
@@ -168,7 +171,7 @@ export class LanguageManagerService {
     success: boolean;
   }> => {
     const url = LANGUAGE_ENDPOINTS.SAVE;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   deleteLanguageKey(payload: { itemId: string; projectKey: string }): Promise<{
@@ -176,7 +179,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE;
-    return http
+    return this.httpClient
       .delete<{
         errors: unknown;
         isSuccess: boolean;
@@ -192,12 +195,10 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
-    return http
-      .delete<{
-        errors: unknown;
-        isSuccess: boolean;
-      }>(url, payload)
-      .then((response) => response);
+    return this.httpClient.post<{
+      errors: unknown;
+      isSuccess: boolean;
+    }>(url, payload);
   }
 
   translateLanguageKeys = (payload: {
@@ -209,7 +210,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   deleteLanguage(payload: {
@@ -220,7 +221,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> {
     const url = LANGUAGE_ENDPOINTS.DELETE;
-    return http
+    return this.httpClient
       .delete<{
         errors: unknown;
         isSuccess: boolean;
@@ -238,7 +239,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_ENDPOINTS.SET_DEFAULT;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   generateUilmFile = (payload: {
@@ -249,7 +250,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GENERATE_UILM_FILE;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   getTranslationSuggestion = (payload: {
@@ -268,7 +269,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   translateAll = (payload: {
@@ -281,7 +282,7 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.TRANSLATE_ALL;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   translateKey = (payload: {
@@ -294,19 +295,19 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEY;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   importLanguageFile = (payload: IImportFile) => {
     const url = LANGUAGE_KEY_ENDPOINTS.UILM_IMPORT;
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   saveLanguageKeyUilmExport = (
     payload: IKeyUilmExport,
   ): Promise<IBaseMutationResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT;
-    return http.post<IBaseMutationResponse>(url, payload);
+    return this.httpClient.post<IBaseMutationResponse>(url, payload);
   };
 
   getKeysTimeline = (payload: {
@@ -317,7 +318,7 @@ export class LanguageManagerService {
   }): Promise<IGetTimelineResponse> => {
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE}?pageSize=${payload.pageSize}&pageNumber=${payload.pageNumber}&projectKey=${payload.projectKey}&EntityId=${payload.keyId}`;
 
-    return http.get(url);
+    return this.httpClient.get(url);
   };
 
   getExportHistory = (payload: {
@@ -345,7 +346,7 @@ export class LanguageManagerService {
     }
 
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_EXPORT_HISTORY}?${params.toString()}`;
-    return http.get(url);
+    return this.httpClient.get(url);
   };
 
   revertKeyTimeline = (payload: {
@@ -354,7 +355,7 @@ export class LanguageManagerService {
   }): Promise<IRollbackResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.ROLLBACK;
 
-    return http.post(url, payload);
+    return this.httpClient.post(url, payload);
   };
 
   getLocalizationTimeline = (payload: {
@@ -398,7 +399,7 @@ export class LanguageManagerService {
     }
 
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_LOCALIZATION_TIMELINE}?${params.toString()}`;
-    return http.get(url);
+    return this.httpClient.get(url);
   };
 
   getTimelineByOperationId = (payload: {
@@ -415,7 +416,7 @@ export class LanguageManagerService {
     });
 
     const url = `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE_BY_OPERATION_ID}?${params.toString()}`;
-    return http.get(url);
+    return this.httpClient.get(url);
   };
 
   // Glossary methods
@@ -446,7 +447,9 @@ export class LanguageManagerService {
       params.append("ModuleId", request.moduleId);
     }
 
-    return http.get(`${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`);
+    return this.httpClient.get(
+      `${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`,
+    );
   };
 
   saveGlossary = (payload: {
@@ -464,7 +467,7 @@ export class LanguageManagerService {
     errorMessage: string;
     validationErrors: IValidationError[];
   }> => {
-    return http.post(GLOSSARY_ENDPOINTS.SAVE, payload);
+    return this.httpClient.post(GLOSSARY_ENDPOINTS.SAVE, payload);
   };
 
   deleteGlossary = (payload: {
@@ -474,14 +477,12 @@ export class LanguageManagerService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return http
-      .delete<{
-        errors: unknown;
-        isSuccess: boolean;
-      }>(
-        `${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`,
-      )
-      .then((response) => response);
+    return this.httpClient.delete<{
+      errors: unknown;
+      isSuccess: boolean;
+    }>(
+      `${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`,
+    );
   };
 
   getSuggestedGlossaries = (request: {
@@ -496,7 +497,7 @@ export class LanguageManagerService {
     if (request.maxResults) {
       params.append("MaxResults", String(request.maxResults));
     }
-    return http.get(
+    return this.httpClient.get(
       `${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?${params.toString()}`,
     );
   };
@@ -505,19 +506,21 @@ export class LanguageManagerService {
     itemId: string;
     projectKey: string;
   }): Promise<IGlossary> => {
-    return http.get(
+    return this.httpClient.get(
       `${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}&projectKey=${request.projectKey}`,
     );
   };
 
   getWebhook = (projectKey: string): Promise<IWebhookConfig | null> => {
-    return http.get(`${CONFIG_ENDPOINTS.GET_WEBHOOK}?projectKey=${projectKey}`);
+    return this.httpClient.get(
+      `${CONFIG_ENDPOINTS.GET_WEBHOOK}?projectKey=${projectKey}`,
+    );
   };
 
   saveWebhook = (
     payload: IWebhookConfig,
   ): Promise<{ success: boolean; errorMessage: string | null }> => {
-    return http.post(CONFIG_ENDPOINTS.SAVE_WEBHOOK, payload);
+    return this.httpClient.post(CONFIG_ENDPOINTS.SAVE_WEBHOOK, payload);
   };
 }
 export const languageManagerService = new LanguageManagerService();
