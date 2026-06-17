@@ -4,13 +4,13 @@ import { getQueryClient } from "@/providers/query-provider";
 import { useAuthStore, useProjectStore } from "@seliseblocks/blocks-kit";
 export function LogOutButton() {
   const queryClient = getQueryClient();
-  const { resetProjectStore } = useProjectStore();
+  const { reset } = useProjectStore();
   const { setUnAuthenticated, clearTokens } = useAuthStore();
   const { isPending, mutateAsync } = useLogout();
   const handleLogout = async () => {
     try {
       await mutateAsync();
-      resetProjectStore();
+      reset();
       setUnAuthenticated();
       clearTokens();
       queryClient.clear();
