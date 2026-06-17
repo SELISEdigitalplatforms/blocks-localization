@@ -106,9 +106,14 @@ export class AuthService {
       await impersonationService.stopImpersonation().catch(() => {});
     }
 
-    return this.httpClient.post(AUTH_ENDPOINTS.LOGOUT, { refreshToken }, undefined, {
-      absoluteUrl: true,
-    });
+    return this.httpClient.post(
+      AUTH_ENDPOINTS.LOGOUT,
+      { refreshToken },
+      undefined,
+      {
+        absoluteUrl: true,
+      },
+    );
   }
 }
 
