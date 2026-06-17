@@ -5,7 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "BLOCKS_");
   const proxyTarget = env.BLOCKS_API_BASE_URL;
-  const iamProxyTarget = env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
+  const iamProxyTarget =
+    env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
 
   return {
     envPrefix: ["BLOCKS_"],
@@ -43,6 +44,7 @@ export default defineConfig(({ mode }) => {
       outDir: "../server/Api/wwwroot",
       emptyOutDir: true,
       chunkSizeWarningLimit: 3000,
+      cssMinify: false,
       rollupOptions: {
         onwarn(warning, warn) {
           // Suppress INVALID_ANNOTATION warnings from @microsoft/signalr

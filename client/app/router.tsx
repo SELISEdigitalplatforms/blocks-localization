@@ -1,5 +1,19 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import {
+  AuthResolver,
+  CallbackPage,
+  ConsoleLayout,
+  ConsolePage,
+  DashboardLayout,
+  DashboardOverview,
+  EnvironmentsPage,
+  LoginPage,
+  ProfilePage,
+  ProjectOverviewLayout,
+  ProtectedGuard,
+  PublicGuard,
+} from "@seliseblocks/blocks-kit";
+import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
   LocalizationGlossaryDetailPage,
@@ -10,23 +24,9 @@ import {
   LocalizationModuleDetailPage,
   LocalizationModulesPage,
   LocalizationNewKeyPage,
-} from "./routes/dashboard/localization-pages";
-import {
-  AuthResolver,
-  PublicGuard,
-  LoginPage,
-  ProtectedGuard,
-  ConsoleLayout,
-  ConsolePage,
-  CallbackPage,
-  ProfilePage,
-  ProjectOverviewLayout,
-  DashboardLayout,
-  EnvironmentsPage,
-} from "@seliseblocks/blocks-kit";
+} from "./layout/localization-page-layout/localization-page-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
-import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
 
 const redirectPaths: Record<string, string> = {
   "/services/language/translations/*": "/services/language",
