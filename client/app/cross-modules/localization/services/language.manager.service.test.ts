@@ -1,21 +1,28 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
+import { ensureLocalizationSession } from "@/lib/session-refresh";
 import { LANGUAGE_ENDPOINTS } from "../constants/endpoint.constant";
 import { LanguageManagerService } from "./language.manager.service";
 
 vi.mock("@/lib/http-client", () => ({
-  http: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-    refreshSession: vi.fn(),
+  serviceInstances: {
+    localizationService: {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    },
   },
+}));
+
+vi.mock("@/lib/session-refresh", () => ({
+  ensureLocalizationSession: vi.fn(),
 }));
 
 describe("LanguageManagerService", () => {
   const projectKey = "project-key";
   const getLanguagesUrl = `${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`;
+  const http = serviceInstances.localizationService;
   let service: LanguageManagerService;
 
   beforeEach(() => {
@@ -41,13 +48,13 @@ describe("LanguageManagerService", () => {
       ];
 
       vi.mocked(http.get).mockResolvedValue(languages);
-      vi.mocked(http.refreshSession).mockResolvedValue(undefined);
+      vi.mocked(ensureLocalizationSession).mockResolvedValue(undefined);
 
       await expect(service.fetchBlocksLanguages(projectKey)).resolves.toEqual(
         languages,
       );
 
-      expect(http.refreshSession).toHaveBeenCalledTimes(1);
+      expect(ensureLocalizationSession).toHaveBeenCalledTimes(1);
       expect(http.get).toHaveBeenCalledWith(getLanguagesUrl);
     });
 
@@ -68,19 +75,19 @@ describe("LanguageManagerService", () => {
       ];
 
       vi.mocked(http.get).mockResolvedValue(projectLanguages);
-      vi.mocked(http.refreshSession).mockResolvedValue(undefined);
+      vi.mocked(ensureLocalizationSession).mockResolvedValue(undefined);
 
       await expect(service.fetchBlocksLanguages(projectKey)).resolves.toEqual(
         projectLanguages,
       );
 
-      expect(http.refreshSession).toHaveBeenCalledTimes(1);
+      expect(ensureLocalizationSession).toHaveBeenCalledTimes(1);
       expect(http.get).toHaveBeenCalledTimes(1);
       expect(http.get).toHaveBeenCalledWith(getLanguagesUrl);
     });
 
     it("does not fetch languages when the session refresh fails", async () => {
-      vi.mocked(http.refreshSession).mockRejectedValue(
+      vi.mocked(ensureLocalizationSession).mockRejectedValue(
         new Error("Failed to refresh token"),
       );
 
@@ -88,7 +95,7 @@ describe("LanguageManagerService", () => {
         "Failed to refresh token",
       );
 
-      expect(http.refreshSession).toHaveBeenCalledTimes(1);
+      expect(ensureLocalizationSession).toHaveBeenCalledTimes(1);
       expect(http.get).not.toHaveBeenCalled();
     });
   });
