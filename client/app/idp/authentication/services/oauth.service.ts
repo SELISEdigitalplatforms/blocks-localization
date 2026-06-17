@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 import {
   IGetSocialLoginEndpointPayload,
   IGetSocialLoginEndpointResponse,
@@ -9,10 +9,12 @@ import { GRANT_TYPES } from "../constants/authentication.constant";
 import { AUTH_ENDPOINTS, IDP_ENDPOINTS } from "../constants/endpoint.constant";
 
 export class OAuthService {
+  private readonly httpClient = serviceInstances.idpService;
+
   getSocialLoginEndpoint(
     payload: IGetSocialLoginEndpointPayload,
   ): Promise<IGetSocialLoginEndpointResponse> {
-    return http.post(AUTH_ENDPOINTS.GET_SOCIAL_LOGIN_ENDPOINT, payload);
+    return this.httpClient.post(AUTH_ENDPOINTS.GET_SOCIAL_LOGIN_ENDPOINT, payload);
   }
 
   signinBySSO(payload: ISigninBySSOPayload): Promise<ISigninBySSOResponse> {
@@ -21,7 +23,7 @@ export class OAuthService {
     body.append("code", payload.code);
     body.append("state", payload.state);
 
-    return http.post(
+    return this.httpClient.post(
       IDP_ENDPOINTS.AUTHENTICATION.TOKEN,
       body,
       {

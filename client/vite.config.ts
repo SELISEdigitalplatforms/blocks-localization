@@ -42,6 +42,16 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "../server/Api/wwwroot",
       emptyOutDir: true,
+      chunkSizeWarningLimit: 3000,
+      rollupOptions: {
+        onwarn(warning, warn) {
+          // Suppress INVALID_ANNOTATION warnings from @microsoft/signalr
+          if (warning.code === "INVALID_ANNOTATION") return;
+          // Suppress chunk size warnings
+          if (warning.code === "CHUNK_SIZE_WARNING") return;
+          warn(warning);
+        },
+      },
     },
     server: {
       host: true, // Listen on all addresses (0.0.0.0)

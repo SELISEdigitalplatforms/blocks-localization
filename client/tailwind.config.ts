@@ -6,7 +6,6 @@ const config = {
   content: [
     './app/**/*.{ts,tsx}',
     './index.html',
-    './node_modules/@seliseblocks/blocks-kit/dist/**/*.{js,jsx,ts,tsx}',
   ],
   prefix: '',
   theme: {

@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 import {
   IEnableCaptchaConfigsStatusPayload,
   IEnableCaptchaConfigsStatusResponse,
@@ -10,18 +10,20 @@ import {
 import { CAPTCHA_ENDPOINTS } from "../constants/endpoint.constant";
 
 export class CaptchaService {
+  private readonly httpClient = serviceInstances.idpService;
+
   getCaptchaConfigs(payload: IGetCaptchaConfigsPayload): Promise<IGetCaptchaConfigsResponse> {
-    return http.get(`${CAPTCHA_ENDPOINTS.GETS}?ProjectKey=${payload.projectKey}`);
+    return this.httpClient.get(`${CAPTCHA_ENDPOINTS.GETS}?ProjectKey=${payload.projectKey}`);
   }
 
   saveCaptcha = (payload: ISaveCaptchaConfigsPayload): Promise<ISaveCaptchaConfigsResponse> => {
-    return http.post(CAPTCHA_ENDPOINTS.SAVE, payload);
+    return this.httpClient.post(CAPTCHA_ENDPOINTS.SAVE, payload);
   };
 
   updateCaptchaConfigStatus = (
     payload: IEnableCaptchaConfigsStatusPayload,
   ): Promise<IEnableCaptchaConfigsStatusResponse> => {
-    return http.post(CAPTCHA_ENDPOINTS.UPDATE_STATUS, payload);
+    return this.httpClient.post(CAPTCHA_ENDPOINTS.UPDATE_STATUS, payload);
   };
 }
 
