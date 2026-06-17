@@ -1,4 +1,5 @@
 import { serviceInstances } from "@/lib/http-client";
+import { ensureLocalizationSession } from "@/lib/session-refresh";
 import {
   CONFIG_ENDPOINTS,
   LANGUAGE_ASSISTANT_ENDPOINTS,
@@ -90,6 +91,7 @@ export class LanguageManagerService {
     projectKey: string,
   ): Promise<ILanguageConfig[]> => {
     const url = `${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`;
+    await ensureLocalizationSession();
     return this.httpClient.get<ILanguageConfig[]>(url);
   };
 
