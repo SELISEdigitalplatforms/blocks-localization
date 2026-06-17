@@ -71,6 +71,10 @@ web_modules/
 !.env.example
 !**/.env.example
 
+# Client local environment (previously committed; now untracked).
+# Keep `client/.env` locally for development; copy `client/.env.example`.
+/client/.env
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
