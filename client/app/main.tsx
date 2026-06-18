@@ -21,13 +21,11 @@ createRoot(document.getElementById("root")!).render(
           <TooltipProvider>
             <BlocksAppLayout
               config={{
-                name: "blocks-localization",
-                userBaseUrlKey: "BLOCKS_IAM_BASE_URL",
-                projectBaseUrlKey: "BLOCKS_LOGIC_BASE_URL",
                 appLogoUrl: {
                   dark: darkLogoUrl,
                   light: lightLogoUrl,
                 },
+                name: "blocks-localization",
               }}
             >
               <RouterProvider router={router} />
