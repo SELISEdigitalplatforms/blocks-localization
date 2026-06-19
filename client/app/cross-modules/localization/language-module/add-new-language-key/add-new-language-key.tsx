@@ -305,8 +305,6 @@ function AddNewLanguageKey() {
     );
   }
 
-  // console.log("languageListData", languageListData);
-  // console.log("resourceFields", resourceFields);
   languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
   return (
     <div className="">

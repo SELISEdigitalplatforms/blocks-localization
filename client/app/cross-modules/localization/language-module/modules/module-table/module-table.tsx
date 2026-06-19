@@ -34,7 +34,7 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
-import { userService } from "@blocks-idp/iam/services/user.service";
+import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -128,7 +128,7 @@ export function ModuleTable() {
       await Promise.all(
         uniqueCreatedByIds.map(async (userId) => {
           try {
-            const response = await userService.getUserById({
+            const response = await userLookupService.getUserById({
               id: userId,
               projectKey: tenantId,
             });

@@ -1,4 +1,20 @@
-import { GRANT_TYPES, SSO_PROVIDERS } from "@blocks-idp/authentication/constants";
+export enum GRANT_TYPES {
+  password = "password",
+  social = "social",
+  clientCredential = "client_credential",
+  authorizationCode = "authorization_code",
+}
+
+export enum SSO_PROVIDERS {
+  google = "google",
+  microsoft = "microsoft",
+  github = "github",
+  linkedin = "linkedin",
+  x = "x",
+  apple = "apple",
+  facebook = "facebook",
+  ownsso = "ownsso",
+}
 
 export interface IProject {
   itemId: string;
