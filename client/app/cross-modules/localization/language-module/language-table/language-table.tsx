@@ -972,31 +972,31 @@ export function LanguageTable() {
           value={tabId}
           className="mt-[18px] flex w-full flex-col md:mt-[24px]"
         >
-          <div className="mb-5 flex items-center text-base">
-            <TabsList className="h-[42px] bg-blocks-primary-shades-300">
+          <div className="mb-5 flex flex-col gap-3 text-base sm:flex-row sm:items-center">
+            <TabsList className="grid h-auto w-full grid-cols-2 bg-blocks-primary-shades-300 p-1 sm:flex sm:h-[42px] sm:w-auto">
               <TabsTrigger
                 onClick={() => setTabId("keys")}
                 value="keys"
-                className="h-8"
+                className="h-8 whitespace-nowrap"
               >
                 Translation Keys
               </TabsTrigger>
               <TabsTrigger
                 onClick={() => setTabId("history")}
                 value="history"
-                className="h-8"
+                className="h-8 whitespace-nowrap"
               >
                 History
               </TabsTrigger>
             </TabsList>
             {tabId === "keys" ? (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="grid w-full grid-cols-3 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       onClick={(e) => e.stopPropagation()}
                       variant="outline"
-                      className="h-10 w-10 p-0"
+                      className="h-10 w-full p-0 sm:w-10"
                     >
                       <EllipsisVertical width={20} height={20} />
                     </Button>
@@ -1053,7 +1053,7 @@ export function LanguageTable() {
                   onClick={onPublishChangesClick}
                   size="default"
                   variant="outline"
-                  className="shadow-none"
+                  className="w-full shadow-none sm:w-auto"
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
                   <span className="sr-only lg:not-sr-only">
@@ -1063,7 +1063,7 @@ export function LanguageTable() {
                 <Button
                   size="default"
                   variant="default"
-                  className="bg-primary text-primary-foreground shadow-none"
+                  className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
                   onClick={() =>
                     navigate("/services/language/translations/new-key")
                   }
