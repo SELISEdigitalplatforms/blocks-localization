@@ -227,7 +227,7 @@ export function ModuleTable() {
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-4">
-              <div className="w-[300px]">
+              <div className="w-full sm:w-[300px]">
                 <FilterControls.SearchInput
                   value={searchValue}
                   onChange={setSearchValue}
@@ -237,19 +237,19 @@ export function ModuleTable() {
               </div>
             </div>
             <div className="w-full overflow-x-auto">
-              <Table className="text-sm">
+              <Table className="min-w-[720px] table-fixed text-sm lg:min-w-0">
                 <TableHeader>
                   <TableRow className="border-none hover:bg-transparent">
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[220px] font-bold text-medium-emphasis">
                       Module Name
                     </TableHead>
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[220px] font-bold text-medium-emphasis">
                       Created By
                     </TableHead>
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[180px] font-bold text-medium-emphasis">
                       Created Date
                     </TableHead>
-                    <TableHead className="w-[50px] font-bold text-medium-emphasis">
+                    <TableHead className="w-[100px] font-bold text-medium-emphasis">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -274,18 +274,18 @@ export function ModuleTable() {
                           navigate(`/services/modules/${module.itemId}`)
                         }
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="truncate font-medium">
                           {module.moduleName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="truncate">
                           {getUserDisplayName(module.createdBy)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {module.createDate
                             ? new Date(module.createDate).toLocaleDateString()
                             : "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <RowActionsCell
                             onEdit={() => setEditTarget(module)}
                             onTagGlossary={() => setTagTarget(module)}
