@@ -16,7 +16,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@blocks-idp/*": ["./app/idp/*"],
       "@blocks-lmt/*": ["./app/cross-modules/lmt/*"],
       "@blocks-storage/*": ["./app/cross-modules/storage/*"],
       "@blocks-communication/*": ["./app/cross-modules/communication/*"],

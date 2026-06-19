@@ -24,17 +24,38 @@ import {
   IVerifyMigrationRequest,
 } from "@blocks-identifier/models/project.model";
 import {
-  GetJwtClaimPayload,
-  JwtClaimPayload,
-  JwtClaimResponse,
-} from "@blocks-idp/authentication/models/jwt.claim.model";
-import {
   PROJECT_ENDPOINTS,
   DOMAIN_ENDPOINTS,
   MIGRATION_ENDPOINTS,
   SUBSCRIPTION_ENDPOINTS,
   CLOUD_BUILD_ENDPOINTS,
 } from "@blocks-identifier/constants/endpoint.constant";
+
+interface JwtClaimPayload {
+  userId: string;
+  email: string;
+  name: string;
+  userName: string;
+  roles: string;
+  projectKey: string;
+  itemId?: string;
+}
+
+interface GetJwtClaimPayload {
+  projectKey: string;
+  itemId: string;
+}
+
+interface JwtClaimResponse {
+  userId: string;
+  email: string;
+  name: string;
+  userName: string;
+  roles: string;
+  itemId: string;
+  createdBy: string;
+  lastUpdatedBy: string;
+}
 
 export class ProjectService {
   private readonly httpClient = serviceInstances.logicService;
