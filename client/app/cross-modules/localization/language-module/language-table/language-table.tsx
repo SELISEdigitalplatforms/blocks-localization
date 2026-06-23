@@ -535,6 +535,7 @@ export function LanguageTable() {
   );
 
   const onPageChangeHandler = (pageNumber: number) => {
+    setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
       pageNumber,
@@ -542,6 +543,7 @@ export function LanguageTable() {
   };
 
   const onPageSizeChangeHandler = (pageSize: number) => {
+    setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
       pageSize,
@@ -788,6 +790,7 @@ export function LanguageTable() {
   const table = useReactTable({
     data: tableData,
     columns,
+    getRowId: (row) => row.itemId,
     getCoreRowModel: getCoreRowModel(),
     state: {
       rowSelection,
