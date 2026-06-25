@@ -5,35 +5,35 @@ type BreadcrumbRouteConfig = {
 };
 
 export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
-  "/services/authentication": {
+  "/app/services/authentication": {
     title: "IDP",
   },
-  "/services/language": {
+  "/app/services/language": {
     title: "Language Translation Keys",
   },
-  "/services/configure": {
+  "/app/services/configure": {
     title: "Configure",
   },
-  "/services/language/export-history": {
+  "/app/services/language/export-history": {
     title: "Export history",
   },
-  "/services/modules": {
+  "/app/services/modules": {
     title: "Language module",
   },
-  "/services/language/translations": {
+  "/app/services/language/translations": {
     skip: true,
   },
-  "/services/language/translations/new-key": {
+  "/app/services/language/translations/new-key": {
     title: "New Key",
   },
-  "/services/language/translations/:keyId": {
+  "/app/services/language/translations/:keyId": {
     title: "Key",
     dynamic: true,
   },
-  "/services/glossary": {
+  "/app/services/glossary": {
     title: "Glossaries",
   },
-  "/services/glossary/:itemId": {
+  "/app/services/glossary/:itemId": {
     title: "Glossary",
     dynamic: true,
   },
