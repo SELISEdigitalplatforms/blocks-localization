@@ -29,7 +29,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
 
 const redirectPaths: Record<string, string> = {
-  "/services/language/translations/*": "/services/language",
+  "/app/services/language/translations/*": "/app/services/language",
 };
 
 export const router = createBrowserRouter([
@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "/login/callback",
-        element: <CallbackPage redirectUrl="/console" />,
+        element: <CallbackPage defaultRedirectUrl="/app/console" />,
       },
       {
         element: (
@@ -60,6 +60,7 @@ export const router = createBrowserRouter([
             children: [{ path: "/login", element: <LoginPage /> }],
           },
           {
+            path: "/app",
             element: (
               <ProtectedGuard>
                 <Outlet />
@@ -73,12 +74,12 @@ export const router = createBrowserRouter([
                   </ConsoleLayout>
                 ),
                 children: [
-                  { path: "/profile", element: <ProfilePage /> },
-                  { path: "/console", element: <ConsolePage /> },
+                  { path: "profile", element: <ProfilePage /> },
+                  { path: "console", element: <ConsolePage /> },
                 ],
               },
               {
-                path: "/project-overview",
+                path: "project-overview",
                 element: (
                   <ProjectOverviewLayout
                     redirectPaths={redirectPaths}
@@ -104,52 +105,52 @@ export const router = createBrowserRouter([
                   </DashboardLayout>
                 ),
                 children: [
-                  { path: "/dashboard", element: <DashboardOverview /> },
+                  { path: "dashboard", element: <DashboardOverview /> },
                   {
-                    path: "/services/language",
+                    path: "services/language",
                     element: <LocalizationLanguageHomePage />,
                   },
                   {
-                    path: "/services/configure",
+                    path: "services/configure",
                     element: <LocalizationConfigurePage />,
                   },
                   {
-                    path: "/services/modules",
+                    path: "services/modules",
                     element: <LocalizationModulesPage />,
                   },
                   {
-                    path: "/services/modules/:moduleId",
+                    path: "services/modules/:moduleId",
                     element: <LocalizationModuleDetailPage />,
                   },
                   {
-                    path: "/services/language/export-history",
+                    path: "services/language/export-history",
                     element: <LocalizationExportHistoryPage />,
                   },
                   {
-                    path: "/services/language/logs",
+                    path: "services/language/logs",
                     element: <LocalizationLogsPage />,
                   },
                   {
-                    path: "/services/language/translations/new-key",
+                    path: "services/language/translations/new-key",
                     element: <LocalizationNewKeyPage />,
                   },
                   {
-                    path: "/services/language/translations/:keyId",
+                    path: "services/language/translations/:keyId",
                     element: <LocalizationKeyDetailPage />,
                   },
                   {
-                    path: "/services/glossary",
+                    path: "services/glossary",
                     element: <LocalizationGlossaryPage />,
                   },
                   {
-                    path: "/services/glossary/:itemId",
+                    path: "services/glossary/:itemId",
                     element: <LocalizationGlossaryDetailPage />,
                   },
                 ],
               },
             ],
           },
-          { path: "/", element: <Navigate to="/console" replace /> },
+          { path: "/", element: <Navigate to="/app/console" replace /> },
           { path: "*", element: <Navigate to="/login" replace /> },
         ],
       },
