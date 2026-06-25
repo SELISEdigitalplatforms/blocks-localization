@@ -5,6 +5,9 @@ type BreadcrumbRouteConfig = {
 };
 
 export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
+  "/app/services": {
+    skip: true,
+  },
   "/app/services/authentication": {
     title: "IDP",
   },
