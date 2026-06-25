@@ -311,7 +311,7 @@ const GlossaryTable: React.FC = () => {
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
                       onClick={() =>
-                        navigate(`/services/glossary/${row.original.itemId}`)
+                        navigate(`/app/services/glossary/${row.original.itemId}`)
                       }
                     >
                       {row.getVisibleCells().map((cell) => (

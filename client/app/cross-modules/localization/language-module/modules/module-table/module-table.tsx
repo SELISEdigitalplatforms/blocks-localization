@@ -271,7 +271,7 @@ export function ModuleTable() {
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/services/modules/${module.itemId}`)
+                          navigate(`/app/services/modules/${module.itemId}`)
                         }
                       >
                         <TableCell className="truncate font-medium">
