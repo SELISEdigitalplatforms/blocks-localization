@@ -529,7 +529,7 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      navigate(`/services/language/translations/${keyId}`);
+      navigate(`/app/services/language/translations/${keyId}`);
     },
     [navigate],
   );
@@ -1028,7 +1028,7 @@ export function LanguageTable() {
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() =>
-                        navigate("/services/language/export-history")
+                        navigate("/app/services/language/export-history")
                       }
                     >
                       <History className="mr-2 h-4 w-4" />
@@ -1068,7 +1068,7 @@ export function LanguageTable() {
                   variant="default"
                   className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
                   onClick={() =>
-                    navigate("/services/language/translations/new-key")
+                    navigate("/app/services/language/translations/new-key")
                   }
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />

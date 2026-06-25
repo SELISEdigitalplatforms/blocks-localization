@@ -36,7 +36,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
           title: "Success",
           description: "Key deleted",
         });
-        navigate("/services/language", { replace: true });
+        navigate("/app/services/language", { replace: true });
         onClose();
       } else {
         toast({

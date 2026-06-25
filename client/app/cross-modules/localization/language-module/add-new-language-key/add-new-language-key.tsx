@@ -215,7 +215,7 @@ function AddNewLanguageKey() {
           description: "Language key added",
         });
         form.reset();
-        navigate("/services/language", { replace: true });
+        navigate("/app/services/language", { replace: true });
       } else {
         toast({
           variant: "destructive",
@@ -314,7 +314,7 @@ function AddNewLanguageKey() {
       {/* <div className="ml-10 hidden min-h-screen max-w-80 flex-col gap-5 bg-background p-5 pt-24 md:flex">
         <div className="mx-2 my-3">
           <div className="flex gap-2">
-            <Link href="/services/language">
+            <Link href="/app/services/language">
               <X size={32} strokeWidth={1} />
             </Link>
             <p className="mt-[2px] text-lg font-semibold">New Key</p>
