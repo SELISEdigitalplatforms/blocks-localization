@@ -1,5 +1,19 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import {
+  AuthResolver,
+  CallbackPage,
+  ConsoleLayout,
+  ConsolePage,
+  DashboardLayout,
+  DashboardOverview,
+  EnvironmentsPage,
+  LoginPage,
+  ProfilePage,
+  ProjectOverviewLayout,
+  ProtectedGuard,
+  PublicGuard,
+} from "@seliseblocks/blocks-kit";
+import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
   LocalizationGlossaryDetailPage,
@@ -10,64 +24,43 @@ import {
   LocalizationModuleDetailPage,
   LocalizationModulesPage,
   LocalizationNewKeyPage,
-} from "./routes/dashboard/localization-pages";
-import { DashboardLayout } from "./layouts/dashboard-layout";
-import { ProjectOverviewLayout } from "./layouts/project-overview-layout";
-import { EnvironmentsPage } from "./pages/environments/environments";
-import {
-  AuthResolver,
-  PublicGuard,
-  LoginPage,
-  ProtectedGuard,
-  ConsoleLayout,
-  ImpersonationChecker,
-  ImpersonationTerminator,
-  ImpersonationSynchronizer,
-  ConsolePage,
-  CallbackPage,
-  ProfilePage,
-} from "@seliseblocks/blocks-kit";
-import { DashboardOverview } from "./pages/dashboard/dashboard-overview";
+} from "./layout/localization-page-layout/localization-page-layout";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { navigationMenus } from "./constants/navigation-menus";
+
+const redirectPaths: Record<string, string> = {
+  "/app/services/language/translations/*": "/app/services/language",
+};
 
 export const router = createBrowserRouter([
   {
-    element: <Outlet />,
+    element: (
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
+    ),
     children: [
-      // All Redirect Url Handle here
       {
-        element: <Outlet />,
-        children: [
-          {
-            path: "/login/callback",
-            element: <CallbackPage redirectUrl="/console" />,
-          },
-        ],
+        path: "/login/callback",
+        element: <CallbackPage defaultRedirectUrl="/app/console" />,
       },
       {
-        // Set User Auth Information and resolve authentication state before rendering any route
         element: (
           <AuthResolver>
             <Outlet />
           </AuthResolver>
         ),
         children: [
-          // public
           {
             element: (
               <PublicGuard>
                 <Outlet />
               </PublicGuard>
             ),
-            children: [
-              {
-                path: "/login",
-                element: <LoginPage />,
-              },
-            ],
+            children: [{ path: "/login", element: <LoginPage /> }],
           },
-
-          // protected
           {
+            path: "/app",
             element: (
               <ProtectedGuard>
                 <Outlet />
@@ -76,90 +69,88 @@ export const router = createBrowserRouter([
             children: [
               {
                 element: (
-                  <ImpersonationChecker>
-                    <ImpersonationTerminator>
-                      <ConsoleLayout>
-                        <Outlet />
-                      </ConsoleLayout>
-                    </ImpersonationTerminator>
-                  </ImpersonationChecker>
+                  <ConsoleLayout>
+                    <Outlet />
+                  </ConsoleLayout>
                 ),
                 children: [
-                  { path: "/profile", element: <ProfilePage /> },
-                  { path: "/console", element: <ConsolePage /> },
+                  { path: "profile", element: <ProfilePage /> },
+                  { path: "console", element: <ConsolePage /> },
                 ],
               },
               {
-                element: <ProjectOverviewLayout />,
+                path: "project-overview",
+                element: (
+                  <ProjectOverviewLayout
+                    redirectPaths={redirectPaths}
+                    navigationMenus={navigationMenus}
+                  >
+                    <Outlet />
+                  </ProjectOverviewLayout>
+                ),
                 children: [
                   {
-                    path: "/project-overview/environments",
+                    path: "environments",
                     element: <EnvironmentsPage />,
                   },
                 ],
               },
               {
-                // impersonate
                 element: (
-                  <ImpersonationChecker>
-                    <ImpersonationSynchronizer>
-                      <DashboardLayout />
-                    </ImpersonationSynchronizer>
-                  </ImpersonationChecker>
+                  <DashboardLayout
+                    redirectPaths={redirectPaths}
+                    navigationMenus={navigationMenus}
+                  >
+                    <Outlet />
+                  </DashboardLayout>
                 ),
                 children: [
-                  { path: "/dashboard", element: <DashboardOverview /> },
-
+                  { path: "dashboard", element: <DashboardOverview /> },
                   {
-                    path: "/services/language",
+                    path: "services/language",
                     element: <LocalizationLanguageHomePage />,
                   },
                   {
-                    path: "/services/language/translations",
-                    element: <Navigate to="/services/language" replace />,
-                  },
-                  {
-                    path: "/services/configure",
+                    path: "services/configure",
                     element: <LocalizationConfigurePage />,
                   },
                   {
-                    path: "/services/modules",
+                    path: "services/modules",
                     element: <LocalizationModulesPage />,
                   },
                   {
-                    path: "/services/modules/:moduleId",
+                    path: "services/modules/:moduleId",
                     element: <LocalizationModuleDetailPage />,
                   },
                   {
-                    path: "/services/language/export-history",
+                    path: "services/language/export-history",
                     element: <LocalizationExportHistoryPage />,
                   },
                   {
-                    path: "/services/language/logs",
+                    path: "services/language/logs",
                     element: <LocalizationLogsPage />,
                   },
                   {
-                    path: "/services/language/translations/new-key",
+                    path: "services/language/translations/new-key",
                     element: <LocalizationNewKeyPage />,
                   },
                   {
-                    path: "/services/language/translations/:keyId",
+                    path: "services/language/translations/:keyId",
                     element: <LocalizationKeyDetailPage />,
                   },
                   {
-                    path: "/services/glossary",
+                    path: "services/glossary",
                     element: <LocalizationGlossaryPage />,
                   },
                   {
-                    path: "/services/glossary/:itemId",
+                    path: "services/glossary/:itemId",
                     element: <LocalizationGlossaryDetailPage />,
                   },
                 ],
               },
             ],
           },
-
-          { path: "/", element: <Navigate to="/console" replace /> },
+          { path: "/", element: <Navigate to="/app/console" replace /> },
           { path: "*", element: <Navigate to="/login" replace /> },
         ],
       },

@@ -34,7 +34,7 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
-import { userService } from "@blocks-idp/iam/services/user.service";
+import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -46,17 +46,23 @@ const RowActionsCell = ({
   onTagGlossary: () => void;
   // onDelete: () => void;
 }) => (
-  <DropdownMenu>
+  <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="h-8 w-8 p-0">
+      <Button
+        variant="ghost"
+        className="h-8 w-8 p-0"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <EllipsisVertical width={20} height={20} />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
       <DropdownMenuItem
         className="cursor-pointer"
         onClick={(e) => {
-          e.stopPropagation();
+          e.preventDefault();
           onEdit();
         }}
       >
@@ -66,7 +72,7 @@ const RowActionsCell = ({
       <DropdownMenuItem
         className="cursor-pointer"
         onClick={(e) => {
-          e.stopPropagation();
+          e.preventDefault();
           onTagGlossary();
         }}
       >
@@ -122,7 +128,7 @@ export function ModuleTable() {
       await Promise.all(
         uniqueCreatedByIds.map(async (userId) => {
           try {
-            const response = await userService.getUserById({
+            const response = await userLookupService.getUserById({
               id: userId,
               projectKey: tenantId,
             });
@@ -221,7 +227,7 @@ export function ModuleTable() {
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-4">
-              <div className="w-[300px]">
+              <div className="w-full sm:w-[300px]">
                 <FilterControls.SearchInput
                   value={searchValue}
                   onChange={setSearchValue}
@@ -231,19 +237,19 @@ export function ModuleTable() {
               </div>
             </div>
             <div className="w-full overflow-x-auto">
-              <Table className="text-sm">
+              <Table className="min-w-[720px] table-fixed text-sm lg:min-w-0">
                 <TableHeader>
                   <TableRow className="border-none hover:bg-transparent">
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[220px] font-bold text-medium-emphasis">
                       Module Name
                     </TableHead>
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[220px] font-bold text-medium-emphasis">
                       Created By
                     </TableHead>
-                    <TableHead className="font-bold text-medium-emphasis">
+                    <TableHead className="w-[180px] font-bold text-medium-emphasis">
                       Created Date
                     </TableHead>
-                    <TableHead className="w-[50px] font-bold text-medium-emphasis">
+                    <TableHead className="w-[100px] font-bold text-medium-emphasis">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -265,21 +271,21 @@ export function ModuleTable() {
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/services/modules/${module.itemId}`)
+                          navigate(`/app/services/modules/${module.itemId}`)
                         }
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="truncate font-medium">
                           {module.moduleName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="truncate">
                           {getUserDisplayName(module.createdBy)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {module.createDate
                             ? new Date(module.createDate).toLocaleDateString()
                             : "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <RowActionsCell
                             onEdit={() => setEditTarget(module)}
                             onTagGlossary={() => setTagTarget(module)}
