@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Api</name>
+    </assembly>
+    <members>
+        <member name="T:BlocksTemplate.Api.Controllers.ConfigController">
+            <summary>
+            Handles operations related to language configuration settings.
+            </summary>
+        </member>
+        <member name="T:BlocksTemplate.Api.Controllers.KeyController">
+            <summary>
+            API Controller for managing Key operations.
+            </summary>
+            
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.#ctor(Eurolm.DomainService.Services.IKeyManagementService,FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest},FluentValidation.IValidator{Eurolm.DomainService.Services.TranslateBlocksLanguageKeysRequest})">
+            <summary>
+            Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.KeyController"/> class.
+            </summary>
+            <param name="keyManagementService">The service for managing keys.</param>
+            <param name="changeControllerContext">The context for changing controller state.</param>
+            <param name="translateBlocksLanguageKeyRequestValidator">The validator for TranslateBlocksLanguageKeyRequest.</param>
+            <param name="translateBlocksLanguageKeysRequestValidator">The validator for TranslateBlocksLanguageKeysRequest.</param>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.Save(Eurolm.DomainService.Services.Key)">
+            <summary>
+            Saves a new or existing key to the system.
+            </summary>
+            <param name="key">The key object to be saved.</param>
+            <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the success or failure of the save operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.SaveKeys(System.Collections.Generic.List{Eurolm.DomainService.Services.Key})">
+            <summary>
+            Saves multiple keys to the system in a single operation.
+            </summary>
+            <param name="keys">The list of key objects to be saved.</param>
+            <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the success or failure of the bulk save operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.Gets(Eurolm.DomainService.Services.GetKeysRequest)">
+            <summary>
+            Retrieves all available keys based on applied filters.
+            </summary>
+            <param name="query">The query parameters containing filters for key retrieval.</param>
+            <returns>A <see cref="T:Eurolm.DomainService.Services.GetKeysQueryResponse"/> containing the filtered list of keys.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetsByKeyNames(Eurolm.DomainService.Services.GetKeysByKeyNamesRequest)">
+            <summary>
+            Retrieves keys by an array of key names without pagination or filtering.
+            </summary>
+            <param name="request">The request containing an array of key names.</param>
+            <returns>A <see cref="T:Eurolm.DomainService.Services.GetKeysByKeyNamesResponse"/> containing the matched keys and optional error.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetTimeline(Eurolm.DomainService.Services.GetKeyTimelineRequest)">
+            <summary>
+            Retrieves Key timeline with pagination.
+            </summary>
+            <param name="query">The query parameters for filtering and pagination.</param>
+            <returns>A paginated list of <see cref="T:Eurolm.DomainService.Services.KeyTimeline"/> objects.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetLocalizationTimeline(Eurolm.DomainService.Services.GetLocalizationTimelineRequest)">
+            <summary>
+            Retrieves the localization-level overview timeline grouped by operation.
+            </summary>
+            <param name="query">The query parameters for filtering and pagination.</param>
+            <returns>A paginated list of operation-level timeline entries.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetTimelineByOperationId(Eurolm.DomainService.Services.GetTimelineByOperationIdRequest)">
+            <summary>
+            Retrieves timeline entries for a specific operation by OperationId.
+            </summary>
+            <param name="query">The query containing the OperationId and pagination parameters.</param>
+            <returns>A paginated list of <see cref="T:Eurolm.DomainService.Services.KeyTimeline"/> entries for the operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.Get(Eurolm.DomainService.Services.GetKeyRequest)">
+            <summary>
+            Retrieves a specific key by item ID.
+            </summary>
+            <param name="request">The request containing the item ID of the key to retrieve.</param>
+            <returns>A <see cref="T:Microsoft.AspNetCore.DataProtection.KeyManagement.Key"/> object if found; otherwise, null.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.Delete(Eurolm.DomainService.Services.DeleteKeyRequest)">
+            <summary>
+            Deletes a specific key by item ID.
+            </summary>
+            <param name="request">The request containing the item ID of the key to delete.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the delete operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.DeleteKeys(Eurolm.DomainService.Services.DeleteKeysRequest)">
+            <summary>
+            Deletes multiple keys by a list of item IDs. All deleted keys share the same OperationId in the timeline.
+            </summary>
+            <param name="request">The request containing the list of item IDs to delete.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetUilmFile(Eurolm.DomainService.Services.GetUilmFileRequest)">
+            <summary>
+            Returns a JSON UILM file for a specified module and language.
+            </summary>
+            <param name="request">The request containing the project key, module, and language information.</param>
+            <returns>A JSON UILM file as a string.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GenerateUilmFile(Eurolm.DomainService.Services.GenerateUilmFilesRequest)">
+            <summary>
+            Generates a UILM file for download. Must be called before calling /key/getuilmfile.
+            </summary>
+            <param name="request">The request containing the parameters for UILM file generation.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the file generation request.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.TranslateAll(Eurolm.DomainService.Services.TranslateAllRequest)">
+            <summary>
+            Translates all keys without values. If a module is specified, only keys from that module are translated.
+            </summary>
+            <param name="request">The request containing the project key and optional module filter.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the translation request.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.TranslateKey(Eurolm.DomainService.Services.TranslateBlocksLanguageKeyRequest)">
+            <summary>
+            Translates a specific BlocksLanguageKey by sending it to the translation queue.
+            </summary>
+            <param name="request">The request containing key ID, project key, and translation parameters.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the translation request.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.TranslateKeys(Eurolm.DomainService.Services.TranslateBlocksLanguageKeysRequest)">
+            <summary>
+            Translates multiple BlocksLanguageKeys by sending a single bulk event to the translation queue.
+            All translated keys share the same OperationId in the timeline.
+            </summary>
+            <param name="request">The request containing key IDs, project key, and translation parameters.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the translation request.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.UilmImport(Eurolm.DomainService.Services.UilmImportRequest)">
+            <summary>
+            Imports a UILM file. Existing keys are updated. Existing modules are not replaced. New keys are added; removed keys are ignored.
+            </summary>
+            <param name="request">The request containing the UILM file data and project key.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the import operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.UilmExport(Eurolm.DomainService.Services.UilmExportRequest)">
+            <summary>
+            Exports all modules or selected ones with their keys.
+            </summary>
+            <param name="request">The request containing the project key and optional module selection for export.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the export operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.DeleteCollections(Eurolm.DomainService.Services.DeleteCollectionsRequest)">
+            <summary>
+            Deletes entire key collections. (Admin use only; to be removed from public API.)
+            </summary>
+            <param name="request">The request containing the list of collections to delete.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the delete operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetUilmExportedFiles(Eurolm.DomainService.Services.GetUilmExportedFilesRequest)">
+            <summary>
+            Gets a paginated list of exported UILM files.
+            </summary>
+            <param name="request">The request containing pagination parameters.</param>
+            <returns>A paginated list of exported UILM files.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetLanguageFileGenerationHistory(Eurolm.DomainService.Services.GetLanguageFileGenerationHistoryRequest)">
+            <summary>
+            Gets a paginated list of language file generation history entries.
+            </summary>
+            <param name="request">The request containing pagination parameters.</param>
+            <returns>A paginated list of language file generation history entries.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.RollBack(Eurolm.DomainService.Services.RollbackRequest)">
+            <summary>
+            Reverts keys to a previous state.
+            </summary>
+            <param name="request">The request containing the item ID and rollback parameters.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the rollback operation.</returns>
+        </member>
+        <member name="T:BlocksTemplate.Api.Controllers.LanguageController">
+            <summary>
+            API Controller for managing language-related operations.
+            </summary>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.#ctor(Eurolm.DomainService.Services.ILanguageManagementService)">
+            <summary>
+            Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.LanguageController"/> class.
+            </summary>
+            <param name="languageManagementService">The service used for managing languages.</param>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.Save(Eurolm.DomainService.Services.Language)">
+            <summary>
+            Saves a new or existing language.
+            </summary>
+            <param name="language">The language object to be saved.</param>
+            <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the success or failure of the operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.Gets(Eurolm.DomainService.Services.GetLanguagesRequest)">
+            <summary>
+            Retrieves all available languages.
+            </summary>
+            <returns>A list of <see cref="T:Eurolm.DomainService.Services.Language"/> objects.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.Delete(Eurolm.DomainService.Services.DeleteLanguageRequest)">
+            <summary>
+            Deletes a specific language.
+            </summary>
+            <param name="request">The request containing the language name to delete.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the delete operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.SetDefault(Eurolm.DomainService.Services.SetDefaultLanguageRequest)">
+            <summary>
+            Sets the default language.
+            </summary>
+            <param name="request">The request containing the language name to set as default.</param>
+            <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the operation.</returns>
+        </member>
+        <member name="T:BlocksTemplate.Api.Controllers.ModuleController">
+            <summary>
+            Handles operations related to managing modules, such as saving and retrieving module data.
+            </summary>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.#ctor(Eurolm.DomainService.Services.IModuleManagementService)">
+            <summary>
+            Initializes a new instance of the <see cref="T:BlocksTemplate.Api.Controllers.ModuleController"/> class.
+            </summary>
+            <param name="moduleManagementService"></param>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.Save(Eurolm.DomainService.Services.SaveModuleRequest)">
+            <summary>
+            Saves a new module or updates an existing one.
+            </summary>
+            <param name="module">The module object to be saved.</param>
+            <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the result of the save operation.</returns>
+        </member>
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.Gets(Eurolm.DomainService.Services.GetModulesQuery)">
+            <summary>
+            Retrieves a list of all available modules.
+            </summary>
+            <returns>A list of <see cref="T:Eurolm.DomainService.Services.Module"/> objects.</returns>
+        </member>
+        <member name="T:BlocksTemplate.Api.GlobalApiRoutePrefixConvention">
+            <summary>Prepends a segment (e.g. <c>api</c>) to every controller’s attribute route template.</summary>
+        </member>
+        <member name="M:BlocksTemplate.Api.GlobalApiRoutePrefixConvention.#ctor(System.String)">
+            <summary>Prepends a segment (e.g. <c>api</c>) to every controller’s attribute route template.</summary>
+        </member>
+        <member name="T:Program">
+            <summary>
+            Auto-generated public partial Program class for top-level statement apps.
+            </summary>
+        </member>
+    </members>
+</doc>
