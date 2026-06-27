@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
-import { userService } from "@blocks-idp/iam/services/user.service";
+import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import {
   useGetLanguageModules,
   useGetModuleGlossaries,
@@ -264,7 +264,7 @@ export function ModuleDetails() {
 
       const promises = uniqueUserIds.map(async (userId) => {
         try {
-          const response = await userService.getUserById({
+          const response = await userLookupService.getUserById({
             id: userId,
             projectKey: tenantId,
           });

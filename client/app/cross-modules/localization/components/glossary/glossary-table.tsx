@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
 import {
   ColumnDef,
   flexRender,
@@ -31,7 +32,6 @@ import {
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
 import { useGetGlossaries } from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
 import AddEditGlossary from "@blocks-localization/components/modals/glossary/add-edit-glossary";
@@ -182,17 +182,25 @@ const GlossaryTable: React.FC = () => {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              asChild
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
               <Button variant="ghost" className="h-8 w-8 p-0">
                 <EllipsisVertical width={20} height={20} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+            >
               <DropdownMenuItem
                 className="cursor-pointer"
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.preventDefault();
                   handleEditClick(row.original);
                 }}
               >
@@ -202,7 +210,7 @@ const GlossaryTable: React.FC = () => {
               <DropdownMenuItem
                 className="cursor-pointer text-error"
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.preventDefault();
                   handleDeleteClick(row.original);
                 }}
               >
@@ -303,7 +311,7 @@ const GlossaryTable: React.FC = () => {
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
                       onClick={() =>
-                        navigate(`/services/glossary/${row.original.itemId}`)
+                        navigate(`/app/services/glossary/${row.original.itemId}`)
                       }
                     >
                       {row.getVisibleCells().map((cell) => (

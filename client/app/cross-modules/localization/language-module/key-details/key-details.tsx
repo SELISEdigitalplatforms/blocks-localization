@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -265,7 +265,7 @@ const KeyDetails = () => {
           {
             tabId === "details" ? (
               <div className="flex gap-2">
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="default" variant="outline" className="px-2">
                       <EllipsisVertical className="h-5 w-5" />
@@ -276,7 +276,8 @@ const KeyDetails = () => {
                       <DropdownMenuRadioItem
                         value="autoTranslate"
                         className="gap-2 py-2 pl-2 text-high-emphasis"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
                           setAutoTranslateModalOpen(true);
                         }}
                       >
@@ -288,7 +289,8 @@ const KeyDetails = () => {
                       {/* <DropdownMenuRadioItem
                         value="autoTranslate"
                         className="gap-2 py-2 pl-2 text-high-emphasis"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
                           setGptPromt(true);
                         }}
                       >

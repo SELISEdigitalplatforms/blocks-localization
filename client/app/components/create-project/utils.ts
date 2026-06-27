@@ -19,29 +19,31 @@ interface ICreateProjectFormState {
   resetFormData: () => void;
 }
 
-export const useCreateProjectFormState = create<ICreateProjectFormState>((set, get) => ({
-  formData: [
-    createProjectNamingFormDefaultValue,
-    CreateProjectResourcesFormDefaultValue,
-    createProjectEnvironmentFormDefaultValue,
-  ],
-  setFormData: (index, data) => {
-    const state = get();
-    const { formData } = state;
-    formData[index] = data;
-    set(() => ({ ...state }));
-  },
-  resetFormData: () => {
-    set((state) => ({
-      ...state,
-      formData: [
-        createProjectNamingFormDefaultValue,
-        CreateProjectResourcesFormDefaultValue,
-        createProjectEnvironmentFormDefaultValue,
-      ],
-    }));
-  },
-}));
+export const useCreateProjectFormState = create<ICreateProjectFormState>(
+  (set, get) => ({
+    formData: [
+      createProjectNamingFormDefaultValue,
+      CreateProjectResourcesFormDefaultValue,
+      createProjectEnvironmentFormDefaultValue,
+    ],
+    setFormData: (index, data) => {
+      const state = get();
+      const { formData } = state;
+      formData[index] = data;
+      set(() => ({ ...state }));
+    },
+    resetFormData: () => {
+      set((state) => ({
+        ...state,
+        formData: [
+          createProjectNamingFormDefaultValue,
+          CreateProjectResourcesFormDefaultValue,
+          createProjectEnvironmentFormDefaultValue,
+        ],
+      }));
+    },
+  }),
+);
 
 export const shortGuidGenerator = (length: number): string => {
   const letters = "abcdefghijklmnopqrstuvwxyz";
