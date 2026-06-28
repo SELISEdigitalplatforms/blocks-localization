@@ -23,6 +23,7 @@ export const useSaveStorageConfiguration = () => {
     },
   });
 };
+
 export const useDeleteStorageConfiguration = () => {
   const queryClient = useQueryClient();
   return useMutation({

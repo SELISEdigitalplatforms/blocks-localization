@@ -189,7 +189,6 @@ export const FileUploader = forwardRef<
               break;
             }
             if (rejectedFiles[i].errors[0]?.code === "file-invalid-type") {
-              console.log(rejectedFiles[i].errors[0])
               showErrorToast({
                 errors: "Invalid file type"
               });

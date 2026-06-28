@@ -46,13 +46,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
   });
 
   const formSubmitHandler = async (data: ILanguageModule) => {
-    // try {
-    //   data.configurationId = isEdit && previousData?.itemId ? previousData?.itemId : "";
-    //   await saveEmailConfig(data);
-    //   onClose();
-    // } catch (error) {
-    //   console.log(error);
-    // }
     try {
       const payload = {
         ...data,
@@ -69,7 +62,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         form.reset();
         onClose(false);
       } else {
-        debugger;
         if (
           Array.isArray(res?.validationErrors) &&
           res.validationErrors.length > 0

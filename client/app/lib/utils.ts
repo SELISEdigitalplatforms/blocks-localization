@@ -115,8 +115,12 @@ export const clearQueryString = (options?: { except?: string[] }) => {
 
 export const getUniqueID = (): string => {
   const timestamp = Date.now();
-  const randomLetters = Array.from({ length: 6 }, () =>
-    String.fromCharCode(Math.floor(Math.random() * (90 - 65 + 1)) + 65),
+  // Use a cryptographically secure RNG to avoid predictable identifiers
+  // (resolves SAST finding: non-crypto RNG). Output format is unchanged:
+  // 6 random uppercase letters (A-Z).
+  const randomBytes = crypto.getRandomValues(new Uint8Array(6));
+  const randomLetters = Array.from(randomBytes, (byte) =>
+    String.fromCharCode((byte % 26) + 65),
   ).join("");
   return `BLK-${timestamp}-${randomLetters}`;
 };
