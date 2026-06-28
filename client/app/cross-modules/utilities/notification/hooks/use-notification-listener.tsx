@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export const useNotificationListener = (
   notificationName: string,
   callback: (data: any) => void,
@@ -10,10 +9,16 @@ export const useNotificationListener = (
       callback(event.detail);
     };
 
-    window.addEventListener(notificationName, handleNotification as EventListener);
+    window.addEventListener(
+      notificationName,
+      handleNotification as EventListener,
+    );
 
     return () => {
-      window.removeEventListener(notificationName, handleNotification as EventListener);
+      window.removeEventListener(
+        notificationName,
+        handleNotification as EventListener,
+      );
     };
   }, [callback, notificationName]);
 };

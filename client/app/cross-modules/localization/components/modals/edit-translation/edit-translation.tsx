@@ -90,14 +90,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   }
 
   async function handleSave() {
-    console.log(
-      "Saving translation for key:",
-      keyDetails,
-      "in language:",
-      destinationLanguageCode,
-      "with translation:",
-      translation,
-    );
     const index = keyDetails.resources.findIndex(
       (resource) => resource.culture === destinationLanguageCode,
     );
@@ -125,8 +117,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     //   }
     //   return resource;
     // });
-    console.log("Saving translation for key:", keyDetails);
-    // Add save logic here
     try {
       const payload = {
         itemId: keyDetails.itemId,

@@ -146,7 +146,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               glossaryName={glossary.name}
               onClose={() => {
                 setDeleteModalOpen(false);
-                navigate("/services/glossary");
+                navigate("/app/services/glossary");
               }}
             />
           </Dialog>
