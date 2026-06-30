@@ -462,12 +462,24 @@ export function LanguageTable() {
   };
 
   const onConfirmDelete = async () => {
+    console.log("[DEBUG delete] selectedLanguageKeyId:", selectedLanguageKeyId, "tenantId:", tenantId);
+    if (!tenantId || !selectedLanguageKeyId) {
+      console.warn("[DEBUG delete] Guard: tenantId or selectedLanguageKeyId is empty", { tenantId, selectedLanguageKeyId });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing project or key identifier. Please try again.",
+      });
+      return;
+    }
     try {
       const payload = {
         projectKey: tenantId,
-        itemId: selectedLanguageKeyId ?? "",
+        itemId: selectedLanguageKeyId,
       };
+      console.log("[DEBUG delete] Calling deleteAsync with payload:", payload);
       const res = await deleteAsync(payload);
+      console.log("[DEBUG delete] deleteAsync returned:", res);
       if (res?.isSuccess) {
         toast({
           variant: "success",
@@ -493,6 +505,7 @@ export function LanguageTable() {
         });
       }
     } catch (error) {
+      console.error("[DEBUG delete] Catch error:", error);
       toast({
         variant: "destructive",
         title: "Error",
