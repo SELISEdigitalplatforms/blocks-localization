@@ -462,9 +462,7 @@ export function LanguageTable() {
   };
 
   const onConfirmDelete = async () => {
-    console.log("[DEBUG delete] selectedLanguageKeyId:", selectedLanguageKeyId, "tenantId:", tenantId);
     if (!tenantId || !selectedLanguageKeyId) {
-      console.warn("[DEBUG delete] Guard: tenantId or selectedLanguageKeyId is empty", { tenantId, selectedLanguageKeyId });
       toast({
         variant: "destructive",
         title: "Error",
@@ -474,12 +472,10 @@ export function LanguageTable() {
     }
     try {
       const payload = {
-        projectKey: tenantId,
+        ProjectKey: tenantId,
         itemId: selectedLanguageKeyId,
       };
-      console.log("[DEBUG delete] Calling deleteAsync with payload:", payload);
       const res = await deleteAsync(payload);
-      console.log("[DEBUG delete] deleteAsync returned:", res);
       if (res?.isSuccess) {
         toast({
           variant: "success",
@@ -493,9 +489,15 @@ export function LanguageTable() {
         if (rawErrors && typeof rawErrors === "object") {
           if (Array.isArray(rawErrors) && rawErrors.length > 0) {
             errorMessage = (rawErrors as string[]).join(", ");
-          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
+          } else if (
+            !Array.isArray(rawErrors) &&
+            Object.keys(rawErrors).length > 0
+          ) {
             const firstError = Object.values(rawErrors)[0];
-            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+            errorMessage =
+              typeof firstError === "string"
+                ? firstError
+                : JSON.stringify(rawErrors);
           }
         }
         toast({
@@ -505,11 +507,13 @@ export function LanguageTable() {
         });
       }
     } catch (error) {
-      console.error("[DEBUG delete] Catch error:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
       });
     }
   };

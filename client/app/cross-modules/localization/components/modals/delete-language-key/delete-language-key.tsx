@@ -27,9 +27,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const deleteKey = async () => {
-    console.log("[DEBUG delete-modal] itemId:", itemId, "tenantId:", tenantId);
     if (!tenantId || !itemId) {
-      console.warn("[DEBUG delete-modal] Guard: tenantId or itemId is empty", { tenantId, itemId });
       toast({
         variant: "destructive",
         title: "Error",
@@ -38,9 +36,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
       return;
     }
     try {
-      console.log("[DEBUG delete-modal] Calling mutateAsync");
-      const res = await mutateAsync({ itemId: itemId, projectKey: tenantId });
-      console.log("[DEBUG delete-modal] mutateAsync returned:", res);
+      const res = await mutateAsync({ itemId: itemId, ProjectKey: tenantId });
 
       if (res?.isSuccess) {
         toast({
@@ -56,9 +52,15 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
         if (rawErrors && typeof rawErrors === "object") {
           if (Array.isArray(rawErrors) && rawErrors.length > 0) {
             errorMessage = (rawErrors as string[]).join(", ");
-          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
+          } else if (
+            !Array.isArray(rawErrors) &&
+            Object.keys(rawErrors).length > 0
+          ) {
             const firstError = Object.values(rawErrors)[0];
-            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+            errorMessage =
+              typeof firstError === "string"
+                ? firstError
+                : JSON.stringify(rawErrors);
           }
         }
         toast({
@@ -68,11 +70,13 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
         });
       }
     } catch (error) {
-      console.error("[DEBUG delete-modal] Catch error:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
       });
     }
   };
