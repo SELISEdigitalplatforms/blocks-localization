@@ -27,8 +27,20 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const deleteKey = async () => {
+    console.log("[DEBUG delete-modal] itemId:", itemId, "tenantId:", tenantId);
+    if (!tenantId || !itemId) {
+      console.warn("[DEBUG delete-modal] Guard: tenantId or itemId is empty", { tenantId, itemId });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing project or key identifier. Please try again.",
+      });
+      return;
+    }
     try {
+      console.log("[DEBUG delete-modal] Calling mutateAsync");
       const res = await mutateAsync({ itemId: itemId, projectKey: tenantId });
+      console.log("[DEBUG delete-modal] mutateAsync returned:", res);
 
       if (res?.isSuccess) {
         toast({
@@ -56,6 +68,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
         });
       }
     } catch (error) {
+      console.error("[DEBUG delete-modal] Catch error:", error);
       toast({
         variant: "destructive",
         title: "Error",
