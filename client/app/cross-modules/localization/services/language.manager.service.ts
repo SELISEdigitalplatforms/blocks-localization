@@ -181,12 +181,10 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE;
-    return this.httpClient
-      .delete<{
-        errors: unknown;
-        isSuccess: boolean;
-      }>(`${url}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
-      .then((response) => response);
+    return this.httpClient.delete<{
+      errors: unknown;
+      isSuccess: boolean;
+    }>(`${url}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`);
   }
 
   deleteLanguageKeys(payload: {
