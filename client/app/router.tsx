@@ -1,18 +1,22 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import {
-  AuthResolver,
   CallbackPage,
-  ConsoleLayout,
   ConsolePage,
-  DashboardLayout,
   DashboardOverview,
   EnvironmentsPage,
   LoginPage,
   ProfilePage,
+} from "@seliseblocks/blocks-kit/pages";
+import {
   ProjectOverviewLayout,
+  DashboardLayout,
+  ConsoleLayout,
+} from "@seliseblocks/blocks-kit/layouts";
+import {
   ProtectedGuard,
   PublicGuard,
-} from "@seliseblocks/blocks-kit";
+  AuthResolver,
+} from "@seliseblocks/blocks-kit/guards";
 import {
   LocalizationConfigurePage,
   LocalizationExportHistoryPage,
