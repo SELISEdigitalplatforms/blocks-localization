@@ -39,17 +39,27 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
         navigate("/app/services/language", { replace: true });
         onClose();
       } else {
+        const rawErrors = res?.errors;
+        let errorMessage = "Failed to delete key. Please try again.";
+        if (rawErrors && typeof rawErrors === "object") {
+          if (Array.isArray(rawErrors) && rawErrors.length > 0) {
+            errorMessage = (rawErrors as string[]).join(", ");
+          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
+            const firstError = Object.values(rawErrors)[0];
+            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+          }
+        }
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: errorMessage,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
   };
