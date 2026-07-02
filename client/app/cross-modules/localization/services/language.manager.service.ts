@@ -176,18 +176,19 @@ export class LanguageManagerService {
     return this.httpClient.post(url, payload);
   };
 
-  deleteLanguageKey(payload: { itemId: string; projectKey: string }): Promise<{
+  deleteLanguageKey = (payload: {
+    itemId: string;
+    ProjectKey: string;
+  }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
-  }> {
+  }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE;
-    return this.httpClient
-      .delete<{
-        errors: unknown;
-        isSuccess: boolean;
-      }>(`${url}?itemId=${payload.itemId}&projectKey=${payload.projectKey}`)
-      .then((response) => response);
-  }
+    return this.httpClient.delete<{
+      errors: unknown;
+      isSuccess: boolean;
+    }>(`${url}?itemId=${payload.itemId}&ProjectKey=${payload.ProjectKey}`);
+  };
 
   deleteLanguageKeys(payload: {
     itemIds: string[];
