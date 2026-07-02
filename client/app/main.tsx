@@ -5,7 +5,7 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v6";
 import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";
-import { BlocksAppLayout } from "@seliseblocks/blocks-kit";
+import { BlocksAppLayout } from "@seliseblocks/blocks-kit/layouts";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { TooltipProvider } from "./components/ui-kits/tooltip/tooltip";
 import "./styles/globals.css";

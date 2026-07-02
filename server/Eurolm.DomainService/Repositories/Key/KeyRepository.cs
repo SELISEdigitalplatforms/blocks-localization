@@ -3,6 +3,7 @@ using Eurolm.DomainService.Services;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 
 namespace Eurolm.DomainService.Repositories
 {
@@ -89,15 +90,15 @@ namespace Eurolm.DomainService.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.KeySearchText))
             {
-                var keyNameFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{query.KeySearchText}.*", "i"));
+                var keyNameFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i"));
                 var resourceValueFilter = filterBuilder.ElemMatch(x => x.Resources,
-                    Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{query.KeySearchText}.*", "i")));
+                    Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i")));
                 matchFilters.Add(filterBuilder.Or(keyNameFilter, resourceValueFilter));
             }
 
             if (!string.IsNullOrWhiteSpace(query.SearchKey))
             {
-                var searchKeyFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{query.SearchKey}.*", "i"));
+                var searchKeyFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{Regex.Escape(query.SearchKey)}.*", "i"));
                 matchFilters.Add(searchKeyFilter);
             }
 
