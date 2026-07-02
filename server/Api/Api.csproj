@@ -17,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation.AspNetCore" />
+    <PackageReference Include="SeliseBlocks.ConfigurationDriver" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Eurolm.DomainService\Eurolm.DomainService.csproj" />
