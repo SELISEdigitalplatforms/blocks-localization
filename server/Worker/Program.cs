@@ -3,6 +3,7 @@ using Eurolm.DomainService.Utilities;
 using Worker;
 using Worker.Configuration;
 using Worker.Consumers;
+using SeliseBlocks.ConfigurationDriver;
 
 const string _serviceName = "blocks-localization-worker";
 
@@ -17,6 +18,17 @@ IHostBuilder CreateHostBuilder(string[] args) =>
         .ConfigureAppConfiguration((context, builder) =>
         {
             ApplicationConfigurations.ConfigureWorkerEnv(builder, args);
+
+            // Merge the DB-backed "Secrets" document into configuration (same
+            // SecretKey as the Api) so KeyPairs values such as RootTenantId,
+            // NotificationServiceUrl and Salt are read from the DB.
+            builder.AddMongoDbConfiguration(options =>
+            {
+                options.ConnectionString = secret.DatabaseConnectionString;
+                options.DatabaseName     = secret.RootDatabaseName;
+                options.CollectionName   = "Secrets";
+                options.SecretKey        = "blocks-secret-localization";
+            });
         })
         .ConfigureServices((services) =>
         {
