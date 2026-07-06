@@ -41,7 +41,6 @@ export const useGetBlocksLanguageKey = (
     ),
     queryFn: () =>
       languageManagerService.fetchBlocksLanguageKey({
-        projectKey: tenantId,
         pageNumber: pageNumber,
         pageSize: pageSize,
         searchKey: searchKey,
@@ -67,7 +66,6 @@ export const useGetBlocksLanguageKeyById = (itemId: string) => {
     enabled,
     queryFn: () =>
       languageManagerService.fetchBlocksLanguageKeyById({
-        projectKey: tenantId,
         itemId: itemId,
       }),
     refetchInterval: (query) => {
@@ -85,7 +83,7 @@ export const useGetLanguageModules = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.modules.list(tenantId),
-    queryFn: () => languageManagerService.fetchBlocksLanguageModules(tenantId),
+    queryFn: () => languageManagerService.fetchBlocksLanguageModules(),
     enabled: !!tenantId,
   });
 };
@@ -94,7 +92,7 @@ export const useGetLanguages = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.languages.list(tenantId),
-    queryFn: () => languageManagerService.fetchBlocksLanguages(tenantId),
+    queryFn: () => languageManagerService.fetchBlocksLanguages(),
   });
 };
 
@@ -166,7 +164,7 @@ export function useGetLanguageModule(projectKey: string) {
   return useQuery({
     queryKey: localizationQueryKeys.modules.list(projectKey),
     queryFn: () =>
-      languageManagerService.fetchBlocksLanguageModules(projectKey),
+      languageManagerService.fetchBlocksLanguageModules(),
     enabled: !!projectKey,
   });
 }
@@ -231,7 +229,6 @@ export const useTranslateKeyWithPolling = (
 
       try {
         const data = await languageManagerService.fetchBlocksLanguageKeyById({
-          projectKey: tenantId,
           itemId: keyId,
         });
 
@@ -421,7 +418,6 @@ export const useGetLanguageKeysTimeline = (
     enabled,
     queryFn: () =>
       languageManagerService.getKeysTimeline({
-        projectKey: tenantId,
         pageNumber: pageNumber,
         pageSize: pageSize,
         keyId,
@@ -446,7 +442,6 @@ export const useGetExportHistory = (
     ),
     queryFn: () =>
       languageManagerService.getExportHistory({
-        projectKey,
         pageNumber,
         pageSize,
         filters,
@@ -458,7 +453,7 @@ export const useRevertKeyTimeline = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["revert-uilm-key-timeline"],
-    mutationFn: (payload: { itemId: string; projectKey: string }) =>
+    mutationFn: (payload: { itemId: string }) =>
       languageManagerService.revertKeyTimeline(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -497,7 +492,6 @@ export const useGetLocalizationTimeline = (
     ),
     queryFn: () =>
       languageManagerService.getLocalizationTimeline({
-        projectKey: tenantId,
         pageNumber,
         pageSize,
         userId: filters?.userId,
@@ -525,7 +519,6 @@ export const useGetTimelineByOperationId = (
     queryFn: () =>
       languageManagerService.getTimelineByOperationId({
         operationId,
-        projectKey: tenantId,
         pageNumber,
         pageSize,
       }),
@@ -550,7 +543,6 @@ export const useGetGlossaries = (
     ),
     queryFn: () =>
       languageManagerService.fetchGlossaries({
-        projectKey: tenantId,
         pageNumber,
         pageSize,
         searchText,
@@ -601,7 +593,6 @@ export const useGetGlobalGlossaries = () => {
     queryKey: localizationQueryKeys.glossaries.global(tenantId),
     queryFn: () =>
       languageManagerService.fetchGlossaries({
-        projectKey: tenantId,
         pageNumber: 0,
         pageSize: 100,
         isGlobal: true,
@@ -617,7 +608,6 @@ export const useGetModuleGlossaries = (moduleId: string) => {
     queryKey: localizationQueryKeys.glossaries.module(tenantId, moduleId),
     queryFn: () =>
       languageManagerService.fetchGlossaries({
-        projectKey: tenantId,
         pageNumber: 0,
         pageSize: 100,
         moduleId,
@@ -635,7 +625,6 @@ export const useGetSuggestedGlossaries = (itemId: string, enabled: boolean) => {
     queryFn: () =>
       languageManagerService.getSuggestedGlossaries({
         itemId,
-        projectKey: tenantId,
         maxResults: 5,
       }),
     enabled: enabled && !!itemId && !!tenantId,
@@ -649,7 +638,6 @@ export const useSearchGlossaries = (searchText: string, enabled: boolean) => {
     queryKey: localizationQueryKeys.glossaries.search(tenantId, searchText),
     queryFn: () =>
       languageManagerService.fetchGlossaries({
-        projectKey: tenantId,
         pageNumber: 0,
         pageSize: 10,
         searchText: searchText || undefined,
@@ -666,7 +654,6 @@ export const useGetGlossaryById = (itemId: string) => {
     queryFn: () =>
       languageManagerService.getGlossaryById({
         itemId,
-        projectKey: tenantId,
       }),
     enabled: !!itemId && !!tenantId,
     staleTime: 0,
@@ -694,7 +681,6 @@ export const useGetKeysByGlossaryId = (
     queryFn: async () => {
       // Fetch keys by moduleIds
       const result = await languageManagerService.fetchBlocksLanguageKey({
-        projectKey: tenantId,
         pageNumber: 0, // Fetch from page 0 to get all keys for filtering
         pageSize: 1000, // Large page size to get all keys
         searchKey: "",
@@ -730,7 +716,7 @@ export const useGetWebhook = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.webhook.detail(tenantId),
-    queryFn: () => languageManagerService.getWebhook(tenantId),
+    queryFn: () => languageManagerService.getWebhook(),
     staleTime: 0,
     refetchOnMount: true,
   });

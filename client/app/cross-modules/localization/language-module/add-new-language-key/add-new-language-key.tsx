@@ -202,7 +202,6 @@ function AddNewLanguageKey() {
         resources: data.resources,
         routes: data.routes?.map((route) => route.value) || [],
         isPartiallyTranslated: true,
-        projectKey: tenantId,
         itemId: "",
         isNewKey: true,
         context: data.context || "",
@@ -266,8 +265,6 @@ function AddNewLanguageKey() {
           destinationLanguage: destinationLanguage || "English",
           currentLanguage: "English",
           temperature: 0.1,
-          // elementDetailContext: "",
-          projectKey: tenantId,
         };
         const res = await autoTranslateAsync(payload);
         if (res.content) {

@@ -85,7 +85,6 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
       const res = await mutateAsync({
         moduleId: module.itemId,
         glossaryIds: selectedIds,
-        projectKey: tenantId,
       });
       if (res?.isSuccess) {
         toast({

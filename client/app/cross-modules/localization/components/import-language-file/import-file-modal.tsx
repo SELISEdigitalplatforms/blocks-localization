@@ -846,7 +846,6 @@ export default function ImportCommunicationsModal({
       const payload: IImportFile = {
         messageCoRelationId: uuidv4(),
         fileId,
-        projectKey,
       };
 
       await uploadUilmFile(payload);
