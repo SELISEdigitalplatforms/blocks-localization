@@ -426,7 +426,6 @@ export function LanguageTable() {
 
     const payload = {
       keyId: selectedLanguageKeyId,
-      projectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
       defaultLanguage: defaultLanguageCode,
     };
@@ -472,7 +471,6 @@ export function LanguageTable() {
     }
     try {
       const payload = {
-        ProjectKey: tenantId,
         itemId: selectedLanguageKeyId,
       };
       const res = await deleteAsync(payload);
@@ -963,7 +961,7 @@ export function LanguageTable() {
 
   async function generateUilmFiles() {
     try {
-      const res = await mutateAsync({ guid: uuidv4(), projectKey: tenantId });
+      const res = await mutateAsync({ guid: uuidv4() });
 
       if (res?.isSuccess) {
         toast({

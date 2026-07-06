@@ -134,7 +134,6 @@ function Configure() {
           secret: values.secret,
         },
         isDisabled: values.isDisabled,
-        projectKey: tenantId,
       };
       const res = await saveWebhookAsync(payload);
       if (res?.success) {
@@ -186,7 +185,6 @@ function Configure() {
   const onConfirmDelete = async () => {
     try {
       const payload = {
-        projectKey: tenantId,
         languageName: selectedLanguageData ?? "",
       };
       const res = await deleteAsync(payload);
@@ -216,7 +214,6 @@ function Configure() {
   const onConfirmMakeDefault = async () => {
     try {
       const payload = {
-        projectKey: tenantId,
         languageName: selectedLanguageData ?? "",
       };
       const res = await setDefaultAsync(payload);
