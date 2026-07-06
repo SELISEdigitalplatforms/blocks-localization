@@ -1,4 +1,4 @@
-import { http } from "@/lib/http-client";
+import { serviceInstances } from "@/lib/http-client";
 import {
   IStorageConfiguration,
   IStorageConfigurationDeletePayload,
@@ -7,8 +7,10 @@ import {
 import { STORAGE_CONFIG_ENDPOINTS } from "../constants/endpoint.constant";
 
 export class StorageConfiguration {
+  private readonly httpClient = serviceInstances.logicService;
+
   gets(projectKey: string): Promise<IStorageConfiguration[]> {
-    return http.get<IStorageConfiguration[]>(
+    return this.httpClient.get<IStorageConfiguration[]>(
       `${STORAGE_CONFIG_ENDPOINTS.GET_CONFIGS}?ProjectKey=${projectKey}`,
       undefined,
       { absoluteUrl: true },
@@ -60,14 +62,14 @@ export class StorageConfiguration {
     // Merge the reset values with the original values
     const payload = { ...resetValues, ...values };
 
-    return http.post(url, payload, undefined, { absoluteUrl: true });
+    return this.httpClient.post(url, payload, undefined, { absoluteUrl: true });
   }
 
   delete(payload: IStorageConfigurationDeletePayload): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> {
-    return http.post(
+    return this.httpClient.post(
       `${STORAGE_CONFIG_ENDPOINTS.DELETE_CONFIG}?ProjectKey=${payload.projectKey}&ConfigurationName=${payload.configurationName}`,
       {},
       undefined,

@@ -5,7 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "BLOCKS_");
   const proxyTarget = env.BLOCKS_API_BASE_URL;
-  const iamProxyTarget = env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
+  const iamProxyTarget =
+    env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
 
   return {
     envPrefix: ["BLOCKS_"],
@@ -14,7 +15,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./app"),
-        "@blocks-idp": path.resolve(__dirname, "./app/idp"),
         "@blocks-lmt": path.resolve(__dirname, "./app/cross-modules/lmt"),
         "@blocks-storage": path.resolve(
           __dirname,
@@ -42,6 +42,17 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "../server/Api/wwwroot",
       emptyOutDir: true,
+      chunkSizeWarningLimit: 3000,
+      cssMinify: false,
+      rollupOptions: {
+        onwarn(warning, warn) {
+          // Suppress INVALID_ANNOTATION warnings from @microsoft/signalr
+          if (warning.code === "INVALID_ANNOTATION") return;
+          // Suppress chunk size warnings
+          if (warning.code === "CHUNK_SIZE_WARNING") return;
+          warn(warning);
+        },
+      },
     },
     server: {
       host: true, // Listen on all addresses (0.0.0.0)
