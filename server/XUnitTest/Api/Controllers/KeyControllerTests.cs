@@ -108,7 +108,7 @@ namespace XUnitTest
         public async Task Gets_WithValidQuery_ReturnsKeyList()
         {
             // Arrange
-            var query = new GetKeysRequest { ProjectKey = "project-1", PageSize = 10 };
+            var query = new GetKeysRequest {  PageSize = 10 };
             var expectedResponse = new GetKeysQueryResponse { Keys = new List<Key> { new Key { KeyName = "Key1" } } };
 
             _keyManagementServiceMock
@@ -126,7 +126,7 @@ namespace XUnitTest
         public async Task Gets_WithKeySearchText_ReturnsFilteredKeys()
         {
             // Arrange
-            var query = new GetKeysRequest { ProjectKey = "project-1", PageSize = 10, KeySearchText = "welcome" };
+            var query = new GetKeysRequest {  PageSize = 10, KeySearchText = "welcome" };
             var expectedResponse = new GetKeysQueryResponse { Keys = new List<Key> { new Key { KeyName = "WELCOME_MESSAGE" } } };
 
             _keyManagementServiceMock
@@ -147,7 +147,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 ResourceSearchFilters = new[]
                 {
@@ -189,7 +189,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+         
                 PageSize = 10,
                 KeySearchText = "GREET",
                 ResourceSearchFilters = new[]
@@ -228,7 +228,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+               
                 PageSize = 10,
                 ResourceSearchFilters = Array.Empty<ResourceSearchFilter>()
             };
@@ -260,7 +260,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 ResourceSearchFilters = null
             };
@@ -285,7 +285,7 @@ namespace XUnitTest
         public async Task Gets_WithSearchKey_ReturnsFilteredKeys()
         {
             // Arrange
-            var query = new GetKeysRequest { ProjectKey = "project-1", PageSize = 10, SearchKey = "welcome" };
+            var query = new GetKeysRequest {  PageSize = 10, SearchKey = "welcome" };
             var expectedResponse = new GetKeysQueryResponse { Keys = new List<Key> { new Key { KeyName = "WELCOME_MESSAGE" } } };
 
             _keyManagementServiceMock
@@ -306,7 +306,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 SearchKey = "GREET",
                 ResourceSearchFilters = new[]
@@ -345,7 +345,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 LastUpdateDateRange = new DateRange
                 {
@@ -380,7 +380,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 LastUpdateDateRange = new DateRange
                 {
@@ -410,7 +410,7 @@ namespace XUnitTest
             // Arrange
             var query = new GetKeysRequest
             {
-                ProjectKey = "project-1",
+                
                 PageSize = 10,
                 CreateDateRange = new DateRange
                 {
@@ -556,7 +556,7 @@ namespace XUnitTest
         public async Task GenerateUilmFile_WithValidRequest_ReturnsOk()
         {
             // Arrange
-            var request = new GenerateUilmFilesRequest { ProjectKey = "project-1", Guid = Guid.NewGuid().ToString() };
+            var request = new GenerateUilmRequest {  Guid = Guid.NewGuid().ToString() };
 
             // Act
             var result = await _controller.GenerateUilmFile(request);
@@ -583,7 +583,7 @@ namespace XUnitTest
         public async Task TranslateAll_WithValidProjectKey_ReturnsOk()
         {
             // Arrange
-            var request = new TranslateAllRequest { ProjectKey = "project-1" };
+            var request = new TranslateAllRequest { };
 
             // Act
             var result = await _controller.TranslateAll(request);
@@ -596,7 +596,7 @@ namespace XUnitTest
         public async Task TranslateAll_WithNullProjectKey_ReturnsBadRequest()
         {
             // Arrange
-            var request = new TranslateAllRequest { ProjectKey = null };
+            var request = new TranslateAllRequest {  };
 
             // Act
             var result = await _controller.TranslateAll(request);
@@ -609,7 +609,7 @@ namespace XUnitTest
         public async Task TranslateAll_WithEmptyProjectKey_ReturnsBadRequest()
         {
             // Arrange
-            var request = new TranslateAllRequest { ProjectKey = "" };
+            var request = new TranslateAllRequest { };
 
             // Act
             var result = await _controller.TranslateAll(request);
@@ -629,7 +629,7 @@ namespace XUnitTest
             var request = new TranslateBlocksLanguageKeyRequest
             {
                 KeyId = "key-1",
-                ProjectKey = "project-1",
+               
                 MessageCoRelationId = "corr-123",
                 DefaultLanguage = "en"
             };
@@ -663,7 +663,7 @@ namespace XUnitTest
             var request = new TranslateBlocksLanguageKeyRequest
             {
                 KeyId = "",
-                ProjectKey = "project-1",
+              
                 MessageCoRelationId = "",
                 DefaultLanguage = "en"
             };
@@ -691,7 +691,7 @@ namespace XUnitTest
         public async Task UilmImport_WithValidRequest_ReturnsOk()
         {
             // Arrange
-            var request = new UilmImportRequest { ProjectKey = "project-1", FileId = "file-123" };
+            var request = new UilmImportRequest { FileId = "file-123" };
 
             // Act
             var result = await _controller.UilmImport(request);
@@ -704,7 +704,7 @@ namespace XUnitTest
         public async Task UilmImport_WithNullProjectKey_ReturnsBadRequest()
         {
             // Arrange
-            var request = new UilmImportRequest { ProjectKey = null, FileId = "file-123" };
+            var request = new UilmImportRequest {  FileId = "file-123" };
 
             // Act
             var result = await _controller.UilmImport(request);
@@ -721,7 +721,7 @@ namespace XUnitTest
         public async Task UilmExport_WithValidRequest_ReturnsOk()
         {
             // Arrange
-            var request = new UilmExportRequest { ProjectKey = "project-1" };
+            var request = new UilmExportRequest {  };
 
             // Act
             var result = await _controller.UilmExport(request);
@@ -734,7 +734,7 @@ namespace XUnitTest
         public async Task UilmExport_WithNullProjectKey_ReturnsBadRequest()
         {
             // Arrange
-            var request = new UilmExportRequest { ProjectKey = null };
+            var request = new UilmExportRequest {  };
 
             // Act
             var result = await _controller.UilmExport(request);
@@ -944,7 +944,7 @@ namespace XUnitTest
         [Fact]
         public async Task GetUilmFile_WithNullProjectKey_Returns401()
         {
-            var request = new GetUilmFileRequest { ProjectKey = null };
+            var request = new GetUilmFileRequest { };
             var context = new DefaultHttpContext();
             _controller.ControllerContext.HttpContext = context;
             await _controller.GetUilmFile(request);
@@ -964,7 +964,7 @@ namespace XUnitTest
             {
                 KeyId = "k1",
                 MessageCoRelationId = "m1",
-                ProjectKey = "p1",
+               
                 DefaultLanguage = "en"
             };
             _validatorMock.Setup(x => x.ValidateAsync(request, default)).ReturnsAsync(new FluentValidation.Results.ValidationResult(new[] {
@@ -984,7 +984,7 @@ namespace XUnitTest
         [Fact]
         public async Task UilmImport_WithEmptyProjectKey_ReturnsBadRequest()
         {
-            var request = new UilmImportRequest { ProjectKey = "", FileId = "f1" };
+            var request = new UilmImportRequest { FileId = "f1" };
             var result = await _controller.UilmImport(request);
             result.Should().BeOfType<BadRequestObjectResult>();
         }
@@ -999,7 +999,7 @@ namespace XUnitTest
         [Fact]
         public async Task UilmExport_WithEmptyProjectKey_ReturnsBadRequest()
         {
-            var request = new UilmExportRequest { ProjectKey = "" };
+            var request = new UilmExportRequest {};
             var result = await _controller.UilmExport(request);
             result.Should().BeOfType<BadRequestObjectResult>();
         }

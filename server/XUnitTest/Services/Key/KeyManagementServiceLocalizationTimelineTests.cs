@@ -267,7 +267,7 @@ namespace XUnitTest
             request.UserId.Should().BeNull();
             request.LogFrom.Should().BeNull();
             request.CreateDateRange.Should().BeNull();
-            request.ProjectKey.Should().BeNull();
+
         }
 
         [Fact]
@@ -278,7 +278,7 @@ namespace XUnitTest
             request.PageSize.Should().Be(10);
             request.PageNumber.Should().Be(1);
             request.OperationId.Should().Be(string.Empty);
-            request.ProjectKey.Should().BeNull();
+           
         }
 
         [Fact]

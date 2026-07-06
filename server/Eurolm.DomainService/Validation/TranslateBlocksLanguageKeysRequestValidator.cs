@@ -8,9 +8,7 @@ namespace Eurolm.DomainService.Validation
         public TranslateBlocksLanguageKeysRequestValidator()
         {
             // Validate ProjectKey
-            RuleFor(request => request.ProjectKey)
-                .NotEmpty().WithMessage("ProjectKey is required.")
-                .Length(1, 100).WithMessage("ProjectKey must be between 1 and 100 characters long.");
+         
 
             // Validate KeyIds
             RuleFor(request => request.KeyIds)

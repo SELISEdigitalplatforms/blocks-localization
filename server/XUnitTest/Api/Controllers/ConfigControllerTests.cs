@@ -39,7 +39,6 @@ namespace XUnitTest
             {
                 Url = "https://example.com/webhook",
                 ContentType = "application/json",
-                ProjectKey = "project-1",
                 BlocksWebhookSecret = new BlocksWebhookSecret
                 {
                     Secret = "secret-123",
@@ -74,7 +73,6 @@ namespace XUnitTest
             {
                 Url = "https://example.com/webhook",
                 ContentType = "application/json",
-                ProjectKey = "project-1",
                 BlocksWebhookSecret = new BlocksWebhookSecret
                 {
                     Secret = "secret-456",
@@ -108,7 +106,6 @@ namespace XUnitTest
             {
                 Url = "https://example.com/webhook",
                 ContentType = "application/json",
-                ProjectKey = "project-1",
                 BlocksWebhookSecret = new BlocksWebhookSecret
                 {
                     Secret = "secret-789",
@@ -135,7 +132,6 @@ namespace XUnitTest
             {
                 Url = "https://example1.com/webhook",
                 ContentType = "application/json",
-                ProjectKey = "project-1",
                 BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "sec1", HeaderKey = "X-Key1" }
             };
 
@@ -143,7 +139,6 @@ namespace XUnitTest
             {
                 Url = "https://example2.com/webhook",
                 ContentType = "application/json",
-                ProjectKey = "project-1",
                 BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "sec2", HeaderKey = "X-Key2" }
             };
 

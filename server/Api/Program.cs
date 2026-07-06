@@ -8,9 +8,9 @@ using Eurolm.DomainService.Utilities;
 using SeliseBlocks.ConfigurationDriver;
 
 var serviceName = Constants.ServiceName;
-//var vaultType = ResolveVaultType();
-//Console.WriteLine($"Using Genesis vault type: {vaultType}");
-var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, VaultType.Azure);
+var vaultType = ApplicationConfigurations.ResolveVaultType();
+Console.WriteLine($"Using Genesis vault type: {vaultType}");
+var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(serviceName, vaultType);
 var builder = WebApplication.CreateBuilder(args);
 
 ApplicationConfigurations.ConfigureApiEnv(builder, args);
@@ -43,7 +43,7 @@ var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(wwwrootPath);
 
 ApplyFrontendRuntimeSettings(builder.Configuration, wwwrootPath);
-var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
+var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(vaultType);
 
 ApplicationConfigurations.ConfigureApi(services, serviceName);
 

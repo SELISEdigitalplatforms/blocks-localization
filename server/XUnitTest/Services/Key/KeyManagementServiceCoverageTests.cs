@@ -618,7 +618,7 @@ namespace XUnitTest
             {
                 KeyId = "key-1",
                 MessageCoRelationId = "corr-1",
-                ProjectKey = "proj",
+              
                 DefaultLanguage = "en-US"
             };
 
@@ -646,8 +646,8 @@ namespace XUnitTest
             var request = new UilmImportRequest
             {
                 FileId = "file-1",
-                MessageCoRelationId = "corr-1",
-                ProjectKey = "proj"
+                MessageCoRelationId = "corr-1"
+               
             };
 
             _messageClientMock.Setup(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<UilmImportEvent>>()))
@@ -788,7 +788,7 @@ namespace XUnitTest
         [Fact]
         public async Task GetUilmExportedFilesAsync_DelegatesToRepository()
         {
-            var request = new GetUilmExportedFilesRequest { ProjectKey = "proj", PageSize = 10, PageNumber = 0 };
+            var request = new GetUilmExportedFilesRequest {  PageSize = 10, PageNumber = 0 };
             var expected = new GetUilmExportedFilesQueryResponse { TotalCount = 5 };
 
             _keyRepositoryMock.Setup(r => r.GetUilmExportedFilesAsync(request))
@@ -879,8 +879,7 @@ namespace XUnitTest
             {
                 KeyName = "test.key",
                 ModuleId = "mod-1",
-                Resources = new[] { new Resource { Culture = "en-US", Value = "Test" } },
-                ProjectKey = "proj"
+                Resources = new[] { new Resource { Culture = "en-US", Value = "Test" } }
             };
 
             _validatorMock.Setup(v => v.ValidateAsync(key, default))
@@ -911,8 +910,8 @@ namespace XUnitTest
         {
             var keys = new List<KeyModel>
             {
-                new KeyModel { KeyName = "key1", ModuleId = "mod-1", Resources = new[] { new Resource { Culture = "en-US", Value = "V1" } }, ProjectKey = "proj" },
-                new KeyModel { KeyName = "key2", ModuleId = "mod-1", Resources = new[] { new Resource { Culture = "en-US", Value = "V2" } }, ProjectKey = "proj" }
+                new KeyModel { KeyName = "key1", ModuleId = "mod-1", Resources = new[] { new Resource { Culture = "en-US", Value = "V1" } }},
+                new KeyModel { KeyName = "key2", ModuleId = "mod-1", Resources = new[] { new Resource { Culture = "en-US", Value = "V2" } } }
             };
 
             _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<KeyModel>(), default))
@@ -945,7 +944,7 @@ namespace XUnitTest
                     ItemId = "id-1",
                     ShouldPublish = true,
                     Resources = new[] { new Resource { Culture = "en-US", Value = "V1" } },
-                    ProjectKey = "proj"
+                   
                 }
             };
 
@@ -976,7 +975,7 @@ namespace XUnitTest
                     KeyName = "key1",
                     ModuleId = "mod-1",
                     Resources = new[] { new Resource { Culture = "en-US", Value = "V1" } },
-                    ProjectKey = "proj"
+                    
                 }
             };
 
