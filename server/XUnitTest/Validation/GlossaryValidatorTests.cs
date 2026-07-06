@@ -30,8 +30,7 @@ namespace XUnitTest
                 Language = "en-US",
                 Type = "Full form",
                 Context = "Used in software development",
-                AdditionalNote = "Commonly abbreviated as API",
-                ProjectKey = "test-project"
+                AdditionalNote = "Commonly abbreviated as API"
             };
 
             // Act
@@ -47,8 +46,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new Glossary
             {
-                Name = "",
-                ProjectKey = "test-project"
+                Name = ""
             };
 
             // Act
@@ -65,8 +63,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new Glossary
             {
-                Name = null,
-                ProjectKey = "test-project"
+                Name = null
             };
 
             // Act
@@ -83,8 +80,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new Glossary
             {
-                Name = new string('a', 201),
-                ProjectKey = "test-project"
+                Name = new string('a', 201)
             };
 
             // Act
@@ -105,8 +101,7 @@ namespace XUnitTest
                 Language = null,
                 Type = null,
                 Context = null,
-                AdditionalNote = null,
-                ProjectKey = "test-project"
+                AdditionalNote = null
             };
 
             // Act
@@ -122,8 +117,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new Glossary
             {
-                Name = new string('a', 200),
-                ProjectKey = "test-project"
+                Name = new string('a', 200)
             };
 
             // Act
@@ -137,7 +131,7 @@ namespace XUnitTest
         public async Task Validate_DuplicateName_ReturnsError()
         {
             // Arrange
-            var glossary = new Glossary { Name = "API", ProjectKey = "test-project" };
+            var glossary = new Glossary { Name = "API" };
             var existing = new Glossary { ItemId = "existing-id", Name = "API" };
 
             _glossaryRepositoryMock
@@ -156,7 +150,7 @@ namespace XUnitTest
         public async Task Validate_SameGlossaryUpdate_ReturnsSuccess()
         {
             // Arrange
-            var glossary = new Glossary { ItemId = "existing-id", Name = "API", ProjectKey = "test-project" };
+            var glossary = new Glossary { ItemId = "existing-id", Name = "API" };
             var existing = new Glossary { ItemId = "existing-id", Name = "API" };
 
             _glossaryRepositoryMock
@@ -174,7 +168,7 @@ namespace XUnitTest
         public async Task Validate_UniqueNameNewGlossary_ReturnsSuccess()
         {
             // Arrange
-            var glossary = new Glossary { Name = "REST", ProjectKey = "test-project" };
+            var glossary = new Glossary { Name = "REST" };
 
             // Act
             var result = await _validator.ValidateAsync(glossary);

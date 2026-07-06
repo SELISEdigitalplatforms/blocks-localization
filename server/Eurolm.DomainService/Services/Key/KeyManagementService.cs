@@ -103,7 +103,7 @@ namespace Eurolm.DomainService.Services
                     {
                         Guid = key.ItemId,
                         ModuleId = key.ModuleId,
-                        ProjectKey = key.ProjectKey
+                        ProjectKey = BlocksContext.GetContext().TenantId??""
                     };
                     await SendGenerateUilmFilesEvent(request);
                 }
@@ -173,7 +173,7 @@ namespace Eurolm.DomainService.Services
                         {
                             Guid = key.ItemId,
                             ModuleId = key.ModuleId,
-                            ProjectKey = key.ProjectKey
+                            ProjectKey = BlocksContext.GetContext().TenantId??""
                         };
                         await SendGenerateUilmFilesEvent(request);
                     }
@@ -976,7 +976,7 @@ namespace Eurolm.DomainService.Services
                     Payload = new TranslateAllEvent
                     {
                         MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = request.ProjectKey,
+                        ProjectKey =BlocksContext.GetContext().TenantId??"",
                         DefaultLanguage = request.DefaultLanguage
                     }
                 }
@@ -992,7 +992,7 @@ namespace Eurolm.DomainService.Services
                     Payload = new TranslateBlocksLanguageKeyEvent
                     {
                         MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = request.ProjectKey,
+                        ProjectKey =BlocksContext.GetContext().TenantId??"",
                         DefaultLanguage = request.DefaultLanguage,
                         KeyId = request.KeyId
                     }
@@ -1011,7 +1011,7 @@ namespace Eurolm.DomainService.Services
                     Payload = new TranslateBlocksLanguageKeysEvent
                     {
                         MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = request.ProjectKey,
+                        ProjectKey = BlocksContext.GetContext().TenantId??"",
                         DefaultLanguage = request.DefaultLanguage,
                         KeyIds = request.KeyIds,
                         OperationId = operationId
@@ -1030,7 +1030,7 @@ namespace Eurolm.DomainService.Services
                     {
                         FileId = request.FileId,
                         MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = request.ProjectKey
+                        ProjectKey = BlocksContext.GetContext().TenantId??""
                     }
                 }
             );
@@ -1048,7 +1048,7 @@ namespace Eurolm.DomainService.Services
                     {
                         FileId = exportFileId,
                         MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = request.ProjectKey,
+                        ProjectKey = BlocksContext.GetContext().TenantId??"",
                         AppIds = request.AppIds,
                         CallerTenantId = request.CallerTenantId,
                         EndDate = request.EndDate,
@@ -1070,7 +1070,7 @@ namespace Eurolm.DomainService.Services
                     Payload = new GenerateUilmFilesEvent
                     {
                         Guid = request.Guid,
-                        ProjectKey = request.ProjectKey,
+                        ProjectKey = BlocksContext.GetContext().TenantId??"",
                         ModuleId = request.ModuleId
                     }
                 }

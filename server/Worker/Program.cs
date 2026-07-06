@@ -7,10 +7,10 @@ using SeliseBlocks.ConfigurationDriver;
 
 const string _serviceName = "blocks-localization-worker";
 
-//var vaultType = ResolveVaultType();
-//Console.WriteLine($"Using Genesis vault type: {vaultType}");
-var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(_serviceName, VaultType.Azure);
-var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(VaultType.Azure);
+var vaultType = ApplicationConfigurations.ResolveVaultType();
+Console.WriteLine($"Using Genesis vault type: {vaultType}");
+var secret = await ApplicationConfigurations.ConfigureLogAndSecretsAsync(_serviceName, vaultType);
+var localizationSecret = await LocalizationSecret.ProcessBlocksSecret(vaultType);
 await CreateHostBuilder(args).Build().RunAsync();
 
 IHostBuilder CreateHostBuilder(string[] args) =>

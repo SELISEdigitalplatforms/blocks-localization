@@ -39,7 +39,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "AuthModule",
-                ProjectKey = "project-1"
+                
             };
 
             var expectedResponse = new ApiResponse { Success = true };
@@ -71,7 +71,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "TestModule",
-                ProjectKey = "project-1"
+                
             };
 
             var failureResponse = new ApiResponse { Success = false, ErrorMessage = "Save failed" };
@@ -95,7 +95,7 @@ namespace XUnitTest
         public async Task Gets_WithValidQuery_ReturnsModuleList()
         {
             // Arrange
-            var query = new GetModulesQuery { ProjectKey = "project-1" };
+            var query = new GetModulesQuery { };
 
             var expectedModules = new List<BlocksLanguageModule>
             {
@@ -108,7 +108,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedModules);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().NotBeNull();
@@ -119,14 +119,14 @@ namespace XUnitTest
         public async Task Gets_WithEmptyModuleList_ReturnsEmpty()
         {
             // Arrange
-            var query = new GetModulesQuery { ProjectKey = "project-1" };
+            var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
                 .Setup(x => x.GetModulesAsync(null))
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().BeEmpty();
@@ -136,14 +136,14 @@ namespace XUnitTest
         public async Task Gets_WhenServiceThrows_PropagatesException()
         {
             // Arrange
-            var query = new GetModulesQuery { ProjectKey = "project-1" };
+            var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
                 .Setup(x => x.GetModulesAsync(null))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            Func<Task> act = async () => await _controller.Gets(query);
+            Func<Task> act = async () => await _controller.Gets();
 
             // Assert
             await act.Should().ThrowAsync<Exception>();
@@ -160,7 +160,7 @@ namespace XUnitTest
         [Fact]
         public async Task Gets_WithNullQuery_ThrowsNullReferenceException()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets(null));
+            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets());
         }
     }
 }

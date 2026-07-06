@@ -2,10 +2,10 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class UilmImportRequest : IProjectKey
+    public class UilmImportRequest 
     {
         public string MessageCoRelationId { get; set; }
         public required string FileId { get; set; }
-        public string? ProjectKey { get; set; }
+ 
     }
 }

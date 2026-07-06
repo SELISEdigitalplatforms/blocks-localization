@@ -235,12 +235,7 @@ namespace BlocksTemplate.Api.Controllers
         [HttpGet]
         public async Task GetUilmFile([FromQuery] GetUilmFileRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.ProjectKey))
-            {
-                Response.StatusCode = 401;
-                await Response.WriteAsync(string.Empty);
-                return;
-            }
+           
             if (request == null) BadRequest(new BaseMutationResponse());;
             Response.ContentType = "application/json";
 
@@ -256,10 +251,10 @@ namespace BlocksTemplate.Api.Controllers
         [HttpPost]
         // [ProtectedEndPoint($"{Constants.ServiceName}::key::generateuilmfile")]
         [Authorize]
-        public async Task<IActionResult> GenerateUilmFile([FromBody] GenerateUilmFilesRequest request)
+        public async Task<IActionResult> GenerateUilmFile([FromBody] GenerateUilmRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
-            await _keyManagementService.SendGenerateUilmFilesEvent(request);
+            await _keyManagementService.SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest() { Guid=request.Guid,ModuleId=request.ModuleId});
             return Ok(new BaseMutationResponse { IsSuccess = true });
         }
 
@@ -275,17 +270,7 @@ namespace BlocksTemplate.Api.Controllers
         {
             if (request == null) BadRequest(new BaseMutationResponse());
 
-            if (string.IsNullOrWhiteSpace(request.ProjectKey))
-            {
-                return BadRequest(new BaseMutationResponse
-                {
-                    IsSuccess = false,
-                    Errors = new Dictionary<string, string>
-                    {
-                        { "ProjectKey", "Invalid or missing ProjectKey" }
-                    }
-                });
-            }
+            
 
             await _keyManagementService.SendTranslateAllEvent(request);
             return Ok(new BaseMutationResponse { IsSuccess = true });
@@ -353,17 +338,7 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<IActionResult> UilmImport([FromBody] UilmImportRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
-            if (string.IsNullOrWhiteSpace(request.ProjectKey))
-            {
-                return BadRequest(new BaseMutationResponse
-                {
-                    IsSuccess = false,
-                    Errors = new Dictionary<string, string>
-                    {
-                        { "ProjectKey", "Invalid or missing ProjectKey" }
-                    }
-                });
-            }
+            
             await _keyManagementService.SendUilmImportEvent(request);
             return Ok(new BaseMutationResponse { IsSuccess = true });
         }
@@ -380,17 +355,7 @@ namespace BlocksTemplate.Api.Controllers
         {
 
             if (request == null) return BadRequest(new BaseMutationResponse());
-            if (string.IsNullOrWhiteSpace(request.ProjectKey))
-            {
-                return BadRequest(new BaseMutationResponse
-                {
-                    IsSuccess = false,
-                    Errors = new Dictionary<string, string>
-                    {
-                        { "ProjectKey", "Invalid or missing ProjectKey" }
-                    }
-                });
-            }
+            
 
             await _keyManagementService.SendUilmExportEvent(request);
             return Ok(new BaseMutationResponse { IsSuccess = true });

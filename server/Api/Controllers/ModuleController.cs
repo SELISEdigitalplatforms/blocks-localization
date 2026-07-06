@@ -54,9 +54,8 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Module"/> objects.</returns>
 
         [HttpGet]
-        public async Task<List<BlocksLanguageModule>> Gets([FromQuery] GetModulesQuery query)
+        public async Task<List<BlocksLanguageModule>> Gets()
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
             return await _moduleManagementService.GetModulesAsync();
         }
 

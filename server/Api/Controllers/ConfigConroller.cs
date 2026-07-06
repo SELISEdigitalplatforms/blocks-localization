@@ -27,9 +27,8 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<BlocksWebhook?> GetWebHook([FromQuery] GetWebhookRequest request)
+        public async Task<BlocksWebhook?> GetWebHook()
         {
-            if (request == null) return null;
             return await _webHookService.GetWebhookAsync();
         }
 
