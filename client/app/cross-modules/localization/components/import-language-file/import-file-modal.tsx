@@ -44,7 +44,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui-kits/tooltip/tooltip";
-import * as XLSX from "xlsx";
 
 // Allowed file extensions for import
 const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".json"];
@@ -53,6 +52,12 @@ const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".json"];
 interface ValidationResult {
   isValid: boolean;
   errors: string[];
+}
+
+interface ZipEntry {
+  compressionMethod: number;
+  compressedSize: number;
+  localHeaderOffset: number;
 }
 
 /**
@@ -143,6 +148,213 @@ const parseCSVContent = (
   }
 
   return { headers, rows };
+};
+
+const getUint16 = (view: DataView, offset: number) =>
+  view.getUint16(offset, true);
+
+const getUint32 = (view: DataView, offset: number) =>
+  view.getUint32(offset, true);
+
+const decodeUtf8 = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+
+const findEndOfCentralDirectory = (bytes: Uint8Array) => {
+  const minOffset = Math.max(0, bytes.length - 0xffff - 22);
+  for (let offset = bytes.length - 22; offset >= minOffset; offset--) {
+    if (
+      bytes[offset] === 0x50 &&
+      bytes[offset + 1] === 0x4b &&
+      bytes[offset + 2] === 0x05 &&
+      bytes[offset + 3] === 0x06
+    ) {
+      return offset;
+    }
+  }
+  return -1;
+};
+
+const readZipEntries = (bytes: Uint8Array): Map<string, ZipEntry> => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const endOffset = findEndOfCentralDirectory(bytes);
+
+  if (endOffset === -1) {
+    throw new Error("Invalid XLSX archive");
+  }
+
+  const centralDirectorySize = getUint32(view, endOffset + 12);
+  const centralDirectoryOffset = getUint32(view, endOffset + 16);
+  const entries = new Map<string, ZipEntry>();
+  let offset = centralDirectoryOffset;
+  const directoryEnd = centralDirectoryOffset + centralDirectorySize;
+
+  while (offset < directoryEnd) {
+    if (getUint32(view, offset) !== 0x02014b50) {
+      throw new Error("Invalid XLSX archive");
+    }
+
+    const compressionMethod = getUint16(view, offset + 10);
+    const compressedSize = getUint32(view, offset + 20);
+    const fileNameLength = getUint16(view, offset + 28);
+    const extraFieldLength = getUint16(view, offset + 30);
+    const fileCommentLength = getUint16(view, offset + 32);
+    const localHeaderOffset = getUint32(view, offset + 42);
+    const fileName = decodeUtf8(
+      bytes.slice(offset + 46, offset + 46 + fileNameLength),
+    );
+
+    entries.set(fileName, {
+      compressionMethod,
+      compressedSize,
+      localHeaderOffset,
+    });
+
+    offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
+  }
+
+  return entries;
+};
+
+const inflateRaw = async (data: Uint8Array): Promise<Uint8Array> => {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("XLSX decompression is not supported");
+  }
+
+  const buffer = data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength,
+  ) as ArrayBuffer;
+  const stream = new Blob([buffer])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
+  const inflatedBuffer = await new Response(stream).arrayBuffer();
+  return new Uint8Array(inflatedBuffer);
+};
+
+const readZipFile = async (
+  bytes: Uint8Array,
+  entries: Map<string, ZipEntry>,
+  path: string,
+): Promise<string | null> => {
+  const entry = entries.get(path);
+  if (!entry) return null;
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const offset = entry.localHeaderOffset;
+
+  if (getUint32(view, offset) !== 0x04034b50) {
+    throw new Error("Invalid XLSX archive");
+  }
+
+  const fileNameLength = getUint16(view, offset + 26);
+  const extraFieldLength = getUint16(view, offset + 28);
+  const dataOffset = offset + 30 + fileNameLength + extraFieldLength;
+  const compressedData = bytes.slice(
+    dataOffset,
+    dataOffset + entry.compressedSize,
+  );
+
+  if (entry.compressionMethod === 0) {
+    return decodeUtf8(compressedData);
+  }
+
+  if (entry.compressionMethod === 8) {
+    return decodeUtf8(await inflateRaw(compressedData));
+  }
+
+  throw new Error("Unsupported XLSX compression");
+};
+
+const parseXml = (xml: string) => {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  if (document.querySelector("parsererror")) {
+    throw new Error("Invalid XLSX XML");
+  }
+  return document;
+};
+
+const getCellColumnIndex = (cellReference: string) => {
+  const letters = cellReference.match(/^[A-Z]+/i)?.[0]?.toUpperCase() ?? "";
+  let index = 0;
+
+  for (const letter of letters) {
+    index = index * 26 + letter.charCodeAt(0) - 64;
+  }
+
+  return Math.max(0, index - 1);
+};
+
+const getTextContent = (element: Element, selector: string) =>
+  Array.from(element.querySelectorAll(selector))
+    .map((node) => node.textContent ?? "")
+    .join("");
+
+const parseSharedStrings = (xml: string | null): string[] => {
+  if (!xml) return [];
+
+  const document = parseXml(xml);
+  return Array.from(document.querySelectorAll("si")).map((item) =>
+    getTextContent(item, "t"),
+  );
+};
+
+const getSheetCellValue = (cell: Element, sharedStrings: string[]) => {
+  const cellType = cell.getAttribute("t");
+
+  if (cellType === "s") {
+    const index = Number(cell.querySelector("v")?.textContent ?? -1);
+    return Number.isFinite(index) ? (sharedStrings[index] ?? "") : "";
+  }
+
+  if (cellType === "inlineStr") {
+    return getTextContent(cell, "is t");
+  }
+
+  return cell.querySelector("v")?.textContent ?? "";
+};
+
+const parseXlsxFirstSheet = async (
+  arrayBuffer: ArrayBuffer,
+): Promise<{ headers: string[]; rows: string[][] }> => {
+  const bytes = new Uint8Array(arrayBuffer);
+  if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+    throw new Error("Invalid XLSX archive");
+  }
+
+  const entries = readZipEntries(bytes);
+  const sheetXml = await readZipFile(
+    bytes,
+    entries,
+    "xl/worksheets/sheet1.xml",
+  );
+
+  if (!sheetXml) {
+    throw new Error("Missing XLSX worksheet");
+  }
+
+  const sharedStrings = parseSharedStrings(
+    await readZipFile(bytes, entries, "xl/sharedStrings.xml"),
+  );
+  const sheetDocument = parseXml(sheetXml);
+  const parsedRows = Array.from(sheetDocument.querySelectorAll("sheetData row"))
+    .map((row) => {
+      const values: string[] = [];
+      Array.from(row.querySelectorAll("c")).forEach((cell) => {
+        const reference = cell.getAttribute("r") ?? "";
+        const columnIndex = getCellColumnIndex(reference);
+        values[columnIndex] = getSheetCellValue(cell, sharedStrings).trim();
+      });
+      return values;
+    })
+    .filter((row) => row.some((value) => value && value.trim() !== ""));
+
+  if (parsedRows.length === 0) {
+    return { headers: [], rows: [] };
+  }
+
+  return {
+    headers: parsedRows[0],
+    rows: parsedRows.slice(1),
+  };
 };
 
 /**
@@ -337,50 +549,19 @@ const validateCsvFileContent = (content: string): ValidationResult => {
  * Validates XLSX file content by parsing and checking the data structure
  * Expected columns: keyName, moduleName, resources, routes
  */
-const validateXlsxFileContent = (
+const validateXlsxFileContent = async (
   arrayBuffer: ArrayBuffer,
-): ValidationResult => {
+): Promise<ValidationResult> => {
   const errors: string[] = [];
 
   try {
-    // XLSX is a ZIP archive, check for ZIP signature (PK)
-    const bytes = new Uint8Array(arrayBuffer);
-    if (bytes.length < 4) {
+    const { headers, rows } = await parseXlsxFirstSheet(arrayBuffer);
+
+    if (headers.length === 0 || rows.length === 0) {
       errors.push("Invalid file format.");
       return { isValid: false, errors };
     }
 
-    // Check for ZIP signature (PK at start)
-    const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
-    if (!isZip) {
-      errors.push("Invalid file format.");
-      return { isValid: false, errors };
-    }
-
-    // Parse the XLSX file
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-
-    // Get the first sheet
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
-      errors.push("Invalid file format.");
-      return { isValid: false, errors };
-    }
-
-    const sheet = workbook.Sheets[sheetName];
-
-    // Convert sheet to JSON
-    const sheetData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-      defval: "",
-    });
-
-    if (sheetData.length === 0) {
-      errors.push("Invalid file format.");
-      return { isValid: false, errors };
-    }
-
-    // Get headers from the first row
-    const headers = Object.keys(sheetData[0]);
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
 
     // Check for required headers - keyName is required
@@ -412,30 +593,28 @@ const validateXlsxFileContent = (
     const keyNameKey = headerMap["keyname"];
     const resourcesKey = headerMap["resources"];
     const routesKey = headerMap["routes"];
+    const keyNameIndex = headers.indexOf(keyNameKey);
+    const resourcesIndex = resourcesKey ? headers.indexOf(resourcesKey) : -1;
+    const routesIndex = routesKey ? headers.indexOf(routesKey) : -1;
 
     // Validate each data row
     let errorCount = 0;
 
-    for (let i = 0; i < sheetData.length; i++) {
-      const row = sheetData[i];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
 
       // Validate keyName is not empty (case-insensitive)
-      const keyName = row[keyNameKey];
-      if (
-        keyName === null ||
-        keyName === undefined ||
-        String(keyName).trim() === ""
-      ) {
+      const keyName = row[keyNameIndex];
+      if (!keyName || keyName.trim() === "") {
         errorCount++;
       }
 
       // Validate resources format only if resources column exists
       // If using language columns instead, skip this validation
-      if (resourcesKey) {
-        const resources = row[resourcesKey];
-        if (resources && String(resources).trim() !== "") {
-          const resourcesStr = String(resources);
-          const resourcePairs = resourcesStr.split(";");
+      if (resourcesIndex !== -1) {
+        const resources = row[resourcesIndex];
+        if (resources && resources.trim() !== "") {
+          const resourcePairs = resources.split(";");
           for (const pair of resourcePairs) {
             if (pair.trim() && !pair.includes(":")) {
               errorCount++;
@@ -447,14 +626,10 @@ const validateXlsxFileContent = (
 
       // Validate routes format only if routes column exists
       // Routes is optional
-      if (routesKey) {
-        const routes = row[routesKey];
-        if (
-          routes !== undefined &&
-          routes !== null &&
-          String(routes).trim() !== ""
-        ) {
-          const routesStr = String(routes).trim();
+      if (routesIndex !== -1) {
+        const routes = row[routesIndex];
+        if (routes && routes.trim() !== "") {
+          const routesStr = routes.trim();
           if (
             routesStr !== "[]" &&
             routesStr !== "{}" &&
@@ -510,7 +685,7 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
     } else if (fileExtension === ".xlsx") {
       // For XLSX, use ArrayBuffer to avoid corrupting binary data
       const arrayBuffer = await file.arrayBuffer();
-      return validateXlsxFileContent(arrayBuffer);
+      return await validateXlsxFileContent(arrayBuffer);
     }
 
     return { isValid: true, errors: [] };
@@ -738,100 +913,100 @@ export default function ImportCommunicationsModal({
 
   return (
     <DialogContent className="rounded-md max-w-[450px] md:max-w-[490px]">
-        <>
-          <DialogHeader>
-            <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
-            <DialogDescription className="text-left">
-              Import language keys from a file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
-            <div className="flex flex-row items-center">
-              <TriangleAlert className="h-4 w-4 text-icon-warning" />
-              <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
-                JSON Format
-              </p>
-            </div>
-            <p className="mt-[8px] text-[14px] text-high-emphasis">
-              Please download the JSON Template and re-upload with your data to
-              avoid any error.
+      <>
+        <DialogHeader>
+          <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
+          <DialogDescription className="text-left">
+            Import language keys from a file.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
+          <div className="flex flex-row items-center">
+            <TriangleAlert className="h-4 w-4 text-icon-warning" />
+            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
+              JSON Format
             </p>
           </div>
-          <FileUploader
-            value={files}
-            onValueChange={handleFilesChange}
-            dropzoneOptions={dropZoneConfig}
-            className="relative my-2 rounded-lg"
-          >
-            <FileInput className="rounded border border-dashed border-border">
-              <div className="flex w-full flex-col items-center justify-center py-4">
-                <FileSvgDraw />
-              </div>
-            </FileInput>
-            <FileUploaderContent>
-              {files &&
-                files.length > 0 &&
-                files.map((file, i) => (
-                  <FileUploaderItem key={i} index={i} disabled={isBusy}>
-                    <Paperclip className="h-4 w-4 stroke-current" />
-                    <span>{file.name}</span>
-                  </FileUploaderItem>
-                ))}
-            </FileUploaderContent>
-          </FileUploader>
+          <p className="mt-[8px] text-[14px] text-high-emphasis">
+            Please download the JSON Template and re-upload with your data to
+            avoid any error.
+          </p>
+        </div>
+        <FileUploader
+          value={files}
+          onValueChange={handleFilesChange}
+          dropzoneOptions={dropZoneConfig}
+          className="relative my-2 rounded-lg"
+        >
+          <FileInput className="rounded border border-dashed border-border">
+            <div className="flex w-full flex-col items-center justify-center py-4">
+              <FileSvgDraw />
+            </div>
+          </FileInput>
+          <FileUploaderContent>
+            {files &&
+              files.length > 0 &&
+              files.map((file, i) => (
+                <FileUploaderItem key={i} index={i} disabled={isBusy}>
+                  <Paperclip className="h-4 w-4 stroke-current" />
+                  <span>{file.name}</span>
+                </FileUploaderItem>
+              ))}
+          </FileUploaderContent>
+        </FileUploader>
 
-          <DialogFooter className="mr-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-row items-center gap-2">
-              <Select
-                value={selectedFormat}
-                onValueChange={(value) =>
-                  setSelectedFormat(value as TemplateFormat)
-                }
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="xlsx">XLSX</SelectItem>
-                  <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="json">JSON</SelectItem>
-                </SelectContent>
-              </Select>
-              <div
-                className="flex cursor-pointer flex-row gap-2 text-primary"
-                onClick={downloadTemplate}
-              >
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <ArrowDownToLine size={20} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
-                      Download Template
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+        <DialogFooter className="mr-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-row items-center gap-2">
+            <Select
+              value={selectedFormat}
+              onValueChange={(value) =>
+                setSelectedFormat(value as TemplateFormat)
+              }
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="xlsx">XLSX</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+              </SelectContent>
+            </Select>
+            <div
+              className="flex cursor-pointer flex-row gap-2 text-primary"
+              onClick={downloadTemplate}
+            >
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="ghost">
+                      <ArrowDownToLine size={20} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
+                    Download Template
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-            <div className="flex gap-2">
-              <DialogClose asChild>
-                <Button variant="outline" size="default">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button
-                size="default"
-                className="bg-primary"
-                onClick={handleUpload}
-                disabled={!files || files.length === 0 || isBusy}
-              >
-                {isBusy ? "Uploading..." : "Upload"}
+          </div>
+          <div className="flex gap-2">
+            <DialogClose asChild>
+              <Button variant="outline" size="default">
+                Cancel
               </Button>
-            </div>
-          </DialogFooter>
-        </>
-      </DialogContent>
+            </DialogClose>
+            <Button
+              size="default"
+              className="bg-primary"
+              onClick={handleUpload}
+              disabled={!files || files.length === 0 || isBusy}
+            >
+              {isBusy ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </>
+    </DialogContent>
   );
 }

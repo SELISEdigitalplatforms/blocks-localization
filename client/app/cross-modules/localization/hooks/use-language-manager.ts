@@ -86,6 +86,7 @@ export const useGetLanguageModules = () => {
   return useQuery({
     queryKey: localizationQueryKeys.modules.list(tenantId),
     queryFn: () => languageManagerService.fetchBlocksLanguageModules(tenantId),
+    enabled: !!tenantId,
   });
 };
 
@@ -163,8 +164,9 @@ export const useTagGlossary = () => {
 
 export function useGetLanguageModule(projectKey: string) {
   return useQuery({
-    queryKey: localizationQueryKeys.modules.byProject(projectKey),
-    queryFn: () => languageManagerService.getLanguageModule(projectKey),
+    queryKey: localizationQueryKeys.modules.list(projectKey),
+    queryFn: () =>
+      languageManagerService.fetchBlocksLanguageModules(projectKey),
     enabled: !!projectKey,
   });
 }

@@ -138,11 +138,17 @@ const RowActionsCell = memo(
   }) => (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
+        <Button
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <EllipsisVertical width={20} height={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem className="cursor-pointer" onClick={onView}>
           <AlignLeft className="mr-2 h-4 w-4" />
           <span>View details</span>
@@ -456,10 +462,18 @@ export function LanguageTable() {
   };
 
   const onConfirmDelete = async () => {
+    if (!tenantId || !selectedLanguageKeyId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing project or key identifier. Please try again.",
+      });
+      return;
+    }
     try {
       const payload = {
-        projectKey: tenantId,
-        itemId: selectedLanguageKeyId ?? "",
+        ProjectKey: tenantId,
+        itemId: selectedLanguageKeyId,
       };
       const res = await deleteAsync(payload);
       if (res?.isSuccess) {
@@ -470,17 +484,36 @@ export function LanguageTable() {
         });
         setIsDeleteDialogOpen(false);
       } else {
+        const rawErrors = res?.errors;
+        let errorMessage = "Failed to delete key. Please try again.";
+        if (rawErrors && typeof rawErrors === "object") {
+          if (Array.isArray(rawErrors) && rawErrors.length > 0) {
+            errorMessage = (rawErrors as string[]).join(", ");
+          } else if (
+            !Array.isArray(rawErrors) &&
+            Object.keys(rawErrors).length > 0
+          ) {
+            const firstError = Object.values(rawErrors)[0];
+            errorMessage =
+              typeof firstError === "string"
+                ? firstError
+                : JSON.stringify(rawErrors);
+          }
+        }
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: errorMessage,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
       });
     }
   };
@@ -523,12 +556,13 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      navigate(`/services/language/translations/${keyId}`);
+      navigate(`/app/services/language/translations/${keyId}`);
     },
     [navigate],
   );
 
   const onPageChangeHandler = (pageNumber: number) => {
+    setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
       pageNumber,
@@ -536,6 +570,7 @@ export function LanguageTable() {
   };
 
   const onPageSizeChangeHandler = (pageSize: number) => {
+    setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
       pageSize,
@@ -782,6 +817,7 @@ export function LanguageTable() {
   const table = useReactTable({
     data: tableData,
     columns,
+    getRowId: (row) => row.itemId,
     getCoreRowModel: getCoreRowModel(),
     state: {
       rowSelection,
@@ -966,31 +1002,31 @@ export function LanguageTable() {
           value={tabId}
           className="mt-[18px] flex w-full flex-col md:mt-[24px]"
         >
-          <div className="mb-5 flex items-center text-base">
-            <TabsList className="h-[42px] bg-blocks-primary-shades-300">
+          <div className="mb-5 flex flex-col gap-3 text-base sm:flex-row sm:items-center">
+            <TabsList className="grid h-auto w-full grid-cols-2 bg-blocks-primary-shades-300 p-1 sm:flex sm:h-[42px] sm:w-auto">
               <TabsTrigger
                 onClick={() => setTabId("keys")}
                 value="keys"
-                className="h-8"
+                className="h-8 whitespace-nowrap"
               >
                 Translation Keys
               </TabsTrigger>
               <TabsTrigger
                 onClick={() => setTabId("history")}
                 value="history"
-                className="h-8"
+                className="h-8 whitespace-nowrap"
               >
                 History
               </TabsTrigger>
             </TabsList>
             {tabId === "keys" ? (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="grid w-full grid-cols-3 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       onClick={(e) => e.stopPropagation()}
                       variant="outline"
-                      className="h-10 w-10 p-0"
+                      className="h-10 w-full p-0 sm:w-10"
                     >
                       <EllipsisVertical width={20} height={20} />
                     </Button>
@@ -1019,7 +1055,7 @@ export function LanguageTable() {
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() =>
-                        navigate("/services/language/export-history")
+                        navigate("/app/services/language/export-history")
                       }
                     >
                       <History className="mr-2 h-4 w-4" />
@@ -1047,7 +1083,7 @@ export function LanguageTable() {
                   onClick={onPublishChangesClick}
                   size="default"
                   variant="outline"
-                  className="shadow-none"
+                  className="w-full shadow-none sm:w-auto"
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
                   <span className="sr-only lg:not-sr-only">
@@ -1057,9 +1093,9 @@ export function LanguageTable() {
                 <Button
                   size="default"
                   variant="default"
-                  className="bg-primary text-primary-foreground shadow-none"
+                  className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
                   onClick={() =>
-                    navigate("/services/language/translations/new-key")
+                    navigate("/app/services/language/translations/new-key")
                   }
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />

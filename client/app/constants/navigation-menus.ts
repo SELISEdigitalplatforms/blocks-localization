@@ -1,4 +1,4 @@
-import { BookText, Languages, Blocks, Cog, Home } from "lucide-react";
+import { BookText, Languages, Blocks, Cog, Home, Package } from "lucide-react";
 import { Menu } from "@/models/menu-models";
 
 export const navigationMenus: Menu[] = [
@@ -6,7 +6,7 @@ export const navigationMenus: Menu[] = [
     id: "overview-project",
     type: "menu",
     name: "Overview",
-    path: "/dashboard",
+    path: "/app/dashboard",
     icon: Home,
   },
   {
@@ -17,28 +17,35 @@ export const navigationMenus: Menu[] = [
     type: "menu",
     id: "service-localization__language",
     name: "Translations",
-    path: "/services/language",
+    path: "/app/services/language",
     icon: Languages,
   },
   {
     type: "menu",
     id: "service-localization__module",
     name: "Modules",
-    path: "/services/modules",
+    path: "/app/services/modules",
     icon: Blocks,
   },
   {
     type: "menu",
     id: "service-localization__glossary",
     name: "Glossary",
-    path: "/services/glossary",
+    path: "/app/services/glossary",
     icon: BookText,
   },
   {
     type: "menu",
     id: "service-localization__language-configuration",
     name: "Configuration",
-    path: "/services/configure",
+    path: "/app/services/configure",
     icon: Cog,
+  },
+  {
+    id: "environments",
+    type: "menu",
+    name: "Environments",
+    path: "/app/project-overview/environments",
+    icon: Package,
   },
 ];
