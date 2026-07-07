@@ -77,6 +77,10 @@ const getDeleteLanguageErrorMessage = (error: unknown) => {
   if (typeof error === "string" && error) return error;
   if (Array.isArray(error) && error.length > 0) return error.join(", ");
   if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    const messages = Object.values(error).filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
+    if (messages.length > 0) return messages.join(", ");
     return JSON.stringify(error);
   }
   return "Failed to delete language. Please try again.";

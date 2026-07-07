@@ -2,6 +2,7 @@ import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
+  ILanguageConfig,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language.manager.service";
@@ -93,6 +94,7 @@ export const useGetLanguages = () => {
   return useQuery({
     queryKey: localizationQueryKeys.languages.list(tenantId),
     queryFn: () => languageManagerService.fetchBlocksLanguages(),
+    enabled: !!tenantId,
   });
 };
 
@@ -377,7 +379,14 @@ export const useDeleteLanguage = () => {
         ...payload,
         projectKey: payload.projectKey ?? tenantId,
       }),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
+      queryClient.setQueryData<ILanguageConfig[]>(
+        localizationQueryKeys.languages.list(tenantId),
+        (currentLanguages) =>
+          currentLanguages?.filter(
+            (language) => language.languageName !== variables.languageName,
+          ) ?? currentLanguages,
+      );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languages.all,
       });
