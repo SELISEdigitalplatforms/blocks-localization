@@ -95,6 +95,16 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
 
+const getDeleteKeysErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (Array.isArray(error) && error.length > 0) return error.join(", ");
+  if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    return JSON.stringify(error);
+  }
+  return "Failed to delete selected keys. Please try again.";
+};
+
 const KeyNameCell = memo(
   ({ keyName }: { keyName: string | null | undefined }) => {
     const CHAR_WIDTH = 7.5;
@@ -864,14 +874,14 @@ export function LanguageTable() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: getDeleteKeysErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getDeleteKeysErrorMessage(error),
       });
     }
   };

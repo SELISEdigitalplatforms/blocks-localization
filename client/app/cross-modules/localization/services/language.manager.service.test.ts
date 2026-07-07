@@ -211,7 +211,7 @@ describe("LanguageManagerService", () => {
 
   // ─── fetchBlocksLanguageKeyById ──────────────────────────────────────────
   describe("fetchBlocksLanguageKeyById", () => {
-    it("should GET with projectKey and itemId in query string", async () => {
+    it("should GET with itemId in query string", async () => {
       const key = {
         itemId: "key-1",
         keyName: "k",
@@ -231,14 +231,14 @@ describe("LanguageManagerService", () => {
       ).resolves.toBe(key);
 
       expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.GET}?projectKey=${projectKey}&itemId=key-1`,
+        `${LANGUAGE_KEY_ENDPOINTS.GET}?itemId=key-1`,
       );
     });
   });
 
   // ─── fetchBlocksLanguageModules ──────────────────────────────────────────
   describe("fetchBlocksLanguageModules", () => {
-    it("should GET modules with ProjectKey param", async () => {
+    it("should GET modules", async () => {
       const modules = [];
       vi.mocked(http.get).mockResolvedValue(modules);
 
@@ -247,7 +247,7 @@ describe("LanguageManagerService", () => {
       );
 
       expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${projectKey}`,
+        LANGUAGE_MODULE_ENDPOINTS.GETS,
       );
     });
   });
@@ -279,7 +279,7 @@ describe("LanguageManagerService", () => {
 
       expect(ensureLocalizationSession).toHaveBeenCalledTimes(1);
       expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_ENDPOINTS.GETS}?projectKey=${projectKey}`,
+        LANGUAGE_ENDPOINTS.GETS,
       );
     });
 
@@ -375,7 +375,7 @@ describe("LanguageManagerService", () => {
       await expect(service.getLanguageModule(projectKey)).resolves.toBe(modules);
 
       expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_MODULE_ENDPOINTS.GETS}?ProjectKey=${projectKey}`,
+        LANGUAGE_MODULE_ENDPOINTS.GETS,
       );
     });
   });
@@ -389,14 +389,12 @@ describe("LanguageManagerService", () => {
       await expect(
         service.deleteLanguageModule({
           itemId: "mod-1",
-          projectKey,
         }),
       ).resolves.toBe(response);
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
       expect(calledUrl).toContain(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?`);
       expect(calledUrl).toContain("itemId=mod-1");
-      expect(calledUrl).toContain(`projectKey=${projectKey}`);
       expect(calledUrl).not.toContain("targetModuleId");
     });
 
@@ -409,7 +407,6 @@ describe("LanguageManagerService", () => {
       await service.deleteLanguageModule({
         itemId: "mod-1",
         targetModuleId: "mod-2",
-        projectKey,
       });
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
@@ -459,16 +456,16 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguageKey ───────────────────────────────────────────────────
   describe("deleteLanguageKey", () => {
-    it("should DELETE with itemId and projectKey query params", async () => {
+    it("should DELETE with itemId query param", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
       await expect(
-        service.deleteLanguageKey({ itemId: "key-1", projectKey }),
+        service.deleteLanguageKey({ itemId: "key-1" }),
       ).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1&projectKey=${projectKey}`,
+        `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1`,
       );
     });
   });
@@ -513,19 +510,18 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguage ──────────────────────────────────────────────────────
   describe("deleteLanguage", () => {
-    it("should DELETE with languageName and projectKey query params", async () => {
+    it("should DELETE with languageName query param", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
       await expect(
         service.deleteLanguage({
           languageName: "English",
-          projectKey,
         }),
       ).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_ENDPOINTS.DELETE}?languageName=English&projectKey=${projectKey}`,
+        `${LANGUAGE_ENDPOINTS.DELETE}?languageName=English`,
       );
     });
   });
@@ -696,7 +692,7 @@ describe("LanguageManagerService", () => {
       await expect(service.getKeysTimeline(payload)).resolves.toBe(response);
 
       expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE}?pageSize=20&pageNumber=1&projectKey=${projectKey}&EntityId=k-1`,
+        `${LANGUAGE_KEY_ENDPOINTS.GET_TIMELINE}?pageSize=20&pageNumber=1&EntityId=k-1`,
       );
     });
   });
@@ -715,7 +711,6 @@ describe("LanguageManagerService", () => {
       });
 
       const url = vi.mocked(http.get).mock.calls[0][0];
-      expect(url).toContain(`ProjectKey=${projectKey}`);
       expect(url).toContain("PageNumber=0");
       expect(url).toContain("PageSize=20");
       expect(url).not.toContain("SearchText=");
@@ -790,7 +785,6 @@ describe("LanguageManagerService", () => {
       });
 
       const url = vi.mocked(http.get).mock.calls[0][0];
-      expect(url).toContain(`ProjectKey=${projectKey}`);
       expect(url).toContain("PageSize=20");
       expect(url).toContain("PageNumber=0");
       expect(url).not.toContain("UserId=");
@@ -855,7 +849,6 @@ describe("LanguageManagerService", () => {
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain("OperationId=op-1");
-      expect(url).toContain(`ProjectKey=${projectKey}`);
       expect(url).toContain("PageSize=20");
       expect(url).toContain("PageNumber=0");
     });
@@ -875,7 +868,6 @@ describe("LanguageManagerService", () => {
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain(`${GLOSSARY_ENDPOINTS.GETS}?`);
-      expect(url).toContain(`ProjectKey=${projectKey}`);
       expect(url).toContain("PageNumber=0");
       expect(url).toContain("PageSize=20");
       expect(url).not.toContain("SearchText=");
@@ -965,16 +957,16 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteGlossary ──────────────────────────────────────────────────────
   describe("deleteGlossary", () => {
-    it("should DELETE with itemId and projectKey", async () => {
+    it("should DELETE with itemId", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
       await expect(
-        service.deleteGlossary({ itemId: "g-1", projectKey }),
+        service.deleteGlossary({ itemId: "g-1" }),
       ).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(
-        `${GLOSSARY_ENDPOINTS.DELETE}?itemId=g-1&projectKey=${projectKey}`,
+        `${GLOSSARY_ENDPOINTS.DELETE}?itemId=g-1`,
       );
     });
   });
@@ -992,7 +984,6 @@ describe("LanguageManagerService", () => {
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain(`${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?`);
       expect(url).toContain("ItemId=k-1");
-      expect(url).toContain(`ProjectKey=${projectKey}`);
       expect(url).not.toContain("MaxResults=");
     });
 
@@ -1022,11 +1013,11 @@ describe("LanguageManagerService", () => {
       vi.mocked(http.get).mockResolvedValue(response);
 
       await expect(
-        service.getGlossaryById({ itemId: "g-1", projectKey }),
+        service.getGlossaryById({ itemId: "g-1" }),
       ).resolves.toBe(response);
 
       expect(http.get).toHaveBeenCalledWith(
-        `${GLOSSARY_ENDPOINTS.GET}?itemId=g-1&projectKey=${projectKey}`,
+        `${GLOSSARY_ENDPOINTS.GET}?itemId=g-1`,
       );
     });
   });

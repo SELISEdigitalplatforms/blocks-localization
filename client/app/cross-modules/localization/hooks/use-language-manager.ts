@@ -716,7 +716,8 @@ export const useGetWebhook = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.webhook.detail(tenantId),
-    queryFn: () => languageManagerService.getWebhook(),
+    queryFn: () => languageManagerService.getWebhook(tenantId),
+    enabled: !!tenantId,
     staleTime: 0,
     refetchOnMount: true,
   });
