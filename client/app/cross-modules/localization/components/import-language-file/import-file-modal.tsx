@@ -47,6 +47,7 @@ import {
 
 // Allowed file extensions for import
 const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".json"];
+const IMPORT_DEBUG_PREFIX = "[Localization Import]";
 
 // Validation result type
 interface ValidationResult {
@@ -59,6 +60,38 @@ interface ZipEntry {
   compressedSize: number;
   localHeaderOffset: number;
 }
+
+const logImportDebug = (message: string, data?: unknown) => {
+  console.debug(IMPORT_DEBUG_PREFIX, message, data ?? "");
+};
+
+const logImportError = (message: string, error: unknown) => {
+  console.error(IMPORT_DEBUG_PREFIX, message, error);
+};
+
+const getUploadToastErrors = (error: unknown): unknown => {
+  if (isErrorWithErrors(error)) {
+    return Array.isArray(error.errors) ? error.errors.join(", ") : error.errors;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (Array.isArray(error)) {
+    return error.join(", ");
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    return error;
+  }
+
+  return "An unexpected error occurred during upload. Please try again.";
+};
 
 /**
  * Detects the delimiter used in a CSV line
@@ -797,6 +830,15 @@ export default function ImportCommunicationsModal({
 
   // Handle files change with validation on selection
   const handleFilesChange = async (newFiles: File[] | null) => {
+    logImportDebug("Files changed", {
+      count: newFiles?.length ?? 0,
+      files: newFiles?.map((file) => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      })),
+    });
+
     // If files are being removed (null or empty array), allow it without validation
     if (!newFiles || newFiles.length === 0) {
       setFiles(newFiles);
@@ -806,6 +848,10 @@ export default function ImportCommunicationsModal({
     // Validate all newly selected files
     for (const file of newFiles) {
       const validation = await validateFileContent(file);
+      logImportDebug("Selection validation result", {
+        fileName: file.name,
+        ...validation,
+      });
       if (!validation.isValid) {
         // File format is invalid, show generic error
         toast({
@@ -867,6 +913,13 @@ export default function ImportCommunicationsModal({
 
   const uploadFile = async (file: File) => {
     try {
+      logImportDebug("Starting upload flow", {
+        fileName: file.name,
+        size: file.size,
+        type: file.type,
+        projectKey,
+      });
+
       const res = await getPresignedUrl({
         itemId: "",
         accessModifier: "Public",
@@ -879,16 +932,22 @@ export default function ImportCommunicationsModal({
         moduleName: ModuleName.Localization,
       });
 
+      logImportDebug("Pre-signed URL response received", {
+        isSuccess: res.isSuccess,
+        fileId: res.fileId,
+        hasUploadUrl: Boolean(res.uploadUrl),
+        errors: res.errors,
+      });
+
       if (!res.isSuccess) {
-        throw new Error("Failed to get pre-signed URL");
+        throw res.errors || new Error("Failed to get pre-signed URL");
       }
 
       const fileId = res.fileId;
       await uploadFileMutate({ url: res.uploadUrl, file });
-
-      const uploadedFile = await storageService.file.getFileByFileId({
-        itemId: fileId,
-        projectKey,
+      logImportDebug("Blob upload completed", {
+        fileName: file.name,
+        fileId,
       });
 
       const payload: IImportFile = {
@@ -897,19 +956,50 @@ export default function ImportCommunicationsModal({
         projectKey,
       };
 
+      logImportDebug("Triggering UILM import endpoint", payload);
       await uploadUilmFile(payload);
+      logImportDebug("UILM import completed", {
+        fileName: file.name,
+        fileId,
+      });
 
-      return {
-        fileId: uploadedFile.itemId,
-        url: uploadedFile.url,
-        name: file.name,
-      };
+      try {
+        const uploadedFile = await storageService.file.getFileByFileId({
+          itemId: fileId,
+          projectKey,
+        });
+
+        logImportDebug("Uploaded file metadata loaded", {
+          fileName: file.name,
+          fileId: uploadedFile.itemId,
+          hasUrl: Boolean(uploadedFile.url),
+        });
+
+        return {
+          fileId: uploadedFile.itemId,
+          url: uploadedFile.url,
+          name: file.name,
+        };
+      } catch (metadataError) {
+        logImportError("Failed to load uploaded file metadata", metadataError);
+        return {
+          fileId,
+          url: "",
+          name: file.name,
+        };
+      }
     } catch (error) {
+      logImportError("Upload flow failed", error);
       throw error;
     }
   };
 
   const handleUpload = async () => {
+    logImportDebug("Upload button clicked", {
+      fileCount: files?.length ?? 0,
+      projectKey,
+    });
+
     if (!files || files.length === 0) {
       showErrorToast({ errors: "Please select files to upload" });
       return;
@@ -923,6 +1013,10 @@ export default function ImportCommunicationsModal({
     // Validate all files before uploading
     for (const file of filesToUpload) {
       const validation = await validateFileContent(file);
+      logImportDebug("Upload validation result", {
+        fileName: file.name,
+        ...validation,
+      });
       if (!validation.isValid) {
         toast({
           variant: "destructive",
@@ -938,24 +1032,17 @@ export default function ImportCommunicationsModal({
     try {
       const uploadPromises = filesToUpload.map((file) => uploadFile(file));
       await Promise.all(uploadPromises);
+      logImportDebug("All files uploaded and imported successfully", {
+        count: filesToUpload.length,
+      });
 
       // reset after successful upload
       setFiles(null);
 
       showSuccessToast({ description: "Files uploaded successfully" });
     } catch (error) {
-      if (isErrorWithErrors(error)) {
-        showErrorToast({ errors: error.errors });
-      } else if (error instanceof Error) {
-        showErrorToast({ errors: [error.message] });
-      } else if (error && typeof error === "object") {
-        showErrorToast({ errors: error });
-      } else {
-        showErrorToast({
-          errors:
-            "An unexpected error occurred during upload. Please try again.",
-        });
-      }
+      showErrorToast({ errors: getUploadToastErrors(error) });
+      logImportError("Upload handler failed", error);
     } finally {
       setIsUploadingBatch(false);
     }
