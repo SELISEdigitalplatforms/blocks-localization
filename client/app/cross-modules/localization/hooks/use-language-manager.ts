@@ -133,9 +133,16 @@ export const useSaveLanguageModule = () => {
 
 export const useDeleteLanguageModule = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-module", "delete"],
-    mutationFn: languageManagerService.deleteLanguageModule,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.deleteLanguageModule>[0],
+    ) =>
+      languageManagerService.deleteLanguageModule({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
@@ -146,9 +153,16 @@ export const useDeleteLanguageModule = () => {
 
 export const useTagGlossary = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-module", "tag-glossary"],
-    mutationFn: languageManagerService.tagGlossary,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.tagGlossary>[0],
+    ) =>
+      languageManagerService.tagGlossary({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
@@ -291,9 +305,16 @@ export const useSaveLanguage = () => {
 
 export const useDeleteLanguageKey = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-key", "delete"],
-    mutationFn: languageManagerService.deleteLanguageKey,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.deleteLanguageKey>[0],
+    ) =>
+      languageManagerService.deleteLanguageKey({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.all,
@@ -304,9 +325,16 @@ export const useDeleteLanguageKey = () => {
 
 export const useDeleteLanguageKeys = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-keys", "bulk-delete"],
-    mutationFn: languageManagerService.deleteLanguageKeys,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.deleteLanguageKeys>[0],
+    ) =>
+      languageManagerService.deleteLanguageKeys({
+        ...payload,
+        ProjectKey: payload.ProjectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.all,
@@ -339,9 +367,16 @@ export const useTranslateLanguageKeys = () => {
 
 export const useDeleteLanguage = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-config", "delete"],
-    mutationFn: languageManagerService.deleteLanguage,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.deleteLanguage>[0],
+    ) =>
+      languageManagerService.deleteLanguage({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languages.all,
@@ -352,9 +387,16 @@ export const useDeleteLanguage = () => {
 
 export const useSetDefaultLanguage = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-config", "set-default"],
-    mutationFn: languageManagerService.setDefault,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.setDefault>[0],
+    ) =>
+      languageManagerService.setDefault({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languages.all,
@@ -725,9 +767,16 @@ export const useGetWebhook = () => {
 
 export const useSaveWebhook = () => {
   const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["save-webhook"],
-    mutationFn: languageManagerService.saveWebhook,
+    mutationFn: (
+      payload: Parameters<typeof languageManagerService.saveWebhook>[0],
+    ) =>
+      languageManagerService.saveWebhook({
+        ...payload,
+        projectKey: payload.projectKey ?? tenantId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.webhook.all,

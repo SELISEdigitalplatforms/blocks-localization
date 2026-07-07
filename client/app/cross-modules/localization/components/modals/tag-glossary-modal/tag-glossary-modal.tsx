@@ -26,7 +26,6 @@ import {
   useTagGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { IGlossary, IModuleGets } from "@blocks-localization/models/language";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 
@@ -53,7 +52,6 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const { data: moduleGlossariesResponse } = useGetModuleGlossaries(
     module.itemId,

@@ -80,13 +80,10 @@ export class LanguageManagerService {
   };
 
   fetchBlocksLanguageModules = (): Promise<IModuleGets[]> => {
-    return this.httpClient.get(
-      `${LANGUAGE_MODULE_ENDPOINTS.GETS}`,
-    );
+    return this.httpClient.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}`);
   };
 
-  fetchBlocksLanguages = async (
-  ): Promise<ILanguageConfig[]> => {
+  fetchBlocksLanguages = async (): Promise<ILanguageConfig[]> => {
     const url = `${LANGUAGE_ENDPOINTS.GETS}`;
     await ensureLocalizationSession();
     return this.httpClient.get<ILanguageConfig[]>(url);
@@ -137,6 +134,9 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       itemId: payload.itemId,
     });
+    if (payload.projectKey) {
+      params.set("projectKey", payload.projectKey);
+    }
     if (payload.targetModuleId) {
       params.set("targetModuleId", payload.targetModuleId);
     }
@@ -148,7 +148,9 @@ export class LanguageManagerService {
       .then((response) => response);
   }
 
-  tagGlossary = (payload: ITagGlossaryRequest): Promise<{
+  tagGlossary = (
+    payload: ITagGlossaryRequest,
+  ): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
@@ -171,19 +173,28 @@ export class LanguageManagerService {
 
   deleteLanguageKey = (payload: {
     itemId: string;
+    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE;
+    const params = new URLSearchParams({
+      itemId: payload.itemId,
+    });
+    if (payload.projectKey) {
+      params.set("projectKey", payload.projectKey);
+    }
+
     return this.httpClient.delete<{
       errors: unknown;
       isSuccess: boolean;
-    }>(`${url}?itemId=${payload.itemId}`);
+    }>(`${url}?${params.toString()}`);
   };
 
   deleteLanguageKeys = (payload: {
     itemIds: string[];
+    ProjectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -208,6 +219,7 @@ export class LanguageManagerService {
 
   deleteLanguage = (payload: {
     languageName: string;
+    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -216,19 +228,21 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       languageName: payload.languageName,
     });
+    if (payload.projectKey) {
+      params.set("projectKey", payload.projectKey);
+    }
 
     return this.httpClient
       .delete<{
         errors: unknown;
         isSuccess: boolean;
-      }>(
-        `${url}?${params.toString()}`,
-      )
+      }>(`${url}?${params.toString()}`)
       .then((response) => response);
   };
 
   setDefault = (payload: {
     languageName: string;
+    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -459,9 +473,7 @@ export class LanguageManagerService {
     return this.httpClient.delete<{
       errors: unknown;
       isSuccess: boolean;
-    }>(
-      `${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}`,
-    );
+    }>(`${GLOSSARY_ENDPOINTS.DELETE}?itemId=${payload.itemId}`);
   };
 
   getSuggestedGlossaries = (request: {
@@ -479,9 +491,7 @@ export class LanguageManagerService {
     );
   };
 
-  getGlossaryById = (request: {
-    itemId: string;
-  }): Promise<IGlossary> => {
+  getGlossaryById = (request: { itemId: string }): Promise<IGlossary> => {
     return this.httpClient.get(
       `${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}`,
     );
