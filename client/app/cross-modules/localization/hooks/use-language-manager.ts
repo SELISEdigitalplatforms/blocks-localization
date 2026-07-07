@@ -139,7 +139,9 @@ export const useDeleteLanguageModule = () => {
   return useMutation({
     mutationKey: ["language-module", "delete"],
     mutationFn: (
-      payload: Parameters<typeof languageManagerService.deleteLanguageModule>[0],
+      payload: Parameters<
+        typeof languageManagerService.deleteLanguageModule
+      >[0],
     ) =>
       languageManagerService.deleteLanguageModule({
         ...payload,
@@ -179,8 +181,7 @@ export const useTagGlossary = () => {
 export function useGetLanguageModule(projectKey: string) {
   return useQuery({
     queryKey: localizationQueryKeys.modules.list(projectKey),
-    queryFn: () =>
-      languageManagerService.fetchBlocksLanguageModules(),
+    queryFn: () => languageManagerService.fetchBlocksLanguageModules(),
     enabled: !!projectKey,
   });
 }
@@ -327,16 +328,9 @@ export const useDeleteLanguageKey = () => {
 
 export const useDeleteLanguageKeys = () => {
   const queryClient = useQueryClient();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-keys", "bulk-delete"],
-    mutationFn: (
-      payload: Parameters<typeof languageManagerService.deleteLanguageKeys>[0],
-    ) =>
-      languageManagerService.deleteLanguageKeys({
-        ...payload,
-        ProjectKey: payload.ProjectKey ?? tenantId,
-      }),
+    mutationFn: languageManagerService.deleteLanguageKeys,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.all,

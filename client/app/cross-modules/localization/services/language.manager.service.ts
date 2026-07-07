@@ -194,7 +194,6 @@ export class LanguageManagerService {
 
   deleteLanguageKeys = (payload: {
     itemIds: string[];
-    ProjectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;

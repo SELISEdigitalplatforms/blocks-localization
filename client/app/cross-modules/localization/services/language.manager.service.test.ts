@@ -479,7 +479,7 @@ describe("LanguageManagerService", () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.post).mockResolvedValue(response);
 
-      const payload = { itemIds: ["k-1", "k-2"], ProjectKey: projectKey };
+      const payload = { itemIds: ["k-1", "k-2"] };
       await expect(service.deleteLanguageKeys(payload)).resolves.toBe(response);
 
       expect(http.post).toHaveBeenCalledWith(

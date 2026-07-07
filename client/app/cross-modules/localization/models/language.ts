@@ -114,6 +114,7 @@ export const translation = [
 export interface IImportFile {
   messageCoRelationId: string;
   fileId: string;
+  projectKey?: string;
 }
 
 export interface IModuleGets {
