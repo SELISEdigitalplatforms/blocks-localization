@@ -86,66 +86,114 @@ const parseCSVContent = (
 ): { headers: string[]; rows: string[][] } => {
   // Remove BOM (Byte Order Mark) if present
   const cleanContent = content.replace(/^\uFEFF/, "");
-  const lines = cleanContent.split(/\r?\n/);
+  const headerLine = cleanContent
+    .split(/\r?\n/)
+    .find((line) => line.trim() !== "");
 
-  if (lines.length === 0) {
-    return { headers: [], rows: [] };
-  }
-
-  // Find the first non-empty line for header
-  let headerLine = "";
-  let firstDataLineIndex = 1;
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed !== "") {
-      headerLine = lines[i];
-      firstDataLineIndex = i + 1;
-      break;
-    }
-  }
-
-  if (headerLine === "") {
+  if (!headerLine) {
     return { headers: [], rows: [] };
   }
 
   // Detect delimiter from the header line
   const delimiter = detectDelimiter(headerLine);
 
-  const parseCSVLine = (line: string, delim: string): string[] => {
-    const result: string[] = [];
+  const parseCSVRecords = (csvContent: string, delim: string): string[][] => {
+    const records: string[][] = [];
+    let record: string[] = [];
     let current = "";
     let inQuotes = false;
 
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
+    const pushRecord = () => {
+      record.push(current.trim());
+      if (record.some((field) => field.trim() !== "")) {
+        records.push(record);
+      }
+      record = [];
+      current = "";
+    };
+
+    for (let i = 0; i < csvContent.length; i++) {
+      const char = csvContent[i];
       if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
+        if (inQuotes && csvContent[i + 1] === '"') {
           current += '"';
           i++;
         } else {
           inQuotes = !inQuotes;
         }
       } else if (char === delim && !inQuotes) {
-        result.push(current.trim());
+        record.push(current.trim());
         current = "";
+      } else if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && csvContent[i + 1] === "\n") {
+          i++;
+        }
+        pushRecord();
       } else {
         current += char;
       }
     }
-    result.push(current.trim());
-    return result;
+
+    if (inQuotes) {
+      throw new Error("Invalid CSV content");
+    }
+
+    if (current !== "" || record.length > 0) {
+      pushRecord();
+    }
+
+    return records;
   };
 
-  const headers = parseCSVLine(headerLine, delimiter);
-  const rows: string[][] = [];
+  const mergeContinuedRows = (
+    records: string[][],
+    expectedColumnCount: number,
+  ) => {
+    const mergedRows: string[][] = [];
+    let pendingRow: string[] | null = null;
 
-  // Parse remaining lines, only including non-empty lines
-  for (let i = firstDataLineIndex; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (line !== "") {
-      rows.push(parseCSVLine(lines[i], delimiter));
+    const appendContinuation = (target: string[], continuation: string[]) => {
+      if (target.length === 0) {
+        target.push(...continuation);
+        return;
+      }
+
+      const lastIndex = target.length - 1;
+      const [firstField, ...remainingFields] = continuation;
+      if (firstField !== undefined) {
+        target[lastIndex] = target[lastIndex]
+          ? `${target[lastIndex]}\n${firstField}`
+          : firstField;
+      }
+      target.push(...remainingFields);
+    };
+
+    for (const record of records) {
+      if (!pendingRow) {
+        pendingRow = [...record];
+      } else if (pendingRow.length < expectedColumnCount) {
+        appendContinuation(pendingRow, record);
+      } else {
+        mergedRows.push(pendingRow);
+        pendingRow = [...record];
+      }
+
+      if (pendingRow.length >= expectedColumnCount) {
+        mergedRows.push(pendingRow);
+        pendingRow = null;
+      }
     }
-  }
+
+    if (pendingRow) {
+      mergedRows.push(pendingRow);
+    }
+
+    return mergedRows;
+  };
+
+  const records = parseCSVRecords(cleanContent, delimiter);
+  const headers = records[0] ?? [];
+  const rows = mergeContinuedRows(records.slice(1), headers.length);
 
   return { headers, rows };
 };
@@ -846,6 +894,7 @@ export default function ImportCommunicationsModal({
       const payload: IImportFile = {
         messageCoRelationId: uuidv4(),
         fileId,
+        projectKey,
       };
 
       await uploadUilmFile(payload);
@@ -899,6 +948,8 @@ export default function ImportCommunicationsModal({
         showErrorToast({ errors: error.errors });
       } else if (error instanceof Error) {
         showErrorToast({ errors: [error.message] });
+      } else if (error && typeof error === "object") {
+        showErrorToast({ errors: error });
       } else {
         showErrorToast({
           errors:

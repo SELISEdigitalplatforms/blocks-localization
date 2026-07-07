@@ -857,7 +857,6 @@ export function LanguageTable() {
 
     const payload = {
       itemIds: selectedKeys,
-      ProjectKey: tenantId,
     };
 
     try {
