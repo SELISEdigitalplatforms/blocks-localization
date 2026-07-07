@@ -130,11 +130,13 @@ export interface IModuleGets {
 export interface IDeleteModuleRequest {
   itemId: string;
   targetModuleId?: string;
+  projectKey?: string;
 }
 
 export interface ITagGlossaryRequest {
   moduleId: string;
   glossaryIds: string[];
+  projectKey?: string;
 }
 
 export interface IKeyUilmExport {
