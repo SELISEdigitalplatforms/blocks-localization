@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ICreateDmsFolderPayload,
+  IDeleteFilePayload,
+  IDeleteFolderPayload,
   IGetDmsFileAndFolderPayload,
   IGetFileByFileIDPayload,
   IGetFilesInfoPayload,
+  IGetPreSignedUrlForUploadPayload,
+  IPublicCertificatePayload,
+  IUploadFileToLocalStorage,
+  IUploadImagePayload,
   IUploadDmsFilePayload,
 } from "../models/storage.model";
 import { storageService } from "../services/storage.service";
@@ -12,7 +18,8 @@ export const useGetPreSignedUrlForUpload = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["storage", "file", "getPresignedUrl"],
-    mutationFn: storageService.file.getPreSignedUrlForUpload,
+    mutationFn: (payload: IGetPreSignedUrlForUploadPayload) =>
+      storageService.file.getPreSignedUrlForUpload(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "file", "getFilesInfo"],
@@ -24,14 +31,16 @@ export const useGetPreSignedUrlForUpload = () => {
 export const useUploadFile = () => {
   return useMutation({
     mutationKey: ["storage", "file", "getPresignedUrl"],
-    mutationFn: storageService.uploadFile,
+    mutationFn: (payload: IUploadImagePayload) =>
+      storageService.uploadFile(payload),
   });
 };
 
 export const useUploadFileToLocalStorage = () => {
   return useMutation({
     mutationKey: ["storage", "file", "upload"],
-    mutationFn: storageService.uploadFileToLocalStorage,
+    mutationFn: (payload: IUploadFileToLocalStorage) =>
+      storageService.uploadFileToLocalStorage(payload),
   });
 };
 
@@ -60,7 +69,8 @@ export const useDeleteFile = () => {
 
   return useMutation({
     mutationKey: ["storage", "file", "delete"],
-    mutationFn: storageService.file.deleteFileByFileId,
+    mutationFn: (payload: IDeleteFilePayload) =>
+      storageService.file.deleteFileByFileId(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "file", "getFilesInfo"],
@@ -74,7 +84,8 @@ export const useDeleteFolder = () => {
 
   return useMutation({
     mutationKey: ["storage", "folder", "delete"],
-    mutationFn: storageService.file.deleteFolderByFileId,
+    mutationFn: (payload: IDeleteFolderPayload) =>
+      storageService.file.deleteFolderByFileId(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "folder", "getFolderInfo"],
@@ -105,7 +116,8 @@ export const useGetFilesDownload = (
 export const usePublicCertificateFile = () => {
   return useMutation({
     mutationKey: ["storage", "file", "public-certificate"],
-    mutationFn: storageService.uploadPublicCertificateFile,
+    mutationFn: (payload: IPublicCertificatePayload) =>
+      storageService.uploadPublicCertificateFile(payload),
   });
 };
 
