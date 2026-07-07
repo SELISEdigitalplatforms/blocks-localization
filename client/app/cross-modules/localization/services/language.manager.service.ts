@@ -148,15 +148,15 @@ export class LanguageManagerService {
       .then((response) => response);
   }
 
-  tagGlossary(payload: ITagGlossaryRequest): Promise<{
+  tagGlossary = (payload: ITagGlossaryRequest): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
-  }> {
+  }> => {
     return this.httpClient.post(
       LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY,
       payload,
     );
-  }
+  };
 
   saveLanguage = (payload: {
     languageName: string;
@@ -182,18 +182,18 @@ export class LanguageManagerService {
     }>(`${url}?itemId=${payload.itemId}`);
   };
 
-  deleteLanguageKeys(payload: {
+  deleteLanguageKeys = (payload: {
     itemIds: string[];
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
-  }> {
+  }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
     return this.httpClient.post<{
       errors: unknown;
       isSuccess: boolean;
     }>(url, payload);
-  }
+  };
 
   translateLanguageKeys = (payload: {
     keyIds: string[];
@@ -206,22 +206,26 @@ export class LanguageManagerService {
     return this.httpClient.post(url, payload);
   };
 
-  deleteLanguage(payload: {
+  deleteLanguage = (payload: {
     languageName: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
-  }> {
+  }> => {
     const url = LANGUAGE_ENDPOINTS.DELETE;
+    const params = new URLSearchParams({
+      languageName: payload.languageName,
+    });
+
     return this.httpClient
       .delete<{
         errors: unknown;
         isSuccess: boolean;
       }>(
-        `${url}?languageName=${payload.languageName}`,
+        `${url}?${params.toString()}`,
       )
       .then((response) => response);
-  }
+  };
 
   setDefault = (payload: {
     languageName: string;
@@ -483,9 +487,13 @@ export class LanguageManagerService {
     );
   };
 
-  getWebhook = (): Promise<IWebhookConfig | null> => {
+  getWebhook = (projectKey: string): Promise<IWebhookConfig | null> => {
+    const params = new URLSearchParams({
+      projectKey,
+    });
+
     return this.httpClient.get(
-      `${CONFIG_ENDPOINTS.GET_WEBHOOK}`,
+      `${CONFIG_ENDPOINTS.GET_WEBHOOK}?${params.toString()}`,
     );
   };
 

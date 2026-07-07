@@ -64,6 +64,7 @@ export interface IWebhookSecret {
 
 export interface IWebhookConfig {
   itemId?: string;
+  projectKey?: string;
   url: string;
   contentType: string;
   blocksWebhookSecret: IWebhookSecret;

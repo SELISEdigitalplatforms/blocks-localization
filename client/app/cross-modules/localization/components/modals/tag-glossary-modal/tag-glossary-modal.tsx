@@ -35,6 +35,16 @@ interface TagGlossaryModalProps {
   onClose: (open: boolean) => void;
 }
 
+const getTagGlossaryErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (Array.isArray(error) && error.length > 0) return error.join(", ");
+  if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    return JSON.stringify(error);
+  }
+  return "Failed to update glossaries. Please try again.";
+};
+
 const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
   module,
   onClose,
@@ -104,7 +114,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getTagGlossaryErrorMessage(error),
       });
     }
   };
