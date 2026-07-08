@@ -966,6 +966,11 @@ namespace Eurolm.DomainService.Services
             var uilmFile = await _keyRepository.GetUilmFile(request);
             return uilmFile?.Content;
         }
+        public async Task<string> GetUilmFile(GetUilmFileRequestForClient request)
+        {
+            var uilmFile = await _keyRepository.GetUilmFile(request);
+            return uilmFile?.Content;
+        }
 
         public async Task SendTranslateAllEvent(TranslateAllRequest request)
         {

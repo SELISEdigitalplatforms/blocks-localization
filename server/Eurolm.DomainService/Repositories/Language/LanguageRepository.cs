@@ -21,6 +21,13 @@ namespace Eurolm.DomainService.Repositories
 
             return await collection.Find(_ => true).ToListAsync();
         }
+        public async Task<List<Language>> GetAllLanguagesAsync(string projectKey)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(projectKey);
+            var collection = dataBase.GetCollection<Language>(_collectionName);
+
+            return await collection.Find(_ => true).ToListAsync();
+        }
 
         public async Task<BlocksLanguage> GetLanguageByNameAsync(string languageName)
         {

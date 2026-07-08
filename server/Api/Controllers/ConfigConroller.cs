@@ -27,11 +27,24 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<BlocksWebhook?> GetWebHook()
+        [Authorize]
+        public async Task<BlocksWebhook?> GetCloudWebHook()
         {
             return await _webHookService.GetWebhookAsync();
         }
-
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<ActionResult<BlocksWebhook?>> GetWebHook([FromQuery] string projectKey)
+        {
+            if(string.IsNullOrEmpty(projectKey))
+            {
+                return BadRequest(new
+                {
+                    ErrorMessage = "Project key is required."
+                });
+            }
+            return Ok(await _webHookService.GetWebhookAsync(projectKey));
+        }
         [HttpPost]
         // [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
         [Authorize]
