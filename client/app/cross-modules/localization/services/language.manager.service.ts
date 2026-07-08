@@ -496,14 +496,8 @@ export class LanguageManagerService {
     );
   };
 
-  getWebhook = (projectKey: string): Promise<IWebhookConfig | null> => {
-    const params = new URLSearchParams({
-      projectKey,
-    });
-
-    return this.httpClient.get(
-      `${CONFIG_ENDPOINTS.GET_WEBHOOK}?${params.toString()}`,
-    );
+  getWebhook = (): Promise<IWebhookConfig | null> => {
+    return this.httpClient.get(CONFIG_ENDPOINTS.GET_WEBHOOK);
   };
 
   saveWebhook = (

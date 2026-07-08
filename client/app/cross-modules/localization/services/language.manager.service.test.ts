@@ -1028,7 +1028,7 @@ describe("LanguageManagerService", () => {
 
   // ─── getWebhook ──────────────────────────────────────────────────────────
   describe("getWebhook", () => {
-    it("should GET with projectKey", async () => {
+    it("should GET the webhook config without projectKey query param", async () => {
       const response = {
         url: "https://example.com",
         contentType: "application/json",
@@ -1038,11 +1038,9 @@ describe("LanguageManagerService", () => {
       };
       vi.mocked(http.get).mockResolvedValue(response);
 
-      await expect(service.getWebhook(projectKey)).resolves.toBe(response);
+      await expect(service.getWebhook()).resolves.toBe(response);
 
-      expect(http.get).toHaveBeenCalledWith(
-        `${CONFIG_ENDPOINTS.GET_WEBHOOK}?projectKey=${projectKey}`,
-      );
+      expect(http.get).toHaveBeenCalledWith(CONFIG_ENDPOINTS.GET_WEBHOOK);
     });
   });
 
