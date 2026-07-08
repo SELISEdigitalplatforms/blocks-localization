@@ -199,10 +199,14 @@ export class LanguageManagerService {
     isSuccess: boolean;
   }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
-    return this.httpClient.post<{
+    const deleteOptions = {
+      body: payload,
+    } as Parameters<typeof this.httpClient.delete>[2];
+
+    return this.httpClient.delete<{
       errors: unknown;
       isSuccess: boolean;
-    }>(url, payload);
+    }>(url, undefined, deleteOptions);
   };
 
   translateLanguageKeys = (payload: {
