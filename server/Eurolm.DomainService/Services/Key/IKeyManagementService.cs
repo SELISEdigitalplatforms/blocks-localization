@@ -15,6 +15,7 @@ namespace Eurolm.DomainService.Services
         Task<GetKeyTimelineQueryResponse> GetKeyTimelineAsync(GetKeyTimelineRequest query);
         Task<bool> GenerateAsync(GenerateUilmFilesEvent command);
         Task<string> GetUilmFile(GetUilmFileRequest request);
+        Task<string> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key?> GetAsync(GetKeyRequest request);
         Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request);
         Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request);

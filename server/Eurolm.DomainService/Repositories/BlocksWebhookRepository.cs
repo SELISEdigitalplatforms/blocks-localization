@@ -35,5 +35,11 @@ namespace Eurolm.DomainService.Repositories
             var collection = dataBase.GetCollection<BlocksWebhook>(_collectionName);
             return await collection.Find(_ => true).FirstOrDefaultAsync();
         }
+        public async Task<BlocksWebhook> GetAsync(string projectKey)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(projectKey);
+            var collection = dataBase.GetCollection<BlocksWebhook>(_collectionName);
+            return await collection.Find(_ => true).FirstOrDefaultAsync();
+        }
     }
 }
