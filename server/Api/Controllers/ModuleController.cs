@@ -54,9 +54,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Module"/> objects.</returns>
 
         [HttpGet]
+        [Authorize]
         public async Task<List<BlocksLanguageModule>> Gets()
         {
             return await _moduleManagementService.GetModulesAsync();
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
+        {
+            return await _moduleManagementService.GetModulesAsync(projectKey);
         }
 
         //[HttpDelete]

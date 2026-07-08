@@ -58,6 +58,16 @@ namespace Eurolm.DomainService.Services
             var module = await _moduleRepository.GetByIdAsync(moduleId);
             return module != null ? new List<BlocksLanguageModule> { module } : new List<BlocksLanguageModule>();
         }
+        public async Task<List<BlocksLanguageModule>> GetModulesAsync(string projectKey,string? moduleId = null)
+        {
+            if (string.IsNullOrEmpty(moduleId))
+            {
+                return await _moduleRepository.GetAllAsync();
+            }
+
+            var module = await _moduleRepository.GetByIdAsync(projectKey,moduleId);
+            return module != null ? new List<BlocksLanguageModule> { module } : new List<BlocksLanguageModule>();
+        }
 
         //public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
         //{
