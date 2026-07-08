@@ -28,7 +28,7 @@ namespace BlocksTemplate.Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<BlocksWebhook?> GetWebHook()
+        public async Task<BlocksWebhook?> GetCloudWebHook()
         {
             return await _webHookService.GetWebhookAsync();
         }
