@@ -82,7 +82,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Module/Gets`],
+      ["GETS", `${UILM_BASE}/Module/GetCloudsModulesAsync`],
       ["SAVE", `${UILM_BASE}/Module/Save`],
       ["DELETE", `${UILM_BASE}/Module/Delete`],
       ["TAG_GLOSSARY", `${UILM_BASE}/Module/TagGlossary`],
@@ -100,7 +100,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Language/Gets`],
+      ["GETS", `${UILM_BASE}/Language/GetCloudstLanguagesAsync`],
       ["SAVE", `${UILM_BASE}/Language/Save`],
       ["DELETE", `${UILM_BASE}/Language/Delete`],
       ["SET_DEFAULT", `${UILM_BASE}/Language/SetDefault`],
@@ -129,7 +129,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetWebHook`],
+      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetCloudWebHook`],
       ["SAVE_WEBHOOK", `${UILM_BASE}/Config/SaveWebHook`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((CONFIG_ENDPOINTS as Record<string, string>)[key]).toBe(value);
