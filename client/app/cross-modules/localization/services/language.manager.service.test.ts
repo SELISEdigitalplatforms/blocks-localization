@@ -475,16 +475,17 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguageKeys ──────────────────────────────────────────────────
   describe("deleteLanguageKeys", () => {
-    it("should POST to DELETE_KEYS endpoint", async () => {
+    it("should DELETE to DELETE_KEYS endpoint with itemIds body", async () => {
       const response = { errors: null, isSuccess: true };
-      vi.mocked(http.post).mockResolvedValue(response);
+      vi.mocked(http.delete).mockResolvedValue(response);
 
       const payload = { itemIds: ["k-1", "k-2"] };
       await expect(service.deleteLanguageKeys(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
+      expect(http.delete).toHaveBeenCalledWith(
         LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS,
-        payload,
+        undefined,
+        { body: payload },
       );
     });
   });
