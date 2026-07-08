@@ -52,7 +52,7 @@ namespace BlocksTemplate.Api.Controllers
         
         [HttpGet]
         [Authorize]
-        public async Task<List<Language>> Gets()
+        public async Task<List<Language>> GetCloudstLanguagesAsync()
         {
             return await _languageManagementService.GetLanguagesAsync();
         }

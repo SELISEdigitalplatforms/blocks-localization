@@ -234,7 +234,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A JSON UILM file as a string.</returns>
         [HttpGet]
         [Authorize]
-        public async Task GetUilmFile([FromQuery] GetUilmFileRequest request)
+        public async Task GetCloudUilmFile([FromQuery] GetUilmFileRequest request)
         {
            
             if (request == null) BadRequest(new BaseMutationResponse());;
