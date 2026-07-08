@@ -29,7 +29,7 @@ export const LANGUAGE_KEY_ENDPOINTS = {
 
 // Language Module endpoints
 export const LANGUAGE_MODULE_ENDPOINTS = {
-  GETS: `${API_BASES.UILM}${MODULE_SUBPATH}/GetCloudsModulesAsync`,
+  GETS: `${API_BASES.UILM}${MODULE_SUBPATH}/GetCloudsModules`,
   SAVE: `${API_BASES.UILM}${MODULE_SUBPATH}/Save`,
   DELETE: `${API_BASES.UILM}${MODULE_SUBPATH}/Delete`,
   TAG_GLOSSARY: `${API_BASES.UILM}${MODULE_SUBPATH}/TagGlossary`,
@@ -37,7 +37,7 @@ export const LANGUAGE_MODULE_ENDPOINTS = {
 
 // Language endpoints
 export const LANGUAGE_ENDPOINTS = {
-  GETS: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/GetCloudstLanguagesAsync`,
+  GETS: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/GetCloudstLanguages`,
   SAVE: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/Save`,
   DELETE: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/Delete`,
   SET_DEFAULT: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/SetDefault`,
