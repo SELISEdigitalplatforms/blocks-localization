@@ -233,10 +233,22 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the project key, module, and language information.</param>
         /// <returns>A JSON UILM file as a string.</returns>
         [HttpGet]
-        public async Task GetUilmFile([FromQuery] GetUilmFileRequest request)
+        [Authorize]
+        public async Task GetCloudUilmFile([FromQuery] GetUilmFileRequest request)
         {
            
             if (request == null) BadRequest(new BaseMutationResponse());;
+            Response.ContentType = "application/json";
+
+            string result = await _keyManagementService.GetUilmFile(request);
+            await Response.WriteAsync(result ?? "");
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task GetUilmFile([FromQuery] GetUilmFileRequestForClient request)
+        {
+
+            if (request == null) BadRequest(new BaseMutationResponse()); ;
             Response.ContentType = "application/json";
 
             string result = await _keyManagementService.GetUilmFile(request);

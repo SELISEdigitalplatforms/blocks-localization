@@ -51,9 +51,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Language"/> objects.</returns>
         
         [HttpGet]
-        public async Task<List<Language>> Gets()
+        [Authorize]
+        public async Task<List<Language>> GetCloudstLanguagesAsync()
         {
             return await _languageManagementService.GetLanguagesAsync();
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<List<Language>> Gets([FromQuery] string projectKey)
+        {
+            return await _languageManagementService.GetLanguagesAsync(projectKey);
         }
 
         /// <summary>
