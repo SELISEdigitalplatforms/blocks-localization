@@ -241,7 +241,6 @@ export class LanguageManagerService {
 
   setDefault = (payload: {
     languageName: string;
-    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;

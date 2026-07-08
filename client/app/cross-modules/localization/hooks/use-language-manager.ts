@@ -390,7 +390,6 @@ export const useDeleteLanguage = () => {
 
 export const useSetDefaultLanguage = () => {
   const queryClient = useQueryClient();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-config", "set-default"],
     mutationFn: (
@@ -398,7 +397,6 @@ export const useSetDefaultLanguage = () => {
     ) =>
       languageManagerService.setDefault({
         ...payload,
-        projectKey: payload.projectKey ?? tenantId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
