@@ -38,7 +38,6 @@ namespace BlocksTemplate.Api.Controllers
 
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
-        [Authorize]
         public async Task<ApiResponse> Save(Language language)
         {
             if (language == null) BadRequest(new BaseMutationResponse());
@@ -70,7 +69,6 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
         [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
-        [Authorize]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
@@ -98,7 +96,6 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the operation.</returns>
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
-        [Authorize]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());

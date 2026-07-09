@@ -47,7 +47,6 @@ namespace BlocksTemplate.Api.Controllers
         }
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
-        [Authorize]
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {
