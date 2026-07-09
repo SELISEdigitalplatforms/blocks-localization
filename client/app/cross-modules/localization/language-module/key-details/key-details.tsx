@@ -82,7 +82,7 @@ const KeyDetails = () => {
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
     BREADCRUMB_CUSTOM_TITLES[
-      `/:itemId/services/language/translations/${keyDetails.itemId}`
+      `/app/:itemId/services/language/translations/${keyDetails.itemId}`
     ] = keyDetails.keyName;
   }
 

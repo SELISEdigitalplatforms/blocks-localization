@@ -289,7 +289,7 @@ export function ModuleDetails() {
   });
 
   if (module?.moduleName) {
-    BREADCRUMB_CUSTOM_TITLES[`/:itemId/services/modules/${module.itemId}`] =
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] =
       module.moduleName;
   }
 

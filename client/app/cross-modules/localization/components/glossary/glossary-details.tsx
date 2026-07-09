@@ -64,7 +64,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
-    BREADCRUMB_CUSTOM_TITLES[`/:itemId/services/glossary/${itemId}`] = glossary.name;
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${itemId}`] =
+      glossary.name;
   }
 
   if (isLoading) {
@@ -313,7 +314,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                           className="cursor-pointer font-normal text-medium-emphasis"
                           onClick={() =>
                             navigate(
-                              scoped(`services/language/translations/${key.itemId}`),
+                              scoped(
+                                `services/language/translations/${key.itemId}`,
+                              ),
                             )
                           }
                         >
