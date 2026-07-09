@@ -25,15 +25,14 @@ class UserLookupService {
 
   getUserById(payload: {
     id: string;
-    projectKey: string;
+    organizationId: string;
   }): Promise<GetUserByIdResponse> {
     const params = new URLSearchParams({
-      id: payload.id,
-      ProjectKey: payload.projectKey,
+      organizationId: payload.organizationId,
     });
 
     return this.httpClient.get(
-      `${getIamUsersEndpoint()}?${params.toString()}`,
+      `${getIamUsersEndpoint()}/${payload.id}?${params.toString()}`,
       undefined,
       {
         absoluteUrl: true,

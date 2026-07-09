@@ -134,9 +134,6 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       itemId: payload.itemId,
     });
-    if (payload.projectKey) {
-      params.set("projectKey", payload.projectKey);
-    }
     if (payload.targetModuleId) {
       params.set("targetModuleId", payload.targetModuleId);
     }
@@ -173,7 +170,6 @@ export class LanguageManagerService {
 
   deleteLanguageKey = (payload: {
     itemId: string;
-    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -182,9 +178,6 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       itemId: payload.itemId,
     });
-    if (payload.projectKey) {
-      params.set("projectKey", payload.projectKey);
-    }
 
     return this.httpClient.delete<{
       errors: unknown;
@@ -222,7 +215,6 @@ export class LanguageManagerService {
 
   deleteLanguage = (payload: {
     languageName: string;
-    projectKey?: string;
   }): Promise<{
     errors: null | unknown;
     isSuccess: boolean;
@@ -231,9 +223,6 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       languageName: payload.languageName,
     });
-    if (payload.projectKey) {
-      params.set("projectKey", payload.projectKey);
-    }
 
     return this.httpClient
       .delete<{
