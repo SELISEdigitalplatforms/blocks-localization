@@ -2,9 +2,8 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class GetKeyRequest : IProjectKey
+    public class GetKeyRequest 
     {
         public string ItemId { get; set; }
-        public string? ProjectKey { get; set; }
     }
 }

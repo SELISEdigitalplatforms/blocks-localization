@@ -13,6 +13,7 @@ namespace Eurolm.DomainService.Repositories
         Task<bool> SaveNewUilmFiles(List<UilmFile> uilmfiles);
         Task<long> DeleteOldUilmFiles(List<UilmFile> uilmfiles);
         Task<UilmFile> GetUilmFile(GetUilmFileRequest request);
+        Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key> GetByIdAsync(string itemId);
         Task DeleteAsync(string itemId);
         Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size);

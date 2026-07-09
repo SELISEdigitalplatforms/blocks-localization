@@ -28,8 +28,7 @@ namespace XUnitTest
             {
                 KeyName = "welcome.message",
                 ModuleId = "auth-module",
-                IsNewKey = false,
-                ProjectKey = "test-project"
+                IsNewKey = false
             };
 
             _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(key.KeyName, key.ModuleId))
@@ -49,8 +48,7 @@ namespace XUnitTest
             var key = new Key
             {
                 KeyName = "",
-                ModuleId = "auth-module",
-                ProjectKey = "test-project"
+                ModuleId = "auth-module"
             };
 
             // Act
@@ -68,8 +66,7 @@ namespace XUnitTest
             var key = new Key
             {
                 KeyName = "a",
-                ModuleId = "auth-module",
-                ProjectKey = "test-project"
+                ModuleId = "auth-module"
             };
 
             // Act
@@ -87,8 +84,7 @@ namespace XUnitTest
             var key = new Key
             {
                 KeyName = new string('a', 101),
-                ModuleId = "auth-module",
-                ProjectKey = "test-project"
+                ModuleId = "auth-module"
             };
 
             // Act
@@ -106,8 +102,7 @@ namespace XUnitTest
             var key = new Key
             {
                 KeyName = "welcome.message",
-                ModuleId = "",
-                ProjectKey = "test-project"
+                ModuleId = ""
             };
 
             // Act
@@ -125,8 +120,7 @@ namespace XUnitTest
             var key = new Key
             {
                 KeyName = "welcome.message",
-                ModuleId = "a",
-                ProjectKey = "test-project"
+                ModuleId = "a"
             };
 
             // Act
@@ -145,8 +139,7 @@ namespace XUnitTest
             {
                 KeyName = "welcome.message",
                 ModuleId = "auth-module",
-                IsNewKey = true,
-                ProjectKey = "test-project"
+                IsNewKey = true
             };
 
             var existingKey = new BlocksLanguageKey
@@ -185,7 +178,7 @@ namespace XUnitTest
             {
                 LanguageName = "English",
                 LanguageCode = "en-US",
-                ProjectKey = "test-project"
+                
             };
 
             // Act
@@ -203,7 +196,7 @@ namespace XUnitTest
             {
                 LanguageName = "",
                 LanguageCode = "en-US",
-                ProjectKey = "test-project"
+               
             };
 
             // Act
@@ -222,7 +215,7 @@ namespace XUnitTest
             {
                 LanguageName = "E",
                 LanguageCode = "en-US",
-                ProjectKey = "test-project"
+               
             };
 
             // Act
@@ -241,7 +234,7 @@ namespace XUnitTest
             {
                 LanguageName = "English",
                 LanguageCode = "",
-                ProjectKey = "test-project"
+               
             };
 
             // Act
@@ -260,7 +253,7 @@ namespace XUnitTest
             {
                 LanguageName = "English",
                 LanguageCode = "en",
-                ProjectKey = "test-project"
+               
             };
 
             // Act
@@ -279,7 +272,7 @@ namespace XUnitTest
             {
                 LanguageName = "English",
                 LanguageCode = "en-US",
-                ProjectKey = "test-project"
+                
             };
 
             // Act
@@ -297,7 +290,7 @@ namespace XUnitTest
             {
                 LanguageName = "Caveman En",
                 LanguageCode = "en-x-cave",
-                ProjectKey = "test-project"
+               
             };
 
             // Act

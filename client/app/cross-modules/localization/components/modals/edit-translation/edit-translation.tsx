@@ -62,7 +62,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           glossaryIds: keyDetails.glossaryIds,
           moduleId: keyDetails.moduleId,
           destinationLanguageCode: destinationLanguageCode,
-          projectKey: tenantId,
         };
         const res = await autoTranslateAsync(payload);
         if (res.content) {
@@ -132,7 +131,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             : [],
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        projectKey: tenantId,
         context: keyDetails.context,
       };
       const res = await mutateAsync(payload);

@@ -2,7 +2,7 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class GetKeyTimelineRequest : IProjectKey
+    public class GetKeyTimelineRequest 
     {
         public int PageSize { get; set; } = 10;
         public int PageNumber { get; set; } = 1;
@@ -11,6 +11,5 @@ namespace Eurolm.DomainService.Services
         public DateRange? CreateDateRange { get; set; }
         public string? SortProperty { get; set; } = "CreateDate";
         public bool IsDescending { get; set; } = true;
-        public string? ProjectKey { get; set; }
     }
 }

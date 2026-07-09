@@ -36,7 +36,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
       return;
     }
     try {
-      const res = await mutateAsync({ itemId: itemId, ProjectKey: tenantId });
+      const res = await mutateAsync({ itemId: itemId });
 
       if (res?.isSuccess) {
         toast({

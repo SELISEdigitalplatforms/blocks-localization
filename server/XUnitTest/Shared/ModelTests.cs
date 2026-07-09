@@ -25,8 +25,7 @@ namespace XUnitTest
                 LastUpdateDate = DateTime.UtcNow,
                 CreateDate = DateTime.UtcNow,
                 Context = "Homepage greeting",
-                ShouldPublish = true,
-                ProjectKey = "proj-1"
+                ShouldPublish = true
             };
 
             key.ItemId.Should().Be("id-1");
@@ -38,13 +37,13 @@ namespace XUnitTest
             key.IsNewKey.Should().BeTrue();
             key.Context.Should().Be("Homepage greeting");
             key.ShouldPublish.Should().BeTrue();
-            key.ProjectKey.Should().Be("proj-1");
+
         }
 
         [Fact]
         public void Key_ImplementsIProjectKey()
         {
-            var key = new Key { ProjectKey = "test" };
+            var key = new Key {  };
             key.Should().BeAssignableTo<IProjectKey>();
         }
     }
@@ -160,7 +159,7 @@ namespace XUnitTest
                 },
                 SortProperty = "KeyName",
                 IsDescending = true,
-                ProjectKey = "proj-1"
+               
             };
 
             request.PageSize.Should().Be(20);
@@ -171,13 +170,13 @@ namespace XUnitTest
             request.CreateDateRange.Should().NotBeNull();
             request.SortProperty.Should().Be("KeyName");
             request.IsDescending.Should().BeTrue();
-            request.ProjectKey.Should().Be("proj-1");
+            
         }
 
         [Fact]
         public void GetKeysRequest_ImplementsIProjectKey()
         {
-            var request = new GetKeysRequest { ProjectKey = "test" };
+            var request = new GetKeysRequest {  };
             request.Should().BeAssignableTo<IProjectKey>();
         }
     }
@@ -218,7 +217,7 @@ namespace XUnitTest
         [Fact]
         public void GetKeyTimelineRequest_ImplementsIProjectKey()
         {
-            var request = new GetKeyTimelineRequest { ProjectKey = "test" };
+            var request = new GetKeyTimelineRequest {};
             request.Should().BeAssignableTo<IProjectKey>();
         }
 
@@ -233,8 +232,7 @@ namespace XUnitTest
                 UserId = "user-1",
                 CreateDateRange = new DateRange { StartDate = DateTime.UtcNow.AddDays(-1), EndDate = DateTime.UtcNow },
                 SortProperty = "LastUpdateDate",
-                IsDescending = false,
-                ProjectKey = "proj-1"
+                IsDescending = false
             };
 
             request.EntityId.Should().Be("entity-1");
@@ -258,7 +256,7 @@ namespace XUnitTest
         [Fact]
         public void GetUilmExportedFilesRequest_ImplementsIProjectKey()
         {
-            var request = new GetUilmExportedFilesRequest { ProjectKey = "test" };
+            var request = new GetUilmExportedFilesRequest { };
             request.Should().BeAssignableTo<IProjectKey>();
         }
 
@@ -269,7 +267,7 @@ namespace XUnitTest
             {
                 PageSize = 50,
                 PageNumber = 5,
-                ProjectKey = "proj-1",
+               
                 SearchText = "export",
                 CreateDateRange = new DateRange { StartDate = DateTime.UtcNow.AddDays(-30), EndDate = DateTime.UtcNow }
             };
@@ -287,19 +285,19 @@ namespace XUnitTest
             var request = new GetUilmFileRequest
             {
                 Language = "en-US",
-                ModuleName = "auth",
-                ProjectKey = "proj-1"
+                ModuleName = "auth"
+               
             };
 
             request.Language.Should().Be("en-US");
             request.ModuleName.Should().Be("auth");
-            request.ProjectKey.Should().Be("proj-1");
+          
         }
 
         [Fact]
         public void GetUilmFileRequest_ImplementsIProjectKey()
         {
-            var request = new GetUilmFileRequest { ProjectKey = "test" };
+            var request = new GetUilmFileRequest {  };
             request.Should().BeAssignableTo<IProjectKey>();
         }
     }

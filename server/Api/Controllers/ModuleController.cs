@@ -54,10 +54,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Module"/> objects.</returns>
 
         [HttpGet]
-        public async Task<List<BlocksLanguageModule>> Gets([FromQuery] GetModulesQuery query)
+        [Authorize]
+        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
             return await _moduleManagementService.GetModulesAsync();
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
+        {
+            return await _moduleManagementService.GetModulesAsync(projectKey);
         }
 
         //[HttpDelete]

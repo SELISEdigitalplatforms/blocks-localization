@@ -3,7 +3,7 @@ using Eurolm.DomainService.Shared.Utilities;
 
 namespace Eurolm.DomainService.Services
 {
-    public class UilmExportRequest : IProjectKey
+    public class UilmExportRequest 
     {
         /// <summary>
         /// command. OutputType: The type of output for the file contents when exporting the zip file. Types include Json, Xml, Text.
@@ -20,6 +20,5 @@ namespace Eurolm.DomainService.Services
         public string CallerTenantId { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public string ProjectKey { get; set; }
     }
 }

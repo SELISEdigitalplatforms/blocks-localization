@@ -8,5 +8,6 @@ namespace Eurolm.DomainService.Services.HelperService
         Task<bool> CallWebhook(object payload);
         Task<ApiResponse> SaveWebhookAsync(BlocksWebhook webhook);
         Task<BlocksWebhook?> GetWebhookAsync();
+        Task<BlocksWebhook?> GetWebhookAsync(string projectKey);
     }
 }

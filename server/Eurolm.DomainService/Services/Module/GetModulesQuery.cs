@@ -2,8 +2,7 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class GetModulesQuery : IProjectKey
+    public class GetModulesQuery
     {
-        public string? ProjectKey { get; set; }
     }
 }

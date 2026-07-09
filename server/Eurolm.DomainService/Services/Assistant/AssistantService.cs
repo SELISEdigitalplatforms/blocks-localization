@@ -41,7 +41,7 @@ namespace Eurolm.DomainService.Services
 
         public async Task<string> SuggestTranslation(SuggestLanguageRequest query)
         {
-            var projectKey = query.ProjectKey ?? BlocksContext.GetContext()?.TenantId ?? "";
+            var projectKey =  BlocksContext.GetContext()?.TenantId ?? "";
 
             // Tier 1: global glossaries
             var globalGlossaries = await _glossaryRepository.GetGlobalAsync(projectKey);
