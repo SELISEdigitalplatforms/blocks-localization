@@ -11,32 +11,32 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
   "/app/services/authentication": {
     title: "IDP",
   },
-  "/app/services/language": {
+  "/app/:itemId/services/language": {
     title: "Language Translation Keys",
   },
-  "/app/services/configure": {
+  "/app/:itemId/services/configure": {
     title: "Configure",
   },
-  "/app/services/language/export-history": {
+  "/app/:itemId/services/language/export-history": {
     title: "Export history",
   },
-  "/app/services/modules": {
+  "/app/:itemId/services/modules": {
     title: "Language module",
   },
-  "/app/services/language/translations": {
+  "/app/:itemId/services/language/translations": {
     skip: true,
   },
-  "/app/services/language/translations/new-key": {
+  "/app/:itemId/services/language/translations/new-key": {
     title: "New Key",
   },
-  "/app/services/language/translations/:keyId": {
+  "/app/:itemId/services/language/translations/:keyId": {
     title: "Key",
     dynamic: true,
   },
-  "/app/services/glossary": {
+  "/app/:itemId/services/glossary": {
     title: "Glossaries",
   },
-  "/app/services/glossary/:itemId": {
+  "/app/:itemId/services/glossary/:itemId": {
     title: "Glossary",
     dynamic: true,
   },

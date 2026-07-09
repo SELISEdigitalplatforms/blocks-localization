@@ -64,7 +64,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
-    BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
+    BREADCRUMB_CUSTOM_TITLES[`/:itemId/services/glossary/${itemId}`] = glossary.name;
   }
 
   if (isLoading) {
