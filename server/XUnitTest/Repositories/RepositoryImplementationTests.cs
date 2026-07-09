@@ -36,8 +36,7 @@ namespace XUnitTest
                 ItemId = "webhook-1",
                 Url = "https://example.com/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "secret", HeaderKey = "x-signature" },
-                ProjectKey = "tenant-a"
+                BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "secret", HeaderKey = "x-signature" }
             };
 
             await repository.SaveAsync(webhook);
@@ -67,8 +66,7 @@ namespace XUnitTest
                 ItemId = "webhook-1",
                 Url = "https://example.com/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "secret", HeaderKey = "x-signature" },
-                ProjectKey = "tenant-a"
+                BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "secret", HeaderKey = "x-signature" }
             };
 
             cursor.SetupSequence(x => x.MoveNext(It.IsAny<CancellationToken>()))

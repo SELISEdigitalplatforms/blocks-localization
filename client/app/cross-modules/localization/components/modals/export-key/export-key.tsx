@@ -179,7 +179,6 @@ export default function ExportKey() {
         callerTenantId: itemId,
         startDate: date?.from ? date.from.toISOString() : undefined,
         endDate: date?.to ? addOneDay(date.to).toString() : undefined,
-        projectKey: projectKey,
       };
 
       const exportResult = await exportAsync(payload);

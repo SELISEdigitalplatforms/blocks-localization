@@ -41,8 +41,7 @@ namespace XUnitTest
             {
                 Name = "API",
                 Language = "en-US",
-                Type = "Acronym",
-                ProjectKey = "test-project"
+                Type = "Acronym"
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -70,8 +69,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new GlossaryModel
             {
-                Name = "",
-                ProjectKey = "test-project"
+                Name = ""
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -98,8 +96,7 @@ namespace XUnitTest
                 ItemId = "existing-id",
                 Name = "API Updated",
                 Language = "en-US",
-                Type = "Acronym",
-                ProjectKey = "test-project"
+                Type = "Acronym"
             };
 
             var existingGlossary = new GlossaryModel
@@ -136,8 +133,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new GlossaryModel
             {
-                Name = "API",
-                ProjectKey = "test-project"
+                Name = "API"
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -164,7 +160,7 @@ namespace XUnitTest
         public async Task DeleteGlossaryAsync_ExistingItem_ReturnsSuccess()
         {
             // Arrange
-            var request = new DeleteGlossaryRequest { ItemId = "glossary-1", ProjectKey = "test-project" };
+            var request = new DeleteGlossaryRequest { ItemId = "glossary-1" };
             var existingGlossary = new GlossaryModel { ItemId = "glossary-1", Name = "API" };
 
             _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("glossary-1"))
@@ -185,7 +181,7 @@ namespace XUnitTest
         public async Task DeleteGlossaryAsync_NonExistingItem_ReturnsNotFound()
         {
             // Arrange
-            var request = new DeleteGlossaryRequest { ItemId = "non-existing", ProjectKey = "test-project" };
+            var request = new DeleteGlossaryRequest { ItemId = "non-existing"};
 
             _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("non-existing"))
                 .ReturnsAsync((GlossaryModel)null);
@@ -207,7 +203,7 @@ namespace XUnitTest
         public async Task GetGlossariesAsync_ReturnsResults()
         {
             // Arrange
-            var request = new GetGlossariesRequest { ProjectKey = "test-project", PageNumber = 0, PageSize = 20 };
+            var request = new GetGlossariesRequest { PageNumber = 0, PageSize = 20 };
             var expectedResponse = new GetGlossariesResponse
             {
                 Items = new List<GlossaryModel>
@@ -234,7 +230,7 @@ namespace XUnitTest
         public async Task GetGlossariesAsync_EmptyResult_ReturnsEmptyList()
         {
             // Arrange
-            var request = new GetGlossariesRequest { ProjectKey = "test-project" };
+            var request = new GetGlossariesRequest {  };
             var expectedResponse = new GetGlossariesResponse
             {
                 Items = new List<GlossaryModel>(),

@@ -8,6 +8,7 @@ namespace Eurolm.DomainService.Services
     {
         Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module);
         Task<List<BlocksLanguageModule>> GetModulesAsync(string? moduleId = null);
+        Task<List<BlocksLanguageModule>> GetModulesAsync(string projectKey,string? moduleId = null);
         //Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request);
         Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request);
     }

@@ -16,6 +16,12 @@ export enum SSO_PROVIDERS {
   ownsso = 'ownsso',
 }
 
+export interface IDomain {
+  domain: string;
+  cookieDomain: string;
+  isDomainVerified: boolean;
+}
+
 export interface IProject {
   itemId: string
   createdDate: string
@@ -25,13 +31,13 @@ export interface IProject {
   organizationIds: string[]
   tags: string[]
   name: string
-  applicationDomain: string
-  customDomain: string
+  applications: IDomain[]
+  customDomain: string | null
+  cookieDomain: "blocksdevelopers.com"
   isProduction: true
   tenantId: string
   isCookieEnable: boolean
   isDomainVerified: boolean
-  cookieDomain: string
   isDisabled: boolean
   environment: string
   tenantGroupId: string

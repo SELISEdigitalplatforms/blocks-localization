@@ -55,7 +55,6 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       const payload = {
         itemId: module.itemId,
         moduleName: data.moduleName,
-        projectKey: tenantId,
       };
       const res = await mutateAsync(payload);
       if (res?.success) {

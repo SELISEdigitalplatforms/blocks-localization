@@ -116,7 +116,7 @@ namespace XUnitTest
 
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "proj-1",
+              
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -135,7 +135,7 @@ namespace XUnitTest
 
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "proj-1",
+                
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -154,7 +154,7 @@ namespace XUnitTest
 
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "my-project",
+               
                 PageNumber = 1,
                 PageSize = 5
             };
@@ -181,7 +181,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+                
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -233,7 +233,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "empty-project",
+                
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -263,7 +263,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+              
                 PageNumber = 1,
                 PageSize = 5
             };
@@ -311,7 +311,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+               
                 PageNumber = 0,
                 PageSize = 3
             };
@@ -367,7 +367,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+               
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -618,7 +618,7 @@ namespace XUnitTest
             // Assert
             request.PageSize.Should().Be(10);
             request.PageNumber.Should().Be(0);
-            request.ProjectKey.Should().BeNull();
+         
         }
 
         [Fact]
@@ -629,13 +629,13 @@ namespace XUnitTest
             {
                 PageSize = 25,
                 PageNumber = 3,
-                ProjectKey = "custom-project"
+                
             };
 
             // Assert
             request.PageSize.Should().Be(25);
             request.PageNumber.Should().Be(3);
-            request.ProjectKey.Should().Be("custom-project");
+            
         }
 
         #endregion
@@ -740,7 +740,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+               
                 PageNumber = 0,
                 PageSize = 1000
             };
@@ -769,7 +769,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+                
                 PageNumber = 100,
                 PageSize = 10
             };
@@ -799,7 +799,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+                
                 PageNumber = 0,
                 PageSize = 3
             };
