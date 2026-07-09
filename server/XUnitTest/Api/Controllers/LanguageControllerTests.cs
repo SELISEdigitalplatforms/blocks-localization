@@ -83,7 +83,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedLanguages);
 
             // Act
-            var result = await _controller.Gets();
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().NotBeNull();
@@ -101,7 +101,7 @@ namespace XUnitTest
                 .ReturnsAsync(new List<Language>());
 
             // Act
-            var result = await _controller.Gets();
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().BeEmpty();
@@ -213,7 +213,7 @@ namespace XUnitTest
         [Fact]
         public async Task Gets_WithNullRequest_ThrowsNullReferenceException()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets());
+            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets("test"));
         }
 
         [Fact]

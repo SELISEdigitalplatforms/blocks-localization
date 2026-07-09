@@ -55,7 +55,7 @@ namespace BlocksTemplate.Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<List<BlocksLanguageModule>> GetCloudsModulesAsync()
+        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
         {
             return await _moduleManagementService.GetModulesAsync();
         }

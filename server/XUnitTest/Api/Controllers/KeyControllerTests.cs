@@ -947,7 +947,7 @@ namespace XUnitTest
             var request = new GetUilmFileRequest { };
             var context = new DefaultHttpContext();
             _controller.ControllerContext.HttpContext = context;
-            await _controller.GetUilmFile(request);
+            await _controller.GetCloudUilmFile(request);
             context.Response.StatusCode.Should().Be(401);
         }
 
