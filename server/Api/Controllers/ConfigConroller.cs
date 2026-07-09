@@ -46,7 +46,7 @@ namespace BlocksTemplate.Api.Controllers
             return Ok(await _webHookService.GetWebhookAsync(projectKey));
         }
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
         [Authorize]
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
