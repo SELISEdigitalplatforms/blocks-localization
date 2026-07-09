@@ -54,6 +54,7 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -116,6 +117,7 @@ function AddNewLanguageKey() {
   const { isLoading: isLanguageListLoading, data: languageListData } =
     useGetLanguages();
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] =
     React.useState(false);
   const [open, setOpen] = React.useState(false);
@@ -214,7 +216,7 @@ function AddNewLanguageKey() {
           description: "Language key added",
         });
         form.reset();
-        navigate("/app/services/language", { replace: true });
+        navigate(scoped("services/language"), { replace: true });
       } else {
         toast({
           variant: "destructive",

@@ -33,7 +33,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
 
 const redirectPaths: Record<string, string> = {
-  "/app/:itemId/services/language/translations/*": "/app/:itemId/services/language",
+  "/app/:itemId/services/language/translations/*":
+    "/app/:itemId/services/language",
 };
 
 export const router = createBrowserRouter([
