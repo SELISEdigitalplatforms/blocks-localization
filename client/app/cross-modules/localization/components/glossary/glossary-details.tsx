@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import {
   Card,
   CardContent,
@@ -42,6 +43,7 @@ interface GlossaryDetailsProps {
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const { data: glossary, isLoading } = useGetGlossaryById(itemId);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
@@ -146,7 +148,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               glossaryName={glossary.name}
               onClose={() => {
                 setDeleteModalOpen(false);
-                navigate("/app/services/glossary");
+                navigate(scoped("services/glossary"));
               }}
             />
           </Dialog>
@@ -311,7 +313,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                           className="cursor-pointer font-normal text-medium-emphasis"
                           onClick={() =>
                             navigate(
-                              `/services/language/translations/${key.itemId}`,
+                              scoped(`services/language/translations/${key.itemId}`),
                             )
                           }
                         >

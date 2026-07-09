@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -91,6 +92,7 @@ const RowActionsCell = ({
 export function ModuleTable() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const {
     isLoading: isModulesLoading,
     data: modulesData,
@@ -271,7 +273,7 @@ export function ModuleTable() {
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/app/services/modules/${module.itemId}`)
+                          navigate(scoped(`services/modules/${module.itemId}`))
                         }
                       >
                         <TableCell className="truncate font-medium">
