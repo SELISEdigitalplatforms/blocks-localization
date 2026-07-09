@@ -1236,7 +1236,12 @@ export function LanguageTable() {
               )}
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
-                  <Skeleton className="h-12 w-full rounded" />
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Skeleton className="h-8 w-[150px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[180px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[140px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[160px] rounded border-dashed" />
+                  </div>
                 ) : (
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}

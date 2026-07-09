@@ -130,7 +130,7 @@ export function ModuleTable() {
           try {
             const response = await userLookupService.getUserById({
               id: userId,
-              projectKey: tenantId,
+              organizationId: tenantId,
             });
             if (response?.data) {
               map[userId] = {
