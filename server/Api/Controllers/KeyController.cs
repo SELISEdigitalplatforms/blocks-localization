@@ -284,7 +284,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing key ID, project key, and translation parameters.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::translatekey")]
         public async Task<IActionResult> TranslateKey(TranslateBlocksLanguageKeyRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());;
@@ -310,7 +310,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing key IDs, project key, and translation parameters.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::translatekeys")]
         public async Task<IActionResult> TranslateKeys(TranslateBlocksLanguageKeysRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
