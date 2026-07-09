@@ -37,7 +37,7 @@ namespace BlocksTemplate.Api.Controllers
         
 
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
         [Authorize]
         public async Task<ApiResponse> Save(Language language)
         {
@@ -69,7 +69,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
         [Authorize]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
@@ -97,7 +97,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to set as default.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
         [Authorize]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
