@@ -1078,6 +1078,7 @@ export function LanguageTable() {
                     dialogTitle="Import Keys"
                     data={[]}
                     projectKey={tenantId}
+                    onClose={() => setIsImportDialogOpen(false)}
                   />
                 </Dialog>
                 <Dialog
