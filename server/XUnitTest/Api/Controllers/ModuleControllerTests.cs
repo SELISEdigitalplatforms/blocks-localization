@@ -108,7 +108,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedModules);
 
             // Act
-            var result = await _controller.Gets();
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().NotBeNull();
@@ -126,7 +126,7 @@ namespace XUnitTest
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
-            var result = await _controller.Gets();
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().BeEmpty();
@@ -143,7 +143,7 @@ namespace XUnitTest
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            Func<Task> act = async () => await _controller.Gets();
+            Func<Task> act = async () => await _controller.Gets("test");
 
             // Assert
             await act.Should().ThrowAsync<Exception>();
@@ -160,7 +160,7 @@ namespace XUnitTest
         [Fact]
         public async Task Gets_WithNullQuery_ThrowsNullReferenceException()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets());
+            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets("test"));
         }
     }
 }
