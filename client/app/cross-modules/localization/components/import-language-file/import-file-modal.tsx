@@ -788,6 +788,7 @@ interface IImportFilesModalProps {
   dialogTitle: string;
   data: [];
   projectKey: string;
+  onClose?: () => void;
 }
 
 type TemplateFormat = "xlsx" | "csv" | "json";
@@ -801,6 +802,7 @@ const TEMPLATE_URLS: Record<TemplateFormat, string> = {
 export default function ImportCommunicationsModal({
   dialogTitle,
   projectKey,
+  onClose,
 }: IImportFilesModalProps) {
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
@@ -975,6 +977,7 @@ export default function ImportCommunicationsModal({
       setFiles(null);
 
       showSuccessToast({ description: "Files uploaded successfully" });
+      onClose?.();
     } catch (error) {
       showErrorToast({ errors: getUploadToastErrors(error) });
     } finally {

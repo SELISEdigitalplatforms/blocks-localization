@@ -33,8 +33,8 @@ import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-m
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
+import { useUserOrganizationId } from "@blocks-localization/hooks/use-user-lookup";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -101,7 +101,7 @@ export function ModuleTable() {
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
   // TODO: Enable delete module feature — restore this state when backend is ready
   // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const organizationId = useUserOrganizationId();
 
   // Extract unique createdBy user IDs from modules
   const uniqueCreatedByIds = useMemo(() => {
@@ -116,9 +116,9 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
+    queryKey: ["module-users", organizationId, uniqueCreatedByIds.sort()],
     queryFn: async () => {
-      if (uniqueCreatedByIds.length === 0) return {};
+      if (uniqueCreatedByIds.length === 0 || !organizationId) return {};
 
       const map: Record<
         string,
@@ -130,7 +130,7 @@ export function ModuleTable() {
           try {
             const response = await userLookupService.getUserById({
               id: userId,
-              organizationId: tenantId,
+              organizationId: organizationId || "",
             });
             if (response?.data) {
               map[userId] = {
@@ -148,7 +148,7 @@ export function ModuleTable() {
 
       return map;
     },
-    enabled: !!tenantId && uniqueCreatedByIds.length > 0,
+    enabled: !!organizationId && uniqueCreatedByIds.length > 0,
     staleTime: Infinity,
   });
 
@@ -319,7 +319,7 @@ export function ModuleTable() {
               setIsNewModuleDialogOpen(false);
               refetch().then(() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["module-users", tenantId],
+                  queryKey: ["module-users", organizationId],
                 });
               });
             }}
