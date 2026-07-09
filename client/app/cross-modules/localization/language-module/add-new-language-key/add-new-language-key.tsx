@@ -130,7 +130,7 @@ function AddNewLanguageKey() {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Set breadcrumb title synchronously
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] =
+  BREADCRUMB_CUSTOM_TITLES["/:itemId/services/language/translations/new-key"] =
     "New Key";
   const form = useForm<FormValues>({
     defaultValues: {
