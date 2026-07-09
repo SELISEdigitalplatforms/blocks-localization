@@ -14,9 +14,15 @@ const useRoutePathSegments = () => {
   });
 
   // Apply custom titles with pattern matching for dynamic segments
-  const filteredBreadcrumbs = breadcrumbs.filter(
-    (breadcrumb) => !BREADCRUMB_SKIP_PATHS.includes(breadcrumb.href)
-  );
+  const filteredBreadcrumbs = breadcrumbs.filter((breadcrumb) => {
+    // Exact match first
+    if (BREADCRUMB_SKIP_PATHS.includes(breadcrumb.href)) return false;
+    // Pattern match for skip paths (handles /:itemId patterns)
+    for (const skipPath of BREADCRUMB_SKIP_PATHS) {
+      if (matchDynamicPath(skipPath, breadcrumb.href)) return false;
+    }
+    return true;
+  });
 
   return filteredBreadcrumbs.map((breadcrumb) => {
     // Direct match first
