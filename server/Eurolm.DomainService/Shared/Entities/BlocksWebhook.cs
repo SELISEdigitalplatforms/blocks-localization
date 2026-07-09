@@ -4,7 +4,7 @@ namespace Eurolm.DomainService.Shared.Entities
     using MongoDB.Bson.Serialization.Attributes;
 
     [BsonIgnoreExtraElements]
-    public class BlocksWebhook : IProjectKey
+    public class BlocksWebhook 
     {
         [BsonId]
         public string ItemId { get; set; } = Guid.NewGuid().ToString();
@@ -14,7 +14,6 @@ namespace Eurolm.DomainService.Shared.Entities
         public required string ContentType { get; set; }
         public required BlocksWebhookSecret BlocksWebhookSecret { get; set; }
         public bool IsDisabled { get; set; }
-        public required string ProjectKey { get; set; }
     }
 
     public class BlocksWebhookSecret

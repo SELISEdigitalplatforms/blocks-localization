@@ -49,7 +49,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
     try {
       const payload = {
         ...data,
-        projectKey: tenantId,
       };
       const res = await mutateAsync(payload);
       onClose();

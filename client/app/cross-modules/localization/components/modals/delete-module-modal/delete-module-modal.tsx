@@ -63,7 +63,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({
     try {
       const payload = {
         itemId: module.itemId,
-        projectKey: tenantId,
         ...(deleteMode === "move" && { targetModuleId }),
       };
       const res = await mutateAsync(payload);

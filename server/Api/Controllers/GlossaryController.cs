@@ -42,7 +42,7 @@ namespace Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Get([FromQuery] string itemId, [FromQuery] string projectKey)
+        public async Task<IActionResult> Get([FromQuery] string itemId)
         {
             if (string.IsNullOrWhiteSpace(itemId))
                 return BadRequest(new BaseMutationResponse

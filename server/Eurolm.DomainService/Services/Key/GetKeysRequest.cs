@@ -2,7 +2,7 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class GetKeysRequest : IProjectKey
+    public class GetKeysRequest 
     {
         public int PageSize { get; set; }
         public int PageNumber { get; set; }
@@ -14,7 +14,6 @@ namespace Eurolm.DomainService.Services
         public DateRange? CreateDateRange { get; set; }
         public string? SortProperty { get; set; }
         public bool IsDescending { get; set; }
-        public string? ProjectKey { get; set; }
         public ResourceSearchFilter[]? ResourceSearchFilters { get; set; }
         public DateRange? LastUpdateDateRange { get; set; }
         public string? GlossaryId { get; set; }
