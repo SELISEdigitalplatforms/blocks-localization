@@ -308,6 +308,17 @@ namespace Eurolm.DomainService.Repositories
                 .Project(project)
                 .FirstOrDefaultAsync();
         }
+        public async Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(request.projectKey);
+            var project = Builders<BsonDocument>.Projection.As<UilmFile>();
+            var filter = Builders<BsonDocument>.Filter.Eq("Language", request.Language) & Builders<BsonDocument>.Filter.Eq("ModuleName", request.ModuleName);
+
+            return await dataBase.GetCollection<BsonDocument>("UilmFiles")
+                .Find(filter)
+                .Project(project)
+                .FirstOrDefaultAsync();
+        }
 
         public async Task DeleteAsync(string itemId)
         {

@@ -64,11 +64,11 @@ export interface IWebhookSecret {
 
 export interface IWebhookConfig {
   itemId?: string;
+  projectKey?: string;
   url: string;
   contentType: string;
   blocksWebhookSecret: IWebhookSecret;
   isDisabled: boolean;
-  projectKey: string;
 }
 
 export type TimelineEvents = {
@@ -114,7 +114,7 @@ export const translation = [
 export interface IImportFile {
   messageCoRelationId: string;
   fileId: string;
-  projectKey: string;
+  projectKey?: string;
 }
 
 export interface IModuleGets {
@@ -131,13 +131,13 @@ export interface IModuleGets {
 export interface IDeleteModuleRequest {
   itemId: string;
   targetModuleId?: string;
-  projectKey: string;
+  projectKey?: string;
 }
 
 export interface ITagGlossaryRequest {
   moduleId: string;
   glossaryIds: string[];
-  projectKey: string;
+  projectKey?: string;
 }
 
 export interface IKeyUilmExport {
@@ -149,7 +149,6 @@ export interface IKeyUilmExport {
   callerTenantId: string;
   startDate?: string;
   endDate?: string;
-  projectKey: string;
 }
 
 export interface IBaseMutationResponse {

@@ -94,14 +94,14 @@
             <param name="request">The request containing the list of item IDs to delete.</param>
             <returns>An <see cref="T:Microsoft.AspNetCore.Mvc.IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetUilmFile(Eurolm.DomainService.Services.GetUilmFileRequest)">
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GetCloudUilmFile(Eurolm.DomainService.Services.GetUilmFileRequest)">
             <summary>
             Returns a JSON UILM file for a specified module and language.
             </summary>
             <param name="request">The request containing the project key, module, and language information.</param>
             <returns>A JSON UILM file as a string.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GenerateUilmFile(Eurolm.DomainService.Services.GenerateUilmFilesRequest)">
+        <member name="M:BlocksTemplate.Api.Controllers.KeyController.GenerateUilmFile(Eurolm.DomainService.Services.GenerateUilmRequest)">
             <summary>
             Generates a UILM file for download. Must be called before calling /key/getuilmfile.
             </summary>
@@ -190,7 +190,7 @@
             <param name="language">The language object to be saved.</param>
             <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the success or failure of the operation.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.Gets(Eurolm.DomainService.Services.GetLanguagesRequest)">
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.GetCloudstLanguagesAsync">
             <summary>
             Retrieves all available languages.
             </summary>
@@ -228,7 +228,7 @@
             <param name="module">The module object to be saved.</param>
             <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the result of the save operation.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.Gets(Eurolm.DomainService.Services.GetModulesQuery)">
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.GetCloudsModulesAsync">
             <summary>
             Retrieves a list of all available modules.
             </summary>

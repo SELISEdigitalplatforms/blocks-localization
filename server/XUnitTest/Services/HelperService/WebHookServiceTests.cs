@@ -47,8 +47,7 @@ namespace XUnitTest
                 Url = "https://callback.test/webhook",
                 ContentType = "application/json",
                 BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" },
-                IsDisabled = true,
-                ProjectKey = "proj"
+                IsDisabled = true
             };
             _blocksWebhookRepository.Setup(r => r.GetAsync()).ReturnsAsync(webhook);
 
@@ -69,8 +68,7 @@ namespace XUnitTest
                 Url = "https://callback.test/webhook",
                 ContentType = "application/json",
                 BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" },
-                IsDisabled = false,
-                ProjectKey = "proj"
+                IsDisabled = false
             };
             _blocksWebhookRepository.Setup(r => r.GetAsync()).ReturnsAsync(webhook);
             _httpHelperServices
@@ -95,8 +93,7 @@ namespace XUnitTest
             {
                 Url = "https://callback.test/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" },
-                ProjectKey = "proj"
+                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" }
             };
 
             _blocksWebhookRepository.Setup(r => r.SaveAsync(webhook)).Returns(Task.CompletedTask);
@@ -118,8 +115,7 @@ namespace XUnitTest
             {
                 Url = "https://callback.test/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" },
-                ProjectKey = "proj"
+                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" }
             };
             var exception = new Exception("database unavailable");
 
@@ -146,7 +142,6 @@ namespace XUnitTest
                 ContentType = "application/json",
                 BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Signature", Secret = "secret" },
                 IsDisabled = false,
-                ProjectKey = "proj"
             };
             _blocksWebhookRepository.Setup(r => r.GetAsync()).ReturnsAsync(webhook);
             _httpHelperServices
