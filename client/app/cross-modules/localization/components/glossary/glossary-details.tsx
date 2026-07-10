@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import {
   Card,
   CardContent,
@@ -42,6 +43,7 @@ interface GlossaryDetailsProps {
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const { data: glossary, isLoading } = useGetGlossaryById(itemId);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
@@ -62,7 +64,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
-    BREADCRUMB_CUSTOM_TITLES[`/services/glossary/${itemId}`] = glossary.name;
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] =
+      glossary.name;
   }
 
   if (isLoading) {
@@ -70,6 +73,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       <div>
         <div className="hidden md:flex">
           <Skeleton className="h-6 w-32" />
+          <Skeleton className="ml-4 h-6 w-64" />
           <Skeleton className="ml-4 h-6 w-64" />
         </div>
         <div className="mt-5 flex items-center justify-between">
@@ -109,7 +113,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
 
       <div className="mt-5 flex items-center justify-between">
@@ -146,7 +150,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               glossaryName={glossary.name}
               onClose={() => {
                 setDeleteModalOpen(false);
-                navigate("/app/services/glossary");
+                navigate(scoped("services/glossary"));
               }}
             />
           </Dialog>
@@ -311,7 +315,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                           className="cursor-pointer font-normal text-medium-emphasis"
                           onClick={() =>
                             navigate(
-                              `/services/language/translations/${key.itemId}`,
+                              scoped(
+                                `services/language/translations/${key.itemId}`,
+                              ),
                             )
                           }
                         >

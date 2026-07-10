@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import {
   ColumnDef,
   Row,
@@ -311,6 +312,7 @@ export function LanguageTable() {
   }, [languageListData]);
 
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] =
@@ -564,9 +566,9 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      navigate(`/app/services/language/translations/${keyId}`);
+      navigate(scoped(`services/language/translations/${keyId}`));
     },
-    [navigate],
+    [navigate, scoped],
   );
 
   const onPageChangeHandler = (pageNumber: number) => {
@@ -1062,7 +1064,7 @@ export function LanguageTable() {
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() =>
-                        navigate("/app/services/language/export-history")
+                        navigate(scoped("services/language/export-history"))
                       }
                     >
                       <History className="mr-2 h-4 w-4" />
@@ -1078,6 +1080,7 @@ export function LanguageTable() {
                     dialogTitle="Import Keys"
                     data={[]}
                     projectKey={tenantId}
+                    onClose={() => setIsImportDialogOpen(false)}
                   />
                 </Dialog>
                 <Dialog
@@ -1102,7 +1105,7 @@ export function LanguageTable() {
                   variant="default"
                   className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
                   onClick={() =>
-                    navigate("/app/services/language/translations/new-key")
+                    navigate(scoped("services/language/translations/new-key"))
                   }
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />
@@ -1236,7 +1239,12 @@ export function LanguageTable() {
               )}
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
-                  <Skeleton className="h-12 w-full rounded" />
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Skeleton className="h-8 w-[150px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[180px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[140px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[160px] rounded border-dashed" />
+                  </div>
                 ) : (
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}

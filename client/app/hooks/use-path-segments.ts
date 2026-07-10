@@ -14,9 +14,15 @@ const useRoutePathSegments = () => {
   });
 
   // Apply custom titles with pattern matching for dynamic segments
-  const filteredBreadcrumbs = breadcrumbs.filter(
-    (breadcrumb) => !BREADCRUMB_SKIP_PATHS.includes(breadcrumb.href)
-  );
+  const filteredBreadcrumbs = breadcrumbs.filter((breadcrumb) => {
+    // Exact match first
+    if (BREADCRUMB_SKIP_PATHS.includes(breadcrumb.href)) return false;
+    // Pattern match for skip paths (handles /:itemId patterns)
+    for (const skipPath of BREADCRUMB_SKIP_PATHS) {
+      if (matchDynamicPath(skipPath, breadcrumb.href)) return false;
+    }
+    return true;
+  });
 
   return filteredBreadcrumbs.map((breadcrumb) => {
     // Direct match first
@@ -26,12 +32,29 @@ const useRoutePathSegments = () => {
         label: BREADCRUMB_CUSTOM_TITLES[breadcrumb.href] ?? breadcrumb.label,
       };
     }
-    // Pattern match: check if any pattern key matches this href
-    for (const [pattern, title] of Object.entries(BREADCRUMB_CUSTOM_TITLES)) {
-      if (pattern !== breadcrumb.href && matchDynamicPath(pattern, breadcrumb.href)) {
-        return { ...breadcrumb, label: title ?? breadcrumb.label };
-      }
+
+    const matchedPattern = Object.entries(BREADCRUMB_CUSTOM_TITLES)
+      .filter(
+        ([pattern]) =>
+          pattern !== breadcrumb.href &&
+          matchDynamicPath(pattern, breadcrumb.href),
+      )
+      .sort(([patternA], [patternB]) => {
+        const dynamicCountA = countDynamicSegments(patternA);
+        const dynamicCountB = countDynamicSegments(patternB);
+
+        if (dynamicCountA !== dynamicCountB) {
+          return dynamicCountA - dynamicCountB;
+        }
+
+        return patternB.length - patternA.length;
+      })[0];
+
+    if (matchedPattern) {
+      const [, title] = matchedPattern;
+      return { ...breadcrumb, label: title ?? breadcrumb.label };
     }
+
     return breadcrumb;
   });
 };
@@ -45,11 +68,12 @@ const matchDynamicPath = (pattern: string, actual: string): boolean => {
   return patternParts.every((part, i) => {
     // Support :paramName placeholders in pattern (e.g., :keyId, :itemId)
     if (part.startsWith(":")) return true;
-    // UUID/itemId pattern: alphanumeric with dashes (min 5 chars to avoid false positives)
-    if (/^[a-zA-Z0-9-]{5,}$/.test(actualParts[i])) return true;
     return part === actualParts[i];
   });
 };
+
+const countDynamicSegments = (path: string): number =>
+  path.split("/").filter((part) => part.startsWith(":")).length;
 
 const formateLabel = (label: string): string => {
   const words = label.split("-");
