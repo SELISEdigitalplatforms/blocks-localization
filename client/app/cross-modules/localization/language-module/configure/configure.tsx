@@ -124,7 +124,12 @@ function Configure() {
       secret: "",
       isDisabled: false,
     },
+    resetOptions: {
+      keepDirtyValues: false,
+    },
   });
+
+  const isWebhookFormDirty = webhookForm.formState.isDirty;
 
   useEffect(() => {
     if (webhookData) {
@@ -554,7 +559,7 @@ function Configure() {
                   size="sm"
                   variant="default"
                   className="h-10 bg-primary text-sm text-primary-foreground"
-                  disabled={isSaveWebhookPending}
+                  disabled={isSaveWebhookPending || !isWebhookFormDirty}
                 >
                   Save Webhook
                 </Button>

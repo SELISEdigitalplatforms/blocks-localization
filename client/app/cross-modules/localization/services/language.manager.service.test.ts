@@ -389,14 +389,12 @@ describe("LanguageManagerService", () => {
       await expect(
         service.deleteLanguageModule({
           itemId: "mod-1",
-          projectKey,
         }),
       ).resolves.toBe(response);
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
       expect(calledUrl).toContain(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?`);
       expect(calledUrl).toContain("itemId=mod-1");
-      expect(calledUrl).toContain(`projectKey=${projectKey}`);
       expect(calledUrl).not.toContain("targetModuleId");
     });
 
@@ -409,7 +407,6 @@ describe("LanguageManagerService", () => {
       await service.deleteLanguageModule({
         itemId: "mod-1",
         targetModuleId: "mod-2",
-        projectKey,
       });
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
@@ -459,16 +456,16 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguageKey ───────────────────────────────────────────────────
   describe("deleteLanguageKey", () => {
-    it("should DELETE with itemId and projectKey query params", async () => {
+    it("should DELETE with itemId query param", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
       await expect(
-        service.deleteLanguageKey({ itemId: "key-1", projectKey }),
+        service.deleteLanguageKey({ itemId: "key-1" }),
       ).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1&projectKey=${projectKey}`,
+        `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1`,
       );
     });
   });
@@ -514,19 +511,18 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguage ──────────────────────────────────────────────────────
   describe("deleteLanguage", () => {
-    it("should DELETE with languageName and projectKey query params", async () => {
+    it("should DELETE with languageName only", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
       await expect(
         service.deleteLanguage({
           languageName: "English",
-          projectKey,
         }),
       ).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_ENDPOINTS.DELETE}?languageName=English&projectKey=${projectKey}`,
+        `${LANGUAGE_ENDPOINTS.DELETE}?languageName=English`,
       );
     });
   });

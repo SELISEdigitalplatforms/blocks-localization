@@ -82,7 +82,7 @@ const KeyDetails = () => {
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
     BREADCRUMB_CUSTOM_TITLES[
-      `/services/language/translations/${keyDetails.itemId}`
+      `/app/:itemId/services/language/translations/${keyDetails.itemId}`
     ] = keyDetails.keyName;
   }
 
@@ -241,7 +241,7 @@ const KeyDetails = () => {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
       <h1 className="mt-5 text-2xl font-semibold">{keyDetails.keyName}</h1>
       <Tabs defaultValue={tabId} className="mt-5">
