@@ -25,8 +25,8 @@ import {
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
+import { useUserOrganizationId } from "@blocks-localization/hooks/use-user-lookup";
 import {
   useGetLanguageModules,
   useGetModuleGlossaries,
@@ -241,7 +241,7 @@ export function ModuleDetails() {
   const { data: modules, isLoading: isModulesLoading } =
     useGetLanguageModules();
   const module = modules?.find((m) => m.itemId === moduleId);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const organizationId = useUserOrganizationId();
 
   // Extract unique user IDs from createdBy and lastUpdatedBy
   const uniqueUserIds = useMemo(() => {
@@ -253,9 +253,9 @@ export function ModuleDetails() {
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", tenantId, uniqueUserIds.sort()],
+    queryKey: ["module-detail-users", organizationId, uniqueUserIds.sort()],
     queryFn: async () => {
-      if (uniqueUserIds.length === 0) return {};
+      if (uniqueUserIds.length === 0 || !organizationId) return {};
 
       const map: Record<
         string,
@@ -266,7 +266,7 @@ export function ModuleDetails() {
         try {
           const response = await userLookupService.getUserById({
             id: userId,
-            projectKey: tenantId,
+            organizationId: organizationId || "",
           });
           if (response?.data) {
             map[userId] = {
@@ -284,12 +284,12 @@ export function ModuleDetails() {
       await Promise.all(promises);
       return map;
     },
-    enabled: !!tenantId && uniqueUserIds.length > 0,
+    enabled: !!organizationId && uniqueUserIds.length > 0,
     refetchOnMount: true,
   });
 
   if (module?.moduleName) {
-    BREADCRUMB_CUSTOM_TITLES[`/services/modules/${module.itemId}`] =
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] =
       module.moduleName;
   }
 
@@ -325,7 +325,7 @@ export function ModuleDetails() {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
       <div className="mt-5">
         <ModuleDetailsContent
