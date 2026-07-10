@@ -95,7 +95,7 @@ export const ExportHistory: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageBreadcrumb breadcrumbIndex={2} />
+      <PageBreadcrumb breadcrumbIndex={3} />
 
       <div className="flex items-center gap-3">
         <Button

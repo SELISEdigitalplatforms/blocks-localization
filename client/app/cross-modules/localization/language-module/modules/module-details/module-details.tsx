@@ -325,7 +325,7 @@ export function ModuleDetails() {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb breadcrumbIndex={3} />
       </div>
       <div className="mt-5">
         <ModuleDetailsContent
