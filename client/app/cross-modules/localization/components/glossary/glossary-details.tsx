@@ -74,6 +74,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <div className="hidden md:flex">
           <Skeleton className="h-6 w-32" />
           <Skeleton className="ml-4 h-6 w-64" />
+          <Skeleton className="ml-4 h-6 w-64" />
         </div>
         <div className="mt-5 flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
@@ -112,7 +113,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb breadcrumbIndex={3} />
       </div>
 
       <div className="mt-5 flex items-center justify-between">
