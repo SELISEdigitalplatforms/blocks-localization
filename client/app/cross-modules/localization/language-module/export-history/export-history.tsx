@@ -20,9 +20,6 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { flushSync } from "react-dom";
-import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
-
-BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language"] = "Language";
 
 export const ExportHistory: React.FC = () => {
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
@@ -95,7 +92,7 @@ export const ExportHistory: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageBreadcrumb breadcrumbIndex={3} />
+      <PageBreadcrumb />
 
       <div className="flex items-center gap-3">
         <Button

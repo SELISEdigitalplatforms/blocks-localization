@@ -241,7 +241,7 @@ const KeyDetails = () => {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
       <h1 className="mt-5 text-2xl font-semibold">{keyDetails.keyName}</h1>
       <Tabs defaultValue={tabId} className="mt-5">

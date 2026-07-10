@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
                     element: <LocalizationGlossaryPage />,
                   },
                   {
-                    path: "services/glossary/:itemId",
+                    path: "services/glossary/:glossaryId",
                     element: <LocalizationGlossaryDetailPage />,
                   },
                 ],
