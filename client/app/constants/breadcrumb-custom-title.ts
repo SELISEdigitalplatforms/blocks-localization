@@ -29,6 +29,10 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
   "/app/:itemId/services/modules": {
     title: "Language module",
   },
+  "/app/:itemId/services/modules/:moduleId": {
+    title: "Module",
+    dynamic: true,
+  },
   "/app/:itemId/services/language/translations": {
     skip: true,
   },
@@ -42,7 +46,7 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
   "/app/:itemId/services/glossary": {
     title: "Glossaries",
   },
-  "/app/:itemId/services/glossary/:itemId": {
+  "/app/:itemId/services/glossary/:glossaryId": {
     title: "Glossary",
     dynamic: true,
   },
