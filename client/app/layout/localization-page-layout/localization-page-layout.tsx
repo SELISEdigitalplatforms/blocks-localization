@@ -87,10 +87,10 @@ export function LocalizationGlossaryPage() {
 }
 
 export function LocalizationGlossaryDetailPage() {
-  const { itemId } = useParams<{ itemId: string }>();
+  const { glossaryId } = useParams<{ glossaryId: string }>();
   return (
     <LocalizationPageLayout>
-      <GlossaryDetails itemId={itemId ?? ""} />
+      <GlossaryDetails itemId={glossaryId ?? ""} />
     </LocalizationPageLayout>
   );
 }

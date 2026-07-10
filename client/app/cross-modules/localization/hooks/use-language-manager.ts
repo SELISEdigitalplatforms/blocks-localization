@@ -2,6 +2,7 @@ import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
+  IDeleteModuleRequest,
   ILanguageConfig,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
@@ -135,18 +136,10 @@ export const useSaveLanguageModule = () => {
 
 export const useDeleteLanguageModule = () => {
   const queryClient = useQueryClient();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-module", "delete"],
-    mutationFn: (
-      payload: Parameters<
-        typeof languageManagerService.deleteLanguageModule
-      >[0],
-    ) =>
-      languageManagerService.deleteLanguageModule({
-        ...payload,
-        projectKey: payload.projectKey ?? tenantId,
-      }),
+    mutationFn: (payload: IDeleteModuleRequest) =>
+      languageManagerService.deleteLanguageModule(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
@@ -308,16 +301,10 @@ export const useSaveLanguage = () => {
 
 export const useDeleteLanguageKey = () => {
   const queryClient = useQueryClient();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-key", "delete"],
-    mutationFn: (
-      payload: Parameters<typeof languageManagerService.deleteLanguageKey>[0],
-    ) =>
-      languageManagerService.deleteLanguageKey({
-        ...payload,
-        projectKey: payload.projectKey ?? tenantId,
-      }),
+    mutationFn: (payload: { itemId: string }) =>
+      languageManagerService.deleteLanguageKey(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.all,
@@ -366,13 +353,8 @@ export const useDeleteLanguage = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useMutation({
     mutationKey: ["language-config", "delete"],
-    mutationFn: (
-      payload: Parameters<typeof languageManagerService.deleteLanguage>[0],
-    ) =>
-      languageManagerService.deleteLanguage({
-        ...payload,
-        projectKey: payload.projectKey ?? tenantId,
-      }),
+    mutationFn: (payload: { languageName: string }) =>
+      languageManagerService.deleteLanguage(payload),
     onSuccess: (_response, variables) => {
       queryClient.setQueryData<ILanguageConfig[]>(
         localizationQueryKeys.languages.list(tenantId),

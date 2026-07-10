@@ -8,8 +8,8 @@ import {
   ProfilePage,
 } from "@seliseblocks/blocks-kit/pages";
 import {
-  ProjectOverviewLayout,
-  DashboardLayout,
+  ProjectOverviewRoute,
+  DashboardRoute,
   ConsoleLayout,
 } from "@seliseblocks/blocks-kit/layouts";
 import {
@@ -33,7 +33,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
 
 const redirectPaths: Record<string, string> = {
-  "/app/services/language/translations/*": "/app/services/language",
+  "/app/:itemId/services/language/translations/*":
+    "/app/:itemId/services/language",
 };
 
 export const router = createBrowserRouter([
@@ -87,16 +88,18 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "project-overview",
+                path: "project/:tenantGroupId",
                 element: (
-                  <ProjectOverviewLayout
+                  <ProjectOverviewRoute
                     redirectPaths={redirectPaths}
                     navigationMenus={navigationMenus}
-                  >
-                    <Outlet />
-                  </ProjectOverviewLayout>
+                  />
                 ),
                 children: [
+                  {
+                    index: true,
+                    element: <Navigate to="environments" replace />,
+                  },
                   {
                     path: "environments",
                     element: <EnvironmentsPage />,
@@ -104,15 +107,15 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: ":itemId",
                 element: (
-                  <DashboardLayout
+                  <DashboardRoute
                     redirectPaths={redirectPaths}
                     navigationMenus={navigationMenus}
-                  >
-                    <Outlet />
-                  </DashboardLayout>
+                  />
                 ),
                 children: [
+                  { index: true, element: <Navigate to="dashboard" replace /> },
                   { path: "dashboard", element: <DashboardOverview /> },
                   {
                     path: "services/language",
@@ -151,7 +154,7 @@ export const router = createBrowserRouter([
                     element: <LocalizationGlossaryPage />,
                   },
                   {
-                    path: "services/glossary/:itemId",
+                    path: "services/glossary/:glossaryId",
                     element: <LocalizationGlossaryDetailPage />,
                   },
                 ],
