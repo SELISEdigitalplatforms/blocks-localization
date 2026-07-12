@@ -6,7 +6,7 @@ import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";
 import { BlocksAppLayout } from "@seliseblocks/blocks-kit";
-import { ThemeProvider } from "@/hooks/use-theme";
+import { ThemeProvider } from "@seliseblocks/blocks-kit/providers";
 import { TooltipProvider } from "./components/ui-kits/tooltip/tooltip";
 import "./styles/globals.css";
 
