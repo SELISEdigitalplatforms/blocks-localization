@@ -3,12 +3,10 @@ import {
   CallbackPage,
   ConsolePage,
   DashboardOverview,
-  EnvironmentsPage,
   LoginPage,
   ProfilePage,
 } from "@seliseblocks/blocks-kit/pages";
 import {
-  ProjectOverviewRoute,
   DashboardRoute,
   ConsoleLayout,
 } from "@seliseblocks/blocks-kit/layouts";
@@ -85,25 +83,6 @@ export const router = createBrowserRouter([
                 children: [
                   { path: "profile", element: <ProfilePage /> },
                   { path: "console", element: <ConsolePage /> },
-                ],
-              },
-              {
-                path: "project/:tenantGroupId",
-                element: (
-                  <ProjectOverviewRoute
-                    redirectPaths={redirectPaths}
-                    navigationMenus={navigationMenus}
-                  />
-                ),
-                children: [
-                  {
-                    index: true,
-                    element: <Navigate to="environments" replace />,
-                  },
-                  {
-                    path: "environments",
-                    element: <EnvironmentsPage />,
-                  },
                 ],
               },
               {
