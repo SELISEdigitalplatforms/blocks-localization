@@ -26,7 +26,6 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
-import { useUserOrganizationId } from "@blocks-localization/hooks/use-user-lookup";
 import {
   useGetLanguageModules,
   useGetModuleGlossaries,
@@ -241,7 +240,6 @@ export function ModuleDetails() {
   const { data: modules, isLoading: isModulesLoading } =
     useGetLanguageModules();
   const module = modules?.find((m) => m.itemId === moduleId);
-  const organizationId = useUserOrganizationId();
 
   // Extract unique user IDs from createdBy and lastUpdatedBy
   const uniqueUserIds = useMemo(() => {
@@ -253,38 +251,11 @@ export function ModuleDetails() {
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", organizationId, uniqueUserIds.sort()],
+    queryKey: ["module-detail-users", [...uniqueUserIds].sort()],
     queryFn: async () => {
-      if (uniqueUserIds.length === 0 || !organizationId) return {};
-
-      const map: Record<
-        string,
-        { firstName: string; lastName: string; email: string; userName: string }
-      > = {};
-
-      const promises = uniqueUserIds.map(async (userId) => {
-        try {
-          const response = await userLookupService.getUserById({
-            id: userId,
-            organizationId: organizationId || "",
-          });
-          if (response?.data) {
-            map[userId] = {
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              email: response.data.email,
-              userName: response.data.userName,
-            };
-          }
-        } catch (error) {
-          console.error(`Failed to fetch user ${userId}:`, error);
-        }
-      });
-
-      await Promise.all(promises);
-      return map;
+      return userLookupService.getUsersByIds(uniqueUserIds);
     },
-    enabled: !!organizationId && uniqueUserIds.length > 0,
+    enabled: uniqueUserIds.length > 0,
     refetchOnMount: true,
   });
 
