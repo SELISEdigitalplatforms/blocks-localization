@@ -34,7 +34,7 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<GetLanguageFileGenerationHistoryResponse> GetPaginatedAsync(GetLanguageFileGenerationHistoryRequest request)
         {
-            var dataBase = _dbContextProvider.GetDatabase(request.ProjectKey);
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext().TenantId??"");
             var collection = dataBase.GetCollection<LanguageFileGenerationHistory>(_collectionName);
 
             var filter = Builders<LanguageFileGenerationHistory>.Filter.Empty;
@@ -42,6 +42,7 @@ namespace Eurolm.DomainService.Repositories
 
             var findTask = collection
                 .Find(filter)
+                .Sort(sort)
                 .Sort(sort)
                 .Skip(request.PageNumber * request.PageSize)
                 .Limit(request.PageSize)

@@ -82,8 +82,7 @@ namespace XUnitTest
                 Resources = new[]
                 {
                     new Resource { Culture = "en-US", Value = "Welcome" }
-                },
-                ProjectKey = "test-project"
+                }
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -162,7 +161,7 @@ namespace XUnitTest
             var request = new TranslateAllRequest
             {
                 MessageCoRelationId = "corr",
-                ProjectKey = "proj",
+         
                 DefaultLanguage = "en-US"
             };
 
@@ -196,7 +195,7 @@ namespace XUnitTest
 
             var request = new UilmExportRequest
             {
-                ProjectKey = "proj",
+                
                 AppIds = new List<string> { "module" },
                 Languages = new List<string> { "en-US" },
                 OutputType = OutputType.Json
@@ -216,8 +215,7 @@ namespace XUnitTest
             var key = new KeyModel
             {
                 KeyName = "",
-                ModuleId = "auth-module",
-                ProjectKey = "test-project"
+                ModuleId = "auth-module"
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -246,8 +244,7 @@ namespace XUnitTest
                 Resources = new[]
                 {
                     new Resource { Culture = "en-US", Value = "Welcome Updated" }
-                },
-                ProjectKey = "test-project"
+                }
             };
 
             var existingKey = new BlocksLanguageKey
@@ -293,8 +290,7 @@ namespace XUnitTest
                 Resources = new[]
                 {
                     new Resource { Culture = "en-US", Value = "Welcome" }
-                },
-                ProjectKey = "test-project"
+                }
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -332,15 +328,13 @@ namespace XUnitTest
                 {
                     KeyName = "key1",
                     ModuleId = "module1",
-                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value1" } },
-                    ProjectKey = "test-project"
+                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value1" } }
                 },
                 new KeyModel
                 {
                     KeyName = "key2",
                     ModuleId = "module1",
-                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value2" } },
-                    ProjectKey = "test-project"
+                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value2" } }
                 }
             };
 
@@ -391,14 +385,12 @@ namespace XUnitTest
                 {
                     KeyName = "valid-key",
                     ModuleId = "module1",
-                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value" } },
-                    ProjectKey = "test-project"
+                    Resources = new[] { new Resource { Culture = "en-US", Value = "Value" } }
                 },
                 new KeyModel
                 {
                     KeyName = "",
-                    ModuleId = "module1",
-                    ProjectKey = "test-project"
+                    ModuleId = "module1"
                 }
             };
 
@@ -524,7 +516,7 @@ namespace XUnitTest
         public async Task GetKeysAsync_ReturnsQueryResponse()
         {
             // Arrange
-            var request = new GetKeysRequest { ProjectKey = "test-project" };
+            var request = new GetKeysRequest {  };
             var response = new GetKeysQueryResponse
             {
                 Keys = new List<Key>(),
@@ -548,7 +540,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetKeysRequest
             {
-                ProjectKey = "test-project",
+                
                 ResourceSearchFilters = new[]
                 {
                     new ResourceSearchFilter { Culture = "en", SearchText = "hello" },
@@ -592,7 +584,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetKeysRequest
             {
-                ProjectKey = "test-project",
+                
                 KeySearchText = "GREET",
                 ResourceSearchFilters = new[]
                 {
@@ -627,7 +619,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetKeysRequest
             {
-                ProjectKey = "test-project",
+                
                 ResourceSearchFilters = null
             };
             var response = new GetKeysQueryResponse
@@ -654,7 +646,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetKeysRequest
             {
-                ProjectKey = "test-project",
+               
                 LastUpdateDateRange = new DateRange
                 {
                     StartDate = new DateTime(2025, 1, 1),
@@ -687,7 +679,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetKeysRequest
             {
-                ProjectKey = "test-project",
+                
                 CreateDateRange = new DateRange
                 {
                     StartDate = new DateTime(2024, 1, 1),
@@ -721,7 +713,7 @@ namespace XUnitTest
         public async Task GetKeyTimelineAsync_ReturnsTimelineResponse()
         {
             // Arrange
-            var request = new GetKeyTimelineRequest { ProjectKey = "test-project" };
+            var request = new GetKeyTimelineRequest { };
             var response = new GetKeyTimelineQueryResponse
             {
                 Timelines = new List<KeyTimeline>(),
@@ -747,7 +739,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+                
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -807,7 +799,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "empty-project",
+                
                 PageNumber = 0,
                 PageSize = 10
             };
@@ -837,7 +829,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+               
                 PageNumber = 2,
                 PageSize = 5
             };
@@ -877,7 +869,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "test-project",
+               
                 PageNumber = 0,
                 PageSize = 25
             };
@@ -920,7 +912,7 @@ namespace XUnitTest
             // Arrange
             var request = new GetLanguageFileGenerationHistoryRequest
             {
-                ProjectKey = "validation-project",
+                
                 PageNumber = 1,
                 PageSize = 15
             };
@@ -941,8 +933,8 @@ namespace XUnitTest
             result.Should().NotBeNull();
             _languageFileGenerationHistoryRepositoryMock.Verify(
                 r => r.GetPaginatedAsync(It.Is<GetLanguageFileGenerationHistoryRequest>(
-                    req => req.ProjectKey == request.ProjectKey 
-                        && req.PageNumber == request.PageNumber 
+                    req => 
+                         req.PageNumber == request.PageNumber 
                         && req.PageSize == request.PageSize
                 )), 
                 Times.Once
@@ -968,7 +960,7 @@ namespace XUnitTest
                 .Setup(r => r.GetKeysByKeyNamesAsync(keyNames, null))
                 .ReturnsAsync(expectedKeys);
 
-            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames, ProjectKey = "test-project" };
+            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames };
 
             // Act
             var result = await _service.GetKeysByKeyNamesAsync(request);
@@ -986,7 +978,7 @@ namespace XUnitTest
         public async Task GetKeysByKeyNamesAsync_EmptyKeyNames_ReturnsErrorMessage()
         {
             // Arrange
-            var request = new GetKeysByKeyNamesRequest { KeyNames = Array.Empty<string>(), ProjectKey = "test-project" };
+            var request = new GetKeysByKeyNamesRequest { KeyNames = Array.Empty<string>() };
 
             // Act
             var result = await _service.GetKeysByKeyNamesAsync(request);
@@ -1002,7 +994,7 @@ namespace XUnitTest
         public async Task GetKeysByKeyNamesAsync_NullKeyNames_ReturnsErrorMessage()
         {
             // Arrange
-            var request = new GetKeysByKeyNamesRequest { KeyNames = null, ProjectKey = "test-project" };
+            var request = new GetKeysByKeyNamesRequest { KeyNames = null };
 
             // Act
             var result = await _service.GetKeysByKeyNamesAsync(request);
@@ -1023,7 +1015,7 @@ namespace XUnitTest
                 .Setup(r => r.GetKeysByKeyNamesAsync(keyNames, null))
                 .ThrowsAsync(new Exception("Database connection failed"));
 
-            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames, ProjectKey = "test-project" };
+            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames };
 
             // Act
             var result = await _service.GetKeysByKeyNamesAsync(request);
@@ -1048,7 +1040,7 @@ namespace XUnitTest
                 .Setup(r => r.GetKeysByKeyNamesAsync(keyNames, "auth-module"))
                 .ReturnsAsync(expectedKeys);
 
-            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames, ModuleId = "auth-module", ProjectKey = "test-project" };
+            var request = new GetKeysByKeyNamesRequest { KeyNames = keyNames, ModuleId = "auth-module" };
 
             // Act
             var result = await _service.GetKeysByKeyNamesAsync(request);

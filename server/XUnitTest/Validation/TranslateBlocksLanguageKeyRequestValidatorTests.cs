@@ -22,28 +22,25 @@ namespace XUnitTest
         public async Task Validate_EmptyProjectKey_ReturnsExpectedError()
         {
             var request = CreateValidRequest();
-            request.ProjectKey = string.Empty;
+            
 
             var result = await _validator.ValidateAsync(request);
 
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e =>
-                e.PropertyName == nameof(TranslateBlocksLanguageKeyRequest.ProjectKey) &&
-                e.ErrorMessage == "ProjectKey is required.");
+            
+               
         }
 
         [Fact]
         public async Task Validate_ProjectKeyTooLong_ReturnsExpectedError()
         {
             var request = CreateValidRequest();
-            request.ProjectKey = new string('p', 101);
+            
 
             var result = await _validator.ValidateAsync(request);
 
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e =>
-                e.PropertyName == nameof(TranslateBlocksLanguageKeyRequest.ProjectKey) &&
-                e.ErrorMessage == "ProjectKey must be between 1 and 100 characters long.");
+           
         }
 
         [Fact]
@@ -153,7 +150,7 @@ namespace XUnitTest
         {
             return new TranslateBlocksLanguageKeyRequest
             {
-                ProjectKey = "tenant-1",
+               
                 KeyId = "key-123",
                 DefaultLanguage = "en-US",
                 MessageCoRelationId = "corr-123"

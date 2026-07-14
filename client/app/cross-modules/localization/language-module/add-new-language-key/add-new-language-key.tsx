@@ -54,6 +54,7 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -116,6 +117,7 @@ function AddNewLanguageKey() {
   const { isLoading: isLanguageListLoading, data: languageListData } =
     useGetLanguages();
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] =
     React.useState(false);
   const [open, setOpen] = React.useState(false);
@@ -128,7 +130,7 @@ function AddNewLanguageKey() {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Set breadcrumb title synchronously
-  BREADCRUMB_CUSTOM_TITLES["/services/language/translations/new-key"] =
+  BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] =
     "New Key";
   const form = useForm<FormValues>({
     defaultValues: {
@@ -202,7 +204,6 @@ function AddNewLanguageKey() {
         resources: data.resources,
         routes: data.routes?.map((route) => route.value) || [],
         isPartiallyTranslated: true,
-        projectKey: tenantId,
         itemId: "",
         isNewKey: true,
         context: data.context || "",
@@ -215,7 +216,7 @@ function AddNewLanguageKey() {
           description: "Language key added",
         });
         form.reset();
-        navigate("/app/services/language", { replace: true });
+        navigate(scoped("services/language"), { replace: true });
       } else {
         toast({
           variant: "destructive",
@@ -266,8 +267,6 @@ function AddNewLanguageKey() {
           destinationLanguage: destinationLanguage || "English",
           currentLanguage: "English",
           temperature: 0.1,
-          // elementDetailContext: "",
-          projectKey: tenantId,
         };
         const res = await autoTranslateAsync(payload);
         if (res.content) {

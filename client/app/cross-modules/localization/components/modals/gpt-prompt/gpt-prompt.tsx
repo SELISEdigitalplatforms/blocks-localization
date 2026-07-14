@@ -68,7 +68,6 @@ const GptPrompt: React.FC<{
             : [],
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        projectKey: tenantId,
         context: text,
       };
       const res = await mutateAsync(payload);

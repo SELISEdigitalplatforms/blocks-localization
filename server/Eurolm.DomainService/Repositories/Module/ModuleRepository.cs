@@ -34,6 +34,14 @@ namespace Eurolm.DomainService.Repositories
             var filter = Builders<BlocksLanguageModule>.Filter.Eq(mc => mc.ItemId, id);
             return await collection.Find(filter).FirstOrDefaultAsync();
         }
+        public async Task<BlocksLanguageModule> GetByIdAsync(string projectKey,string id)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(projectKey);
+            var collection = dataBase.GetCollection<BlocksLanguageModule>(_collectionName);
+
+            var filter = Builders<BlocksLanguageModule>.Filter.Eq(mc => mc.ItemId, id);
+            return await collection.Find(filter).FirstOrDefaultAsync();
+        }
 
         public async Task<List<BlocksLanguageModule>> GetAllAsync()
         {

@@ -9,17 +9,13 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { toast } from "@/hooks/use-toast";
 
 const AutoTranslate: React.FC = () => {
   const { isPending, mutateAsync } = useTranslateAll();
-  const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
   const handleTranslate = async () => {
-    if (!projectKey) return;
     const payload = {
-      projectKey: projectKey,
       messageCoRelationId: "",
       defaultLanguage: "en-US",
     };

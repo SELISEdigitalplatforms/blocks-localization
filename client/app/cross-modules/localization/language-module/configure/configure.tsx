@@ -72,6 +72,20 @@ const LoadingSkelton = () => (
   </div>
 );
 
+const getDeleteLanguageErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (Array.isArray(error) && error.length > 0) return error.join(", ");
+  if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    const messages = Object.values(error).filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
+    if (messages.length > 0) return messages.join(", ");
+    return JSON.stringify(error);
+  }
+  return "Failed to delete language. Please try again.";
+};
+
 const webhookSchema = z.object({
   url: z.string().url({ message: "Must be a valid URL" }),
   contentType: z.string().min(1, { message: "Content type is required" }),
@@ -110,7 +124,12 @@ function Configure() {
       secret: "",
       isDisabled: false,
     },
+    resetOptions: {
+      keepDirtyValues: false,
+    },
   });
+
+  const isWebhookFormDirty = webhookForm.formState.isDirty;
 
   useEffect(() => {
     if (webhookData) {
@@ -127,6 +146,7 @@ function Configure() {
   const onWebhookSubmit = async (values: WebhookFormValues) => {
     try {
       const payload: IWebhookConfig = {
+        projectKey: tenantId,
         url: values.url,
         contentType: values.contentType,
         blocksWebhookSecret: {
@@ -134,7 +154,6 @@ function Configure() {
           secret: values.secret,
         },
         isDisabled: values.isDisabled,
-        projectKey: tenantId,
       };
       const res = await saveWebhookAsync(payload);
       if (res?.success) {
@@ -186,7 +205,6 @@ function Configure() {
   const onConfirmDelete = async () => {
     try {
       const payload = {
-        projectKey: tenantId,
         languageName: selectedLanguageData ?? "",
       };
       const res = await deleteAsync(payload);
@@ -201,14 +219,14 @@ function Configure() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: getDeleteLanguageErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getDeleteLanguageErrorMessage(error),
       });
     }
   };
@@ -216,7 +234,6 @@ function Configure() {
   const onConfirmMakeDefault = async () => {
     try {
       const payload = {
-        projectKey: tenantId,
         languageName: selectedLanguageData ?? "",
       };
       const res = await setDefaultAsync(payload);
@@ -542,7 +559,7 @@ function Configure() {
                   size="sm"
                   variant="default"
                   className="h-10 bg-primary text-sm text-primary-foreground"
-                  disabled={isSaveWebhookPending}
+                  disabled={isSaveWebhookPending || !isWebhookFormDirty}
                 >
                   Save Webhook
                 </Button>

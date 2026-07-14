@@ -12,6 +12,7 @@ import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 
 interface DeleteLanguageKeyProps {
   itemId: string;
@@ -23,6 +24,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const { isPending, mutateAsync } = useDeleteLanguageKey();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
@@ -36,7 +38,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
       return;
     }
     try {
-      const res = await mutateAsync({ itemId: itemId, ProjectKey: tenantId });
+      const res = await mutateAsync({ itemId: itemId });
 
       if (res?.isSuccess) {
         toast({
@@ -44,7 +46,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
           title: "Success",
           description: "Key deleted",
         });
-        navigate("/app/services/language", { replace: true });
+        navigate(scoped("services/language"), { replace: true });
         onClose();
       } else {
         const rawErrors = res?.errors;

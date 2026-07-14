@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace Eurolm.DomainService.Services
 {
     [BsonIgnoreExtraElements]
-    public class Glossary : IProjectKey
+    public class Glossary 
     {
         [BsonId]
         public string? ItemId { get; set; }
@@ -17,6 +17,5 @@ namespace Eurolm.DomainService.Services
         public List<string>? ModuleIds { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime LastUpdateDate { get; set; }
-        public string? ProjectKey { get; set; }
     }
 }

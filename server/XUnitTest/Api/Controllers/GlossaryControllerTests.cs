@@ -40,8 +40,7 @@ namespace XUnitTest
             {
                 Name = "API",
                 Language = "en-US",
-                Type = "Acronym",
-                ProjectKey = "test-project"
+                Type = "Acronym"
             };
 
             var expectedResponse = new ApiResponse { Success = true };
@@ -71,8 +70,7 @@ namespace XUnitTest
             // Arrange
             var glossary = new Glossary
             {
-                Name = "Term",
-                ProjectKey = "test-project"
+                Name = "Term"
             };
 
             var expectedResponse = new ApiResponse { Success = true };
@@ -98,7 +96,7 @@ namespace XUnitTest
         public async Task Gets_WithValidRequest_ReturnsGlossaryList()
         {
             // Arrange
-            var request = new GetGlossariesRequest { ProjectKey = "project-1", PageNumber = 0, PageSize = 20 };
+            var request = new GetGlossariesRequest {  PageNumber = 0, PageSize = 20 };
             var expectedResponse = new GetGlossariesResponse
             {
                 Items = new List<Glossary>
@@ -126,7 +124,7 @@ namespace XUnitTest
         public async Task Gets_WithEmptyResult_ReturnsEmptyList()
         {
             // Arrange
-            var request = new GetGlossariesRequest { ProjectKey = "project-1" };
+            var request = new GetGlossariesRequest {  };
             var expectedResponse = new GetGlossariesResponse
             {
                 Items = new List<Glossary>(),
@@ -151,7 +149,6 @@ namespace XUnitTest
             // Arrange
             var request = new GetGlossariesRequest
             {
-                ProjectKey = "project-1",
                 SearchText = "API",
                 PageNumber = 0,
                 PageSize = 10
@@ -183,7 +180,7 @@ namespace XUnitTest
         public async Task Delete_WithValidItemId_ReturnsOk()
         {
             // Arrange
-            var request = new DeleteGlossaryRequest { ItemId = "glossary-1", ProjectKey = "project-1" };
+            var request = new DeleteGlossaryRequest { ItemId = "glossary-1" };
             var expectedResponse = new BaseMutationResponse { IsSuccess = true };
 
             _glossaryManagementServiceMock
@@ -201,7 +198,7 @@ namespace XUnitTest
         public async Task Delete_WithEmptyItemId_ReturnsBadRequest()
         {
             // Arrange
-            var request = new DeleteGlossaryRequest { ItemId = "", ProjectKey = "project-1" };
+            var request = new DeleteGlossaryRequest { ItemId = "" };
 
             // Act
             var result = await _controller.Delete(request);
@@ -214,7 +211,7 @@ namespace XUnitTest
         public async Task Delete_WithNonExistingItem_ReturnsBadRequest()
         {
             // Arrange
-            var request = new DeleteGlossaryRequest { ItemId = "non-existing", ProjectKey = "project-1" };
+            var request = new DeleteGlossaryRequest { ItemId = "non-existing" };
             var failureResponse = new BaseMutationResponse
             {
                 IsSuccess = false,

@@ -37,8 +37,7 @@ namespace BlocksTemplate.Api.Controllers
         
 
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
         public async Task<ApiResponse> Save(Language language)
         {
             if (language == null) BadRequest(new BaseMutationResponse());
@@ -51,10 +50,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Language"/> objects.</returns>
         
         [HttpGet]
-        public async Task<List<Language>> Gets([FromQuery] GetLanguagesRequest request)
+        [Authorize]
+        public async Task<List<Language>> GetCloudstLanguages()
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
             return await _languageManagementService.GetLanguagesAsync();
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<List<Language>> Gets([FromQuery] string projectKey)
+        {
+            return await _languageManagementService.GetLanguagesAsync(projectKey);
         }
 
         /// <summary>
@@ -63,8 +68,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
@@ -91,8 +95,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the language name to set as default.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());

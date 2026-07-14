@@ -407,7 +407,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                                       isPartiallyTranslated:
                                         keyDetails.isPartiallyTranslated ??
                                         false,
-                                      projectKey: tenantId,
                                     })
                                   }
                                 >

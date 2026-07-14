@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
 import {
   ColumnDef,
@@ -42,6 +43,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const GlossaryTable: React.FC = () => {
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const [pageNumber, setPageNumber] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState("");
@@ -311,7 +313,7 @@ const GlossaryTable: React.FC = () => {
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
                       onClick={() =>
-                        navigate(`/app/services/glossary/${row.original.itemId}`)
+                        navigate(scoped(`services/glossary/${row.original.itemId}`))
                       }
                     >
                       {row.getVisibleCells().map((cell) => (

@@ -26,7 +26,6 @@ import {
   useTagGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { IGlossary, IModuleGets } from "@blocks-localization/models/language";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 
@@ -34,6 +33,16 @@ interface TagGlossaryModalProps {
   module: IModuleGets;
   onClose: (open: boolean) => void;
 }
+
+const getTagGlossaryErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (Array.isArray(error) && error.length > 0) return error.join(", ");
+  if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    return JSON.stringify(error);
+  }
+  return "Failed to update glossaries. Please try again.";
+};
 
 const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
   module,
@@ -43,7 +52,6 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const { data: moduleGlossariesResponse } = useGetModuleGlossaries(
     module.itemId,
@@ -85,7 +93,6 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
       const res = await mutateAsync({
         moduleId: module.itemId,
         glossaryIds: selectedIds,
-        projectKey: tenantId,
       });
       if (res?.isSuccess) {
         toast({
@@ -105,7 +112,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getTagGlossaryErrorMessage(error),
       });
     }
   };
