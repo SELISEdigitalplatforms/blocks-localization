@@ -2,7 +2,7 @@ using Blocks.Genesis;
 
 namespace Eurolm.DomainService.Services
 {
-    public class SuggestLanguageRequest : IProjectKey
+    public class SuggestLanguageRequest 
     {
         public string? ElementType { get; set; }
         public string? ElementApplicationContext { get; set; }
@@ -15,6 +15,5 @@ namespace Eurolm.DomainService.Services
         public List<string>? GlossaryIds { get; set; }
         public string? ModuleId { get; set; }
         public string? DestinationLanguageCode { get; set; }
-        public string? ProjectKey { get; set; }
     }
 }

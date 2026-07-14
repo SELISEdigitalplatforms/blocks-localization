@@ -85,7 +85,6 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
         routes: filteredRoutes,
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        projectKey: tenantId,
         context: keyDetails.context,
       };
 
@@ -132,7 +131,6 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
         routes: keyDetails.routes,
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        projectKey: tenantId,
         context: keyDetails.context,
       };
 

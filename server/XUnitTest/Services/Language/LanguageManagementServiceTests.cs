@@ -39,7 +39,7 @@ namespace XUnitTest
                 LanguageName = "English",
                 LanguageCode = "en-US",
                 IsDefault = false,
-                ProjectKey = "test-project"
+                
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -69,7 +69,7 @@ namespace XUnitTest
             {
                 LanguageName = "",
                 LanguageCode = "invalid",
-                ProjectKey = "test-project"
+              
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -96,7 +96,7 @@ namespace XUnitTest
                 LanguageName = "English",
                 LanguageCode = "en-US",
                 IsDefault = true,
-                ProjectKey = "test-project"
+                
             };
 
             var existingLanguage = new BlocksLanguage
@@ -137,7 +137,7 @@ namespace XUnitTest
             {
                 LanguageName = "English",
                 LanguageCode = "en-US",
-                ProjectKey = "test-project"
+               
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -162,8 +162,8 @@ namespace XUnitTest
             // Arrange
             var languages = new List<Language>
             {
-                new LanguageModel { LanguageName = "English", LanguageCode = "en-US", ProjectKey = "test-project" },
-                new LanguageModel { LanguageName = "French", LanguageCode = "fr-FR", ProjectKey = "test-project" }
+                new LanguageModel { LanguageName = "English", LanguageCode = "en-US",  },
+                new LanguageModel { LanguageName = "French", LanguageCode = "fr-FR",  }
             };
 
             _languageRepositoryMock.Setup(r => r.GetAllLanguagesAsync())

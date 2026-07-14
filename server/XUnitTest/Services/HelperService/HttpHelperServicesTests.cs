@@ -134,8 +134,7 @@ namespace XUnitTest
             {
                 Url = "http://example.com/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Sig", Secret = "abc" },
-                ProjectKey = "test-project"
+                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "X-Sig", Secret = "abc" }
             };
 
             var result = await service.MakeHttpRequestForWebhook(new { ok = true }, webhook);
@@ -159,8 +158,7 @@ namespace XUnitTest
             {
                 Url = "http://example.com/webhook",
                 ContentType = "application/json",
-                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "key", Secret = "secret" },
-                ProjectKey = "test-project"
+                BlocksWebhookSecret = new BlocksWebhookSecret { HeaderKey = "key", Secret = "secret" }
             };
 
             var result = await service.MakeHttpRequestForWebhook(new { ok = true }, webhook);

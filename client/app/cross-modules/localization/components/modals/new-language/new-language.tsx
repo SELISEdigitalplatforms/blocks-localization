@@ -76,7 +76,6 @@ const NewLanguage: React.FC<NewLanguageProps> = ({
         languageName: langConfigureData.find(
           (lang) => lang.languageCode === data.languageCode,
         )?.languageName,
-        projectKey: tenantId,
       };
       const res = await mutateAsync(payload);
       onClose();

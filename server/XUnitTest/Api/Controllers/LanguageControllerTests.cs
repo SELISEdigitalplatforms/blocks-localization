@@ -71,7 +71,7 @@ namespace XUnitTest
         public async Task Gets_WithValidRequest_ReturnsLanguageList()
         {
             // Arrange
-            var request = new GetLanguagesRequest { ProjectKey = "project-1" };
+            var request = new GetLanguagesRequest {  };
             var expectedLanguages = new List<Language>
             {
                 new Language { LanguageName = "English", LanguageCode = "en" },
@@ -83,7 +83,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedLanguages);
 
             // Act
-            var result = await _controller.Gets(request);
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().NotBeNull();
@@ -94,14 +94,14 @@ namespace XUnitTest
         public async Task Gets_WithEmptyLanguageList_ReturnsEmpty()
         {
             // Arrange
-            var request = new GetLanguagesRequest { ProjectKey = "project-1" };
+            var request = new GetLanguagesRequest {  };
 
             _languageManagementServiceMock
                 .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language>());
 
             // Act
-            var result = await _controller.Gets(request);
+            var result = await _controller.Gets("test");
 
             // Assert
             result.Should().BeEmpty();
@@ -213,7 +213,7 @@ namespace XUnitTest
         [Fact]
         public async Task Gets_WithNullRequest_ThrowsNullReferenceException()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets(null));
+            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets("test"));
         }
 
         [Fact]

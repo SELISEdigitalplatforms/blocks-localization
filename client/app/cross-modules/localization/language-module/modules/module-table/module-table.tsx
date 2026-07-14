@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +34,6 @@ import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-m
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
@@ -91,6 +91,7 @@ const RowActionsCell = ({
 export function ModuleTable() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const {
     isLoading: isModulesLoading,
     data: modulesData,
@@ -101,7 +102,6 @@ export function ModuleTable() {
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
   // TODO: Enable delete module feature — restore this state when backend is ready
   // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Extract unique createdBy user IDs from modules
   const uniqueCreatedByIds = useMemo(() => {
@@ -116,39 +116,11 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", tenantId, uniqueCreatedByIds.sort()],
+    queryKey: ["module-users", [...uniqueCreatedByIds].sort()],
     queryFn: async () => {
-      if (uniqueCreatedByIds.length === 0) return {};
-
-      const map: Record<
-        string,
-        { firstName: string; lastName: string; email: string; userName: string }
-      > = {};
-
-      await Promise.all(
-        uniqueCreatedByIds.map(async (userId) => {
-          try {
-            const response = await userLookupService.getUserById({
-              id: userId,
-              projectKey: tenantId,
-            });
-            if (response?.data) {
-              map[userId] = {
-                firstName: response.data.firstName,
-                lastName: response.data.lastName,
-                email: response.data.email,
-                userName: response.data.userName,
-              };
-            }
-          } catch (error) {
-            console.error(`Failed to fetch user ${userId}:`, error);
-          }
-        }),
-      );
-
-      return map;
+      return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
-    enabled: !!tenantId && uniqueCreatedByIds.length > 0,
+    enabled: uniqueCreatedByIds.length > 0,
     staleTime: Infinity,
   });
 
@@ -271,7 +243,7 @@ export function ModuleTable() {
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/app/services/modules/${module.itemId}`)
+                          navigate(scoped(`services/modules/${module.itemId}`))
                         }
                       >
                         <TableCell className="truncate font-medium">
@@ -319,7 +291,7 @@ export function ModuleTable() {
               setIsNewModuleDialogOpen(false);
               refetch().then(() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["module-users", tenantId],
+                  queryKey: ["module-users"],
                 });
               });
             }}

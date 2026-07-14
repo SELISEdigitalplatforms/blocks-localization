@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
+import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import {
   ColumnDef,
   Row,
@@ -94,6 +95,16 @@ import ConfirmationModal from "@/components/confirmation-modal/confirmation-moda
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls } from "@/components/filter-toolbar";
+
+const getDeleteKeysErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (Array.isArray(error) && error.length > 0) return error.join(", ");
+  if (error && typeof error === "object" && Object.keys(error).length > 0) {
+    return JSON.stringify(error);
+  }
+  return "Failed to delete selected keys. Please try again.";
+};
 
 const KeyNameCell = memo(
   ({ keyName }: { keyName: string | null | undefined }) => {
@@ -301,6 +312,7 @@ export function LanguageTable() {
   }, [languageListData]);
 
   const navigate = useNavigate();
+  const scoped = useScopedPath();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] =
@@ -426,7 +438,6 @@ export function LanguageTable() {
 
     const payload = {
       keyId: selectedLanguageKeyId,
-      projectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
       defaultLanguage: defaultLanguageCode,
     };
@@ -472,7 +483,6 @@ export function LanguageTable() {
     }
     try {
       const payload = {
-        ProjectKey: tenantId,
         itemId: selectedLanguageKeyId,
       };
       const res = await deleteAsync(payload);
@@ -556,9 +566,9 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      navigate(`/app/services/language/translations/${keyId}`);
+      navigate(scoped(`services/language/translations/${keyId}`));
     },
-    [navigate],
+    [navigate, scoped],
   );
 
   const onPageChangeHandler = (pageNumber: number) => {
@@ -849,7 +859,6 @@ export function LanguageTable() {
 
     const payload = {
       itemIds: selectedKeys,
-      ProjectKey: tenantId,
     };
 
     try {
@@ -866,14 +875,14 @@ export function LanguageTable() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: getDeleteKeysErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getDeleteKeysErrorMessage(error),
       });
     }
   };
@@ -963,7 +972,7 @@ export function LanguageTable() {
 
   async function generateUilmFiles() {
     try {
-      const res = await mutateAsync({ guid: uuidv4(), projectKey: tenantId });
+      const res = await mutateAsync({ guid: uuidv4() });
 
       if (res?.isSuccess) {
         toast({
@@ -1055,7 +1064,7 @@ export function LanguageTable() {
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() =>
-                        navigate("/app/services/language/export-history")
+                        navigate(scoped("services/language/export-history"))
                       }
                     >
                       <History className="mr-2 h-4 w-4" />
@@ -1071,6 +1080,7 @@ export function LanguageTable() {
                     dialogTitle="Import Keys"
                     data={[]}
                     projectKey={tenantId}
+                    onClose={() => setIsImportDialogOpen(false)}
                   />
                 </Dialog>
                 <Dialog
@@ -1095,7 +1105,7 @@ export function LanguageTable() {
                   variant="default"
                   className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
                   onClick={() =>
-                    navigate("/app/services/language/translations/new-key")
+                    navigate(scoped("services/language/translations/new-key"))
                   }
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />
@@ -1229,7 +1239,12 @@ export function LanguageTable() {
               )}
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
-                  <Skeleton className="h-12 w-full rounded" />
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Skeleton className="h-8 w-[150px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[180px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[140px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[160px] rounded border-dashed" />
+                  </div>
                 ) : (
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}

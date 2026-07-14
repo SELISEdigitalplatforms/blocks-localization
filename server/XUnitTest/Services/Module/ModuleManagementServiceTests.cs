@@ -40,7 +40,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "authentication",
-                ProjectKey = "test-project"
+               
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -69,7 +69,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "",
-                ProjectKey = "test-project"
+                
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();
@@ -94,7 +94,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "authentication",
-                ProjectKey = "test-project"
+               
             };
 
             var existingModule = new BlocksLanguageModule
@@ -131,7 +131,7 @@ namespace XUnitTest
             var module = new SaveModuleRequest
             {
                 ModuleName = "authentication",
-                ProjectKey = "test-project"
+                
             };
 
             var validationResult = new FluentValidation.Results.ValidationResult();

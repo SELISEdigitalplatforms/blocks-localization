@@ -3,13 +3,11 @@ import {
   CallbackPage,
   ConsolePage,
   DashboardOverview,
-  EnvironmentsPage,
   LoginPage,
   ProfilePage,
 } from "@seliseblocks/blocks-kit/pages";
 import {
-  ProjectOverviewLayout,
-  DashboardLayout,
+  DashboardRoute,
   ConsoleLayout,
 } from "@seliseblocks/blocks-kit/layouts";
 import {
@@ -33,7 +31,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
 
 const redirectPaths: Record<string, string> = {
-  "/app/services/language/translations/*": "/app/services/language",
+  "/app/:itemId/services/language/translations/*":
+    "/app/:itemId/services/language",
 };
 
 export const router = createBrowserRouter([
@@ -72,6 +71,10 @@ export const router = createBrowserRouter([
             ),
             children: [
               {
+                index: true,
+                element: <Navigate to="console" replace />,
+              },
+              {
                 element: (
                   <ConsoleLayout>
                     <Outlet />
@@ -83,32 +86,15 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "project-overview",
+                path: ":itemId",
                 element: (
-                  <ProjectOverviewLayout
+                  <DashboardRoute
                     redirectPaths={redirectPaths}
                     navigationMenus={navigationMenus}
-                  >
-                    <Outlet />
-                  </ProjectOverviewLayout>
+                  />
                 ),
                 children: [
-                  {
-                    path: "environments",
-                    element: <EnvironmentsPage />,
-                  },
-                ],
-              },
-              {
-                element: (
-                  <DashboardLayout
-                    redirectPaths={redirectPaths}
-                    navigationMenus={navigationMenus}
-                  >
-                    <Outlet />
-                  </DashboardLayout>
-                ),
-                children: [
+                  { index: true, element: <Navigate to="dashboard" replace /> },
                   { path: "dashboard", element: <DashboardOverview /> },
                   {
                     path: "services/language",
@@ -147,7 +133,7 @@ export const router = createBrowserRouter([
                     element: <LocalizationGlossaryPage />,
                   },
                   {
-                    path: "services/glossary/:itemId",
+                    path: "services/glossary/:glossaryId",
                     element: <LocalizationGlossaryDetailPage />,
                   },
                 ],

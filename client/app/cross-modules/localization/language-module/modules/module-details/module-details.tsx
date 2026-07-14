@@ -25,7 +25,6 @@ import {
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import {
   useGetLanguageModules,
@@ -241,7 +240,6 @@ export function ModuleDetails() {
   const { data: modules, isLoading: isModulesLoading } =
     useGetLanguageModules();
   const module = modules?.find((m) => m.itemId === moduleId);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Extract unique user IDs from createdBy and lastUpdatedBy
   const uniqueUserIds = useMemo(() => {
@@ -253,43 +251,16 @@ export function ModuleDetails() {
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", tenantId, uniqueUserIds.sort()],
+    queryKey: ["module-detail-users", [...uniqueUserIds].sort()],
     queryFn: async () => {
-      if (uniqueUserIds.length === 0) return {};
-
-      const map: Record<
-        string,
-        { firstName: string; lastName: string; email: string; userName: string }
-      > = {};
-
-      const promises = uniqueUserIds.map(async (userId) => {
-        try {
-          const response = await userLookupService.getUserById({
-            id: userId,
-            projectKey: tenantId,
-          });
-          if (response?.data) {
-            map[userId] = {
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              email: response.data.email,
-              userName: response.data.userName,
-            };
-          }
-        } catch (error) {
-          console.error(`Failed to fetch user ${userId}:`, error);
-        }
-      });
-
-      await Promise.all(promises);
-      return map;
+      return userLookupService.getUsersByIds(uniqueUserIds);
     },
-    enabled: !!tenantId && uniqueUserIds.length > 0,
+    enabled: uniqueUserIds.length > 0,
     refetchOnMount: true,
   });
 
   if (module?.moduleName) {
-    BREADCRUMB_CUSTOM_TITLES[`/services/modules/${module.itemId}`] =
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] =
       module.moduleName;
   }
 
@@ -325,7 +296,7 @@ export function ModuleDetails() {
   return (
     <div>
       <div className="hidden md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
       <div className="mt-5">
         <ModuleDetailsContent

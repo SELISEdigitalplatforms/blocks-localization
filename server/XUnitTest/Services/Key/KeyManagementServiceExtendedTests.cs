@@ -543,7 +543,7 @@ namespace XUnitTest
             var request = new TranslateAllRequest
             {
                 MessageCoRelationId = "cor-1",
-                ProjectKey = "proj",
+           
                 DefaultLanguage = "en-US"
             };
 
@@ -567,7 +567,7 @@ namespace XUnitTest
             var request = new UilmExportRequest
             {
                 MessageCoRelationId = "cor-2",
-                ProjectKey = "proj",
+                
                 AppIds = new List<string> { "app1" },
                 CallerTenantId = "t1",
                 StartDate = DateTime.UtcNow.AddDays(-1),
@@ -2180,7 +2180,7 @@ namespace XUnitTest
 
             await _service.SendTranslateBlocksLanguageKeyEvent(new TranslateBlocksLanguageKeyRequest
             {
-                MessageCoRelationId = "msg1", ProjectKey = "proj", DefaultLanguage = "en", KeyId = "k1"
+                MessageCoRelationId = "msg1",  DefaultLanguage = "en", KeyId = "k1"
             });
 
             _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeyEvent>>()), Times.Once);
@@ -2194,7 +2194,7 @@ namespace XUnitTest
 
             await _service.SendUilmImportEvent(new UilmImportRequest
             {
-                FileId = "f1", MessageCoRelationId = "msg1", ProjectKey = "proj"
+                FileId = "f1", MessageCoRelationId = "msg1"
             });
 
             _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<UilmImportEvent>>()), Times.Once);

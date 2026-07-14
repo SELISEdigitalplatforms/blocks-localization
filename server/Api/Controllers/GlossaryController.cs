@@ -25,7 +25,7 @@ namespace Api.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::glossary::save")]
         public async Task<ApiResponse> Save(Glossary glossary)
         {
             if (glossary == null) BadRequest(new BaseMutationResponse());
@@ -42,7 +42,7 @@ namespace Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Get([FromQuery] string itemId, [FromQuery] string projectKey)
+        public async Task<IActionResult> Get([FromQuery] string itemId)
         {
             if (string.IsNullOrWhiteSpace(itemId))
                 return BadRequest(new BaseMutationResponse
@@ -63,7 +63,7 @@ namespace Api.Controllers
         }
 
         [HttpGet]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::glossary::get-suggested-glossaries")]
+        //[ProtectedEndPoint($"{Constants.ServiceName}::glossary::get-suggested-glossaries")]
         [Authorize]
         public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
         {
@@ -72,7 +72,7 @@ namespace Api.Controllers
         }
 
         [HttpDelete]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::glossary::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteGlossaryRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());

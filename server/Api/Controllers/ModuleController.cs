@@ -39,8 +39,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="ApiResponse"/> indicating the result of the save operation.</returns>
 
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
         {
             if (module == null) BadRequest(new BaseMutationResponse());
@@ -54,10 +53,16 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>A list of <see cref="Module"/> objects.</returns>
 
         [HttpGet]
-        public async Task<List<BlocksLanguageModule>> Gets([FromQuery] GetModulesQuery query)
+        [Authorize]
+        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
             return await _moduleManagementService.GetModulesAsync();
+        }
+        [HttpGet]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
+        {
+            return await _moduleManagementService.GetModulesAsync(projectKey);
         }
 
         //[HttpDelete]
@@ -70,8 +75,7 @@ namespace BlocksTemplate.Api.Controllers
         //}
 
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
         public async Task<BaseMutationResponse> TagGlossary([FromBody] TagGlossaryRequest request)
         {
             if (request == null) return new BaseMutationResponse { IsSuccess = false };

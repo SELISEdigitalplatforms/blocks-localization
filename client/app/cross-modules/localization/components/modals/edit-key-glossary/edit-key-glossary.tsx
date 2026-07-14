@@ -95,7 +95,6 @@ function EditKeyGlossary({
         routes: keyDetails.routes ?? [],
         glossaryIds: selectedIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        projectKey: tenantId,
         context: keyDetails.context,
       };
 

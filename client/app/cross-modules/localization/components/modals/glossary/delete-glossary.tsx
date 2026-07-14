@@ -28,7 +28,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
 
   const deleteGlossary = async () => {
     try {
-      const res = await mutateAsync({ itemId, projectKey: tenantId });
+      const res = await mutateAsync({ itemId });
 
       if (res?.isSuccess) {
         toast({

@@ -144,7 +144,6 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
       const payload = {
         ...data,
         ...(isEditMode && glossary?.itemId ? { itemId: glossary.itemId } : {}),
-        projectKey: tenantId,
       };
       const res = await mutateAsync(payload);
 
