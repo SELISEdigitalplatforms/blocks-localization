@@ -59,10 +59,16 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullKey_ThrowsException()
+        public async Task Save_WithNullKey_DelegatesToServiceWithoutThrowing()
         {
-            // Act & Assert
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Save(null));
+            // The controller calls BadRequest(...) but discards it and still delegates the null.
+            var response = new ApiResponse { Success = false };
+            _keyManagementServiceMock.Setup(x => x.SaveKeyAsync(null)).ReturnsAsync(response);
+
+            var result = await _controller.Save(null);
+
+            result.Should().BeSameAs(response);
+            _keyManagementServiceMock.Verify(x => x.SaveKeyAsync(null), Times.Once);
         }
 
         #endregion
@@ -593,29 +599,16 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task TranslateAll_WithNullProjectKey_ReturnsBadRequest()
+        public async Task TranslateAll_WithNonNullRequest_ReturnsOk()
         {
-            // Arrange
-            var request = new TranslateAllRequest {  };
-
-            // Act
-            var result = await _controller.TranslateAll(request);
-
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-        }
-
-        [Fact]
-        public async Task TranslateAll_WithEmptyProjectKey_ReturnsBadRequest()
-        {
-            // Arrange
+            // Project key now comes from the ambient context, not the request, so any
+            // non-null request is accepted and the translate-all event is published.
             var request = new TranslateAllRequest { };
 
-            // Act
             var result = await _controller.TranslateAll(request);
 
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
+            result.Should().BeOfType<OkObjectResult>();
+            _keyManagementServiceMock.Verify(x => x.SendTranslateAllEvent(request), Times.Once);
         }
 
         #endregion
@@ -701,16 +694,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task UilmImport_WithNullProjectKey_ReturnsBadRequest()
+        public async Task UilmImport_WithNonNullRequest_ReturnsOk()
         {
-            // Arrange
-            var request = new UilmImportRequest {  FileId = "file-123" };
+            var request = new UilmImportRequest { FileId = "file-123" };
 
-            // Act
             var result = await _controller.UilmImport(request);
 
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
+            result.Should().BeOfType<OkObjectResult>();
+            _keyManagementServiceMock.Verify(x => x.SendUilmImportEvent(request), Times.Once);
         }
 
         #endregion
@@ -731,16 +722,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task UilmExport_WithNullProjectKey_ReturnsBadRequest()
+        public async Task UilmExport_WithNonNullRequest_ReturnsOk()
         {
-            // Arrange
-            var request = new UilmExportRequest {  };
+            var request = new UilmExportRequest { };
 
-            // Act
             var result = await _controller.UilmExport(request);
 
-            // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
+            result.Should().BeOfType<OkObjectResult>();
+            _keyManagementServiceMock.Verify(x => x.SendUilmExportEvent(request), Times.Once);
         }
 
         #endregion
@@ -915,15 +904,20 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetTimeline_WithNullQuery_ThrowsNullReferenceException()
+        public async Task GetTimeline_WithNullQuery_ReturnsServiceResult()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.GetTimeline(null));
+            // BadRequest(...) is discarded; the (null) query is passed to the service which is mocked to return null.
+            var result = await _controller.GetTimeline(null);
+
+            result.Should().BeNull();
         }
 
         [Fact]
-        public async Task Get_WithNullRequest_ThrowsNullReferenceException()
+        public async Task Get_WithNullRequest_ReturnsNull()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Get(null));
+            var result = await _controller.Get(null);
+
+            result.Should().BeNull();
         }
 
         [Fact]
@@ -942,19 +936,28 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetUilmFile_WithNullProjectKey_Returns401()
+        public async Task GetCloudUilmFile_WhenNoContent_WritesEmptyBodyWithOkStatus()
         {
             var request = new GetUilmFileRequest { };
             var context = new DefaultHttpContext();
+            context.Response.Body = new MemoryStream();
             _controller.ControllerContext.HttpContext = context;
+
+            _keyManagementServiceMock.Setup(x => x.GetUilmFile(request)).ReturnsAsync((string)null);
+
             await _controller.GetCloudUilmFile(request);
-            context.Response.StatusCode.Should().Be(401);
+
+            context.Response.StatusCode.Should().Be(200);
+            context.Response.ContentType.Should().Be("application/json");
         }
 
         [Fact]
-        public async Task TranslateAll_WithNullRequest_ThrowsNullReferenceException()
+        public async Task TranslateAll_WithNullRequest_ReturnsOk()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.TranslateAll(null));
+            // BadRequest(...) is discarded; the null request flows to the service and Ok is returned.
+            var result = await _controller.TranslateAll(null);
+
+            result.Should().BeOfType<OkObjectResult>();
         }
 
         [Fact]
@@ -982,11 +985,11 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task UilmImport_WithEmptyProjectKey_ReturnsBadRequest()
+        public async Task UilmImport_WithFileId_ReturnsOk()
         {
             var request = new UilmImportRequest { FileId = "f1" };
             var result = await _controller.UilmImport(request);
-            result.Should().BeOfType<BadRequestObjectResult>();
+            result.Should().BeOfType<OkObjectResult>();
         }
 
         [Fact]
@@ -997,11 +1000,11 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task UilmExport_WithEmptyProjectKey_ReturnsBadRequest()
+        public async Task UilmExport_WithNonNullRequest_ReturnsOkResult()
         {
             var request = new UilmExportRequest {};
             var result = await _controller.UilmExport(request);
-            result.Should().BeOfType<BadRequestObjectResult>();
+            result.Should().BeOfType<OkObjectResult>();
         }
 
         [Fact]
@@ -1026,5 +1029,124 @@ namespace XUnitTest
             result.Should().BeOfType<BadRequestObjectResult>();
         }
 
+        [Fact]
+        public async Task GetLocalizationTimeline_ReturnsServiceResult()
+        {
+            var query = new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = 10 };
+            var response = new GetLocalizationTimelineResponse { TotalCount = 3 };
+            _keyManagementServiceMock.Setup(x => x.GetLocalizationTimelineAsync(query)).ReturnsAsync(response);
+
+            var result = await _controller.GetLocalizationTimeline(query);
+
+            result.Should().BeSameAs(response);
+        }
+
+        [Fact]
+        public async Task GetTimelineByOperationId_ReturnsServiceResult()
+        {
+            var query = new GetTimelineByOperationIdRequest { OperationId = "op1", PageNumber = 1, PageSize = 10 };
+            var response = new GetKeyTimelineQueryResponse { TotalCount = 2 };
+            _keyManagementServiceMock.Setup(x => x.GetTimelineByOperationIdAsync(query)).ReturnsAsync(response);
+
+            var result = await _controller.GetTimelineByOperationId(query);
+
+            result.Should().BeSameAs(response);
+        }
+
+        [Fact]
+        public async Task GetUilmFile_ClientOverload_WritesJsonContent()
+        {
+            var request = new GetUilmFileRequestForClient { Language = "en", ModuleName = "auth", projectKey = "p1" };
+            var context = new DefaultHttpContext();
+            context.Response.Body = new MemoryStream();
+            _controller.ControllerContext.HttpContext = context;
+            _keyManagementServiceMock.Setup(x => x.GetUilmFile(request)).ReturnsAsync("{\"k\":1}");
+
+            await _controller.GetUilmFile(request);
+
+            context.Response.ContentType.Should().Be("application/json");
+            context.Response.Body.Seek(0, SeekOrigin.Begin);
+            new StreamReader(context.Response.Body).ReadToEnd().Should().Be("{\"k\":1}");
+        }
+
+        [Fact]
+        public async Task TranslateKeys_WithValidRequest_ReturnsOk()
+        {
+            var request = new TranslateBlocksLanguageKeysRequest
+            {
+                KeyIds = new List<string> { "k1" },
+                MessageCoRelationId = "c1",
+                ProjectKey = "p1",
+                DefaultLanguage = "en"
+            };
+            _validatorsMock.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+
+            var result = await _controller.TranslateKeys(request);
+
+            result.Should().BeOfType<OkObjectResult>();
+            _keyManagementServiceMock.Verify(x => x.SendTranslateBlocksLanguageKeysEvent(request), Times.Once);
+        }
+
+        [Fact]
+        public async Task TranslateKeys_WithNullRequest_ReturnsBadRequest()
+        {
+            var result = await _controller.TranslateKeys(null);
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task TranslateKeys_WithInvalidRequest_ReturnsBadRequest()
+        {
+            var request = new TranslateBlocksLanguageKeysRequest
+            {
+                KeyIds = new List<string>(),
+                MessageCoRelationId = "",
+                ProjectKey = "p1",
+                DefaultLanguage = "en"
+            };
+            _validatorsMock.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult(new[]
+                {
+                    new FluentValidation.Results.ValidationFailure("KeyIds", "required")
+                }));
+
+            var result = await _controller.TranslateKeys(request);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _keyManagementServiceMock.Verify(x => x.SendTranslateBlocksLanguageKeysEvent(It.IsAny<TranslateBlocksLanguageKeysRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WithValidItemIds_ReturnsOk()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } };
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ReturnsAsync(new BaseMutationResponse { IsSuccess = true });
+
+            var result = await _controller.DeleteKeys(request);
+
+            result.Should().BeOfType<OkObjectResult>();
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WithEmptyItemIds_ReturnsBadRequest()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string>() };
+            var result = await _controller.DeleteKeys(request);
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WhenServiceFails_ReturnsBadRequest()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1" } };
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ReturnsAsync(new BaseMutationResponse { IsSuccess = false });
+
+            var result = await _controller.DeleteKeys(request);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
     }
 }
