@@ -534,5 +534,124 @@ namespace XUnitTest.Repositories
         }
 
         #endregion
+
+        #region GetLocalizationTimelineAsync
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_GroupsByOperationId_WithCountsAndUserNames()
+        {
+            var now = DateTime.UtcNow;
+            var timelines = new List<KeyTimeline>
+            {
+                // op1 has two entries -> AffectedKeysCount 2, CurrentData null
+                new KeyTimeline { ItemId = "t1", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now },
+                new KeyTimeline { ItemId = "t2", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now },
+                // op2 has one entry -> CurrentData populated
+                new KeyTimeline { ItemId = "t3", OperationId = "op2", LogFrom = "KeyController.Save", UserId = "u2", CreateDate = now.AddMinutes(-5),
+                    CurrentData = new BlocksLanguageKey { ItemId = "k1", KeyName = "welcome", ModuleId = "m1" } }
+            };
+            MockCursorHelper.SetupFindAsync(_collection, timelines);
+            _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
+            MockCursorHelper.SetupFindAsync(_usersCollection, new List<User>
+            {
+                new User { ItemId = "u1", FirstName = "Jane", LastName = "Doe" },
+                new User { ItemId = "u2", Email = "u2@test.com" }
+            });
+
+            var request = new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = 10, IsDescending = true };
+            var result = await _repo.GetLocalizationTimelineAsync(request);
+
+            result.TotalCount.Should().Be(2);
+            result.Operations.Should().HaveCount(2);
+            var op1 = result.Operations.First(o => o.OperationId == "op1");
+            op1.AffectedKeysCount.Should().Be(2);
+            op1.CurrentData.Should().BeNull();
+            op1.UserName.Should().Be("Jane Doe");
+            var op2 = result.Operations.First(o => o.OperationId == "op2");
+            op2.AffectedKeysCount.Should().Be(1);
+            op2.CurrentData.Should().NotBeNull();
+            op2.UserName.Should().Be("u2@test.com");
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_AscendingWithFilters_ReturnsOperations()
+        {
+            var now = DateTime.UtcNow;
+            var timelines = new List<KeyTimeline>
+            {
+                new KeyTimeline { ItemId = "t1", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now.AddMinutes(-1) },
+                new KeyTimeline { ItemId = "t2", OperationId = "op2", LogFrom = "TranslateAll", UserId = null, CreateDate = now }
+            };
+            MockCursorHelper.SetupFindAsync(_collection, timelines);
+            _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
+            MockCursorHelper.SetupFindAsyncEmpty(_usersCollection);
+
+            var request = new GetLocalizationTimelineRequest
+            {
+                PageNumber = 1,
+                PageSize = 10,
+                IsDescending = false,
+                UserId = "u1",
+                LogFrom = "TranslateAll",
+                LogFromValues = new List<string> { "TranslateAll" },
+                ExcludeLogFromValues = new List<string> { "Rollback" },
+                CreateDateRange = new DateRange { StartDate = now.AddDays(-1), EndDate = now.AddDays(1) }
+            };
+            var result = await _repo.GetLocalizationTimelineAsync(request);
+
+            result.Operations.Should().HaveCount(2);
+            // Ascending order by CreateDate.
+            result.Operations[0].CreateDate.Should().BeOnOrBefore(result.Operations[1].CreateDate);
+            // A null UserId op falls back to "Unknown".
+            result.Operations.Should().Contain(o => o.UserName == "Unknown");
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_EmptyResult_ReturnsEmpty()
+        {
+            MockCursorHelper.SetupFindAsyncEmpty(_collection);
+
+            var request = new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = 10 };
+            var result = await _repo.GetLocalizationTimelineAsync(request);
+
+            result.TotalCount.Should().Be(0);
+            result.Operations.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region GetLatestPublishTimelinesAsync
+
+        [Fact]
+        public async Task GetLatestPublishTimelinesAsync_EmptyEntityIds_ReturnsEmptyWithoutQuerying()
+        {
+            var result = await _repo.GetLatestPublishTimelinesAsync(new List<string>(), "pub-tenant");
+
+            result.Should().BeEmpty();
+            _dbContextProvider.Verify(x => x.GetDatabase("pub-tenant"), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLatestPublishTimelinesAsync_GroupsByEntityId_ReturnsLatestPerEntity()
+        {
+            var now = DateTime.UtcNow;
+            // Descending sort means the first per group is the latest.
+            var timelines = new List<KeyTimeline>
+            {
+                new KeyTimeline { ItemId = "t1", EntityId = "e1", LogFrom = LogFromConstants.Published, CreateDate = now },
+                new KeyTimeline { ItemId = "t2", EntityId = "e1", LogFrom = LogFromConstants.Published, CreateDate = now.AddMinutes(-10) },
+                new KeyTimeline { ItemId = "t3", EntityId = "e2", LogFrom = LogFromConstants.Published, CreateDate = now.AddMinutes(-1) }
+            };
+            MockCursorHelper.SetupFindAsync(_collection, timelines);
+
+            var result = await _repo.GetLatestPublishTimelinesAsync(new List<string> { "e1", "e2" }, "pub-tenant");
+
+            result.Should().HaveCount(2);
+            result["e1"].ItemId.Should().Be("t1");
+            result["e2"].ItemId.Should().Be("t3");
+            _dbContextProvider.Verify(x => x.GetDatabase("pub-tenant"), Times.Once);
+        }
+
+        #endregion
     }
 }

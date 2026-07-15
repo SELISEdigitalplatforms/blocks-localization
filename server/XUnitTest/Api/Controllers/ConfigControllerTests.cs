@@ -159,9 +159,54 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task SaveWebHook_WithNullWebhook_ThrowsNullReferenceException()
+        public async Task GetCloudWebHook_ReturnsWebhookFromService()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.SaveWebHook(null));
+            var webhook = new BlocksWebhook { Url = "https://example.com/webhook", ContentType = "application/json", BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "s", HeaderKey = "h" } };
+            _webHookServiceMock.Setup(x => x.GetWebhookAsync()).ReturnsAsync(webhook);
+
+            var result = await _controller.GetCloudWebHook();
+
+            result.Should().BeSameAs(webhook);
+        }
+
+        [Fact]
+        public async Task GetWebHook_WithEmptyProjectKey_ReturnsBadRequest()
+        {
+            var result = await _controller.GetWebHook("");
+
+            result.Result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetWebHook_WithNullProjectKey_ReturnsBadRequest()
+        {
+            var result = await _controller.GetWebHook(null);
+
+            result.Result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetWebHook_WithValidProjectKey_ReturnsOkWithWebhook()
+        {
+            var webhook = new BlocksWebhook { Url = "https://example.com/webhook", ContentType = "application/json", BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "s", HeaderKey = "h" } };
+            _webHookServiceMock.Setup(x => x.GetWebhookAsync("proj-1")).ReturnsAsync(webhook);
+
+            var result = await _controller.GetWebHook("proj-1");
+
+            result.Result.Should().BeOfType<OkObjectResult>();
+            ((OkObjectResult)result.Result!).Value.Should().BeSameAs(webhook);
+        }
+
+        [Fact]
+        public async Task SaveWebHook_WithNullWebhook_DelegatesToServiceWithoutThrowing()
+        {
+            var response = new ApiResponse { Success = false };
+            _webHookServiceMock.Setup(x => x.SaveWebhookAsync(null)).ReturnsAsync(response);
+
+            var result = await _controller.SaveWebHook(null);
+
+            result.Should().BeSameAs(response);
+            _webHookServiceMock.Verify(x => x.SaveWebhookAsync(null), Times.Once);
         }
     }
 }
