@@ -30,7 +30,8 @@ namespace XUnitTest
                 Constants.UilmImportExportQueue,
                 Constants.EnvironmentDataMigrationQueue,
                 Constants.TranslateAllKeysQueue,
-                Constants.TranslateBlocksLanguageKeyQueue
+                Constants.TranslateBlocksLanguageKeyQueue,
+                Constants.TranslateBlocksLanguageKeysQueue
             });
             serviceBusConfig.Topics.Should().BeEmpty();
         }
@@ -42,7 +43,7 @@ namespace XUnitTest
 
             config.Should().NotBeNull();
             config.RabbitMqConfiguration.Should().NotBeNull();
-            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(5);
+            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(6);
         }
 
         [Fact]

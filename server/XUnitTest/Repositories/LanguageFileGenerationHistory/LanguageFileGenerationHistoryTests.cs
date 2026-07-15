@@ -18,6 +18,7 @@ namespace XUnitTest
 
         public LanguageFileGenerationHistoryRepositoryTests()
         {
+            XUnitTest.Shared.TestBlocksContext.Set("my-project");
             _dbContextProvider = new Mock<IDbContextProvider>();
             _database = new Mock<IMongoDatabase>();
             _collection = new Mock<IMongoCollection<LanguageFileGenerationHistory>>();
