@@ -13,21 +13,62 @@ namespace XUnitTest
     public class GlossaryControllerTests
     {
         private readonly Mock<IGlossaryManagementService> _glossaryManagementServiceMock;
+        private readonly Mock<IKeyManagementService> _keyManagementServiceMock;
         private readonly GlossaryController _controller;
 
         public GlossaryControllerTests()
         {
             _glossaryManagementServiceMock = new Mock<IGlossaryManagementService>();
-
-            var keyManagementServiceMock = new Mock<IKeyManagementService>();
+            _keyManagementServiceMock = new Mock<IKeyManagementService>();
 
             _controller = new GlossaryController(
                 _glossaryManagementServiceMock.Object,
-                keyManagementServiceMock.Object
+                _keyManagementServiceMock.Object
             )
             {
                 ControllerContext = new ControllerContext()
             };
+        }
+
+        [Fact]
+        public async Task Get_WithEmptyItemId_ReturnsBadRequest()
+        {
+            var result = await _controller.Get("");
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task Get_WithValidItemId_Found_ReturnsOk()
+        {
+            var glossary = new Glossary { ItemId = "g1", Name = "API" };
+            _glossaryManagementServiceMock.Setup(x => x.GetGlossaryByIdAsync("g1")).ReturnsAsync(glossary);
+
+            var result = await _controller.Get("g1");
+
+            result.Should().BeOfType<OkObjectResult>();
+            ((OkObjectResult)result).Value.Should().BeSameAs(glossary);
+        }
+
+        [Fact]
+        public async Task Get_WithValidItemId_NotFound_ReturnsNotFound()
+        {
+            _glossaryManagementServiceMock.Setup(x => x.GetGlossaryByIdAsync("missing")).ReturnsAsync((Glossary)null);
+
+            var result = await _controller.Get("missing");
+
+            result.Should().BeOfType<NotFoundObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetSuggestedGlossaries_DelegatesToKeyManagementService()
+        {
+            var request = new GetSuggestedGlossariesRequest { ItemId = "m1" };
+            var response = new GetSuggestedGlossariesResponse();
+            _keyManagementServiceMock.Setup(x => x.GetSuggestedGlossariesAsync(request)).ReturnsAsync(response);
+
+            var result = await _controller.GetSuggestedGlossaries(request);
+
+            result.Should().BeSameAs(response);
         }
 
         #region Save Tests
@@ -58,10 +99,15 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullGlossary_ThrowsNullReferenceException()
+        public async Task Save_WithNullGlossary_DelegatesToServiceWithoutThrowing()
         {
-            // Act & Assert
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Save(null));
+            var response = new ApiResponse { Success = false };
+            _glossaryManagementServiceMock.Setup(x => x.SaveGlossaryAsync(null)).ReturnsAsync(response);
+
+            var result = await _controller.Save(null);
+
+            result.Should().BeSameAs(response);
+            _glossaryManagementServiceMock.Verify(x => x.SaveGlossaryAsync(null), Times.Once);
         }
 
         [Fact]

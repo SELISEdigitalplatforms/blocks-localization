@@ -1148,5 +1148,129 @@ namespace XUnitTest.Repositories
         }
 
         #endregion
+
+        #region GetUilmFile (client overload)
+
+        [Fact]
+        public async Task GetUilmFileForClient_ReturnsFile_WhenFound()
+        {
+            var uilmFile = new UilmFile { Id = "f1", ModuleName = "mod", Language = "en", Content = "content" };
+            MockCursorHelper.SetupFindAsyncWithProjection<BsonDocument, UilmFile>(_bsonCollection, new List<UilmFile> { uilmFile });
+
+            var request = new GetUilmFileRequestForClient { Language = "en", ModuleName = "mod", projectKey = "client-proj" };
+            var result = await _repo.GetUilmFile(request);
+
+            result.Should().NotBeNull();
+            result.Language.Should().Be("en");
+            _dbContextProvider.Verify(x => x.GetDatabase("client-proj"), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetUilmFileForClient_ReturnsNull_WhenNotFound()
+        {
+            MockCursorHelper.SetupFindAsyncWithProjectionEmpty<BsonDocument, UilmFile>(_bsonCollection);
+
+            var request = new GetUilmFileRequestForClient { Language = "fr", ModuleName = "mod", projectKey = "client-proj" };
+            var result = await _repo.GetUilmFile(request);
+
+            result.Should().BeNull();
+        }
+
+        #endregion
+
+        #region UpsertResourceKeysWithMergeAsync
+
+        private static BulkWriteResult<BlocksLanguageKey> AckBulk() =>
+            new BulkWriteResult<BlocksLanguageKey>.Acknowledged(
+                requestCount: 1, matchedCount: 0, deletedCount: 0, insertedCount: 1,
+                modifiedCount: 0, processedRequests: new List<WriteModel<BlocksLanguageKey>>(),
+                upserts: new List<BulkWriteUpsert>());
+
+        private static UpdateResult AckUpdate(long modified) =>
+            new UpdateResult.Acknowledged(matchedCount: 1, modifiedCount: modified, upsertedId: null);
+
+        [Fact]
+        public async Task UpsertResourceKeysWithMergeAsync_EmptyEntities_ReturnsZeroWithoutBulkWrite()
+        {
+            var result = await _repo.UpsertResourceKeysWithMergeAsync(new List<BlocksLanguageKey>());
+
+            result.upsertedCount.Should().Be(0);
+            result.modifiedCount.Should().Be(0);
+            _blkCollection.Verify(x => x.BulkWriteAsync(
+                It.IsAny<IEnumerable<WriteModel<BlocksLanguageKey>>>(),
+                It.IsAny<BulkWriteOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpsertResourceKeysWithMergeAsync_WithExistingResource_UpdatesInPlace()
+        {
+            _blkCollection.Setup(x => x.BulkWriteAsync(
+                It.IsAny<IEnumerable<WriteModel<BlocksLanguageKey>>>(),
+                It.IsAny<BulkWriteOptions>(), It.IsAny<CancellationToken>())).ReturnsAsync(AckBulk());
+            // Existing resource is updated in place (ModifiedCount == 1) -> no push.
+            _blkCollection.Setup(x => x.UpdateOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>())).ReturnsAsync(AckUpdate(1));
+
+            var entities = new List<BlocksLanguageKey>
+            {
+                new BlocksLanguageKey
+                {
+                    ItemId = "k1", KeyName = "welcome", ModuleId = "m1", TenantId = "t1",
+                    Routes = new List<string> { "/home" }, Context = "greeting",
+                    Resources = new[]
+                    {
+                        new Resource { Culture = "en", Value = "Hello" },
+                        new Resource { Culture = "", Value = "skip" },     // no culture -> skipped
+                        new Resource { Culture = "fr", Value = "" }        // no value -> skipped
+                    }
+                }
+            };
+
+            await _repo.UpsertResourceKeysWithMergeAsync(entities, "t1");
+
+            _blkCollection.Verify(x => x.BulkWriteAsync(
+                It.IsAny<IEnumerable<WriteModel<BlocksLanguageKey>>>(),
+                It.IsAny<BulkWriteOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            // Only the "en" resource is processed and updated in place -> exactly 1 UpdateOne, no push.
+            _blkCollection.Verify(x => x.UpdateOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpsertResourceKeysWithMergeAsync_WhenResourceMissing_PushesNewResource()
+        {
+            _blkCollection.Setup(x => x.BulkWriteAsync(
+                It.IsAny<IEnumerable<WriteModel<BlocksLanguageKey>>>(),
+                It.IsAny<BulkWriteOptions>(), It.IsAny<CancellationToken>())).ReturnsAsync(AckBulk());
+            // First update finds nothing (ModifiedCount == 0) -> push happens (second UpdateOne).
+            _blkCollection.Setup(x => x.UpdateOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>())).ReturnsAsync(AckUpdate(0));
+
+            var entities = new List<BlocksLanguageKey>
+            {
+                new BlocksLanguageKey
+                {
+                    ItemId = null, KeyName = "welcome", ModuleId = "m1", TenantId = "t1",
+                    Resources = new[] { new Resource { Culture = "en", Value = "Hello" } }
+                },
+                new BlocksLanguageKey { ItemId = "k2", KeyName = "noRes", ModuleId = "m1", Resources = null } // null resources -> skipped in merge
+            };
+
+            await _repo.UpsertResourceKeysWithMergeAsync(entities);
+
+            // The single valid resource triggers update (0) + push = 2 UpdateOne calls.
+            _blkCollection.Verify(x => x.UpdateOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        #endregion
     }
 }

@@ -39,13 +39,6 @@ namespace XUnitTest
             key.ShouldPublish.Should().BeTrue();
 
         }
-
-        [Fact]
-        public void Key_ImplementsIProjectKey()
-        {
-            var key = new Key {  };
-            key.Should().BeAssignableTo<IProjectKey>();
-        }
     }
 
     public class ResourceModelTests
@@ -170,14 +163,7 @@ namespace XUnitTest
             request.CreateDateRange.Should().NotBeNull();
             request.SortProperty.Should().Be("KeyName");
             request.IsDescending.Should().BeTrue();
-            
-        }
 
-        [Fact]
-        public void GetKeysRequest_ImplementsIProjectKey()
-        {
-            var request = new GetKeysRequest {  };
-            request.Should().BeAssignableTo<IProjectKey>();
         }
     }
 
@@ -215,13 +201,6 @@ namespace XUnitTest
         }
 
         [Fact]
-        public void GetKeyTimelineRequest_ImplementsIProjectKey()
-        {
-            var request = new GetKeyTimelineRequest {};
-            request.Should().BeAssignableTo<IProjectKey>();
-        }
-
-        [Fact]
         public void GetKeyTimelineRequest_WithAllProperties_SetsCorrectly()
         {
             var request = new GetKeyTimelineRequest
@@ -251,13 +230,6 @@ namespace XUnitTest
             var request = new GetUilmExportedFilesRequest();
             request.PageSize.Should().Be(10);
             request.PageNumber.Should().Be(0);
-        }
-
-        [Fact]
-        public void GetUilmExportedFilesRequest_ImplementsIProjectKey()
-        {
-            var request = new GetUilmExportedFilesRequest { };
-            request.Should().BeAssignableTo<IProjectKey>();
         }
 
         [Fact]
@@ -291,14 +263,7 @@ namespace XUnitTest
 
             request.Language.Should().Be("en-US");
             request.ModuleName.Should().Be("auth");
-          
-        }
 
-        [Fact]
-        public void GetUilmFileRequest_ImplementsIProjectKey()
-        {
-            var request = new GetUilmFileRequest {  };
-            request.Should().BeAssignableTo<IProjectKey>();
         }
     }
 

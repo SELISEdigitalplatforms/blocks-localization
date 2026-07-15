@@ -36,6 +36,7 @@ namespace XUnitTest
 
         public KeyManagementServiceCoverageTests()
         {
+            XUnitTest.Shared.TestBlocksContext.Set("proj");
             _loggerMock = new Mock<ILogger<KeyManagementService>>();
             _keyRepositoryMock = new Mock<IKeyRepository>();
             _keyTimelineRepositoryMock = new Mock<IKeyTimelineRepository>();
