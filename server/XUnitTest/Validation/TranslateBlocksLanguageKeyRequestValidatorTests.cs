@@ -19,28 +19,31 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Validate_EmptyProjectKey_ReturnsExpectedError()
+        public async Task Validate_NullDefaultLanguage_ReturnsRequiredError()
         {
             var request = CreateValidRequest();
-            
+            request.DefaultLanguage = null;
 
             var result = await _validator.ValidateAsync(request);
 
             result.IsValid.Should().BeFalse();
-            
-               
+            result.Errors.Should().Contain(e =>
+                e.PropertyName == nameof(TranslateBlocksLanguageKeyRequest.DefaultLanguage) &&
+                e.ErrorMessage == "DefaultLanguage is required.");
         }
 
         [Fact]
-        public async Task Validate_ProjectKeyTooLong_ReturnsExpectedError()
+        public async Task Validate_NullKeyId_ReturnsRequiredError()
         {
             var request = CreateValidRequest();
-            
+            request.KeyId = null;
 
             var result = await _validator.ValidateAsync(request);
 
             result.IsValid.Should().BeFalse();
-           
+            result.Errors.Should().Contain(e =>
+                e.PropertyName == nameof(TranslateBlocksLanguageKeyRequest.KeyId) &&
+                e.ErrorMessage == "KeyId is required.");
         }
 
         [Fact]

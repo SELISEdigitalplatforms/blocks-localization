@@ -512,9 +512,54 @@ namespace XUnitTest
         #region SuggestTranslation Integration Tests
 
         [Fact]
-        public async Task SuggestTranslation_WithValidRequest_CallsAiCompletion()
+        public async Task SuggestTranslation_WithValidRequest_ReturnsTranslatedText()
         {
-            // This test verifies the flow but expects null due to encryption issues in test environment
+            // Build a fully-valid pipeline so SuggestTranslation runs the happy path end-to-end:
+            // glossaries merged, secret decrypted, AI called, response formatted.
+            var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+            const string encryptionKey = "dummy-encryption-key";
+            var encryptedSecret = Encrypt("sk-test-secret", encryptionKey, salt);
+
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AiCompletionUrl"] = "http://test-url.com",
+                    ["ChatGptTemperature"] = "0.7",
+                    ["Salt:0"] = "1", ["Salt:1"] = "2", ["Salt:2"] = "3", ["Salt:3"] = "4",
+                    ["Salt:4"] = "5", ["Salt:5"] = "6", ["Salt:6"] = "7", ["Salt:7"] = "8",
+                })
+                .Build();
+
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns(encryptionKey);
+            secretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns(encryptedSecret);
+
+            var glossaryMock = new Mock<IGlossaryRepository>();
+            glossaryMock.Setup(g => g.GetGlobalAsync(It.IsAny<string>())).ReturnsAsync(new List<Glossary>());
+            glossaryMock.Setup(g => g.GetByModuleIdAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new List<Glossary>());
+            glossaryMock.Setup(g => g.GetByIdsAsync(It.IsAny<List<string>>())).ReturnsAsync(new List<Glossary>());
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            handlerMock
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hola\"}}]}",
+                        Encoding.UTF8, "application/json")
+                });
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                new HttpClient(handlerMock.Object),
+                secretMock.Object,
+                glossaryMock.Object);
+
             var request = new SuggestLanguageRequest
             {
                 SourceText = "Hello",
@@ -523,11 +568,28 @@ namespace XUnitTest
                 Temperature = 0.7
             };
 
-            var result = await _assistantService.SuggestTranslation(request);
+            var result = await service.SuggestTranslation(request);
 
-            // Due to encryption setup in tests, this will return null
-            // The test verifies the method doesn't throw
-            result.Should().BeNull();
+            result.Should().Be("Hola");
+            glossaryMock.Verify(g => g.GetGlobalAsync(It.IsAny<string>()), Times.Once);
+        }
+
+        // AES-CBC/PKCS7 encryption that mirrors AssistantService.Decrypt so the test can produce
+        // a secret the service will successfully decrypt.
+        private static string Encrypt(string plainText, string key, byte[] salt)
+        {
+            using var aes = System.Security.Cryptography.Aes.Create();
+            var kdf = new System.Security.Cryptography.Rfc2898DeriveBytes(key, salt);
+            aes.Key = kdf.GetBytes(aes.KeySize / 8);
+            aes.IV = kdf.GetBytes(aes.BlockSize / 8);
+            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+            using var ms = new MemoryStream();
+            using (var cs = new System.Security.Cryptography.CryptoStream(ms, encryptor, System.Security.Cryptography.CryptoStreamMode.Write))
+            using (var sw = new StreamWriter(cs))
+            {
+                sw.Write(plainText);
+            }
+            return Convert.ToBase64String(ms.ToArray());
         }
 
         #endregion

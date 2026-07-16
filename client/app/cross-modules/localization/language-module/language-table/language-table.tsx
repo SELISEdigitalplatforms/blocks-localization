@@ -762,7 +762,16 @@ export function LanguageTable() {
         ? [
             {
               accessorKey: "createDate",
-              header: () => <span>Created Date</span>,
+              header: () => (
+                <div className="w-[150px]">
+                  <FilterControls.SortHeader
+                    label="Created Date"
+                    id="createDate"
+                    value={sortQueryParams}
+                    onChange={setSortQueryParams}
+                  />
+                </div>
+              ),
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
                 const dateValue = row.original.createDate;
                 if (!dateValue)
@@ -772,6 +781,7 @@ export function LanguageTable() {
                   <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>
                 );
               },
+              enableSorting: true,
               enableHiding: true,
             } as ColumnDef<IBlocksLanguageKey>,
           ]
@@ -780,7 +790,16 @@ export function LanguageTable() {
         ? [
             {
               accessorKey: "lastUpdateDate",
-              header: () => <span>Last Updated Date</span>,
+              header: () => (
+                <div className="w-[150px]">
+                  <FilterControls.SortHeader
+                    label="Last Updated Date"
+                    id="lastUpdateDate"
+                    value={sortQueryParams}
+                    onChange={setSortQueryParams}
+                  />
+                </div>
+              ),
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
                 const dateValue = row.original.lastUpdateDate;
                 if (!dateValue)
@@ -790,6 +809,7 @@ export function LanguageTable() {
                   <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>
                 );
               },
+              enableSorting: true,
               enableHiding: true,
             } as ColumnDef<IBlocksLanguageKey>,
           ]
