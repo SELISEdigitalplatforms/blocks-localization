@@ -43,7 +43,7 @@ namespace Eurolm.DomainService.Services.HelperService
 					}
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
-                ConfiguratoinName = _configuration["BlocksAppNotificationReceiver"],
+                ConfigurationName = _configuration["BlocksAppNotificationReceiver"],
                 ContentAvailable = true,
                 ResponseKey = messageCoRelationId,
                 ResponseValue = response.ToString(),
@@ -81,7 +81,7 @@ namespace Eurolm.DomainService.Services.HelperService
                     description = "Completed translation for all keys"
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
-                ConfiguratoinName = "translate-all",
+                ConfigurationName = "translate-all",
                 ContentAvailable = true,
                 ResponseKey = "Translate All",
                 ResponseValue = "Successfully translated all keys"
@@ -119,7 +119,7 @@ namespace Eurolm.DomainService.Services.HelperService
                     description = "Completed translation for specific language key"
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
-                ConfiguratoinName = "translate-all",
+                ConfigurationName = "translate-all",
                 ContentAvailable = true,
                 ResponseKey = "Translate Key",
                 ResponseValue = "Successfully translated language key"
@@ -159,7 +159,7 @@ namespace Eurolm.DomainService.Services.HelperService
                     targetedProjectKey = targetedProjectKey
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
-                ConfiguratoinName = "EnvironmentDataMigration",
+                ConfigurationName = "EnvironmentDataMigration",
                 ContentAvailable = true,
                 ResponseKey = "Language Migration",
                 ResponseValue = response ? "Migration completed" : "Migration failed"
@@ -197,7 +197,7 @@ namespace Eurolm.DomainService.Services.HelperService
                     projectKey = projectKey
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
-                ConfiguratoinName = "ExtensionGoLiveEvent",
+                ConfigurationName = "ExtensionGoLiveEvent",
                 ContentAvailable = true,
                 ResponseKey = "Extension Sync",
                 ResponseValue = response ? "Extension sync completed" : "Extension sync failed"
