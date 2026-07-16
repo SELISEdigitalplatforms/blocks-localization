@@ -35,7 +35,6 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
-import { useUserOrganizationId } from "@blocks-localization/hooks/use-user-lookup";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -103,7 +102,6 @@ export function ModuleTable() {
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
   // TODO: Enable delete module feature — restore this state when backend is ready
   // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
-  const organizationId = useUserOrganizationId();
 
   // Extract unique createdBy user IDs from modules
   const uniqueCreatedByIds = useMemo(() => {
@@ -118,39 +116,11 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", organizationId, uniqueCreatedByIds.sort()],
+    queryKey: ["module-users", [...uniqueCreatedByIds].sort()],
     queryFn: async () => {
-      if (uniqueCreatedByIds.length === 0 || !organizationId) return {};
-
-      const map: Record<
-        string,
-        { firstName: string; lastName: string; email: string; userName: string }
-      > = {};
-
-      await Promise.all(
-        uniqueCreatedByIds.map(async (userId) => {
-          try {
-            const response = await userLookupService.getUserById({
-              id: userId,
-              organizationId: organizationId || "",
-            });
-            if (response?.data) {
-              map[userId] = {
-                firstName: response.data.firstName,
-                lastName: response.data.lastName,
-                email: response.data.email,
-                userName: response.data.userName,
-              };
-            }
-          } catch (error) {
-            console.error(`Failed to fetch user ${userId}:`, error);
-          }
-        }),
-      );
-
-      return map;
+      return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
-    enabled: !!organizationId && uniqueCreatedByIds.length > 0,
+    enabled: uniqueCreatedByIds.length > 0,
     staleTime: Infinity,
   });
 
@@ -321,7 +291,7 @@ export function ModuleTable() {
               setIsNewModuleDialogOpen(false);
               refetch().then(() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["module-users", organizationId],
+                  queryKey: ["module-users"],
                 });
               });
             }}

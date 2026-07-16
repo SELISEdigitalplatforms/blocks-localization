@@ -38,9 +38,15 @@ import {
   useUploadFile,
 } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
+import { Calendar } from "@/components/ui-kits/calendar/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui-kits/popover/popover";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Upload, X } from "lucide-react";
+import { Upload, X, CalendarIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
@@ -72,7 +78,8 @@ export default function ExportKey() {
   const itemId = useProjectStore().selectedProject?.itemId || "";
   // const { language } = useLanguage();
 
-  const [date] = useState<DateRangeType>();
+  const [date, setDate] = useState<DateRangeType>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [selectedOutputType, setSelectedOutputType] = useState<number>(
     outputTypes[0].id,
@@ -117,6 +124,10 @@ export default function ExportKey() {
 
   const handleRemoveXlfFile = () => {
     setXlfFile(null);
+  };
+
+  const handleDateSelect = (selectedDateRange: DateRangeType | undefined) => {
+    setDate(selectedDateRange ?? null);
   };
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -191,7 +202,8 @@ export default function ExportKey() {
 
       toast({
         title: "Export Started",
-        description: "Your export is being prepared. The download will start when the file is ready.",
+        description:
+          "Your export is being prepared. The download will start when the file is ready.",
         variant: "success",
       });
 
@@ -316,10 +328,7 @@ export default function ExportKey() {
         return;
       }
 
-      if (
-        correlationId &&
-        correlationId !== pendingCorrelationId
-      ) {
+      if (correlationId && correlationId !== pendingCorrelationId) {
         return;
       }
 
@@ -404,64 +413,72 @@ export default function ExportKey() {
         </DialogHeader>
         <div className="!mt-[8px] mb-8 flex-1 overflow-y-auto p-1 text-left text-high-emphasis">
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={1}>
-            {/* <div className="mb-6 flex flex-col gap-1.5">
-                <p className="text-sm text-high-emphasis">Date Range</p>
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex w-full justify-between" type="button">
-                      {!date?.from ? (
-                        <div className="flex w-full items-center justify-between">
-                          <span className="font-normal text-low-emphasis">Set date range</span>
-                          <CalendarIcon className="ml-2 h-4 w-4" />
-                        </div>
-                      ) : (
-                        <div className="flex w-full items-center justify-between">
-                          <span className="font-normal">
-                            {date.from?.toLocaleDateString()}
-                            {date.to && (
-                              <>
-                                {" - "}
-                                {date.to?.toLocaleDateString()}
-                              </>
-                            )}
-                          </span>
-                          <CalendarIcon className="ml-2 h-4 w-4" />
-                        </div>
-                      )}
+            <div className="mb-6 flex flex-col gap-1.5">
+              <p className="text-sm text-high-emphasis">Date Range</p>
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex w-full justify-between"
+                    type="button"
+                  >
+                    {!date?.from ? (
+                      <div className="flex w-full items-center justify-between">
+                        <span className="font-normal text-low-emphasis">
+                          Set date range
+                        </span>
+                        <CalendarIcon className="ml-2 h-4 w-4" />
+                      </div>
+                    ) : (
+                      <div className="flex w-full items-center justify-between">
+                        <span className="font-normal">
+                          {date.from?.toLocaleDateString()}
+                          {date.to && (
+                            <>
+                              {" - "}
+                              {date.to?.toLocaleDateString()}
+                            </>
+                          )}
+                        </span>
+                        <CalendarIcon className="ml-2 h-4 w-4" />
+                      </div>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={
+                      date?.from ? { from: date.from, to: date.to } : undefined
+                    }
+                    onSelect={handleDateSelect}
+                    numberOfMonths={2}
+                  />
+                  <div className="flex items-center gap-4 px-3 pb-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setDate(null);
+                        setPopoverOpen(false);
+                      }}
+                    >
+                      Reset
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from}
-                      selected={date?.from ? { from: date.from, to: date.to } : undefined}
-                      onSelect={handleDateSelect}
-                      numberOfMonths={2}
-                    />
-                    <div className="flex items-center gap-4 px-3 pb-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => {
-                          setDate(null);
-                          setPopoverOpen(false);
-                        }}
-                      >
-                        Reset
-                      </Button>
-                      <Button
-                        type="button"
-                        className="w-full"
-                        onClick={() => setPopoverOpen(false)}
-                      >
-                        Apply
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div> */}
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => setPopoverOpen(false)}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
