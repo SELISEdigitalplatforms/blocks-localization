@@ -97,7 +97,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Language/GetCloudstLanguages`],
+      ["GETS", `${UILM_BASE}/Language/GetCloudsLanguages`],
       ["SAVE", `${UILM_BASE}/Language/Save`],
       ["DELETE", `${UILM_BASE}/Language/Delete`],
       ["SET_DEFAULT", `${UILM_BASE}/Language/SetDefault`],
