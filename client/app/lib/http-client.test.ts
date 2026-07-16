@@ -4,7 +4,7 @@ vi.mock("@/lib/runtime-env", () => ({
   getRuntimeEnv: (key: string) => `env:${key}`,
 }));
 
-vi.mock("@seliseblocks/blocks-kit/http", () => {
+vi.mock("@seliseblocks/blocks-kit/lib", () => {
   class HttpClient {
     config: unknown;
     constructor(config: unknown) {
