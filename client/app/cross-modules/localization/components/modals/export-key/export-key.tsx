@@ -189,7 +189,7 @@ export default function ExportKey() {
         referenceFileId: exportReferenceFileId,
         callerTenantId: itemId,
         startDate: date?.from ? date.from.toISOString() : undefined,
-        endDate: date?.to ? addOneDay(date.to).toString() : undefined,
+        endDate: date?.to ? date.to.toISOString() : undefined,
       };
 
       const exportResult = await exportAsync(payload);
@@ -222,12 +222,6 @@ export default function ExportKey() {
     } finally {
       setIsUploadingXlf(false);
     }
-  };
-
-  const addOneDay = (date: Date) => {
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-    return nextDate.toISOString();
   };
 
   const handleExport = () => {
