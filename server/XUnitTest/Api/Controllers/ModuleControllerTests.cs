@@ -58,10 +58,19 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullModule_ThrowsNullReferenceException()
+        public async Task Save_WithNullModule_DelegatesToServiceWithoutThrowing()
         {
-            // Act & Assert
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Save(null));
+            // The controller calls BadRequest(...) but discards the result and still delegates
+            // to the service with the null argument; it must not throw.
+            var response = new ApiResponse { Success = false };
+            _moduleManagementServiceMock
+                .Setup(x => x.SaveModuleAsync(null))
+                .ReturnsAsync(response);
+
+            var result = await _controller.Save(null);
+
+            result.Should().BeSameAs(response);
+            _moduleManagementServiceMock.Verify(x => x.SaveModuleAsync(null), Times.Once);
         }
 
         [Fact]
@@ -104,7 +113,7 @@ namespace XUnitTest
             };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync(null))
+                .Setup(x => x.GetModulesAsync("test"))
                 .ReturnsAsync(expectedModules);
 
             // Act
@@ -122,7 +131,7 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync(null))
+                .Setup(x => x.GetModulesAsync("test"))
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
@@ -139,7 +148,7 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync(null))
+                .Setup(x => x.GetModulesAsync("test"))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -152,15 +161,44 @@ namespace XUnitTest
         #endregion
 
         [Fact]
-        public async Task Save_WithNullModule_ThrowsNullReferenceException2()
+        public async Task Gets_WithUnmappedProjectKey_ReturnsNull()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Save(null));
+            // No mock set up for the given project key -> service returns default (null).
+            var result = await _controller.Gets("unmapped");
+
+            result.Should().BeNull();
         }
 
         [Fact]
-        public async Task Gets_WithNullQuery_ThrowsNullReferenceException()
+        public async Task GetCloudsModules_ReturnsAllModules()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Gets("test"));
+            var modules = new List<BlocksLanguageModule> { new BlocksLanguageModule { ModuleName = "auth" } };
+            _moduleManagementServiceMock.Setup(x => x.GetModulesAsync((string?)null)).ReturnsAsync(modules);
+
+            var result = await _controller.GetCloudsModules();
+
+            result.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public async Task TagGlossary_WithValidRequest_ReturnsServiceResult()
+        {
+            var request = new TagGlossaryRequest { ModuleId = "m1", GlossaryIds = new List<string> { "g1" } };
+            var response = new BaseMutationResponse { IsSuccess = true };
+            _moduleManagementServiceMock.Setup(x => x.TagGlossaryAsync(request)).ReturnsAsync(response);
+
+            var result = await _controller.TagGlossary(request);
+
+            result.Should().BeSameAs(response);
+        }
+
+        [Fact]
+        public async Task TagGlossary_WithNullRequest_ReturnsFailure()
+        {
+            var result = await _controller.TagGlossary(null);
+
+            result.IsSuccess.Should().BeFalse();
+            _moduleManagementServiceMock.Verify(x => x.TagGlossaryAsync(It.IsAny<TagGlossaryRequest>()), Times.Never);
         }
     }
 }

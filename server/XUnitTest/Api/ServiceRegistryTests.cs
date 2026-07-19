@@ -27,7 +27,7 @@ namespace XUnitTest
                 ChatGptEncryptionKey = "key"
             };
 
-  
+            Eurolm.DomainService.Shared.ServiceRegistry.AddEurolmRegisterApplicationServices(services, localizationSecret);
 
             AssertRegistration<ILocalizationSecret>(services, ServiceLifetime.Singleton, implementationInstance: localizationSecret);
 

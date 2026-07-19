@@ -49,8 +49,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <returns>An <see cref="ApiResponse"/> indicating the success or failure of the save operation.</returns>
 
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::save")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::save")]
         public async Task<ApiResponse> Save(Key key)
         {
             if (key == null) BadRequest(new BaseMutationResponse());
@@ -63,8 +62,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="keys">The list of key objects to be saved.</param>
         /// <returns>An <see cref="ApiResponse"/> indicating the success or failure of the bulk save operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::savekeys")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::savekeys")]
         public async Task<ApiResponse> SaveKeys([FromBody] List<Key> keys)
         {
             if (keys == null || !keys.Any()) 
@@ -78,8 +76,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="query">The query parameters containing filters for key retrieval.</param>
         /// <returns>A <see cref="GetKeysQueryResponse"/> containing the filtered list of keys.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
         public async Task<GetKeysQueryResponse> Gets([FromBody] GetKeysRequest query)
         {
             if (query == null) BadRequest(new BaseMutationResponse());
@@ -92,8 +89,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing an array of key names.</param>
         /// <returns>A <see cref="GetKeysByKeyNamesResponse"/> containing the matched keys and optional error.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::getkeysbykeynames")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::getkeysbykeynames")]
         public async Task<GetKeysByKeyNamesResponse> GetsByKeyNames([FromBody] GetKeysByKeyNamesRequest request)
         {
             if (request == null)
@@ -107,8 +103,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="query">The query parameters for filtering and pagination.</param>
         /// <returns>A paginated list of <see cref="KeyTimeline"/> objects.</returns>
         [HttpGet]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::gettimeline")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::gettimeline")]
         public async Task<GetKeyTimelineQueryResponse> GetTimeline([FromQuery] GetKeyTimelineRequest query)
         {
             if (query == null) BadRequest(new BaseMutationResponse());
@@ -147,8 +142,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the item ID of the key to retrieve.</param>
         /// <returns>A <see cref="Key"/> object if found; otherwise, null.</returns>
         [HttpGet]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::get")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::get")]
         public async Task<Key?> Get([FromQuery] GetKeyRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
@@ -177,8 +171,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the item ID of the key to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::delete")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteKeyRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
@@ -205,8 +198,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the list of item IDs to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
         [HttpDelete]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::deletekeys")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::deletekeys")]
         public async Task<IActionResult> DeleteKeys([FromBody] DeleteKeysRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -261,8 +253,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the parameters for UILM file generation.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the file generation request.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::generateuilmfile")]
-        [Authorize]
+         [ProtectedEndPoint($"{Constants.ServiceName}::key::generateuilmfile")]
         public async Task<IActionResult> GenerateUilmFile([FromBody] GenerateUilmRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -276,8 +267,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the project key and optional module filter.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::translateall")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::translateall")]
         public async Task<IActionResult> TranslateAll(TranslateAllRequest request)
         {
             if (request == null) BadRequest(new BaseMutationResponse());
@@ -294,7 +284,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing key ID, project key, and translation parameters.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::translatekey")]
         public async Task<IActionResult> TranslateKey(TranslateBlocksLanguageKeyRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());;
@@ -320,7 +310,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing key IDs, project key, and translation parameters.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the translation request.</returns>
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::translatekeys")]
         public async Task<IActionResult> TranslateKeys(TranslateBlocksLanguageKeysRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -345,8 +335,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the UILM file data and project key.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the import operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::uilmimport")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::uilmimport")]
         public async Task<IActionResult> UilmImport([FromBody] UilmImportRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -361,8 +350,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the project key and optional module selection for export.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the export operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::uilmexport")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::uilmexport")]
         public async Task<IActionResult> UilmExport([FromBody] UilmExportRequest request)
         {
 
@@ -379,8 +367,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the list of collections to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::deletecollections")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::deletecollections")]
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<IActionResult> DeleteCollections([FromBody] DeleteCollectionsRequest request)
         {
@@ -408,8 +395,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing pagination parameters.</param>
         /// <returns>A paginated list of exported UILM files.</returns>
         [HttpGet]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::getuilmexportedfiles")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::getuilmexportedfiles")]
         public async Task<IActionResult> GetUilmExportedFiles([FromQuery] GetUilmExportedFilesRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -436,8 +422,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing pagination parameters.</param>
         /// <returns>A paginated list of language file generation history entries.</returns>
         [HttpGet]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::getlanguagefilegenerationhistory")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::getlanguagefilegenerationhistory")]
         public async Task<IActionResult> GetLanguageFileGenerationHistory([FromQuery] GetLanguageFileGenerationHistoryRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
@@ -464,8 +449,7 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The request containing the item ID and rollback parameters.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the rollback operation.</returns>
         [HttpPost]
-        // [ProtectedEndPoint($"{Constants.ServiceName}::key::rollback")]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::rollback")]
         public async Task<IActionResult> RollBack([FromBody] RollbackRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
