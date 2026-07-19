@@ -1,5 +1,7 @@
 ﻿
+using Blocks.Genesis;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -18,7 +20,7 @@ namespace BlocksTemplate.Api.Controllers
         }
         
         [HttpPost]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::assistant::getTranslationsuggestion")]
         public async Task<IActionResult> GetTranslationSuggestion([FromBody] SuggestLanguageRequest request)
         {
             var response = await _assistantService.SuggestTranslation(request);

@@ -37,6 +37,7 @@ namespace XUnitTest
 
         public KeyManagementServiceTests()
         {
+            XUnitTest.Shared.TestBlocksContext.Set();
             _loggerMock = new Mock<ILogger<KeyManagementService>>();
             _keyRepositoryMock = new Mock<IKeyRepository>();
             _keyTimelineRepositoryMock = new Mock<IKeyTimelineRepository>();
@@ -168,6 +169,113 @@ namespace XUnitTest
             await _service.SendTranslateAllEvent(request);
 
             _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateAllEvent>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_AllKeysExist_DeletesAllAndCreatesTimelines()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } };
+            _keyRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
+                .ReturnsAsync((string id) => new KeyModel { ItemId = id, KeyName = "name-" + id, ModuleId = "m1" });
+            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(It.IsAny<string>(), "m1"))
+                .ReturnsAsync((string name, string mod) => new BlocksLanguageKey { ItemId = "repo-" + name, KeyName = name, ModuleId = mod });
+            _keyRepositoryMock.Setup(r => r.DeleteAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+            _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>())).Returns(Task.CompletedTask);
+
+            var result = await _service.DeleteKeysAsync(request);
+
+            result.IsSuccess.Should().BeTrue();
+            _keyRepositoryMock.Verify(r => r.DeleteAsync("k1"), Times.Once);
+            _keyRepositoryMock.Verify(r => r.DeleteAsync("k2"), Times.Once);
+            _keyTimelineRepositoryMock.Verify(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_KeyNotFound_ReturnsErrorForMissingKey()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string> { "missing" } };
+            _keyRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((KeyModel)null);
+
+            var result = await _service.DeleteKeysAsync(request);
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("missing");
+            result.Errors["missing"].Should().Be("Key not found");
+            _keyRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_WhenDeleteThrows_CapturesErrorAndFails()
+        {
+            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1" } };
+            _keyRepositoryMock.Setup(r => r.GetByIdAsync("k1"))
+                .ReturnsAsync(new KeyModel { ItemId = "k1", KeyName = "n1", ModuleId = "m1" });
+            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("n1", "m1")).ReturnsAsync((BlocksLanguageKey)null);
+            _keyRepositoryMock.Setup(r => r.DeleteAsync("k1")).ThrowsAsync(new Exception("delete failed"));
+
+            var result = await _service.DeleteKeysAsync(request);
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors["k1"].Should().Be("delete failed");
+        }
+
+        [Fact]
+        public async Task SendTranslateBlocksLanguageKeysEvent_PublishesToQueueWithOperationId()
+        {
+            ConsumerMessage<TranslateBlocksLanguageKeysEvent>? captured = null;
+            _messageClientMock.Setup(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()))
+                .Callback<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>(msg => captured = msg)
+                .Returns(Task.CompletedTask);
+
+            var request = new TranslateBlocksLanguageKeysRequest
+            {
+                KeyIds = new List<string> { "k1", "k2" },
+                MessageCoRelationId = "corr",
+                ProjectKey = "proj",
+                DefaultLanguage = "en-US"
+            };
+
+            await _service.SendTranslateBlocksLanguageKeysEvent(request);
+
+            captured.Should().NotBeNull();
+            captured!.Payload.OperationId.Should().NotBeNullOrEmpty();
+            captured.Payload.KeyIds.Should().BeEquivalentTo(new[] { "k1", "k2" });
+            _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetUilmFile_ReturnsContent_WhenFound()
+        {
+            var request = new GetUilmFileRequest { Language = "en", ModuleName = "auth" };
+            _keyRepositoryMock.Setup(r => r.GetUilmFile(request))
+                .ReturnsAsync(new UilmFile { Content = "{\"a\":1}" });
+
+            var result = await _service.GetUilmFile(request);
+
+            result.Should().Be("{\"a\":1}");
+        }
+
+        [Fact]
+        public async Task GetUilmFile_ReturnsNull_WhenFileMissing()
+        {
+            var request = new GetUilmFileRequest { Language = "en", ModuleName = "auth" };
+            _keyRepositoryMock.Setup(r => r.GetUilmFile(request)).ReturnsAsync((UilmFile)null);
+
+            var result = await _service.GetUilmFile(request);
+
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetUilmFile_ClientOverload_ReturnsContent()
+        {
+            var request = new GetUilmFileRequestForClient { Language = "en", ModuleName = "auth", projectKey = "p1" };
+            _keyRepositoryMock.Setup(r => r.GetUilmFile(request))
+                .ReturnsAsync(new UilmFile { Content = "client-content" });
+
+            var result = await _service.GetUilmFile(request);
+
+            result.Should().Be("client-content");
         }
 
         [Fact]
