@@ -52,7 +52,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::save")]
         public async Task<ApiResponse> Save(Key key)
         {
-            if (key == null) BadRequest(new BaseMutationResponse());
+            if (key == null) return new ApiResponse("Key cannot be null.");
             return await _keyManagementService.SaveKeyAsync(key);
         }
 
@@ -79,7 +79,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
         public async Task<GetKeysQueryResponse> Gets([FromBody] GetKeysRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetKeysQueryResponse { Keys = new List<Key>() };
             return await _keyManagementService.GetKeysAsync(query);
         }
 
@@ -106,7 +106,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::gettimeline")]
         public async Task<GetKeyTimelineQueryResponse> GetTimeline([FromQuery] GetKeyTimelineRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetKeyTimelineQueryResponse();
             return await _keyManagementService.GetKeyTimelineAsync(query);
         }
 
@@ -119,7 +119,7 @@ namespace BlocksTemplate.Api.Controllers
         [Authorize]
         public async Task<GetLocalizationTimelineResponse> GetLocalizationTimeline([FromQuery] GetLocalizationTimelineRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetLocalizationTimelineResponse();
             return await _keyManagementService.GetLocalizationTimelineAsync(query);
         }
 
