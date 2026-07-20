@@ -71,6 +71,16 @@ namespace XUnitTest
             result.Should().BeSameAs(response);
         }
 
+        [Fact]
+        public async Task GetSuggestedGlossaries_WithNullRequest_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.GetSuggestedGlossaries(null);
+
+            result.Should().NotBeNull();
+            result.SuggestedGlossaries.Should().BeEmpty();
+            _keyManagementServiceMock.Verify(x => x.GetSuggestedGlossariesAsync(It.IsAny<GetSuggestedGlossariesRequest>()), Times.Never);
+        }
+
         #region Save Tests
 
         [Fact]
@@ -99,15 +109,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullGlossary_DelegatesToServiceWithoutThrowing()
+        public async Task Save_WithNullGlossary_ReturnsFailureWithoutCallingService()
         {
-            var response = new ApiResponse { Success = false };
-            _glossaryManagementServiceMock.Setup(x => x.SaveGlossaryAsync(null)).ReturnsAsync(response);
-
             var result = await _controller.Save(null);
 
-            result.Should().BeSameAs(response);
-            _glossaryManagementServiceMock.Verify(x => x.SaveGlossaryAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Glossary cannot be null.");
+            _glossaryManagementServiceMock.Verify(x => x.SaveGlossaryAsync(It.IsAny<Glossary>()), Times.Never);
         }
 
         [Fact]
@@ -187,6 +196,17 @@ namespace XUnitTest
             // Assert
             result.Items.Should().BeEmpty();
             result.TotalCount.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task Gets_WithNullRequest_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.Gets(null);
+
+            result.Should().NotBeNull();
+            result.Items.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _glossaryManagementServiceMock.Verify(x => x.GetGlossariesAsync(It.IsAny<GetGlossariesRequest>()), Times.Never);
         }
 
         [Fact]

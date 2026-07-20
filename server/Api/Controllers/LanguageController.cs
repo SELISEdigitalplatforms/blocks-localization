@@ -40,7 +40,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
         public async Task<ApiResponse> Save(Language language)
         {
-            if (language == null) BadRequest(new BaseMutationResponse());
+            if (language == null) return new ApiResponse("Language cannot be null.");
             return await _languageManagementService.SaveLanguageAsync(language);
         }
 
@@ -71,7 +71,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {
@@ -98,7 +98,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {
