@@ -167,12 +167,12 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetCloudsModules_ReturnsAllModules()
+        public async Task GetModulesForCurrentTenant_ReturnsAllModules()
         {
             var modules = new List<BlocksLanguageModule> { new BlocksLanguageModule { ModuleName = "auth" } };
             _moduleManagementServiceMock.Setup(x => x.GetModulesAsync((string?)null)).ReturnsAsync(modules);
 
-            var result = await _controller.GetCloudsModules();
+            var result = await _controller.GetModulesForCurrentTenant();
 
             result.Should().HaveCount(1);
         }

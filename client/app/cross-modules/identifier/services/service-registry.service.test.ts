@@ -5,7 +5,7 @@ import { SERVICE_REGISTRY_ENDPOINTS } from "@blocks-identifier/constants/endpoin
 import {
   serviceRegistryService,
   ServiceRegistryService,
-} from "./service-registery.service";
+} from "./service-registry.service";
 
 vi.mock("@/lib/http-client", () => ({
   serviceInstances: {
@@ -15,7 +15,7 @@ vi.mock("@/lib/http-client", () => ({
 
 const http = serviceInstances.logicService;
 
-describe("identifier/services/service-registery.service", () => {
+describe("identifier/services/service-registry.service", () => {
   let service: ServiceRegistryService;
 
   beforeEach(() => {

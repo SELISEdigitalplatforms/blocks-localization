@@ -1130,7 +1130,7 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.DeleteAsync("key-id"))
                 .Returns(Task.CompletedTask);
 
-            var result = await _service.DeleteAsysnc(request);
+            var result = await _service.DeleteAsync(request);
 
             result.IsSuccess.Should().BeTrue();
             _keyRepositoryMock.Verify(r => r.DeleteAsync("key-id"), Times.Once);

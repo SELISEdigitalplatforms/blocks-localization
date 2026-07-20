@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { serviceRegistryService } from "@blocks-identifier/services/service-registery.service";
+import { serviceRegistryService } from "@blocks-identifier/services/service-registry.service";
 import { IGetAllServicesPayload, IRegisterServicePayload } from "@blocks-identifier/types/services.type";
 
 export const useRegisterService = () => {

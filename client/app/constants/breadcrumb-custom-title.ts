@@ -15,7 +15,7 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
     skip: true,
   },
   "/app/:itemId/services/authentication": {
-    title: "IDP",
+    title: "IAM",
   },
   "/app/:itemId/services/language": {
     title: "Language Translation Keys",
