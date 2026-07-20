@@ -1,6 +1,6 @@
 /**
  * Cookie utility for cross-subdomain storage
- * Cookies are shared across subdomains (e.g., stg-localization.blocksdevelopers.com and stg-idp.blocksdevelopers.com)
+ * Cookies are shared across subdomains (e.g., stg-localization.blocksdevelopers.com and stg-iam.blocksdevelopers.com)
  *
  * Security Notes:
  * - Uses SameSite=Lax for OIDC compatibility

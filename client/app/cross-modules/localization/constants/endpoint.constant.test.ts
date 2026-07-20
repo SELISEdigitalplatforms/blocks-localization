@@ -20,6 +20,7 @@ vi.mock("@/constants/endpoint.constant", () => ({
     UILM: "/api",
     UTILITIES: "/api",
     CLOUD_BUILD: "/api",
+    IAM: "/api",
     IDP: "/api",
     IDENTIFIER: "/api",
     LMT: "/api",

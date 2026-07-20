@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   deriveAgentBaseUrl,
   deriveDeploymentBaseUrl,
-  deriveIdpBaseUrl,
+  deriveIamBaseUrl,
   deriveLocalizationBaseUrl,
   deriveLogicBaseUrl,
   deriveObservabilityBaseUrl,
@@ -49,7 +49,7 @@ describe("lib/blocks-url.util", () => {
   describe("dev/stg .blocksdevelopers.com origin", () => {
     it("should preserve the dev- prefix", () => {
       setOrigin("https://dev-cloud.blocksdevelopers.com");
-      expect(deriveIdpBaseUrl()).toBe("https://dev-iam.blocksdevelopers.com");
+      expect(deriveIamBaseUrl()).toBe("https://dev-iam.blocksdevelopers.com");
     });
 
     it("should preserve the stg- prefix", () => {

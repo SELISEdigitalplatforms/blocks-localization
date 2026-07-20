@@ -7,6 +7,8 @@ export const API_BASES = {
   UILM: "/api",
   UTILITIES: "/api",
   CLOUD_BUILD: "/api",
+  IAM: getRuntimeEnv("BLOCKS_IAM_BASE_URL") + "/api",
+  /** @deprecated Use API_BASES.IAM instead. Kept as an alias for backward compatibility. */
   IDP: getRuntimeEnv("BLOCKS_IAM_BASE_URL") + "/api",
   IDENTIFIER: "/api",
   LMT: "/api",

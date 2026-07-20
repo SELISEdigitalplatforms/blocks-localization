@@ -17,10 +17,10 @@ vi.mock("@seliseblocks/blocks-kit/lib", () => {
 import { HttpClient, serviceInstances } from "@/lib/http-client";
 
 describe("lib/http-client", () => {
-  it("should expose localization, logic and idp service instances", () => {
+  it("should expose localization, logic and iam service instances", () => {
     expect(serviceInstances.localizationService).toBeInstanceOf(HttpClient);
     expect(serviceInstances.logicService).toBeInstanceOf(HttpClient);
-    expect(serviceInstances.idpService).toBeInstanceOf(HttpClient);
+    expect(serviceInstances.iamService).toBeInstanceOf(HttpClient);
   });
 
   it("should build each client with the resolved runtime env values", () => {

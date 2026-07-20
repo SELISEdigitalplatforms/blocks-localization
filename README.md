@@ -10,9 +10,9 @@ ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud 
 
 ```
 blocks-localization/
-├── client/                                   # React + Vite + TypeScript (package name: blocks-idp-client)
-│   ├── app/                                  # Source (idp, cross-modules, routes, components, lib, …)
-│   │   ├── idp/                              # Auth, IAM, captcha, API settings, …
+├── client/                                   # React + Vite + TypeScript (package name: blocks-localization-client)
+│   ├── app/                                  # Source (iam, cross-modules, routes, components, lib, …)
+│   │   ├── iam/                              # Auth, IAM, captcha, API settings, …
 │   │   ├── cross-modules/                     # Shared areas (ai, communication, identifier, lmt, …)
 │   │   ├── routes/, pages/, layouts/, hooks/
 │   │   └── lib/                              # e.g. get-api-path.ts, runtime-env.ts, http-client.ts
