@@ -1,7 +1,8 @@
+using Blocks.Genesis;
 using Eurolm.DomainService.Shared.Entities;
 using System.Reflection;
 
-namespace Blocks.Genesis
+namespace Eurolm.DomainService.Shared.Utilities
 {
     public sealed class LocalizationSecret : ILocalizationSecret
     {

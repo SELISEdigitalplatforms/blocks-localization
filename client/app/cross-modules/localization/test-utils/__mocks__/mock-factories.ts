@@ -10,7 +10,7 @@
  * Usage in test files (vi.mock calls must be at the top level of the test file):
  *
  *   vi.mock("@/modules/identifier/state/use-project-store", () => mockProjectStoreFactory());
- *   vi.mock("@blocks-localization/services/language.manager.service", () => mockLanguageServiceFactory());
+ *   vi.mock("@blocks-localization/services/language-manager.service", () => mockLanguageServiceFactory());
  */
 import { vi } from "vitest";
 

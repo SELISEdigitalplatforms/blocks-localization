@@ -344,7 +344,7 @@ namespace Eurolm.DomainService.Services
             return response;
         }
 
-        public async Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request)
+        public async Task<BaseMutationResponse> DeleteAsync(DeleteKeyRequest request)
         {
             _logger.LogInformation("Deleting Key start");
 
