@@ -59,16 +59,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullKey_DelegatesToServiceWithoutThrowing()
+        public async Task Save_WithNullKey_ReturnsFailureWithoutCallingService()
         {
-            // The controller calls BadRequest(...) but discards it and still delegates the null.
-            var response = new ApiResponse { Success = false };
-            _keyManagementServiceMock.Setup(x => x.SaveKeyAsync(null)).ReturnsAsync(response);
-
             var result = await _controller.Save(null);
 
-            result.Should().BeSameAs(response);
-            _keyManagementServiceMock.Verify(x => x.SaveKeyAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Key cannot be null.");
+            _keyManagementServiceMock.Verify(x => x.SaveKeyAsync(It.IsAny<Key>()), Times.Never);
         }
 
         #endregion
@@ -904,12 +902,39 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetTimeline_WithNullQuery_ReturnsServiceResult()
+        public async Task GetTimeline_WithNullQuery_ReturnsEmptyWithoutCallingService()
         {
-            // BadRequest(...) is discarded; the (null) query is passed to the service which is mocked to return null.
+            // The null guard now returns an empty response early instead of discarding
+            // BadRequest and passing the null query through to the service.
             var result = await _controller.GetTimeline(null);
 
-            result.Should().BeNull();
+            result.Should().NotBeNull();
+            result.Timelines.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetKeyTimelineAsync(It.IsAny<GetKeyTimelineRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Gets_WithNullQuery_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.Gets(null);
+
+            result.Should().NotBeNull();
+            result.Keys.Should().NotBeNull();
+            result.Keys.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetKeysAsync(It.IsAny<GetKeysRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimeline_WithNullQuery_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.GetLocalizationTimeline(null);
+
+            result.Should().NotBeNull();
+            result.Operations.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetLocalizationTimelineAsync(It.IsAny<GetLocalizationTimelineRequest>()), Times.Never);
         }
 
         [Fact]
