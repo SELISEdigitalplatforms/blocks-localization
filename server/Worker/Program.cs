@@ -1,5 +1,6 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Utilities;
+using Eurolm.DomainService.Shared.Utilities;
 using Worker;
 using Worker.Configuration;
 using Worker.Consumers;

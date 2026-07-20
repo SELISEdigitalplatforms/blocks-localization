@@ -336,7 +336,7 @@ namespace XUnitTest
                 .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -367,7 +367,7 @@ namespace XUnitTest
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             callOrder.Should().ContainInOrder("delete", "timeline");
@@ -387,7 +387,7 @@ namespace XUnitTest
                 .ThrowsAsync(new Exception("timeline save failed"));
 
             // Act
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -405,7 +405,7 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.DeleteAsync("k1")).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -425,7 +425,7 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.DeleteAsync("k1")).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -449,7 +449,7 @@ namespace XUnitTest
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             // Assert
             capturedTimeline.Should().NotBeNull();

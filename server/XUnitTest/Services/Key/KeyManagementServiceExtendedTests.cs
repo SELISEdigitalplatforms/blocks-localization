@@ -623,7 +623,7 @@ namespace XUnitTest
                 .ReturnsAsync((KeyModel?)null);
 
             var request = new DeleteKeyRequest { ItemId = "k1" };
-            var result = await _service.DeleteAsysnc(request);
+            var result = await _service.DeleteAsync(request);
 
             result.IsSuccess.Should().BeFalse();
             result.Errors.Should().ContainKey("ItemId");
@@ -640,7 +640,7 @@ namespace XUnitTest
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             result.IsSuccess.Should().BeTrue();
             _keyRepositoryMock.Verify(r => r.DeleteAsync("k1"), Times.Once);
@@ -655,7 +655,7 @@ namespace XUnitTest
                 .ThrowsAsync(new Exception("timeline fail"));
             _keyRepositoryMock.Setup(r => r.DeleteAsync("k1")).Returns(Task.CompletedTask);
 
-            var result = await _service.DeleteAsysnc(new DeleteKeyRequest { ItemId = "k1" });
+            var result = await _service.DeleteAsync(new DeleteKeyRequest { ItemId = "k1" });
 
             result.IsSuccess.Should().BeTrue();
             _keyRepositoryMock.Verify(r => r.DeleteAsync("k1"), Times.Once);

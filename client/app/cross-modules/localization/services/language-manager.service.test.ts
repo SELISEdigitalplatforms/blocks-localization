@@ -10,7 +10,7 @@ import {
   LANGUAGE_KEY_ENDPOINTS,
   LANGUAGE_MODULE_ENDPOINTS,
 } from "../constants/endpoint.constant";
-import { LanguageManagerService } from "./language.manager.service";
+import { LanguageManagerService } from "./language-manager.service";
 
 vi.mock("@/lib/http-client", () => ({
   serviceInstances: {
