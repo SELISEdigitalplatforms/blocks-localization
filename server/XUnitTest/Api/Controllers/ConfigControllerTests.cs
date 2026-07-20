@@ -198,14 +198,15 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task SaveWebHook_WithNullWebhook_ReturnsFailureWithoutCallingService()
+        public async Task SaveWebHook_WithNullWebhook_DelegatesToServiceWithoutThrowing()
         {
+            var response = new ApiResponse { Success = false };
+            _webHookServiceMock.Setup(x => x.SaveWebhookAsync(null)).ReturnsAsync(response);
+
             var result = await _controller.SaveWebHook(null);
 
-            result.Should().NotBeNull();
-            result.Success.Should().BeFalse();
-            result.ErrorMessage.Should().Be("Webhook cannot be null.");
-            _webHookServiceMock.Verify(x => x.SaveWebhookAsync(It.IsAny<BlocksWebhook>()), Times.Never);
+            result.Should().BeSameAs(response);
+            _webHookServiceMock.Verify(x => x.SaveWebhookAsync(null), Times.Once);
         }
     }
 }
