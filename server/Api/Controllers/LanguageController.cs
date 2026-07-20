@@ -51,11 +51,25 @@ namespace BlocksTemplate.Api.Controllers
         
         [HttpGet]
         [Authorize]
-        public async Task<List<Language>> GetCloudsLanguages()
+        public async Task<List<Language>> GetLanguagesForCurrentTenant()
         {
             return await _languageManagementService.GetLanguagesAsync();
         }
+
+        /// <summary>
+        /// Retrieves all available languages for the current tenant.
+        /// </summary>
+        /// <remarks>"Clouds" was an unclear alias for the current tenant. Use GetLanguagesForCurrentTenant.</remarks>
         [HttpGet]
+        [Authorize]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [Obsolete("Renamed to GetLanguagesForCurrentTenant.")]
+        public async Task<List<Language>> GetCloudsLanguages()
+        {
+            return await GetLanguagesForCurrentTenant();
+        }
+        [HttpGet]
+        [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<List<Language>> Gets([FromQuery] string projectKey)
         {
@@ -85,7 +99,7 @@ namespace BlocksTemplate.Api.Controllers
                 });
             }
 
-            var result = await _languageManagementService.DeleteAsysnc(request);
+            var result = await _languageManagementService.DeleteAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

@@ -1,6 +1,10 @@
-# Blocks EuroLM (blocks-localization)
+# Blocks Localization (blocks-localization)
 
-ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud admin** surfaces with **EuroLM** domain extensions (`Eurolm.DomainService`). The web host (**Genesis**/Blocks configuration, FluentValidation, health checks) serves the SPA from `server/Api/wwwroot`; `GlobalApiRoutePrefixConvention` prefixes attribute routes with `api`. A separate **Worker** (`blocks-eurolm-worker`) runs message consumers. Node/npm are for the client toolchain (`npm install`, `npm run dev`, `npm run build`).
+> Product name: **Blocks Localization**. The legacy name *EuroLM* survives only
+> in internal plumbing (namespaces such as `Eurolm.DomainService`, `eurolm_*`
+> message queues) and is being retired incrementally.
+
+ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud admin** surfaces with **Blocks Localization** domain extensions (`Eurolm.DomainService`, legacy *EuroLM* naming). The web host (**Genesis**/Blocks configuration, FluentValidation, health checks) serves the SPA from `server/Api/wwwroot`; `GlobalApiRoutePrefixConvention` prefixes attribute routes with `api`. A separate **Worker** (`blocks-eurolm-worker`) runs message consumers. Node/npm are for the client toolchain (`npm install`, `npm run dev`, `npm run build`).
 
 ## Project structure
 
