@@ -50,7 +50,7 @@ namespace BlocksTemplate.Api.Controllers
         //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {
-            if (webhook == null) BadRequest(new BaseMutationResponse());
+            if (webhook == null) return new ApiResponse("Webhook cannot be null.");
             return await _webHookService.SaveWebhookAsync(webhook);
         }
     }
