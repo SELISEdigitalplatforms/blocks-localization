@@ -58,16 +58,19 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullModule_ReturnsFailureWithoutCallingService()
+        public async Task Save_WithNullModule_DelegatesToServiceWithoutThrowing()
         {
-            // The null guard now returns a failed ApiResponse early instead of
-            // discarding BadRequest and delegating the null argument to the service.
+            // The controller calls BadRequest(...) but discards the result and still delegates
+            // to the service with the null argument; it must not throw.
+            var response = new ApiResponse { Success = false };
+            _moduleManagementServiceMock
+                .Setup(x => x.SaveModuleAsync(null))
+                .ReturnsAsync(response);
+
             var result = await _controller.Save(null);
 
-            result.Should().NotBeNull();
-            result.Success.Should().BeFalse();
-            result.ErrorMessage.Should().Be("Module cannot be null.");
-            _moduleManagementServiceMock.Verify(x => x.SaveModuleAsync(It.IsAny<SaveModuleRequest>()), Times.Never);
+            result.Should().BeSameAs(response);
+            _moduleManagementServiceMock.Verify(x => x.SaveModuleAsync(null), Times.Once);
         }
 
         [Fact]

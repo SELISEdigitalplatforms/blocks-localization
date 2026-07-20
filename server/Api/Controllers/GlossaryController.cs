@@ -28,7 +28,7 @@ namespace Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::glossary::save")]
         public async Task<ApiResponse> Save(Glossary glossary)
         {
-            if (glossary == null) return new ApiResponse("Glossary cannot be null.");
+            if (glossary == null) BadRequest(new BaseMutationResponse());
             return await _glossaryManagementService.SaveGlossaryAsync(glossary);
         }
 
@@ -36,7 +36,7 @@ namespace Api.Controllers
         [Authorize]
         public async Task<GetGlossariesResponse> Gets([FromQuery] GetGlossariesRequest request)
         {
-            if (request == null) return new GetGlossariesResponse();
+            if (request == null)  BadRequest(new BaseMutationResponse());
             return await _glossaryManagementService.GetGlossariesAsync(request);
         }
 
@@ -67,7 +67,7 @@ namespace Api.Controllers
         [Authorize]
         public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
         {
-            if (request == null) return new GetSuggestedGlossariesResponse();
+            if (request == null) BadRequest(new BaseMutationResponse());
             return await _keyManagementService.GetSuggestedGlossariesAsync(request);
         }
 
