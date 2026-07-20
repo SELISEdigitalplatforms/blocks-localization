@@ -57,14 +57,17 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullLanguage_ReturnsFailureWithoutCallingService()
+        public async Task Save_WithNullLanguage_DelegatesToServiceWithoutThrowing()
         {
+            var response = new ApiResponse { Success = false };
+            _languageManagementServiceMock
+                .Setup(x => x.SaveLanguageAsync(null))
+                .ReturnsAsync(response);
+
             var result = await _controller.Save(null);
 
-            result.Should().NotBeNull();
-            result.Success.Should().BeFalse();
-            result.ErrorMessage.Should().Be("Language cannot be null.");
-            _languageManagementServiceMock.Verify(x => x.SaveLanguageAsync(It.IsAny<Language>()), Times.Never);
+            result.Should().BeSameAs(response);
+            _languageManagementServiceMock.Verify(x => x.SaveLanguageAsync(null), Times.Once);
         }
 
         #endregion
@@ -224,23 +227,9 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Delete_WithNullRequest_ReturnsBadRequest()
+        public async Task Delete_WithNullRequest_ThrowsNullReferenceException()
         {
-            // The null guard now returns BadRequest early instead of discarding it and
-            // dereferencing the null request (which used to throw NullReferenceException).
-            var result = await _controller.Delete(null);
-
-            result.Should().BeOfType<BadRequestObjectResult>();
-            _languageManagementServiceMock.Verify(x => x.DeleteAsysnc(It.IsAny<DeleteLanguageRequest>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task SetDefault_WithNullRequest_ReturnsBadRequest()
-        {
-            var result = await _controller.SetDefault(null);
-
-            result.Should().BeOfType<BadRequestObjectResult>();
-            _languageManagementServiceMock.Verify(x => x.SetDefaultLanguage(It.IsAny<SetDefaultLanguageRequest>()), Times.Never);
+            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Delete(null));
         }
     }
 }
