@@ -3,5 +3,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Surface the .editorconfig naming/style rules at build time. Rules are
+         authored at `warning` severity so the suite stays green today; ratchet
+         individual rules to `error` (or set TreatWarningsAsErrors) once clean. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 </Project>

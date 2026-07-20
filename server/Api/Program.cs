@@ -4,6 +4,7 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Utilities;
 using SeliseBlocks.ConfigurationDriver;
 

@@ -54,11 +54,25 @@ namespace BlocksTemplate.Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
+        public async Task<List<BlocksLanguageModule>> GetModulesForCurrentTenant()
         {
             return await _moduleManagementService.GetModulesAsync();
         }
+
+        /// <summary>
+        /// Retrieves all available modules for the current tenant.
+        /// </summary>
+        /// <remarks>"Clouds" was an unclear alias for the current tenant. Use GetModulesForCurrentTenant.</remarks>
         [HttpGet]
+        [Authorize]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [Obsolete("Renamed to GetModulesForCurrentTenant.")]
+        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
+        {
+            return await GetModulesForCurrentTenant();
+        }
+        [HttpGet]
+        [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
         {
