@@ -42,7 +42,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
         {
-            if (module == null) return new ApiResponse("Module cannot be null.");
+            if (module == null) BadRequest(new BaseMutationResponse());
             return await _moduleManagementService.SaveModuleAsync(module);
         }
 
