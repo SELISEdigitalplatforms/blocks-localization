@@ -170,3 +170,12 @@ server/Api/wwwroot/**
 # Ignore environment-specific app settings, keep base appsettings.json
 # **/appsettings.*.json
 # **/appsetting.*.json
+
+# Build / scratch artifacts that must never be committed
+# (generated XML doc output is emitted into bin/ via GenerateDocumentationFile)
+server/Api/Api.xml
+server/Api/Blocks.Genesis.xml
+server/**/*.Backup.tmp
+*.Backup.tmp
+puku-embeddings.db
+a.txt

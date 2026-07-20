@@ -20,6 +20,7 @@ vi.mock("@/constants/endpoint.constant", () => ({
     UILM: "/api",
     UTILITIES: "/api",
     CLOUD_BUILD: "/api",
+    IAM: "/api",
     IDP: "/api",
     IDENTIFIER: "/api",
     LMT: "/api",
@@ -79,7 +80,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Module/GetCloudsModules`],
+      ["GETS", `${UILM_BASE}/Module/GetModulesForCurrentTenant`],
       ["SAVE", `${UILM_BASE}/Module/Save`],
       ["DELETE", `${UILM_BASE}/Module/Delete`],
       ["TAG_GLOSSARY", `${UILM_BASE}/Module/TagGlossary`],
@@ -97,7 +98,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Language/GetCloudsLanguages`],
+      ["GETS", `${UILM_BASE}/Language/GetLanguagesForCurrentTenant`],
       ["SAVE", `${UILM_BASE}/Language/Save`],
       ["DELETE", `${UILM_BASE}/Language/Delete`],
       ["SET_DEFAULT", `${UILM_BASE}/Language/SetDefault`],
@@ -126,7 +127,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetCloudWebHook`],
+      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetWebHookForCurrentTenant`],
       ["SAVE_WEBHOOK", `${UILM_BASE}/Config/SaveWebHook`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((CONFIG_ENDPOINTS as Record<string, string>)[key]).toBe(value);

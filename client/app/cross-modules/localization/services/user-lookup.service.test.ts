@@ -6,7 +6,7 @@ import { userLookupService } from "./user-lookup.service";
 
 vi.mock("@/lib/http-client", () => ({
   serviceInstances: {
-    idpService: {
+    iamService: {
       get: vi.fn(),
       post: vi.fn(),
     },
@@ -17,7 +17,7 @@ vi.mock("@/lib/runtime-env", () => ({
   getRuntimeEnv: vi.fn(),
 }));
 
-const http = serviceInstances.idpService;
+const http = serviceInstances.iamService;
 
 describe("localization/services/user-lookup.service", () => {
   beforeEach(() => {

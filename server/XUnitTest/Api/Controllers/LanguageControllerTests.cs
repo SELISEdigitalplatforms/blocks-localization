@@ -123,7 +123,7 @@ namespace XUnitTest
             var expectedResponse = new BaseMutationResponse { IsSuccess = true };
 
             _languageManagementServiceMock
-                .Setup(x => x.DeleteAsysnc(request))
+                .Setup(x => x.DeleteAsync(request))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -231,7 +231,7 @@ namespace XUnitTest
             var result = await _controller.Delete(null);
 
             result.Should().BeOfType<BadRequestObjectResult>();
-            _languageManagementServiceMock.Verify(x => x.DeleteAsysnc(It.IsAny<DeleteLanguageRequest>()), Times.Never);
+            _languageManagementServiceMock.Verify(x => x.DeleteAsync(It.IsAny<DeleteLanguageRequest>()), Times.Never);
         }
 
         [Fact]

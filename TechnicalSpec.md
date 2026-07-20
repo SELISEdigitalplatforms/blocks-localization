@@ -22,7 +22,7 @@ Blocks Localization is the translation-management service of the SELISE Blocks p
 - **React 18 + TypeScript**, built with **Vite** (dev port 4000; `build.outDir → ../server/Api/wwwroot`).
 - **@seliseblocks/blocks-kit** `0.0.60` — shared console shell, layout, auth guards, OIDC callback, project switcher.
 - **@tanstack/react-query** (data fetching) + **@tanstack/react-table** (tables), **react-router-dom** v6, **react-hook-form**, **radix-ui** primitives, **tailwindcss** (+ `tailwindcss-animate`), **lucide-react**, **sonner** (toasts), **react-dropzone** (file import), **nuqs** (URL query state).
-- Client package name is `blocks-idp-client` (the repo is a fork of the IAM/IDP client shell with a localization cross-module bolted on under `app/cross-modules/localization`).
+- Client package name is `blocks-localization-client` (the repo is a fork of the IAM client shell with a localization cross-module bolted on under `app/cross-modules/localization`).
 
 **Data store**
 - **MongoDB** for all business collections (per-tenant), plus a root `Secrets` collection that backs runtime configuration.
@@ -38,7 +38,7 @@ Blocks Localization is the translation-management service of the SELISE Blocks p
 
 ## 2. Solution / Module Structure
 
-Server solution `server/Blocks.slnx` (the repo also carries many unrelated `*.DomainService` projects inherited from the IDP shell — Authentication, Captcha, Cloud, Iam, Mfa, Identifier, etc.; the localization product lives in the `Eurolm.*` projects).
+Server solution `server/Blocks.slnx` (the repo also carries many unrelated `*.DomainService` projects inherited from the IAM shell — Authentication, Captcha, Cloud, Iam, Mfa, Identifier, etc.; the localization product lives in the `Eurolm.*` projects).
 
 | Project / folder | Responsibility |
 |---|---|

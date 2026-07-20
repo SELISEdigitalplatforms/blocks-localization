@@ -8,7 +8,7 @@ namespace Eurolm.DomainService.Services
         Task<ApiResponse> SaveLanguageAsync(Language language);
         Task<List<Language>> GetLanguagesAsync();
         Task<List<Language>> GetLanguagesAsync(string ProjectKey);
-        Task<BaseMutationResponse> DeleteAsysnc(DeleteLanguageRequest request);
+        Task<BaseMutationResponse> DeleteAsync(DeleteLanguageRequest request);
         Task<BaseMutationResponse> SetDefaultLanguage(SetDefaultLanguageRequest request);
     }
 }
