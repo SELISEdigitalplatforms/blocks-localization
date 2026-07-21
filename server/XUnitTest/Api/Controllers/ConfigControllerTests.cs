@@ -159,12 +159,12 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetCloudWebHook_ReturnsWebhookFromService()
+        public async Task GetWebHookForCurrentTenant_ReturnsWebhookFromService()
         {
             var webhook = new BlocksWebhook { Url = "https://example.com/webhook", ContentType = "application/json", BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "s", HeaderKey = "h" } };
             _webHookServiceMock.Setup(x => x.GetWebhookAsync()).ReturnsAsync(webhook);
 
-            var result = await _controller.GetCloudWebHook();
+            var result = await _controller.GetWebHookForCurrentTenant();
 
             result.Should().BeSameAs(webhook);
         }

@@ -36,7 +36,7 @@ const getIamBaseUrl = () => {
 };
 
 class UserLookupService {
-  private readonly httpClient = serviceInstances.idpService;
+  private readonly httpClient = serviceInstances.iamService;
   private readonly usersPageSize = 100;
 
   getMe(): Promise<GetMeResponse> {

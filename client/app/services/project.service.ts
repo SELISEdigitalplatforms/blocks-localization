@@ -22,7 +22,12 @@ import {
   IMigrationStatusResponse,
 } from '@/models/project.model'
 import { APIResponse } from '@/models/api-response'
-import { MIGRATION_ENDPOINTS, PROJECT_ENDPOINTS } from '@/constants/projects'
+import {
+  MIGRATION_ENDPOINTS,
+  PROJECT_ENDPOINTS,
+  IDENTITY_PROJECT_ENDPOINTS,
+  CLOUD_BUILD_GATEWAY_ENDPOINTS,
+} from '@/constants/projects'
 
 
 export class ProjectService {
@@ -82,7 +87,7 @@ export class ProjectService {
     errors: unknown | null
     isSuccess: boolean
   }> {
-    const url = `/cloudbuild/v1/build/repo-update`
+    const url = CLOUD_BUILD_GATEWAY_ENDPOINTS.REPO_UPDATE
     return this.httpClient.post(url, payload)
   }
 
@@ -91,32 +96,32 @@ export class ProjectService {
     errors: Record<string, string | string[]>
     tenantGroupId: string
   }> {
-    return this.httpClient.post(`/identifier/v1/Project/Create`, payload)
+    return this.httpClient.post(IDENTITY_PROJECT_ENDPOINTS.CREATE, payload)
   }
 
   validateCNameProject(
     payload: IValidateCNameProjectPayload,
   ): Promise<IValidateCNameProjectResponse> {
-    const url = `/identifier/v1/Domain/Configure`
+    const url = IDENTITY_PROJECT_ENDPOINTS.CONFIGURE_DOMAIN
     return this.httpClient.post(url, payload)
   }
 
   updateProject(
     payload: IUpdateProjectPayload,
   ): Promise<IUpdateProjectResponse> {
-    const url = `/identifier/v1/Project/UpdateProject`
+    const url = IDENTITY_PROJECT_ENDPOINTS.UPDATE_PROJECT
     return this.httpClient.post(url, payload)
   }
 
   updateTenantGroup(
     payload: IUpdateTenantGroupPayload,
   ): Promise<IUpdateTenantGroupResponse> {
-    const url = `/identifier/v1/Project/UpdateTenantGroup`
+    const url = IDENTITY_PROJECT_ENDPOINTS.UPDATE_TENANT_GROUP
     return this.httpClient.post(url, payload)
   }
 
   getProjectLoginOption(): Promise<IGetProjectLoginOptionResponse> {
-    const url = `/identifier/v1/Project/GetLoginOptions`
+    const url = IDENTITY_PROJECT_ENDPOINTS.GET_LOGIN_OPTIONS
     return this.httpClient.get(url)
   }
   disableProject(

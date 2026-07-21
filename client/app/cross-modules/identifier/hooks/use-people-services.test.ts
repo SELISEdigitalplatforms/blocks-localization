@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { peopleService } from "@blocks-identifier/services/people.service";
-import { serviceRegistryService } from "@blocks-identifier/services/service-registery.service";
+import { serviceRegistryService } from "@blocks-identifier/services/service-registry.service";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as peopleHooks from "./use-people";
 import * as serviceHooks from "./use-services";
@@ -21,7 +21,7 @@ vi.mock("@blocks-identifier/services/people.service", () => ({
     transferOwnership: vi.fn(),
   },
 }));
-vi.mock("@blocks-identifier/services/service-registery.service", () => ({
+vi.mock("@blocks-identifier/services/service-registry.service", () => ({
   serviceRegistryService: {
     registerService: vi.fn(),
     getAllServices: vi.fn(),
