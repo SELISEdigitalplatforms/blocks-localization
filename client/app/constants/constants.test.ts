@@ -21,6 +21,7 @@ describe("constants/endpoint.constant", () => {
   });
   it("should append /api to runtime-derived bases", () => {
     expect(API_BASES.LOGIC).toContain("/api");
+    expect(API_BASES.IAM).toContain("/api");
     expect(API_BASES.IDP).toContain("/api");
   });
 });

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { languageManagerService } from "@blocks-localization/services/language.manager.service";
+import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as hooks from "./use-language-manager";
 
@@ -9,7 +9,7 @@ vi.mock("@seliseblocks/blocks-kit", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
 }));
 
-vi.mock("@blocks-localization/services/language.manager.service", () => ({
+vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: {
     fetchBlocksLanguageKey: vi.fn(),
     fetchBlocksLanguageKeyById: vi.fn(),

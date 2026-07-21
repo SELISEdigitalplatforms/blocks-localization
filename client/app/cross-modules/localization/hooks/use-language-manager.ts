@@ -6,7 +6,7 @@ import {
   ILanguageConfig,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
-import { languageManagerService } from "@blocks-localization/services/language.manager.service";
+import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 

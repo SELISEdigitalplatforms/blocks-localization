@@ -3,6 +3,7 @@ using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared.Entities;
+using Eurolm.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Validation;
 using FluentAssertions;
