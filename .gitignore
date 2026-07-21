@@ -189,3 +189,4 @@ a.txt
 *.cdx.json
 zap-*.xml
 *-semgrep.sarif
+graphify-out/
