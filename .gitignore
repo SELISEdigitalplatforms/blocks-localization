@@ -181,3 +181,11 @@ server/**/*.Backup.tmp
 *.Backup.tmp
 puku-embeddings.db
 a.txt
+.sonarqube/
+.scannerwork/
+*.trufflehog.json
+*-secrets.json
+*sbom*.json
+*.cdx.json
+zap-*.xml
+*-semgrep.sarif
