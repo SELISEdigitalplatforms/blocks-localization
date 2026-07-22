@@ -17,6 +17,7 @@ import {
 } from "@seliseblocks/blocks-kit/guards";
 import {
   LocalizationConfigurePage,
+  LocalizationExtensionGuidesPage,
   LocalizationExportHistoryPage,
   LocalizationGlossaryDetailPage,
   LocalizationGlossaryPage,
@@ -103,6 +104,10 @@ export const router = createBrowserRouter([
                   {
                     path: "services/configure",
                     element: <LocalizationConfigurePage />,
+                  },
+                  {
+                    path: "services/extension-guides",
+                    element: <LocalizationExtensionGuidesPage />,
                   },
                   {
                     path: "services/modules",
