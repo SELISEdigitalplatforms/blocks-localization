@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   CheckCircle2,
-  Cloud,
   FileText,
   Info,
-  KeyRound,
   Pencil,
   Plus,
   Server,
@@ -13,37 +11,12 @@ import {
 import { Card } from "@/components/ui-kits/card/card";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { CopyableSnippet } from "./copyable-snippet";
-import {
-  getExtensionApiBaseUrl,
-  SETUP_STEPS,
-} from "./extension-guides.constant";
+import { SETUP_STEPS } from "./extension-guides.constant";
 
 export const ExtensionGuides = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const hostname =
-    typeof window === "undefined" ? "" : window.location.hostname;
-  const extensionApiBaseUrl = getExtensionApiBaseUrl(hostname);
+  const apiBaseUrl = getRuntimeEnv("BLOCKS_PUBLIC_API_BASE_URL");
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
-  const instanceTypes = [
-    {
-      icon: Cloud,
-      version: "V1",
-      name: "Blocks Cloud (Default)",
-      description:
-        "Choose this for a Blocks Cloud instance using microservice version V1.",
-      apiBaseUrl: extensionApiBaseUrl,
-      blocksKey,
-    },
-    {
-      icon: Server,
-      version: "V4",
-      name: "Blocks OS",
-      description:
-        "Choose this for a Blocks OS instance using microservice version V4.",
-      apiBaseUrl: extensionApiBaseUrl,
-      blocksKey,
-    },
-  ];
 
   useEffect(() => {
     if (!copiedField) return;
@@ -84,8 +57,7 @@ export const ExtensionGuides = () => {
         <div>
           <h1 className="text-2xl font-semibold">Extension Guides</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Connect SELISE Blocks Assistant to a Blocks Cloud or Blocks OS
-            instance.
+            Connect SELISE Blocks Assistant to a Blocks OS instance.
           </p>
         </div>
       </div>
@@ -96,9 +68,8 @@ export const ExtensionGuides = () => {
           <div>
             <h2 className="font-medium">Before you begin</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Confirm whether your project uses Blocks Cloud V1 or Blocks OS V4.
-              The correct API Base URL and X-Blocks-Key for each version are
-              provided below. Keep the key private and only enter it in the
+              Get the API Base URL and X-Blocks-Key from your Blocks OS
+              administrator. Keep the key private and only enter it in the
               official extension.
             </p>
           </div>
@@ -128,6 +99,22 @@ export const ExtensionGuides = () => {
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {item.description}
                 </p>
+                {item.image && (
+                  <figure className="mt-4 max-w-md overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-sm">
+                    <img
+                      src={item.image.src}
+                      alt={item.image.alt}
+                      width={item.image.width}
+                      height={item.image.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-auto w-full rounded-lg border object-contain"
+                    />
+                    <figcaption className="px-2 pb-1 pt-3 text-xs text-muted-foreground">
+                      {item.image.caption}
+                    </figcaption>
+                  </figure>
+                )}
               </div>
             </li>
           ))}
@@ -135,50 +122,38 @@ export const ExtensionGuides = () => {
       </Card>
 
       <Card className="p-4 sm:p-6">
-        <h2 className="text-lg font-semibold">Blocks instances</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose the version that matches your environment, then copy and paste
-          its values into the corresponding fields in the extension.
-        </p>
-
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          {instanceTypes.map((instance) => (
-            <div key={instance.version} className="rounded-lg border p-4">
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <instance.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium">{instance.name}</h3>
-                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs font-medium text-primary">
-                      {instance.version}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {instance.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                <CopyableSnippet
-                  id={`${instance.version}-api-base-url`}
-                  label="API Base URL"
-                  value={instance.apiBaseUrl}
-                  copiedField={copiedField}
-                  onCopy={copyToClipboard}
-                />
-                <CopyableSnippet
-                  id={`${instance.version}-blocks-key`}
-                  label="X-Blocks-Key"
-                  value={instance.blocksKey}
-                  copiedField={copiedField}
-                  onCopy={copyToClipboard}
-                />
-              </div>
+        <div className="flex gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Server className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold">Blocks OS</h2>
+              <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs font-medium text-primary">
+                V4
+              </span>
             </div>
-          ))}
+            <p className="mt-1 text-sm text-muted-foreground">
+              Blocks OS instance using microservice version V4.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <CopyableSnippet
+            id="v4-api-base-url"
+            label="API Base URL"
+            value={apiBaseUrl}
+            copiedField={copiedField}
+            onCopy={copyToClipboard}
+          />
+          <CopyableSnippet
+            id="v4-blocks-key"
+            label="X-Blocks-Key"
+            value={blocksKey}
+            copiedField={copiedField}
+            onCopy={copyToClipboard}
+          />
         </div>
       </Card>
 

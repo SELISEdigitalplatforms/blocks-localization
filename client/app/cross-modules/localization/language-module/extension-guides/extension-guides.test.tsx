@@ -1,31 +1,36 @@
-import { describe, expect, it } from "vitest";
-import { getExtensionApiBaseUrl } from "./extension-guides.constant";
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ExtensionGuides } from "./extension-guides";
 
-describe("getExtensionApiBaseUrl", () => {
-  it.each(["localhost", "127.0.0.1", "::1", "dev-localization.blocksdevelopers.com"])(
-    "uses the development API for %s",
-    (hostname) => {
-      expect(getExtensionApiBaseUrl(hostname)).toBe(
-        "https://dev-api.blocksdevelopers.com",
-      );
-    },
-  );
+const { getRuntimeEnvMock } = vi.hoisted(() => ({
+  getRuntimeEnvMock: vi.fn(),
+}));
 
-  it.each([
-    "stg-localization.blocksdevelopers.com",
-    "staging-localization.seliseblocks.com",
-  ])("uses the staging API for %s", (hostname) => {
-    expect(getExtensionApiBaseUrl(hostname)).toBe(
-      "https://stg-api.blocksdevelopers.com",
-    );
+vi.mock("@/lib/runtime-env", () => ({
+  getRuntimeEnv: getRuntimeEnvMock,
+}));
+
+describe("ExtensionGuides", () => {
+  beforeEach(() => {
+    getRuntimeEnvMock.mockImplementation((key: string) => {
+      if (key === "BLOCKS_PUBLIC_API_BASE_URL") {
+        return "https://runtime-api.example.com";
+      }
+      if (key === "BLOCKS_X_BLOCKS_KEY") {
+        return "runtime-blocks-key";
+      }
+      return "";
+    });
   });
 
-  it.each(["localization.seliseblocks.com", "app.example.com", ""])(
-    "uses the production API for %s",
-    (hostname) => {
-      expect(getExtensionApiBaseUrl(hostname)).toBe(
-        "https://api.seliseblocks.com",
-      );
-    },
-  );
+  it("displays the API Base URL and X-Blocks-Key from runtime configuration", () => {
+    render(<ExtensionGuides />);
+
+    expect(screen.getByText("https://runtime-api.example.com")).toBeTruthy();
+    expect(screen.getByText("runtime-blocks-key")).toBeTruthy();
+    expect(getRuntimeEnvMock).toHaveBeenCalledWith(
+      "BLOCKS_PUBLIC_API_BASE_URL",
+    );
+    expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_X_BLOCKS_KEY");
+  });
 });
