@@ -3,40 +3,7 @@ import { ExternalLink, ListPlus } from "lucide-react";
 export const EXTENSION_WEBSTORE_URL =
   "https://chromewebstore.google.com/detail/selise-blocks-assistant/ehnhmdghlkaeaiinoahgipdeogkikjem";
 
-export const EXTENSION_API_BASE_URLS = {
-  development: "https://dev-api.blocksdevelopers.com",
-  staging: "https://stg-api.blocksdevelopers.com",
-  production: "https://api.seliseblocks.com",
-} as const;
-
-export const getExtensionApiBaseUrl = (hostname: string): string => {
-  const normalizedHostname = hostname.toLowerCase();
-
-  const isStaging =
-    normalizedHostname.startsWith("stg-") ||
-    normalizedHostname.startsWith("staging-") ||
-    normalizedHostname.includes(".stg.") ||
-    normalizedHostname.includes(".staging.");
-
-  if (isStaging) {
-    return EXTENSION_API_BASE_URLS.staging;
-  }
-
-  const isLocal =
-    normalizedHostname === "localhost" ||
-    normalizedHostname === "127.0.0.1" ||
-    normalizedHostname === "::1";
-  const isDevelopment =
-    isLocal ||
-    normalizedHostname.startsWith("dev-") ||
-    normalizedHostname.includes(".dev.");
-
-  if (isDevelopment) {
-    return EXTENSION_API_BASE_URLS.development;
-  }
-
-  return EXTENSION_API_BASE_URLS.production;
-};
+const EXTENSION_GUIDE_IMAGE_PATH = "/assets/images/extension-guide";
 
 export const SETUP_STEPS = [
   {
@@ -56,6 +23,7 @@ export const SETUP_STEPS = [
         , then open it to reach the sign-in screen.
       </>
     ),
+    image: null,
   },
   {
     title: "Open Manage Instances",
@@ -66,6 +34,13 @@ export const SETUP_STEPS = [
         <strong>Choose Instance</strong> list.
       </>
     ),
+    image: {
+      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_1.png`,
+      alt: "SELISE Blocks sign-in screen highlighting the Manage instances button",
+      caption: "Open instance management from the sign-in screen.",
+      width: 708,
+      height: 1394,
+    },
   },
   {
     title: "Add a cloud instance",
@@ -75,6 +50,13 @@ export const SETUP_STEPS = [
         instances and return here later to edit or remove them.
       </>
     ),
+    image: {
+      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_2.png`,
+      alt: "Manage Instances screen showing the Add Cloud Instance button",
+      caption: "Select Add Cloud Instance to create a new configuration.",
+      width: 708,
+      height: 1396,
+    },
   },
   {
     title: "Enter the instance details",
@@ -85,6 +67,14 @@ export const SETUP_STEPS = [
         instances section below and paste them into the extension.
       </>
     ),
+    image: {
+      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_3.png`,
+      alt: "Add New Cloud Instance form with the name, version, API URL, and X-Blocks-Key fields",
+      caption:
+        "Enter the instance name, version, API Base URL, and X-Blocks-Key.",
+      width: 714,
+      height: 1392,
+    },
   },
   {
     title: "Save and select the instance",
@@ -95,6 +85,13 @@ export const SETUP_STEPS = [
         selected instance is marked as active.
       </>
     ),
+    image: {
+      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_4.png`,
+      alt: "Manage Instances screen showing saved Blocks Cloud and Blocks OS instances",
+      caption: "Confirm that the new instance appears in your saved instances.",
+      width: 700,
+      height: 1396,
+    },
   },
   {
     title: "Sign in",
@@ -105,5 +102,12 @@ export const SETUP_STEPS = [
         instance.
       </>
     ),
+    image: {
+      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_5.png`,
+      alt: "SELISE Blocks sign-in screen with the instance selector open",
+      caption: "Choose the saved instance, then enter your credentials and sign in.",
+      width: 706,
+      height: 1398,
+    },
   },
 ] as const;
