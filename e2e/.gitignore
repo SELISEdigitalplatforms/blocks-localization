@@ -8,3 +8,6 @@ node_modules/
 # Local secrets — never commit real credentials
 .env.e2e
 !.env.e2e.example
+.cursor/
+.understand-anything/
+.docs/

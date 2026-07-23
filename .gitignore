@@ -189,15 +189,6 @@ a.txt
 *.cdx.json
 zap-*.xml
 *-semgrep.sarif
-graphify-out/
-
-# --- markdown policy v2: only standard docs may be tracked ---
-*.md
-!README.md
-!LICENSE.md
-!CONTRIBUTING.md
-!SECURITY.md
-!CODE_OF_CONDUCT.md
 
 # --- AI assistant artifacts: never track ---
 .claude/
@@ -216,3 +207,11 @@ AGENTS.md
 .cursorrules
 .mcp.json
 copilot-instructions.md
+
+# --- markdown policy: only standard docs tracked ---
+*.md
+!README.md
+!LICENSE.md
+!CONTRIBUTING.md
+!SECURITY.md
+!CODE_OF_CONDUCT.md

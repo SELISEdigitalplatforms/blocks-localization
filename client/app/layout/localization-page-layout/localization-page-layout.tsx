@@ -9,6 +9,7 @@ import { LanguageLogs } from "@blocks-localization/language-module/activity-log/
 import { LanguageTable } from "@blocks-localization/language-module/language-table/language-table";
 import { ModuleTable } from "@blocks-localization/language-module/modules/module-table/module-table";
 import { ModuleDetails } from "@blocks-localization/language-module/modules/module-details/module-details";
+import { ExtensionGuides } from "@blocks-localization/language-module/extension-guides/extension-guides";
 
 function LocalizationPageLayout({ children }: { children: React.ReactNode }) {
   return <div className="h-full w-full min-w-0 p-6">{children}</div>;
@@ -91,6 +92,14 @@ export function LocalizationGlossaryDetailPage() {
   return (
     <LocalizationPageLayout>
       <GlossaryDetails itemId={glossaryId ?? ""} />
+    </LocalizationPageLayout>
+  );
+}
+
+export function LocalizationExtensionGuidesPage() {
+  return (
+    <LocalizationPageLayout>
+      <ExtensionGuides />
     </LocalizationPageLayout>
   );
 }
