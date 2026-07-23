@@ -1,12 +1,35 @@
 import react from "@vitejs/plugin-react";
+import fs from "fs";
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
+
+const resolveDevHttps = (): { cert: Buffer; key: Buffer } | undefined => {
+  const certPath = process.env.LOCALIZATION_SSL_CERT;
+  const keyPath = process.env.LOCALIZATION_SSL_KEY;
+
+  if (!certPath || !keyPath) {
+    console.warn(
+      "[dev-https] LOCALIZATION_SSL_CERT / LOCALIZATION_SSL_KEY not set — serving HTTP.",
+    );
+    return undefined;
+  }
+
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    console.warn(
+      `[dev-https] cert/key file missing (cert=${certPath}, key=${keyPath}) — serving HTTP.`,
+    );
+    return undefined;
+  }
+
+  return { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) };
+};
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "BLOCKS_");
   const proxyTarget = env.BLOCKS_API_BASE_URL;
   const iamProxyTarget =
     env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
+  const httpsConfig = resolveDevHttps();
 
   return {
     envPrefix: ["BLOCKS_"],
@@ -57,10 +80,13 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true, // Listen on all addresses (0.0.0.0)
       port: 4000,
+      https: httpsConfig,
       allowedHosts: [
         "stg-cloud.seliseblocks.com",
         "localhost",
         ".seliseblocks.com",
+        ".blocksdevelopers.com",
+        "dev-localization.blocksdevelopers.com",
       ],
       proxy: proxyTarget
         ? {
