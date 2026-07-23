@@ -9,7 +9,41 @@
  * - No HttpOnly because Zustand needs JS access
  */
 
+import { getRuntimeEnv } from "@/lib/runtime-env";
+
 const MAX_COOKIE_SIZE = 3500; // Leave buffer for cookie overhead (4KB limit)
+
+const normalizeDomain = (domain: string): string =>
+  domain
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .replace(/^\./, "")
+    .toLowerCase();
+
+/**
+ * Uses the deployment's configured base domain when it applies to the current
+ * host. Otherwise the Domain attribute is omitted so the browser creates a
+ * host-only cookie instead of silently rejecting the write.
+ */
+const resolveCookieDomain = (domain?: string): string | undefined => {
+  const normalizedDomain = normalizeDomain(
+    domain ?? getRuntimeEnv("BLOCKS_BASE_DOMAIN"),
+  );
+  if (!normalizedDomain) return undefined;
+
+  // An explicitly supplied domain remains supported for callers and tests.
+  if (domain !== undefined || typeof window === "undefined") {
+    return normalizedDomain;
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === normalizedDomain ||
+    hostname.endsWith(`.${normalizedDomain}`)
+    ? normalizedDomain
+    : undefined;
+};
 
 /**
  * Gets a cookie value by name
@@ -36,13 +70,13 @@ export function getCookie(name: string): string | null {
  * @param name - Cookie name
  * @param value - Cookie value
  * @param days - Number of days until expiration (default: 365)
- * @param domain - Domain for the cookie (default: .blocksdevelopers.com for cross-subdomain)
+ * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
  */
 export function setCookie(
   name: string,
   value: string,
   days: number = 365,
-  domain: string = ".blocksdevelopers.com"
+  domain?: string,
 ): void {
   if (typeof document === "undefined") return;
 
@@ -58,12 +92,13 @@ export function setCookie(
 
   // Determine if Secure flag should be used (based on protocol)
   const isSecure = window.location.protocol === "https:";
+  const cookieDomain = resolveCookieDomain(domain);
 
   document.cookie = [
     `${name}=${encodedValue}`,
     `expires=${expires.toUTCString()}`,
     "path=/",
-    `domain=${domain}`,
+    cookieDomain ? `domain=${cookieDomain}` : "",
     "SameSite=Lax",
     isSecure ? "Secure" : "", // Only use Secure on HTTPS
   ]
@@ -74,12 +109,21 @@ export function setCookie(
 /**
  * Removes a cookie by name
  * @param name - Cookie name
- * @param domain - Domain of the cookie (default: .blocksdevelopers.com)
+ * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
  */
-export function removeCookie(name: string, domain: string = ".blocksdevelopers.com"): void {
+export function removeCookie(name: string, domain?: string): void {
   if (typeof document === "undefined") return;
+  const cookieDomain = resolveCookieDomain(domain);
   // Set expiration to past date to remove
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${domain};SameSite=Lax`;
+  document.cookie = [
+    `${name}=`,
+    "expires=Thu, 01 Jan 1970 00:00:00 UTC",
+    "path=/",
+    cookieDomain ? `domain=${cookieDomain}` : "",
+    "SameSite=Lax",
+  ]
+    .filter(Boolean)
+    .join(";");
 }
 
 /**
@@ -102,13 +146,13 @@ export function getJsonCookie<T>(name: string): T | null {
  * @param name - Cookie name
  * @param value - Object to store
  * @param days - Number of days until expiration
- * @param domain - Domain for the cookie
+ * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
  */
 export function setJsonCookie<T>(
   name: string,
   value: T,
   days: number = 365,
-  domain: string = ".blocksdevelopers.com"
+  domain?: string,
 ): void {
   try {
     const jsonString = JSON.stringify(value);
