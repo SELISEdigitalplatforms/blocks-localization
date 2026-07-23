@@ -27,12 +27,11 @@ export default defineConfig({
   // Serial: these tests drive real backend state on dev, so running them in
   // parallel would race.
   workers: 1,
-  // The login spec alone waits up to 45s on the OIDC round trip; Playwright's
-  // 30s default would expire first and look like a broken login. Real runs
-  // against dev land in the 25-45s range.
+  // The login flow crosses two hosts (Localization -> dev-iam -> back) and
+  // observed real runs take 25-45s, so Playwright's 30s default expires
+  // before the login waitForURL ever gets a chance to.
   timeout: 120_000,
   reporter: [["html", { open: "never" }], ["list"]],
-  // Only relevant for a local build — see global-setup.ts.
   globalSetup: "./global-setup.ts",
   use: {
     baseURL,
@@ -40,15 +39,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     ignoreHTTPSErrors: true,
-    // Slow each action down so the flow is watchable in headed mode.
-    // e.g. E2E_SLOWMO=600 npm run test:headed
     launchOptions: {
       slowMo: process.env.E2E_SLOWMO ? Number(process.env.E2E_SLOWMO) : 0,
     },
   },
-  // Local-build mode only: start the .NET server (run.sh -b), wait for
-  // baseURL, run the tests, tear it down. If a server is already listening at
-  // baseURL it is reused instead.
   ...(autoStartServer
     ? {
         webServer: {
@@ -60,9 +54,6 @@ export default defineConfig({
           timeout: 600_000,
           stdout: "pipe" as const,
           stderr: "pipe" as const,
-          // Documented override (Program.cs): FrontendRuntime__BLOCKS_* env
-          // vars win over the DB-backed config, so a fresh build also bakes
-          // the local host into window.__BLOCKS_ENV__.
           env: {
             FrontendRuntime__BLOCKS_LOCALIZATION_BASE_URL: baseURL,
           },
@@ -70,23 +61,9 @@ export default defineConfig({
       }
     : {}),
   projects: [
-    // Setup: performs the real login once and saves the session to
-    // fixtures/auth.json (see login.spec.ts).
-    {
-      name: "setup",
-      testMatch: /auth[\\/]login\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
-    },
-    // All other tests run authenticated by reusing that saved session, and
-    // only after "setup" (login) has succeeded.
     {
       name: "chromium",
-      testIgnore: /auth[\\/]login\.spec\.ts/,
-      dependencies: ["setup"],
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "fixtures/auth.json",
-      },
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
 });
