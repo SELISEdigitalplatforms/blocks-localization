@@ -116,9 +116,7 @@ describe("language-module/configure", () => {
     });
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 

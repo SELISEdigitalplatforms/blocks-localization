@@ -1,11 +1,6 @@
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 import {
   DropdownMenu,
@@ -40,10 +35,7 @@ import {
   useSaveWebhook,
   useSetDefaultLanguage,
 } from "@blocks-localization/hooks/use-language-manager";
-import {
-  ILanguageConfig,
-  IWebhookConfig,
-} from "@blocks-localization/models/language";
+import { ILanguageConfig, IWebhookConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ColumnDef,
@@ -100,18 +92,12 @@ function Configure() {
   const [isNewLanguageDialogOpen, setIsNewLanguageDialogOpen] = useState(false);
   const [isMakeDefaultDialogOpen, setIsMakeDefaultDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedLanguageData, setSelectedLanguageData] = useState<
-    string | null
-  >(null);
-  const { isLoading: isLanguageListLoading, data: languageListData } =
-    useGetLanguages();
-  const { isPending: isDeleteLanguagePending, mutateAsync: deleteAsync } =
-    useDeleteLanguage();
-  const { isPending: isSetDefaultPending, mutateAsync: setDefaultAsync } =
-    useSetDefaultLanguage();
+  const [selectedLanguageData, setSelectedLanguageData] = useState<string | null>(null);
+  const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
+  const { isPending: isDeleteLanguagePending, mutateAsync: deleteAsync } = useDeleteLanguage();
+  const { isPending: isSetDefaultPending, mutateAsync: setDefaultAsync } = useSetDefaultLanguage();
   const { data: webhookData } = useGetWebhook();
-  const { isPending: isSaveWebhookPending, mutateAsync: saveWebhookAsync } =
-    useSaveWebhook();
+  const { isPending: isSaveWebhookPending, mutateAsync: saveWebhookAsync } = useSaveWebhook();
 
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
@@ -292,10 +278,7 @@ function Configure() {
           <div className="flex w-[150px] items-center">
             <span>{row.getValue("languageName")}</span>
             {row.original.isDefault && (
-              <Badge
-                color="bg-blocks-primary-500"
-                className="ml-2 w-[100px] rounded-xl"
-              >
+              <Badge color="bg-blocks-primary-500" className="ml-2 w-[100px] rounded-xl">
                 Default
               </Badge>
             )}
@@ -308,9 +291,7 @@ function Configure() {
       header: () => {
         return (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              Language Code
-            </span>
+            <span className="font-bold text-medium-emphasis">Language Code</span>
           </div>
         );
       },
@@ -379,10 +360,7 @@ function Configure() {
     <div>
       <div className="flex items-end justify-between">
         <h1 className="mt-5 text-2xl font-semibold">Configure Languages</h1>
-        <Dialog
-          open={isNewLanguageDialogOpen}
-          onOpenChange={setIsNewLanguageDialogOpen}
-        >
+        <Dialog open={isNewLanguageDialogOpen} onOpenChange={setIsNewLanguageDialogOpen}>
           <DialogTrigger asChild>
             <Button
               size="sm"
@@ -407,22 +385,13 @@ function Configure() {
           <Table className="text-sm">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="px-4 py-3 hover:bg-transparent"
-                >
+                <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead
-                        key={header.id}
-                        className="font-bold text-medium-emphasis"
-                      >
+                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
                         {header.isPlaceholder
                           ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
+                          : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     );
                   })}
@@ -439,20 +408,14 @@ function Configure() {
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
                     No results.
                   </TableCell>
                 </TableRow>
@@ -468,10 +431,7 @@ function Configure() {
         </CardHeader>
         <CardContent>
           <Form {...webhookForm}>
-            <form
-              onSubmit={webhookForm.handleSubmit(onWebhookSubmit)}
-              className="space-y-4"
-            >
+            <form onSubmit={webhookForm.handleSubmit(onWebhookSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={webhookForm.control}
@@ -480,10 +440,7 @@ function Configure() {
                     <FormItem className="sm:col-span-2">
                       <FormLabel>URL</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="https://example.com/webhook"
-                          {...field}
-                        />
+                        <Input placeholder="https://example.com/webhook" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -509,11 +466,7 @@ function Configure() {
                     <FormItem>
                       <FormLabel>Secret Header Key</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="X-Webhook-Secret"
-                          {...field}
-                          autoComplete="off"
-                        />
+                        <Input placeholder="X-Webhook-Secret" {...field} autoComplete="off" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -543,10 +496,7 @@ function Configure() {
                   render={({ field }) => (
                     <FormItem className="flex items-center gap-3 sm:col-span-2">
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <FormLabel className="!mt-0">Disable webhook</FormLabel>
                     </FormItem>
@@ -569,10 +519,7 @@ function Configure() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={isMakeDefaultDialogOpen}
-        onOpenChange={setIsMakeDefaultDialogOpen}
-      >
+      <Dialog open={isMakeDefaultDialogOpen} onOpenChange={setIsMakeDefaultDialogOpen}>
         <ConfirmationModal
           onCancel={() => {}}
           onConfirm={onConfirmMakeDefault}

@@ -29,11 +29,9 @@ describe("localization/services/user-lookup.service", () => {
     it("should GET the /me endpoint with absoluteUrl", () => {
       vi.mocked(http.get).mockResolvedValue({ data: {}, errors: null });
       userLookupService.getMe();
-      expect(http.get).toHaveBeenCalledWith(
-        "https://iam.example.com/api/iam/me",
-        undefined,
-        { absoluteUrl: true },
-      );
+      expect(http.get).toHaveBeenCalledWith("https://iam.example.com/api/iam/me", undefined, {
+        absoluteUrl: true,
+      });
     });
 
     it("should fall back to the default IAM base url when env is empty", () => {

@@ -75,8 +75,7 @@ describe("components/modals/export-key", () => {
     expect(screen.getByText("UILM")).toBeTruthy();
     // "Select file type" is disabled until a module is chosen.
     expect(
-      (screen.getByRole("button", { name: "Select file type" }) as HTMLButtonElement)
-        .disabled,
+      (screen.getByRole("button", { name: "Select file type" }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -93,9 +92,7 @@ describe("components/modals/export-key", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(
-      screen.getByRole("button", { name: "Select file type" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select file type" })).toBeTruthy();
   });
 
   it("should export once a format is chosen and download confirmed", async () => {
@@ -107,9 +104,7 @@ describe("components/modals/export-key", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Export Started" }),
-    );
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Export Started" }));
   });
 
   it("should switch the output type before exporting", async () => {
@@ -134,9 +129,7 @@ describe("components/modals/export-key", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Download Failed" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" })),
     );
   });
 
@@ -198,9 +191,7 @@ describe("components/modals/export-key", () => {
     });
 
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Status" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Status" })),
     );
   });
 
@@ -212,9 +203,7 @@ describe("components/modals/export-key", () => {
       DenormalizedPayload: { IsSuccess: false },
     });
 
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Download Failed" }),
-    );
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" }));
   });
 
   it("should toast a failure when the notification has no file id", async () => {
@@ -223,15 +212,11 @@ describe("components/modals/export-key", () => {
 
     await latestNotificationHandler()("not-valid-json");
 
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Download Failed" }),
-    );
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" }));
   });
 
   it("should toast a failure when the download url is missing", async () => {
-    vi.mocked(storageService.file.getFilesDownloadUrl).mockResolvedValue(
-      {} as never,
-    );
+    vi.mocked(storageService.file.getFilesDownloadUrl).mockResolvedValue({} as never);
     await startExport();
     vi.mocked(toast).mockClear();
 
@@ -240,25 +225,19 @@ describe("components/modals/export-key", () => {
     );
 
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Download Failed" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" })),
     );
   });
 
   it("should toast a failure when the download lookup throws", async () => {
-    vi.mocked(storageService.file.getFilesDownloadUrl).mockRejectedValue(
-      new Error("network"),
-    );
+    vi.mocked(storageService.file.getFilesDownloadUrl).mockRejectedValue(new Error("network"));
     await startExport();
     vi.mocked(toast).mockClear();
 
     await latestNotificationHandler()({ fileId: "file-2" });
 
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Download Failed" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" })),
     );
   });
 

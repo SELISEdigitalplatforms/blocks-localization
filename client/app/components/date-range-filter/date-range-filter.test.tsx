@@ -7,9 +7,7 @@ vi.mock("@/hooks/use-is-mobile", () => ({ default: () => false }));
 
 describe("components/date-range-filter", () => {
   it("renders the title when no date is selected", () => {
-    render(
-      <DateRangeFilter title="Created" date={undefined} onDateChange={vi.fn()} />,
-    );
+    render(<DateRangeFilter title="Created" date={undefined} onDateChange={vi.fn()} />);
     expect(screen.getByText("Created")).toBeTruthy();
   });
 

@@ -33,16 +33,12 @@ describe("lib/blocks-url.util", () => {
   describe("localhost origin", () => {
     it("should map to the non-prefixed dev/stg domain", () => {
       setOrigin("http://localhost:4000");
-      expect(deriveLocalizationBaseUrl()).toBe(
-        "https://localization.blocksdevelopers.com",
-      );
+      expect(deriveLocalizationBaseUrl()).toBe("https://localization.blocksdevelopers.com");
     });
 
     it("should map 127.0.0.1 the same way", () => {
       setOrigin("http://127.0.0.1:4000");
-      expect(deriveUtilityBaseUrl()).toBe(
-        "https://utilities.blocksdevelopers.com",
-      );
+      expect(deriveUtilityBaseUrl()).toBe("https://utilities.blocksdevelopers.com");
     });
   });
 
@@ -66,16 +62,12 @@ describe("lib/blocks-url.util", () => {
   describe("production .seliseblocks.com origin", () => {
     it("should map to the production domain with no prefix", () => {
       setOrigin("https://cloud.seliseblocks.com");
-      expect(deriveLocalizationBaseUrl()).toBe(
-        "https://localization.seliseblocks.com",
-      );
+      expect(deriveLocalizationBaseUrl()).toBe("https://localization.seliseblocks.com");
     });
 
     it("should preserve a dev- prefix on production domain", () => {
       setOrigin("https://dev-cloud.seliseblocks.com");
-      expect(deriveObservabilityBaseUrl()).toBe(
-        "https://dev-monitor.seliseblocks.com",
-      );
+      expect(deriveObservabilityBaseUrl()).toBe("https://dev-monitor.seliseblocks.com");
     });
   });
 
@@ -84,9 +76,7 @@ describe("lib/blocks-url.util", () => {
       setOrigin("https://cloud.blocksdevelopers.com");
       expect(deriveAgentBaseUrl()).toBe("https://agent.blocksdevelopers.com");
       expect(deriveOsBaseUrl()).toBe("https://os.blocksdevelopers.com");
-      expect(deriveDeploymentBaseUrl()).toBe(
-        "https://release.blocksdevelopers.com",
-      );
+      expect(deriveDeploymentBaseUrl()).toBe("https://release.blocksdevelopers.com");
     });
   });
 
@@ -96,9 +86,7 @@ describe("lib/blocks-url.util", () => {
       // @ts-expect-error simulate non-browser environment
       delete (globalThis as any).window;
       try {
-        expect(deriveLocalizationBaseUrl()).toBe(
-          "https://stg-localization.blocksdevelopers.com",
-        );
+        expect(deriveLocalizationBaseUrl()).toBe("https://stg-localization.blocksdevelopers.com");
       } finally {
         (globalThis as any).window = original;
       }

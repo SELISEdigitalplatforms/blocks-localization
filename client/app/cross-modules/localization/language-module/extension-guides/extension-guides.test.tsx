@@ -35,9 +35,7 @@ describe("ExtensionGuides", () => {
 
     expect(screen.getByText("https://runtime-api.example.com")).toBeTruthy();
     expect(screen.getByText("runtime-blocks-key")).toBeTruthy();
-    expect(getRuntimeEnvMock).toHaveBeenCalledWith(
-      "BLOCKS_PUBLIC_API_BASE_URL",
-    );
+    expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_PUBLIC_API_BASE_URL");
     expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_X_BLOCKS_KEY");
   });
 
@@ -52,9 +50,7 @@ describe("ExtensionGuides", () => {
 
     fireEvent.click(screen.getByLabelText("Copy API Base URL"));
 
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith("https://runtime-api.example.com"),
-    );
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://runtime-api.example.com"));
     expect(await screen.findByText("Copied")).toBeTruthy();
   });
 

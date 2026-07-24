@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  getCookie,
-  getJsonCookie,
-  removeCookie,
-  setCookie,
-  setJsonCookie,
-} from "@/lib/cookie";
+import { getCookie, getJsonCookie, removeCookie, setCookie, setJsonCookie } from "@/lib/cookie";
 
 const ORIGIN = window.location.origin;
 
@@ -101,21 +95,19 @@ describe("lib/cookie", () => {
       // (origin mismatch), so we verify via a spy on document.cookie setter
       // that the cookie string was constructed with the expected defaults
       // (expires, path, domain, SameSite=Lax).
-      const descriptor = Object.getOwnPropertyDescriptor(
-        Document.prototype,
-        "cookie",
-      );
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
 
       const calls: string[] = [];
-      const spy = vi
-        .spyOn(document, "cookie", "set")
-        .mockImplementation(function (this: Document, value: string) {
-          calls.push(value);
-          // @ts-expect-error: call through to original
-          originalSetter.call(this, value);
-        });
+      const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+        this: Document,
+        value: string,
+      ) {
+        calls.push(value);
+        // @ts-expect-error: call through to original
+        originalSetter.call(this, value);
+      });
 
       setCookie("name", "value");
       spy.mockRestore();
@@ -161,21 +153,19 @@ describe("lib/cookie", () => {
           value: { ...window.location, protocol: "https:" },
         });
 
-        const descriptor = Object.getOwnPropertyDescriptor(
-          Document.prototype,
-          "cookie",
-        );
+        const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
         const originalSetter = descriptor?.set;
         if (!originalSetter) return;
 
         const calls: string[] = [];
-        const spy = vi
-          .spyOn(document, "cookie", "set")
-          .mockImplementation(function (this: Document, value: string) {
-            calls.push(value);
-            // @ts-expect-error: call through to original
-            originalSetter.call(this, value);
-          });
+        const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+          this: Document,
+          value: string,
+        ) {
+          calls.push(value);
+          // @ts-expect-error: call through to original
+          originalSetter.call(this, value);
+        });
 
         setCookie("secure-cookie", "value", 1, "localhost");
         spy.mockRestore();
@@ -194,21 +184,19 @@ describe("lib/cookie", () => {
 
     it("should NOT add Secure on http origins", () => {
       // Default jsdom origin is http:. setCookie should not add Secure.
-      const descriptor = Object.getOwnPropertyDescriptor(
-        Document.prototype,
-        "cookie",
-      );
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
 
       const calls: string[] = [];
-      const spy = vi
-        .spyOn(document, "cookie", "set")
-        .mockImplementation(function (this: Document, value: string) {
-          calls.push(value);
-          // @ts-expect-error: call through to original
-          originalSetter.call(this, value);
-        });
+      const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+        this: Document,
+        value: string,
+      ) {
+        calls.push(value);
+        // @ts-expect-error: call through to original
+        originalSetter.call(this, value);
+      });
 
       setCookie("http-cookie", "value", 1, "localhost");
       spy.mockRestore();

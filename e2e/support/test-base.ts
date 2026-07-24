@@ -59,9 +59,9 @@ export async function expectToast(
   description: string,
   timeout = 20_000,
 ): Promise<void> {
-  await expect(
-    page.locator(TOAST_VISIBLE, { hasText: description }).first(),
-  ).toBeVisible({ timeout });
+  await expect(page.locator(TOAST_VISIBLE, { hasText: description }).first()).toBeVisible({
+    timeout,
+  });
 }
 
 /**

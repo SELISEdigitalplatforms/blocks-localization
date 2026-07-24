@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  FileText,
-  Info,
-  Pencil,
-  Plus,
-  Server,
-  Trash2,
-} from "lucide-react";
+import { CheckCircle2, FileText, Info, Pencil, Plus, Server, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui-kits/card/card";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 import { CopyableSnippet } from "./copyable-snippet";
@@ -68,9 +60,8 @@ export const ExtensionGuides = () => {
           <div>
             <h2 className="font-medium">Before you begin</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Get the API Base URL and X-Blocks-Key from your Blocks OS
-              administrator. Keep the key private and only enter it in the
-              official extension.
+              Get the API Base URL and X-Blocks-Key from your Blocks OS administrator. Keep the key
+              private and only enter it in the official extension.
             </p>
           </div>
         </div>
@@ -86,19 +77,14 @@ export const ExtensionGuides = () => {
           {SETUP_STEPS.map((item, index) => (
             <li key={item.title} className="relative flex gap-4 pb-6 last:pb-0">
               {index < SETUP_STEPS.length - 1 && (
-                <div
-                  aria-hidden="true"
-                  className="absolute bottom-0 left-4 top-8 w-px bg-border"
-                />
+                <div aria-hidden="true" className="absolute bottom-0 left-4 top-8 w-px bg-border" />
               )}
               <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                 {index + 1}
               </div>
               <div className="min-w-0 pt-0.5">
                 <h3 className="font-medium">{item.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {item.description}
-                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.description}</p>
                 {item.image && (
                   <figure className="mt-4 max-w-md overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-sm">
                     <img
@@ -165,8 +151,7 @@ export const ExtensionGuides = () => {
             <div>
               <h3 className="text-sm font-medium">Active instance</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                The ACTIVE label identifies the instance currently selected for
-                sign-in.
+                The ACTIVE label identifies the instance currently selected for sign-in.
               </p>
             </div>
           </div>
@@ -193,10 +178,7 @@ export const ExtensionGuides = () => {
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Plus className="h-4 w-4 text-primary" />
           Need another environment? Return to Manage Instances and select
-          <span className="font-medium text-foreground">
-            Add Cloud Instance
-          </span>
-          .
+          <span className="font-medium text-foreground">Add Cloud Instance</span>.
         </div>
       </Card>
     </div>

@@ -4,10 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { showErrorToast, showSuccessToast, toast } from "@/hooks/use-toast";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
-import {
-  useGetPreSignedUrlForUpload,
-  useUploadFile,
-} from "@blocks-storage/hooks/use-storage-file";
+import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import ImportCommunicationsModal from "./import-file-modal";
 
@@ -41,14 +38,11 @@ const renderModal = () =>
 const makeFile = (name: string, content: string, type: string) =>
   new File([content], name, { type });
 
-const fileInput = () =>
-  document.querySelector('input[type="file"]') as HTMLInputElement;
+const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 
-const dropFile = (file: File) =>
-  fireEvent.change(fileInput(), { target: { files: [file] } });
+const dropFile = (file: File) => fireEvent.change(fileInput(), { target: { files: [file] } });
 
-const XLSX_MIME =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 const encoder = new TextEncoder();
 
@@ -137,9 +131,7 @@ const sheetXml = (routeValue: string) =>
   "</sheetData></worksheet>";
 
 const makeXlsxFile = (name: string, sheet: string, withStrings = true) => {
-  const entries: ZipInput[] = [
-    { name: "xl/worksheets/sheet1.xml", content: sheet },
-  ];
+  const entries: ZipInput[] = [{ name: "xl/worksheets/sheet1.xml", content: sheet }];
   if (withStrings) {
     entries.push({ name: "xl/sharedStrings.xml", content: SHARED_STRINGS });
   }
@@ -185,9 +177,7 @@ describe("components/import-file-modal", () => {
     renderModal();
     dropFile(makeFile("bad.json", "{ not: valid", "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -196,9 +186,7 @@ describe("components/import-file-modal", () => {
     const json = JSON.stringify([{ Resources: [] }]);
     dropFile(makeFile("nokey.json", json, "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -221,9 +209,7 @@ describe("components/import-file-modal", () => {
     const csv = "foo,bar\n1,2\n";
     dropFile(makeFile("bad.csv", csv, "text/csv"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -280,9 +266,7 @@ describe("components/import-file-modal", () => {
       ),
     );
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -291,9 +275,7 @@ describe("components/import-file-modal", () => {
     const json = JSON.stringify([{ KeyName: "k", Resources: "oops" }]);
     dropFile(makeFile("bad.json", json, "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -305,9 +287,7 @@ describe("components/import-file-modal", () => {
     });
     uploadFileMut.mockResolvedValue({});
     importMut.mockResolvedValue({});
-    vi.mocked(storageService.file.getFileByFileId).mockRejectedValue(
-      new Error("lookup failed"),
-    );
+    vi.mocked(storageService.file.getFileByFileId).mockRejectedValue(new Error("lookup failed"));
     renderModal();
     const json = JSON.stringify([{ KeyName: "greeting" }]);
     dropFile(makeFile("data.json", json, "application/json"));
@@ -322,9 +302,9 @@ describe("components/import-file-modal", () => {
     // by clicking upload before any file is added is impossible (button disabled),
     // so assert the button is disabled initially.
     renderModal();
-    expect(
-      (screen.getByRole("button", { name: "Upload" }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect((screen.getByRole("button", { name: "Upload" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
   it("should change the template format", () => {
@@ -367,9 +347,7 @@ describe("components/import-file-modal", () => {
     const file = makeXlsxFile("bad-routes.xlsx", sheetXml("notarray"));
     dropFile(file);
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -384,9 +362,7 @@ describe("components/import-file-modal", () => {
     renderModal();
     dropFile(makeXlsxFile("nokey.xlsx", sheet, false));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -398,16 +374,12 @@ describe("components/import-file-modal", () => {
     renderModal();
     dropFile(makeXlsxFile("empty.xlsx", sheet));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
   it("should reject an XLSX archive missing its worksheet", async () => {
-    const bytes = buildZip([
-      { name: "xl/sharedStrings.xml", content: SHARED_STRINGS },
-    ]);
+    const bytes = buildZip([{ name: "xl/sharedStrings.xml", content: SHARED_STRINGS }]);
     renderModal();
     dropFile(
       new File([bytes as unknown as BlobPart], "noworksheet.xlsx", {
@@ -415,9 +387,7 @@ describe("components/import-file-modal", () => {
       }),
     );
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -451,9 +421,7 @@ describe("components/import-file-modal", () => {
     const csv = 'keyName,resources\n"unterminated\n';
     dropFile(makeFile("unterminated.csv", csv, "text/csv"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -462,9 +430,7 @@ describe("components/import-file-modal", () => {
     const csv = "keyName,resources\ngreeting,nocolon\n";
     dropFile(makeFile("badres.csv", csv, "text/csv"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -473,9 +439,7 @@ describe("components/import-file-modal", () => {
     const csv = "keyName,resources,routes\ngreeting,en-US:Hi,notarray\n";
     dropFile(makeFile("badroutes.csv", csv, "text/csv"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -484,9 +448,7 @@ describe("components/import-file-modal", () => {
     const csv = "keyName,resources\n,en-US:Hi\n";
     dropFile(makeFile("emptykey.csv", csv, "text/csv"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -495,22 +457,16 @@ describe("components/import-file-modal", () => {
     const json = JSON.stringify([{ KeyName: "k", Routes: "oops" }]);
     dropFile(makeFile("badroutes.json", json, "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
   it("should reject a JSON resource entry with non-string fields", async () => {
     renderModal();
-    const json = JSON.stringify([
-      { KeyName: "k", Resources: [{ Value: 1, Culture: "en-US" }] },
-    ]);
+    const json = JSON.stringify([{ KeyName: "k", Resources: [{ Value: 1, Culture: "en-US" }] }]);
     dropFile(makeFile("badresource.json", json, "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -518,9 +474,7 @@ describe("components/import-file-modal", () => {
     renderModal();
     dropFile(makeFile("empty.json", "[]", "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 
@@ -528,9 +482,7 @@ describe("components/import-file-modal", () => {
     renderModal();
     dropFile(makeFile("object.json", "{}", "application/json"));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Invalid File" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid File" })),
     );
   });
 

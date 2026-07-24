@@ -230,9 +230,7 @@ describe("LanguageManagerService", () => {
         service.fetchBlocksLanguageKeyById({ projectKey, itemId: "key-1" }),
       ).resolves.toBe(key);
 
-      expect(http.get).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.GET}?itemId=key-1`,
-      );
+      expect(http.get).toHaveBeenCalledWith(`${LANGUAGE_KEY_ENDPOINTS.GET}?itemId=key-1`);
     });
   });
 
@@ -242,13 +240,9 @@ describe("LanguageManagerService", () => {
       const modules = [];
       vi.mocked(http.get).mockResolvedValue(modules);
 
-      await expect(service.fetchBlocksLanguageModules(projectKey)).resolves.toBe(
-        modules,
-      );
+      await expect(service.fetchBlocksLanguageModules(projectKey)).resolves.toBe(modules);
 
-      expect(http.get).toHaveBeenCalledWith(
-        LANGUAGE_MODULE_ENDPOINTS.GETS,
-      );
+      expect(http.get).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.GETS);
     });
   });
 
@@ -273,20 +267,14 @@ describe("LanguageManagerService", () => {
       vi.mocked(http.get).mockResolvedValue(languages);
       vi.mocked(ensureLocalizationSession).mockResolvedValue(undefined);
 
-      await expect(service.fetchBlocksLanguages(projectKey)).resolves.toEqual(
-        languages,
-      );
+      await expect(service.fetchBlocksLanguages(projectKey)).resolves.toEqual(languages);
 
       expect(ensureLocalizationSession).toHaveBeenCalledTimes(1);
-      expect(http.get).toHaveBeenCalledWith(
-        LANGUAGE_ENDPOINTS.GETS,
-      );
+      expect(http.get).toHaveBeenCalledWith(LANGUAGE_ENDPOINTS.GETS);
     });
 
     it("does not fetch languages when the session refresh fails", async () => {
-      vi.mocked(ensureLocalizationSession).mockRejectedValue(
-        new Error("Failed to refresh token"),
-      );
+      vi.mocked(ensureLocalizationSession).mockRejectedValue(new Error("Failed to refresh token"));
 
       await expect(service.fetchBlocksLanguages(projectKey)).rejects.toThrow(
         "Failed to refresh token",
@@ -359,10 +347,7 @@ describe("LanguageManagerService", () => {
       const payload = { moduleName: "Module A", projectKey };
       await expect(service.saveLanguageModule(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_MODULE_ENDPOINTS.SAVE,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.SAVE, payload);
     });
   });
 
@@ -374,9 +359,7 @@ describe("LanguageManagerService", () => {
 
       await expect(service.getLanguageModule(projectKey)).resolves.toBe(modules);
 
-      expect(http.get).toHaveBeenCalledWith(
-        LANGUAGE_MODULE_ENDPOINTS.GETS,
-      );
+      expect(http.get).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.GETS);
     });
   });
 
@@ -427,10 +410,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.tagGlossary(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY, payload);
     });
   });
 
@@ -447,10 +427,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.saveLanguage(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_ENDPOINTS.SAVE,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_ENDPOINTS.SAVE, payload);
     });
   });
 
@@ -460,13 +437,9 @@ describe("LanguageManagerService", () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
-      await expect(
-        service.deleteLanguageKey({ itemId: "key-1" }),
-      ).resolves.toBe(response);
+      await expect(service.deleteLanguageKey({ itemId: "key-1" })).resolves.toBe(response);
 
-      expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1`,
-      );
+      expect(http.delete).toHaveBeenCalledWith(`${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1`);
     });
   });
 
@@ -479,11 +452,9 @@ describe("LanguageManagerService", () => {
       const payload = { itemIds: ["k-1", "k-2"] };
       await expect(service.deleteLanguageKeys(payload)).resolves.toBe(response);
 
-      expect(http.delete).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS,
-        undefined,
-        { body: payload },
-      );
+      expect(http.delete).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS, undefined, {
+        body: payload,
+      });
     });
   });
 
@@ -498,14 +469,9 @@ describe("LanguageManagerService", () => {
         ProjectKey: projectKey,
         defaultLanguage: "en-US",
       };
-      await expect(service.translateLanguageKeys(payload)).resolves.toBe(
-        response,
-      );
+      await expect(service.translateLanguageKeys(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS, payload);
     });
   });
 
@@ -521,9 +487,7 @@ describe("LanguageManagerService", () => {
         }),
       ).resolves.toBe(response);
 
-      expect(http.delete).toHaveBeenCalledWith(
-        `${LANGUAGE_ENDPOINTS.DELETE}?languageName=English`,
-      );
+      expect(http.delete).toHaveBeenCalledWith(`${LANGUAGE_ENDPOINTS.DELETE}?languageName=English`);
     });
   });
 
@@ -536,10 +500,7 @@ describe("LanguageManagerService", () => {
       const payload = { languageName: "English", projectKey };
       await expect(service.setDefault(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_ENDPOINTS.SET_DEFAULT,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_ENDPOINTS.SET_DEFAULT, payload);
     });
   });
 
@@ -552,10 +513,7 @@ describe("LanguageManagerService", () => {
       const payload = { guid: "abc", projectKey };
       await expect(service.generateUilmFile(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.GENERATE_UILM_FILE,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.GENERATE_UILM_FILE, payload);
     });
   });
 
@@ -576,9 +534,7 @@ describe("LanguageManagerService", () => {
         temperature: 0.7,
         projectKey,
       };
-      await expect(service.getTranslationSuggestion(payload)).resolves.toBe(
-        response,
-      );
+      await expect(service.getTranslationSuggestion(payload)).resolves.toBe(response);
 
       expect(http.post).toHaveBeenCalledWith(
         LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION,
@@ -601,10 +557,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.translateAll(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.TRANSLATE_ALL,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_ALL, payload);
     });
   });
 
@@ -622,10 +575,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.translateKey(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEY,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEY, payload);
     });
   });
 
@@ -642,10 +592,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.importLanguageFile(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.UILM_IMPORT,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.UILM_IMPORT, payload);
     });
   });
 
@@ -667,14 +614,9 @@ describe("LanguageManagerService", () => {
         callerTenantId: "tenant-1",
         projectKey,
       };
-      await expect(
-        service.saveLanguageKeyUilmExport(payload),
-      ).resolves.toBe(response);
+      await expect(service.saveLanguageKeyUilmExport(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT, payload);
     });
   });
 
@@ -766,10 +708,7 @@ describe("LanguageManagerService", () => {
       const payload = { itemId: "k-1", projectKey };
       await expect(service.revertKeyTimeline(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        LANGUAGE_KEY_ENDPOINTS.ROLLBACK,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.ROLLBACK, payload);
     });
   });
 
@@ -844,9 +783,7 @@ describe("LanguageManagerService", () => {
         pageNumber: 0,
         pageSize: 20,
       };
-      await expect(service.getTimelineByOperationId(payload)).resolves.toBe(
-        response,
-      );
+      await expect(service.getTimelineByOperationId(payload)).resolves.toBe(response);
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain("OperationId=op-1");
@@ -949,10 +886,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.saveGlossary(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        GLOSSARY_ENDPOINTS.SAVE,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(GLOSSARY_ENDPOINTS.SAVE, payload);
     });
   });
 
@@ -962,13 +896,9 @@ describe("LanguageManagerService", () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
-      await expect(
-        service.deleteGlossary({ itemId: "g-1" }),
-      ).resolves.toBe(response);
+      await expect(service.deleteGlossary({ itemId: "g-1" })).resolves.toBe(response);
 
-      expect(http.delete).toHaveBeenCalledWith(
-        `${GLOSSARY_ENDPOINTS.DELETE}?itemId=g-1`,
-      );
+      expect(http.delete).toHaveBeenCalledWith(`${GLOSSARY_ENDPOINTS.DELETE}?itemId=g-1`);
     });
   });
 
@@ -978,9 +908,9 @@ describe("LanguageManagerService", () => {
       const response = { suggestedGlossaries: [] };
       vi.mocked(http.get).mockResolvedValue(response);
 
-      await expect(
-        service.getSuggestedGlossaries({ itemId: "k-1", projectKey }),
-      ).resolves.toBe(response);
+      await expect(service.getSuggestedGlossaries({ itemId: "k-1", projectKey })).resolves.toBe(
+        response,
+      );
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain(`${GLOSSARY_ENDPOINTS.GET_SUGGESTED_GLOSSARIES}?`);
@@ -1013,13 +943,9 @@ describe("LanguageManagerService", () => {
       };
       vi.mocked(http.get).mockResolvedValue(response);
 
-      await expect(
-        service.getGlossaryById({ itemId: "g-1" }),
-      ).resolves.toBe(response);
+      await expect(service.getGlossaryById({ itemId: "g-1" })).resolves.toBe(response);
 
-      expect(http.get).toHaveBeenCalledWith(
-        `${GLOSSARY_ENDPOINTS.GET}?itemId=g-1`,
-      );
+      expect(http.get).toHaveBeenCalledWith(`${GLOSSARY_ENDPOINTS.GET}?itemId=g-1`);
     });
   });
 
@@ -1056,10 +982,7 @@ describe("LanguageManagerService", () => {
       };
       await expect(service.saveWebhook(payload)).resolves.toBe(response);
 
-      expect(http.post).toHaveBeenCalledWith(
-        CONFIG_ENDPOINTS.SAVE_WEBHOOK,
-        payload,
-      );
+      expect(http.post).toHaveBeenCalledWith(CONFIG_ENDPOINTS.SAVE_WEBHOOK, payload);
     });
   });
 });

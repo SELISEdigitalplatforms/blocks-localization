@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui-kits/input/input";
 import { cn } from "@/lib/utils";
 import {
@@ -184,20 +183,20 @@ export const FileUploader = forwardRef<
           for (let i = 0; i < rejectedFiles.length; i++) {
             if (rejectedFiles[i].errors[0]?.code === "file-too-large") {
               showErrorToast({
-                errors: `File is too large. Max size is ${maxSize / 1024 / 1024}MB`
+                errors: `File is too large. Max size is ${maxSize / 1024 / 1024}MB`,
               });
               break;
             }
             if (rejectedFiles[i].errors[0]?.code === "file-invalid-type") {
               showErrorToast({
-                errors: "Invalid file type"
+                errors: "Invalid file type",
               });
               break;
             }
             if (rejectedFiles[i].errors[0]?.message) {
               toast.error(rejectedFiles[i].errors[0].message);
               showErrorToast({
-                errors: rejectedFiles[i].errors[0].message
+                errors: rejectedFiles[i].errors[0].message,
               });
               break;
             }

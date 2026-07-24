@@ -69,9 +69,7 @@ describe("create-project environments form", () => {
   });
 
   it("should require at least one environment", () => {
-    expect(
-      createProjectEnvironmentFormSchema.safeParse({ environments: [] }).success,
-    ).toBe(false);
+    expect(createProjectEnvironmentFormSchema.safeParse({ environments: [] }).success).toBe(false);
     expect(
       createProjectEnvironmentFormSchema.safeParse({
         environments: [{ value: "dev" }],

@@ -55,9 +55,7 @@ describe("modals/delete-glossary", () => {
     render(withDialog(<DeleteGlossary itemId="g1" glossaryName="Widget" onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -104,9 +102,7 @@ describe("modals/new-module", () => {
       target: { value: "Payments" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
-    await waitFor(() =>
-      expect(showErrorToast).toHaveBeenCalledWith({ errors: "duplicate" }),
-    );
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith({ errors: "duplicate" }));
   });
 });
 
@@ -175,9 +171,7 @@ describe("modals/gpt-prompt", () => {
     fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
     expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: /Restore default/ }));
-    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toContain(
-      "translate",
-    );
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toContain("translate");
   });
 
   it("should save the prompt as key context", async () => {
@@ -185,9 +179,7 @@ describe("modals/gpt-prompt", () => {
     render(withDialog(<GptPrompt keyDetails={keyDetails} defaultValue="Custom" />));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: "success" }),
-    );
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
   });
 
   it("should toast an error when saving fails", async () => {
@@ -195,9 +187,7 @@ describe("modals/gpt-prompt", () => {
     render(withDialog(<GptPrompt keyDetails={keyDetails} />));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 });

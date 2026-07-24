@@ -14,9 +14,7 @@ describe("storage/constants/endpoint.constant", () => {
     expect(STORAGE_CONFIG_ENDPOINTS.GET_PRESIGNED_URL).toContain(
       "/Storage/GetPreSignedUrlForUpload",
     );
-    expect(STORAGE_CONFIG_ENDPOINTS.UPLOAD_DMS_FILE).toContain(
-      "/Storage/UploadFile",
-    );
+    expect(STORAGE_CONFIG_ENDPOINTS.UPLOAD_DMS_FILE).toContain("/Storage/UploadFile");
     expect(STORAGE_CONFIG_ENDPOINTS.UPLOAD_PUBLIC_CERTIFICATE).toContain(
       "/Storage/Certificate/UploadCertificate",
     );
