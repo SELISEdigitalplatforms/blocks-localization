@@ -1,4 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
+import { randomInt } from "node:crypto";
 
 // Shared `test` for the whole suite. Specs import from here instead of
 // "@playwright/test" so the pause below applies everywhere automatically.
@@ -68,6 +69,6 @@ export async function expectToast(
  */
 export function uniqueName(prefix: string): string {
   const ts = Date.now();
-  const rand = Math.floor(Math.random() * 1e9);
+  const rand = randomInt(1e9);
   return `${prefix}_${ts}_${rand}`;
 }
