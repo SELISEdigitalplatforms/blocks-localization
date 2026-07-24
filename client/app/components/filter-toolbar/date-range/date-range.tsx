@@ -16,7 +16,12 @@ interface DateRangeFilterProps {
   disableFutureDates?: boolean;
 }
 
-export function DateRange({ label, value, onChange, disableFutureDates = false }: DateRangeFilterProps) {
+export function DateRange({
+  label,
+  value,
+  onChange,
+  disableFutureDates = false,
+}: DateRangeFilterProps) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateRangeType>(value);

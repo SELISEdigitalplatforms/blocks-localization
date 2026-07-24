@@ -172,14 +172,14 @@ config section. The key this suite cares about is
 
 ## Knobs in `.env.e2e`
 
-| Variable | Effect |
-|---|---|
-| `E2E_BASE_URL` | Host under test. No default — a missing value fails loudly. |
-| `E2E_USERNAME` / `E2E_PASSWORD` | Dev-IAM test account (captcha is disabled on dev). |
-| `E2E_NO_WEBSERVER=1` | Don't auto-start the app. Required for remote or `:4000` Vite. |
-| `E2E_PAUSE_MS` | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
-| `E2E_SLOWMO` | Milliseconds of delay per action, to watch the steps themselves. |
-| `E2E_PROJECT_NAME` | Project card to open via Development (default: `test`). |
+| Variable                        | Effect                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `E2E_BASE_URL`                  | Host under test. No default — a missing value fails loudly.                                        |
+| `E2E_USERNAME` / `E2E_PASSWORD` | Dev-IAM test account (captcha is disabled on dev).                                                 |
+| `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
+| `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
+| `E2E_SLOWMO`                    | Milliseconds of delay per action, to watch the steps themselves.                                   |
+| `E2E_PROJECT_NAME`              | Project card to open via Development (default: `test`).                                            |
 
 ## Layout
 

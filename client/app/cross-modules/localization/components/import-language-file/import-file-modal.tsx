@@ -24,18 +24,10 @@ import { showErrorToast, showSuccessToast, toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile } from "@blocks-localization/models/language";
-import {
-  ArrowDownToLine,
-  CloudUpload,
-  Paperclip,
-  TriangleAlert,
-} from "lucide-react";
+import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import {
-  useGetPreSignedUrlForUpload,
-  useUploadFile,
-} from "@blocks-storage/hooks/use-storage-file";
+import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { ModuleName } from "@/constants/modules.constants";
 import {
@@ -95,9 +87,7 @@ const detectDelimiter = (line: string): string => {
     count: (line.match(new RegExp(`\\${d}`, "g")) || []).length,
   }));
   // Return the delimiter with the highest count, default to comma
-  const best = counts.reduce((prev, curr) =>
-    curr.count > prev.count ? curr : prev,
-  );
+  const best = counts.reduce((prev, curr) => (curr.count > prev.count ? curr : prev));
   return best.count > 0 ? best.delimiter : ",";
 };
 
@@ -105,14 +95,10 @@ const detectDelimiter = (line: string): string => {
  * Parses CSV content and returns array of records
  * Handles quoted fields, escaped quotes, and various delimiters
  */
-const parseCSVContent = (
-  content: string,
-): { headers: string[]; rows: string[][] } => {
+const parseCSVContent = (content: string): { headers: string[]; rows: string[][] } => {
   // Remove BOM (Byte Order Mark) if present
   const cleanContent = content.replace(/^\uFEFF/, "");
-  const headerLine = cleanContent
-    .split(/\r?\n/)
-    .find((line) => line.trim() !== "");
+  const headerLine = cleanContent.split(/\r?\n/).find((line) => line.trim() !== "");
 
   if (!headerLine) {
     return { headers: [], rows: [] };
@@ -169,10 +155,7 @@ const parseCSVContent = (
     return records;
   };
 
-  const mergeContinuedRows = (
-    records: string[][],
-    expectedColumnCount: number,
-  ) => {
+  const mergeContinuedRows = (records: string[][], expectedColumnCount: number) => {
     const mergedRows: string[][] = [];
     let pendingRow: string[] | null = null;
 
@@ -185,9 +168,7 @@ const parseCSVContent = (
       const lastIndex = target.length - 1;
       const [firstField, ...remainingFields] = continuation;
       if (firstField !== undefined) {
-        target[lastIndex] = target[lastIndex]
-          ? `${target[lastIndex]}\n${firstField}`
-          : firstField;
+        target[lastIndex] = target[lastIndex] ? `${target[lastIndex]}\n${firstField}` : firstField;
       }
       target.push(...remainingFields);
     };
@@ -222,11 +203,9 @@ const parseCSVContent = (
   return { headers, rows };
 };
 
-const getUint16 = (view: DataView, offset: number) =>
-  view.getUint16(offset, true);
+const getUint16 = (view: DataView, offset: number) => view.getUint16(offset, true);
 
-const getUint32 = (view: DataView, offset: number) =>
-  view.getUint32(offset, true);
+const getUint32 = (view: DataView, offset: number) => view.getUint32(offset, true);
 
 const decodeUtf8 = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
@@ -270,9 +249,7 @@ const readZipEntries = (bytes: Uint8Array): Map<string, ZipEntry> => {
     const extraFieldLength = getUint16(view, offset + 30);
     const fileCommentLength = getUint16(view, offset + 32);
     const localHeaderOffset = getUint32(view, offset + 42);
-    const fileName = decodeUtf8(
-      bytes.slice(offset + 46, offset + 46 + fileNameLength),
-    );
+    const fileName = decodeUtf8(bytes.slice(offset + 46, offset + 46 + fileNameLength));
 
     entries.set(fileName, {
       compressionMethod,
@@ -295,9 +272,7 @@ const inflateRaw = async (data: Uint8Array): Promise<Uint8Array> => {
     data.byteOffset,
     data.byteOffset + data.byteLength,
   ) as ArrayBuffer;
-  const stream = new Blob([buffer])
-    .stream()
-    .pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   const inflatedBuffer = await new Response(stream).arrayBuffer();
   return new Uint8Array(inflatedBuffer);
 };
@@ -320,10 +295,7 @@ const readZipFile = async (
   const fileNameLength = getUint16(view, offset + 26);
   const extraFieldLength = getUint16(view, offset + 28);
   const dataOffset = offset + 30 + fileNameLength + extraFieldLength;
-  const compressedData = bytes.slice(
-    dataOffset,
-    dataOffset + entry.compressedSize,
-  );
+  const compressedData = bytes.slice(dataOffset, dataOffset + entry.compressedSize);
 
   if (entry.compressionMethod === 0) {
     return decodeUtf8(compressedData);
@@ -364,9 +336,7 @@ const parseSharedStrings = (xml: string | null): string[] => {
   if (!xml) return [];
 
   const document = parseXml(xml);
-  return Array.from(document.querySelectorAll("si")).map((item) =>
-    getTextContent(item, "t"),
-  );
+  return Array.from(document.querySelectorAll("si")).map((item) => getTextContent(item, "t"));
 };
 
 const getSheetCellValue = (cell: Element, sharedStrings: string[]) => {
@@ -393,11 +363,7 @@ const parseXlsxFirstSheet = async (
   }
 
   const entries = readZipEntries(bytes);
-  const sheetXml = await readZipFile(
-    bytes,
-    entries,
-    "xl/worksheets/sheet1.xml",
-  );
+  const sheetXml = await readZipFile(bytes, entries, "xl/worksheets/sheet1.xml");
 
   if (!sheetXml) {
     throw new Error("Missing XLSX worksheet");
@@ -462,11 +428,7 @@ const validateJsonFileContent = (content: string): ValidationResult => {
     data.forEach((item: Record<string, unknown>) => {
       // Check for KeyName (case-sensitive as per template)
       const keyName = item.KeyName ?? item.keyName;
-      if (
-        keyName === null ||
-        keyName === undefined ||
-        String(keyName).trim() === ""
-      ) {
+      if (keyName === null || keyName === undefined || String(keyName).trim() === "") {
         errorCount++;
       }
 
@@ -540,9 +502,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
 
     // Check if file has language columns (like bn-BD, en-US, etc.) - these can serve as resources
     const languageColumnPattern = /^[a-z]{2}-[A-Z]{2}$/;
-    const hasLanguageColumns = headers.some((h) =>
-      languageColumnPattern.test(h.trim()),
-    );
+    const hasLanguageColumns = headers.some((h) => languageColumnPattern.test(h.trim()));
 
     // resources is optional if language columns exist
     if (!hasResources && !hasLanguageColumns) {
@@ -592,12 +552,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
       // Routes is optional
       if (routesIndex !== -1) {
         const routes = row[routesIndex];
-        if (
-          routes &&
-          routes.trim() !== "" &&
-          routes !== "[]" &&
-          routes !== "{}"
-        ) {
+        if (routes && routes.trim() !== "" && routes !== "[]" && routes !== "{}") {
           if (!routes.startsWith("[")) {
             errorCount++;
           }
@@ -621,9 +576,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
  * Validates XLSX file content by parsing and checking the data structure
  * Expected columns: keyName, moduleName, resources, routes
  */
-const validateXlsxFileContent = async (
-  arrayBuffer: ArrayBuffer,
-): Promise<ValidationResult> => {
+const validateXlsxFileContent = async (arrayBuffer: ArrayBuffer): Promise<ValidationResult> => {
   const errors: string[] = [];
 
   try {
@@ -647,9 +600,7 @@ const validateXlsxFileContent = async (
 
     // Check if file has language columns (like bn-BD, en-US, etc.) - these can serve as resources
     const languageColumnPattern = /^[a-z]{2}-[A-Z]{2}$/;
-    const hasLanguageColumns = headers.some((h) =>
-      languageColumnPattern.test(h.trim()),
-    );
+    const hasLanguageColumns = headers.some((h) => languageColumnPattern.test(h.trim()));
 
     // resources is optional if language columns exist
     if (!hasResources && !hasLanguageColumns) {
@@ -702,11 +653,7 @@ const validateXlsxFileContent = async (
         const routes = row[routesIndex];
         if (routes && routes.trim() !== "") {
           const routesStr = routes.trim();
-          if (
-            routesStr !== "[]" &&
-            routesStr !== "{}" &&
-            !routesStr.startsWith("[")
-          ) {
+          if (routesStr !== "[]" && routesStr !== "{}" && !routesStr.startsWith("[")) {
             errorCount++;
           }
         }
@@ -777,9 +724,7 @@ const FileSvgDraw = () => {
         <span className="font-semibold text-primary">Click to upload</span>
         &nbsp; or drag and drop
       </div>
-      <div className="text-xs text-low-emphasis">
-        XLSX, CSV, JSON Maximum file 50MB
-      </div>
+      <div className="text-xs text-low-emphasis">XLSX, CSV, JSON Maximum file 50MB</div>
     </>
   );
 };
@@ -809,17 +754,12 @@ export default function ImportCommunicationsModal({
 
   const { mutateAsync: getPresignedUrl, isPending: isGettingPresignedUrl } =
     useGetPreSignedUrlForUpload();
-  const { mutateAsync: uploadFileMutate, isPending: isUploadingFile } =
-    useUploadFile();
-  const { mutateAsync: uploadUilmFile, isPending: isUploadingUilmFile } =
-    useImportLanguageFile();
+  const { mutateAsync: uploadFileMutate, isPending: isUploadingFile } = useUploadFile();
+  const { mutateAsync: uploadUilmFile, isPending: isUploadingUilmFile } = useImportLanguageFile();
   const [isUploadingBatch, setIsUploadingBatch] = useState(false);
 
   const isBusy =
-    isGettingPresignedUrl ||
-    isUploadingFile ||
-    isUploadingUilmFile ||
-    isUploadingBatch;
+    isGettingPresignedUrl || isUploadingFile || isUploadingUilmFile || isUploadingBatch;
 
   // Handle files change with validation on selection
   const handleFilesChange = async (newFiles: File[] | null) => {
@@ -882,9 +822,7 @@ export default function ImportCommunicationsModal({
     maxSize: 1024 * 1024 * 50, // 50MB as mentioned in the UI
     multiple: true,
     accept: {
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
       "text/csv": [".csv"],
       "application/json": [".json"],
       "application/x-xliff+xml": [".xlf"],
@@ -997,13 +935,10 @@ export default function ImportCommunicationsModal({
         <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
           <div className="flex flex-row items-center">
             <TriangleAlert className="h-4 w-4 text-icon-warning" />
-            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
-              JSON Format
-            </p>
+            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">JSON Format</p>
           </div>
           <p className="mt-[8px] text-[14px] text-high-emphasis">
-            Please download the JSON Template and re-upload with your data to
-            avoid any error.
+            Please download the JSON Template and re-upload with your data to avoid any error.
           </p>
         </div>
         <FileUploader
@@ -1033,9 +968,7 @@ export default function ImportCommunicationsModal({
           <div className="flex flex-row items-center gap-2">
             <Select
               value={selectedFormat}
-              onValueChange={(value) =>
-                setSelectedFormat(value as TemplateFormat)
-              }
+              onValueChange={(value) => setSelectedFormat(value as TemplateFormat)}
             >
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Format" />

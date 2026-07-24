@@ -27,10 +27,9 @@ vi.mock("@blocks-localization/components/modals/new-module/new-module", () => ({
 vi.mock("@blocks-localization/components/modals/edit-module/edit-module", () => ({
   default: () => null,
 }));
-vi.mock(
-  "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal",
-  () => ({ default: () => null }),
-);
+vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal", () => ({
+  default: () => null,
+}));
 
 const mockModules = vi.mocked(useGetLanguageModules);
 
@@ -55,17 +54,13 @@ describe("language-module/module-table", () => {
       refetch: vi.fn(),
     } as never);
     renderWithProviders(<ModuleTable />);
-    expect(
-      screen.getByText(/No modules found/),
-    ).toBeTruthy();
+    expect(screen.getByText(/No modules found/)).toBeTruthy();
   });
 
   it("should render module rows and navigate on click", () => {
     mockModules.mockReturnValue({
       isLoading: false,
-      data: [
-        { itemId: "m1", moduleName: "UILM", createdBy: "u1", createDate: "2026-01-01" },
-      ],
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: "u1", createDate: "2026-01-01" }],
       refetch: vi.fn(),
     } as never);
     renderWithProviders(<ModuleTable />);

@@ -23,9 +23,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-muted-foreground">
-          {label}
-        </span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {isCopied ? "Copied" : ""}
         </span>
@@ -44,11 +42,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
           title={`Copy ${label}`}
           onClick={() => onCopy(value, id)}
         >
-          {isCopied ? (
-            <Check className="h-4 w-4 text-primary" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
+          {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
         </Button>
       </div>
     </div>

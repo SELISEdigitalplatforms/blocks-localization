@@ -18,7 +18,7 @@ export class StorageService {
   constructor(
     public configuration: StorageConfiguration,
     public file: StorageFile,
-  ) { }
+  ) {}
 
   uploadFile(payload: IUploadImagePayload): Promise<{}> {
     return this.httpClient.put(

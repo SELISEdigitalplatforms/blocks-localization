@@ -27,8 +27,7 @@ const resolveDevHttps = (): { cert: Buffer; key: Buffer } | undefined => {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "BLOCKS_");
   const proxyTarget = env.BLOCKS_API_BASE_URL;
-  const iamProxyTarget =
-    env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
+  const iamProxyTarget = env.BLOCKS_IAM_BASE_URL || "https://dev-iam.blocksdevelopers.com";
   const httpsConfig = resolveDevHttps();
 
   return {
@@ -39,26 +38,11 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./app"),
         "@blocks-lmt": path.resolve(__dirname, "./app/cross-modules/lmt"),
-        "@blocks-storage": path.resolve(
-          __dirname,
-          "./app/cross-modules/storage",
-        ),
-        "@blocks-communication": path.resolve(
-          __dirname,
-          "./app/cross-modules/communication",
-        ),
-        "@blocks-identifier": path.resolve(
-          __dirname,
-          "./app/cross-modules/identifier",
-        ),
-        "@blocks-localization": path.resolve(
-          __dirname,
-          "./app/cross-modules/localization",
-        ),
-        "@blocks-utilities": path.resolve(
-          __dirname,
-          "./app/cross-modules/utilities",
-        ),
+        "@blocks-storage": path.resolve(__dirname, "./app/cross-modules/storage"),
+        "@blocks-communication": path.resolve(__dirname, "./app/cross-modules/communication"),
+        "@blocks-identifier": path.resolve(__dirname, "./app/cross-modules/identifier"),
+        "@blocks-localization": path.resolve(__dirname, "./app/cross-modules/localization"),
+        "@blocks-utilities": path.resolve(__dirname, "./app/cross-modules/utilities"),
         "@blocks-ai": path.resolve(__dirname, "./app/cross-modules/ai"),
       },
     },

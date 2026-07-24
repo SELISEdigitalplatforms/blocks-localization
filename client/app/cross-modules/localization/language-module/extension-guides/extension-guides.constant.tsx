@@ -29,9 +29,9 @@ export const SETUP_STEPS = [
     title: "Open Manage Instances",
     description: (
       <>
-        On the sign-in screen, select the <strong>Manage instances</strong>{" "}
-        button <ListPlus className="inline h-4 w-4" /> to the right of the{" "}
-        <strong>Choose Instance</strong> list.
+        On the sign-in screen, select the <strong>Manage instances</strong> button{" "}
+        <ListPlus className="inline h-4 w-4" /> to the right of the <strong>Choose Instance</strong>{" "}
+        list.
       </>
     ),
     image: {
@@ -46,8 +46,8 @@ export const SETUP_STEPS = [
     title: "Add a cloud instance",
     description: (
       <>
-        Select <strong>+ Add Cloud Instance</strong>. You can save up to 10
-        instances and return here later to edit or remove them.
+        Select <strong>+ Add Cloud Instance</strong>. You can save up to 10 instances and return
+        here later to edit or remove them.
       </>
     ),
     image: {
@@ -62,16 +62,15 @@ export const SETUP_STEPS = [
     title: "Enter the instance details",
     description: (
       <>
-        Give the instance a recognizable name, select its microservice version,
-        then copy the matching API Base URL and X-Blocks-Key from the Blocks
-        instances section below and paste them into the extension.
+        Give the instance a recognizable name, select its microservice version, then copy the
+        matching API Base URL and X-Blocks-Key from the Blocks instances section below and paste
+        them into the extension.
       </>
     ),
     image: {
       src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_3.png`,
       alt: "Add New Cloud Instance form with the name, version, API URL, and X-Blocks-Key fields",
-      caption:
-        "Enter the instance name, version, API Base URL, and X-Blocks-Key.",
+      caption: "Enter the instance name, version, API Base URL, and X-Blocks-Key.",
       width: 714,
       height: 1392,
     },
@@ -80,9 +79,8 @@ export const SETUP_STEPS = [
     title: "Save and select the instance",
     description: (
       <>
-        Select <strong>Save</strong>, return to the sign-in screen, and choose
-        the new instance from the <strong>Choose Instance</strong> list. The
-        selected instance is marked as active.
+        Select <strong>Save</strong>, return to the sign-in screen, and choose the new instance from
+        the <strong>Choose Instance</strong> list. The selected instance is marked as active.
       </>
     ),
     image: {
@@ -97,9 +95,8 @@ export const SETUP_STEPS = [
     title: "Sign in",
     description: (
       <>
-        Enter the account credentials for the selected Blocks environment and
-        select <strong>Sign in</strong>. You can now use the extension with that
-        instance.
+        Enter the account credentials for the selected Blocks environment and select{" "}
+        <strong>Sign in</strong>. You can now use the extension with that instance.
       </>
     ),
     image: {

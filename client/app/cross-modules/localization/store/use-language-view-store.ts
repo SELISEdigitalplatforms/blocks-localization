@@ -6,11 +6,7 @@ const COOKIE_NAME = "language-view-storage";
 const COOKIE_DAYS = 365;
 
 // Valid optional column values
-const VALID_OPTIONAL_COLUMNS = [
-  "completeness",
-  "createDate",
-  "lastUpdateDate",
-] as const;
+const VALID_OPTIONAL_COLUMNS = ["completeness", "createDate", "lastUpdateDate"] as const;
 
 // Validate and sanitize language codes (ISO format like "en-US", "bn-BD")
 const isValidLanguageCode = (code: string): boolean => {
@@ -19,9 +15,7 @@ const isValidLanguageCode = (code: string): boolean => {
 
 // Validate optional column values
 const isValidOptionalColumn = (column: string): boolean => {
-  return VALID_OPTIONAL_COLUMNS.includes(
-    column as (typeof VALID_OPTIONAL_COLUMNS)[number],
-  );
+  return VALID_OPTIONAL_COLUMNS.includes(column as (typeof VALID_OPTIONAL_COLUMNS)[number]);
 };
 
 interface LanguageViewState {
@@ -40,10 +34,7 @@ interface LanguageViewState {
 
 let skipNextPersist = false;
 
-const setStateWithoutPersist = (
-  state: Partial<LanguageViewState>,
-  replace?: false,
-) => {
+const setStateWithoutPersist = (state: Partial<LanguageViewState>, replace?: false) => {
   skipNextPersist = true;
   try {
     useLanguageViewStore.setState(state, replace);
@@ -73,12 +64,10 @@ const getStoredDataForTenant = (tenantId: string) => {
     if (!tenantSettings) return null;
 
     return {
-      selectedLanguages: (tenantSettings.selectedLanguages || []).filter(
-        isValidLanguageCode,
+      selectedLanguages: (tenantSettings.selectedLanguages || []).filter(isValidLanguageCode),
+      selectedOptionalColumns: (tenantSettings.selectedOptionalColumns || []).filter(
+        isValidOptionalColumn,
       ),
-      selectedOptionalColumns: (
-        tenantSettings.selectedOptionalColumns || []
-      ).filter(isValidOptionalColumn),
     };
   } catch {
     return null;
@@ -102,8 +91,7 @@ const cookieStorage = {
       const parsed = JSON.parse(value);
       // Note: tenantId is NOT persisted anymore - it's controlled by the component
       const selectedLanguages = parsed.state?.selectedLanguages || [];
-      const selectedOptionalColumns =
-        parsed.state?.selectedOptionalColumns || [];
+      const selectedOptionalColumns = parsed.state?.selectedOptionalColumns || [];
 
       // Get tenantId from the store's current state
       const currentState = useLanguageViewStore.getState();
@@ -128,8 +116,7 @@ const cookieStorage = {
         ...existingData,
         [tenantId]: {
           selectedLanguages: selectedLanguages.filter(isValidLanguageCode),
-          selectedOptionalColumns:
-            selectedOptionalColumns.filter(isValidOptionalColumn),
+          selectedOptionalColumns: selectedOptionalColumns.filter(isValidOptionalColumn),
         },
       };
 
@@ -196,9 +183,7 @@ export const useLanguageViewStore = create<LanguageViewState>()(
         if (!isValidOptionalColumn(column)) return;
 
         set((state) => ({
-          selectedOptionalColumns: state.selectedOptionalColumns.includes(
-            column,
-          )
+          selectedOptionalColumns: state.selectedOptionalColumns.includes(column)
             ? state.selectedOptionalColumns.filter((col) => col !== column)
             : [...state.selectedOptionalColumns, column],
           hasStoredViewSettings: true,

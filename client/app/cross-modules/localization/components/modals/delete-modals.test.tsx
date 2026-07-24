@@ -49,9 +49,7 @@ describe("modals/delete-language-key", () => {
     expect(navigateMock).toHaveBeenCalledWith("/scoped/services/language", {
       replace: true,
     });
-    expect(toastMock).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: "success" }),
-    );
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
   });
 
   it("should guard against a missing key/tenant", async () => {
@@ -70,9 +68,7 @@ describe("modals/delete-language-key", () => {
     render(withDialog(<DeleteLanguageKey itemId="k1" onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Delete Key" }));
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "a, b" }),
-      ),
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "a, b" })),
     );
   });
 
@@ -84,9 +80,7 @@ describe("modals/delete-language-key", () => {
     render(withDialog(<DeleteLanguageKey itemId="k1" onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Delete Key" }));
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "bad value" }),
-      ),
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "bad value" })),
     );
   });
 
@@ -115,9 +109,7 @@ describe("modals/delete-module-modal", () => {
     deleteModuleMock.mockResolvedValue({ isSuccess: true });
     const onClose = vi.fn();
     render(
-      withDialog(
-        <DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />,
-      ),
+      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />),
     );
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(onClose).toHaveBeenCalledWith(false));
@@ -127,9 +119,7 @@ describe("modals/delete-module-modal", () => {
   it("should toast an error when deletion is unsuccessful", async () => {
     deleteModuleMock.mockResolvedValue({ isSuccess: false });
     render(
-      withDialog(
-        <DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />,
-      ),
+      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
     );
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
@@ -141,22 +131,18 @@ describe("modals/delete-module-modal", () => {
 
   it("should disable delete in move mode until a target is chosen", () => {
     render(
-      withDialog(
-        <DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />,
-      ),
+      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
     );
     fireEvent.click(screen.getByLabelText("Move keys to another module"));
-    expect(
-      (screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
   it("should let the user cancel", () => {
     const onClose = vi.fn();
     render(
-      withDialog(
-        <DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />,
-      ),
+      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />),
     );
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledWith(false);

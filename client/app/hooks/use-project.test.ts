@@ -29,7 +29,7 @@ vi.mock("@/services/project.service", () => ({
 }));
 
 const svc = vi.mocked(projectService);
-const renderQ = <T,>(cb: () => T) => {
+const renderQ = <T>(cb: () => T) => {
   const { wrapper } = createQueryWrapper();
   return renderHook(cb, { wrapper });
 };
@@ -75,9 +75,21 @@ describe("hooks/use-project (cross-project service)", () => {
 
   it.each([
     ["useUpdateRepositories", () => hooks.useUpdateRepositories(), () => svc.repoUpdate],
-    ["useUpdateProject", () => hooks.useUpdateProject({ projectKey: "p" }), () => svc.updateTenantGroup],
-    ["useDisableProject", () => hooks.useDisableProject({ projectKey: "p" }), () => svc.disableProject],
-    ["useValidateCNameProject", () => hooks.useValidateCNameProject({ projectKey: "p" }), () => svc.validateCNameProject],
+    [
+      "useUpdateProject",
+      () => hooks.useUpdateProject({ projectKey: "p" }),
+      () => svc.updateTenantGroup,
+    ],
+    [
+      "useDisableProject",
+      () => hooks.useDisableProject({ projectKey: "p" }),
+      () => svc.disableProject,
+    ],
+    [
+      "useValidateCNameProject",
+      () => hooks.useValidateCNameProject({ projectKey: "p" }),
+      () => svc.validateCNameProject,
+    ],
     ["useCreateProject", () => hooks.useCreateProject(), () => svc.createProject],
   ])("%s mutation should call its service", async (_name, hook, getFn) => {
     getFn().mockResolvedValue({ isSuccess: true } as never);

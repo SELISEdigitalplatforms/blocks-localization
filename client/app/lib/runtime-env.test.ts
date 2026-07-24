@@ -33,9 +33,7 @@ describe("lib/runtime-env", () => {
       (window as any).__BLOCKS_ENV__ = {
         BLOCKS_GOOGLE_SITE_KEY: "__BLOCKS_NO_SUFFIX",
       };
-      expect(getRuntimeEnv("BLOCKS_GOOGLE_SITE_KEY")).toBe(
-        "__BLOCKS_NO_SUFFIX",
-      );
+      expect(getRuntimeEnv("BLOCKS_GOOGLE_SITE_KEY")).toBe("__BLOCKS_NO_SUFFIX");
     });
 
     it("should fall through when window value is the suffix only", () => {

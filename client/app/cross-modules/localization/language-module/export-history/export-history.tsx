@@ -50,12 +50,16 @@ export const ExportHistory: React.FC = () => {
         })()
       : "";
 
-  const { data: exportHistoryData, isLoading: isLoadingExportHistory } =
-    useGetExportHistory(pageNumber, pageSize, projectKey, {
+  const { data: exportHistoryData, isLoading: isLoadingExportHistory } = useGetExportHistory(
+    pageNumber,
+    pageSize,
+    projectKey,
+    {
       searchText: filters.searchText,
       startDate: formattedStartDate,
       endDate: formattedEndDate,
-    });
+    },
+  );
 
   const [downloadMeta, setDownloadMeta] = useState<{
     fileId: string;
@@ -95,11 +99,7 @@ export const ExportHistory: React.FC = () => {
       <PageBreadcrumb />
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => window.history.back()}
-        >
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-semibold">Export History</h1>
@@ -155,37 +155,32 @@ export const ExportHistory: React.FC = () => {
                 </TableRow>
               ) : (
                 // Data
-                exportHistoryData?.uilmExportedFiles?.map(
-                  (item: IExportFileDetails) => (
-                    <TableRow key={item.fileId}>
-                      <TableCell>{item.fileName || "--"}</TableCell>
-                      <TableCell>
-                        {item.createDate
-                          ? new Date(item.createDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )
-                          : "--"}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadSelectedFile(item.fileId);
-                          }}
-                          variant="ghost"
-                          className="h-10 w-10 p-0"
-                        >
-                          <Download width={20} height={20} />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ),
-                )
+                exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
+                  <TableRow key={item.fileId}>
+                    <TableCell>{item.fileName || "--"}</TableCell>
+                    <TableCell>
+                      {item.createDate
+                        ? new Date(item.createDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadSelectedFile(item.fileId);
+                        }}
+                        variant="ghost"
+                        className="h-10 w-10 p-0"
+                      >
+                        <Download width={20} height={20} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -193,16 +188,14 @@ export const ExportHistory: React.FC = () => {
 
         {/* Pagination Footer */}
         <div className="mt-4 flex items-center justify-end">
-          {!isLoadingExportHistory &&
-            exportHistoryData &&
-            totalCount > pageSize && (
-              <Pagination
-                page={pageNumber}
-                pageSize={pageSize}
-                totalCount={totalCount}
-                onChange={(page: number) => setPageNumber(page)}
-              />
-            )}
+          {!isLoadingExportHistory && exportHistoryData && totalCount > pageSize && (
+            <Pagination
+              page={pageNumber}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onChange={(page: number) => setPageNumber(page)}
+            />
+          )}
         </div>
       </Card>
     </div>

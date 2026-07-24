@@ -154,9 +154,7 @@ describe("lib/utils", () => {
     });
 
     it("should unwrap $date objects", () => {
-      expect(parseMongoDBString('{ "$date": "2026-01-01" }')).toBe(
-        '"2026-01-01"',
-      );
+      expect(parseMongoDBString('{ "$date": "2026-01-01" }')).toBe('"2026-01-01"');
     });
 
     it("should unwrap NumberLong()", () => {

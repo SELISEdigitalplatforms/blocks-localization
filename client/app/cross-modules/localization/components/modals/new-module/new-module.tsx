@@ -61,10 +61,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         form.reset();
         onClose(false);
       } else {
-        if (
-          Array.isArray(res?.validationErrors) &&
-          res.validationErrors.length > 0
-        ) {
+        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
           res?.validationErrors?.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
