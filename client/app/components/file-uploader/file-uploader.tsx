@@ -70,7 +70,6 @@ export const FileUploader = forwardRef<
     ref,
   ) => {
     const [isFileTooBig, setIsFileTooBig] = useState(false);
-    const [isLOF, setIsLOF] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
     const {
       accept = {
@@ -83,6 +82,8 @@ export const FileUploader = forwardRef<
 
     const reSelectAll = maxFiles === 1 ? true : reSelect;
     const direction: DirectionOptions = dir === "rtl" ? "rtl" : "ltr";
+    // Derived during render instead of via a state-setting effect.
+    const isLOF = !!value && value.length === maxFiles;
 
     const removeFileFromSet = useCallback(
       (i: number) => {
@@ -207,14 +208,6 @@ export const FileUploader = forwardRef<
       [reSelectAll, value],
     );
 
-    useEffect(() => {
-      if (!value) return;
-      if (value.length === maxFiles) {
-        setIsLOF(true);
-        return;
-      }
-      setIsLOF(false);
-    }, [value, maxFiles]);
 
     const opts = dropzoneOptions ? dropzoneOptions : { accept, maxFiles, maxSize, multiple };
 
