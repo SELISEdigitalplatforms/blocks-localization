@@ -37,9 +37,9 @@ client, the conventions below.
 - **Types/interfaces/components** are PascalCase; **variables/functions** are
   camelCase; **constants** are `UPPER_SNAKE_CASE` or camelCase per module norm.
 
-> An automated ESLint `@typescript-eslint/naming-convention` + filename rule is
-> not yet wired up in `client/` (the client has no ESLint setup today). Adding
-> it is tracked separately; until then the rules above are enforced by review.
+> ESLint is set up in `client/` (`.eslintrc.cjs`) and includes a
+> `@typescript-eslint/naming-convention` rule; run it with
+> `npm --prefix client run lint`. Filename casing is still enforced by review.
 
 ## HTTP API
 
@@ -55,7 +55,7 @@ client, the conventions below.
 
 - Grammar is `service::controller::action`, all lower-case, e.g.
   `blocks-localization::key::save`.
-- **Never silently change an existing scope string** — it would revoke access
+- **Never silently change an existing scope string**: it would revoke access
   for already-granted principals. A scope rename requires a coordinated IAM seed
   update (`server/seed/localization-permissions.upsert.json`) and grant
   migration; raise it as its own task.
@@ -64,7 +64,7 @@ client, the conventions below.
 
 This service intentionally uses its **own** `ApiResponse` shape
 (`Success` + `ValidationErrors`). It is deliberately distinct from the shared
-Genesis `BaseResponse` (`IsSuccess` + `Errors`). Do **not** unify them here —
+Genesis `BaseResponse` (`IsSuccess` + `Errors`). Do **not** unify them here -
 that is a separate cross-repo Genesis effort. New endpoints return `ApiResponse`.
 
 ## Backward-compatible renames (obsolete-old-keep-new)
@@ -80,17 +80,57 @@ Deep namespace/package renames (e.g. `Eurolm.DomainService`) and message-queue
 identifier renames (`eurolm_*`) are deferred: they are wire/deployment contracts
 that need bus + infra coordination.
 
+## Branch model
+
+- `main`: production-ready code (protected)
+- `dev`: integration branch (protected); all pull requests target `dev`
+- `inception`: the working branch; day-to-day work happens here
+
+Never commit directly to `dev` or `main`. Work on `inception` and open a pull
+request from `inception` into `dev`. Do not force-push and do not rewrite
+published history.
+
+## Commit conventions
+
+Match the style already in the log. Most commits use Conventional Commits
+(`type(scope): subject`, for example `test(client): ...`, `chore(e2e): ...`);
+a plain imperative subject is also used for straightforward changes. Keep the
+subject concise and explain the what and the why in the body when it is not
+obvious.
+
 ## Build & test gates
 
-Before opening a PR, both suites must be green:
+Before opening a PR, the suites must be green and your change must not reduce
+coverage:
 
 ```bash
 # backend
 dotnet test server/XUnitTest/XUnitTest.csproj
 
 # frontend
-cd client && npx vitest run
+npm --prefix client run test
+
+# e2e (needs a reachable app and e2e/.env.e2e, see e2e/README.md)
+npm --prefix e2e run test
 ```
+
+Security scanning gates (SAST, dependency and secret scanning via
+`scripts/scan.sh` where the scanning environment is available) must report no
+new findings. Fix findings in real code or real dependency versions; do not
+suppress rules, lower thresholds or delete tests to make a scan pass.
+
+## Review expectations
+
+- Keep pull requests small and focused; describe what changed, why, and how it
+  was tested.
+- CI runs the build, tests and scans on every pull request into `dev`.
+- At least one maintainer must approve before merge.
+- Update `README.md` and any affected docs in the same pull request.
+
+## Reporting a security issue
+
+Do not open a public issue for a suspected vulnerability. Follow the private
+disclosure process in [SECURITY.md](SECURITY.md).
 
 ## Repo hygiene
 

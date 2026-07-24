@@ -1,18 +1,18 @@
-# Blocks Localization — End-to-End Tests (Playwright)
+# Blocks Localization; End-to-End Tests (Playwright)
 
 E2E tests that drive the real app through the browser, including the dev-iam
 login redirect flow.
 
 ## One-time setup
 
-1. **Configure env** — copy the template and fill in your values:
+1. **Configure env**: copy the template and fill in your values:
 
    ```bash
    cd e2e
    cp .env.e2e.example .env.e2e
    ```
 
-   Set `E2E_USERNAME` and `E2E_PASSWORD`. `.env.e2e` is gitignored — never
+   Set `E2E_USERNAME` and `E2E_PASSWORD`. `.env.e2e` is gitignored; never
    commit real credentials.
 
 2. **Install** Playwright + the browser:
@@ -28,7 +28,7 @@ login redirect flow.
 3. **Start the app** (local Vite on `:4000`):
 
    ```bash
-   # from repo root — requires LOCALIZATION_SSL_CERT / KEY in your shell
+   # from repo root; requires LOCALIZATION_SSL_CERT / KEY in your shell
    ./run.sh -f
    ```
 
@@ -121,7 +121,7 @@ Or, if your workspace root is `blocks-localization/`:
 ```bash
 mkdir -p ../.cursor
 cp mcp.server.example.json ../.cursor/mcp.json
-# then edit ../.cursor/mcp.json — change config path to "e2e/playwright.mcp.json"
+# then edit ../.cursor/mcp.json; change config path to "e2e/playwright.mcp.json"
 ```
 
 Both register the official Playwright MCP server:
@@ -143,7 +143,7 @@ Both register the official Playwright MCP server:
 
 **Use:** ask Cursor to navigate, snapshot, or interact with
 `https://dev-localization.blocksdevelopers.com:4000` using the Playwright MCP
-tools — same host and TLS settings as the test suite.
+tools; same host and TLS settings as the test suite.
 
 ## Deterministic codegen workflow
 
@@ -158,7 +158,7 @@ npm run codegen:console   # record post-auth console (log in manually first)
 ```
 
 Page objects (`LoginPage`, `OidcLoginPage`, `ConsolePage`) are the single
-source of truth for locators. Specs import page objects only — no inline
+source of truth for locators. Specs import page objects only; no inline
 selectors.
 
 Implementation plan: `docs/plan-playwright-mcp-codegen.md`.
@@ -174,7 +174,7 @@ config section. The key this suite cares about is
 
 | Variable                        | Effect                                                                                             |
 | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `E2E_BASE_URL`                  | Host under test. No default — a missing value fails loudly.                                        |
+| `E2E_BASE_URL`                  | Host under test. No default; a missing value fails loudly.                                        |
 | `E2E_USERNAME` / `E2E_PASSWORD` | Dev-IAM test account (captcha is disabled on dev).                                                 |
 | `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
 | `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
@@ -189,7 +189,7 @@ e2e/
   tests/modules/translations/translations.spec.ts     # full Translations workflow
   tests/modules/modules-glossary/modules-glossary.spec.ts  # Modules + Glossary workflow
   support/
-    auth.ts                             # login() + loginToTranslations() — call from beforeEach
+    auth.ts                             # login() + loginToTranslations(); call from beforeEach
     test-base.ts                        # shared test/expect with headed pause + helpers
     pages/                              # page objects for module flows
     fixtures/e2e-key.ts                 # key name shared between add/delete specs
@@ -198,5 +198,5 @@ e2e/
   playwright.config.ts                  # baseURL + creds from .env.e2e
 ```
 
-Each spec calls `login()` or `loginToTranslations()` in `test.beforeEach` — no separate
+Each spec calls `login()` or `loginToTranslations()` in `test.beforeEach`: no separate
 setup project or saved storage state (same pattern as Blocks Data e2e).
