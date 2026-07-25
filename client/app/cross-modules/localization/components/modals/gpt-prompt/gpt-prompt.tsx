@@ -35,7 +35,7 @@ const GptPrompt: React.FC<{
   //     .filter((word: any) => word.length > 0).length;
   // };
 
-  const handleWordsLimit = (event: any) => {
+  const handleWordsLimit = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textAreaText = event.target.value;
     // const wordsArray = textAreaText.trim().split(/\s+/);
     setText(textAreaText);

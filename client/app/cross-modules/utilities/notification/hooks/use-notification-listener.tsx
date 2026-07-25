@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 export const useNotificationListener = (
   notificationName: string,
-  callback: (data: any) => void,
+  callback: (data: unknown) => void,
 ) => {
   useEffect(() => {
     const handleNotification = (event: CustomEvent) => {
