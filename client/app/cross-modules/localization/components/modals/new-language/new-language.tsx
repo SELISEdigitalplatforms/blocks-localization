@@ -35,7 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
 interface NewLanguageProps {
-  onClose: Function;
+  onClose: () => void;
   existingLanguages?: ILanguageConfig[];
 }
 

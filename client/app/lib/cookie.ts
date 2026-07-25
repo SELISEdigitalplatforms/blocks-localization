@@ -49,7 +49,7 @@ export function setCookie(
   // Check size limit
   const encodedValue = encodeURIComponent(value);
   if (encodedValue.length > MAX_COOKIE_SIZE) {
-    console.warn(
+    console.error(
       `Cookie "${name}" value too large (${encodedValue.length} bytes). Max: ${MAX_COOKIE_SIZE}`,
     );
     return;
