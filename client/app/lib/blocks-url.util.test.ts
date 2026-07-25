@@ -84,11 +84,11 @@ describe("lib/blocks-url.util", () => {
     it("should fall back to the stg dev/stg domain when window is undefined", () => {
       const original = globalThis.window;
       // @ts-expect-error simulate non-browser environment
-      delete (globalThis as any).window;
+      delete (globalThis as unknown as { window?: unknown }).window;
       try {
         expect(deriveLocalizationBaseUrl()).toBe("https://stg-localization.blocksdevelopers.com");
       } finally {
-        (globalThis as any).window = original;
+        (globalThis as unknown as { window?: unknown }).window = original;
       }
     });
   });
