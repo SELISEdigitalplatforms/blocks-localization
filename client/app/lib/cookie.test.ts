@@ -132,11 +132,11 @@ describe("lib/cookie", () => {
       expect(getCookie("special")).toBe("a b/c");
     });
 
-    it("should warn and bail when the encoded value exceeds the 3500-byte limit", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it("should log and bail when the encoded value exceeds the 3500-byte limit", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const huge = "x".repeat(4000);
       setCookie("big", huge, 1, "localhost");
-      expect(warnSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
       // Cookie must NOT be set when oversized.
       expect(getCookie("big")).toBeNull();
     });
