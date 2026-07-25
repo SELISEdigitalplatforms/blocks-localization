@@ -20,7 +20,7 @@ export class StorageService {
     public file: StorageFile,
   ) {}
 
-  uploadFile(payload: IUploadImagePayload): Promise<{}> {
+  uploadFile(payload: IUploadImagePayload): Promise<unknown> {
     return this.httpClient.put(
       payload.url,
       payload.file,
@@ -32,7 +32,7 @@ export class StorageService {
     );
   }
 
-  uploadFileToLocalStorage(payload: IUploadFileToLocalStorage): Promise<{}> {
+  uploadFileToLocalStorage(payload: IUploadFileToLocalStorage): Promise<unknown> {
     const formData = (Object.keys(payload) as (keyof IUploadFileToLocalStorage)[]).reduce(
       (acc, key) => {
         const value = payload[key];
