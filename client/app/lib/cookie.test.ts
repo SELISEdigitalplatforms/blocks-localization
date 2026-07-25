@@ -36,11 +36,11 @@ describe("lib/cookie", () => {
     it("should return null when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect-error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         expect(getCookie("anything")).toBeNull();
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 
@@ -80,13 +80,13 @@ describe("lib/cookie", () => {
     it("should be a no-op when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect-error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         // Should not throw.
         setCookie("foo", "bar");
         expect(true).toBe(true);
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 
@@ -212,12 +212,12 @@ describe("lib/cookie", () => {
     it("should be a no-op when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect_error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         removeCookie("foo");
         expect(true).toBe(true);
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 
