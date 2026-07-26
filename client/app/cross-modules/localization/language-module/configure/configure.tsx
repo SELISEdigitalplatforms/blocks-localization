@@ -372,7 +372,7 @@ function Configure() {
             </Button>
           </DialogTrigger>
           <NewLanguage
-            onClose={setIsNewLanguageDialogOpen}
+            onClose={(val) => setIsNewLanguageDialogOpen(val ?? false)}
             existingLanguages={languageListData || []}
           />
         </Dialog>
