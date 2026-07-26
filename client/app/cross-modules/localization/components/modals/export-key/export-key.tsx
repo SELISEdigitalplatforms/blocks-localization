@@ -354,7 +354,9 @@ export default function ExportKey() {
     [projectKey, queryClient],
   );
 
-  useNotificationListener("language-import-export", handleNotificationData);
+  useNotificationListener("language-import-export", (data) =>
+    handleNotificationData(data as unknown as IUilmExportNotificationData),
+  );
 
   const showSuccessToast = () => {
     toast({
