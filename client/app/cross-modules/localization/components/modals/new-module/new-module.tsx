@@ -25,7 +25,7 @@ import {
 import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 interface NewModuleProps {
-  onClose: () => void;
+  onClose: (value?: boolean) => void;
 }
 const schema = z.object({
   moduleName: z
