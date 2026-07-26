@@ -28,5 +28,8 @@
     "@typescript-eslint/parser": "^8.62.0",
     "prettier": "^3",
     "eslint-config-prettier": "^9"
+  },
+  "overrides": {
+    "minimatch": "10.2.5"
   }
 }
