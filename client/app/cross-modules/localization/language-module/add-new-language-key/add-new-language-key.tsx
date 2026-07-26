@@ -390,7 +390,7 @@ function AddNewLanguageKey() {
                                               <div>New Module</div>
                                             </div>
                                           </DialogTrigger>
-                                          <NewModule onClose={setIsNewModuleDialogOpen} />
+                                          <NewModule onClose={(val) => setIsNewModuleDialogOpen(val ?? false)} />
                                         </Dialog>
                                         <h3 className="py-2 pl-8 font-semibold text-high-emphasis">
                                           Modules
