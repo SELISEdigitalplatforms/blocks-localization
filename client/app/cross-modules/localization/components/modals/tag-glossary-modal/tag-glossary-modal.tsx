@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -14,11 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui-kits/command/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui-kits/popover/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import {
   useGetModuleGlossaries,
@@ -44,35 +40,34 @@ const getTagGlossaryErrorMessage = (error: unknown) => {
   return "Failed to update glossaries. Please try again.";
 };
 
-const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
-  module,
-  onClose,
-}) => {
+const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) => {
   const [searchText, setSearchText] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const { data: moduleGlossariesResponse } = useGetModuleGlossaries(
-    module.itemId,
-  );
+  const { data: moduleGlossariesResponse } = useGetModuleGlossaries(module.itemId);
   const { data: searchResults } = useSearchGlossaries(searchText, popoverOpen);
   const { isPending, mutateAsync } = useTagGlossary();
 
-  useEffect(() => {
+  // Initialise selection from the fetched module glossaries when the response
+  // changes (adjust-state-during-render; avoids a state-setting effect while
+  // preserving user edits between response changes).
+  const [prevGlossariesResponse, setPrevGlossariesResponse] =
+    useState<typeof moduleGlossariesResponse>(undefined);
+  if (prevGlossariesResponse !== moduleGlossariesResponse) {
+    setPrevGlossariesResponse(moduleGlossariesResponse);
     const moduleGlossaries = moduleGlossariesResponse?.items ?? [];
     setSelectedIds(moduleGlossaries.map((glossary) => glossary.itemId));
     setSelectedGlossaries(moduleGlossaries);
-  }, [moduleGlossariesResponse, module.itemId]);
+  }
 
   const handleSelect = useCallback(
     (glossary: IGlossary) => {
       const alreadySelected = selectedIds.includes(glossary.itemId);
       if (alreadySelected) {
         setSelectedIds((prev) => prev.filter((id) => id !== glossary.itemId));
-        setSelectedGlossaries((prev) =>
-          prev.filter((g) => g.itemId !== glossary.itemId),
-        );
+        setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossary.itemId));
       } else {
         setSelectedIds((prev) => [...prev, glossary.itemId]);
         setSelectedGlossaries((prev) => [...prev, glossary]);
@@ -83,9 +78,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
 
   const handleRemove = useCallback((glossaryId: string) => {
     setSelectedIds((prev) => prev.filter((id) => id !== glossaryId));
-    setSelectedGlossaries((prev) =>
-      prev.filter((g) => g.itemId !== glossaryId),
-    );
+    setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossaryId));
   }, []);
 
   const handleSubmit = async () => {
@@ -129,11 +122,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
         {selectedGlossaries.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {selectedGlossaries.map((glossary) => (
-              <Badge
-                key={glossary.itemId}
-                variant="secondary"
-                className="gap-1 pr-1"
-              >
+              <Badge key={glossary.itemId} variant="secondary" className="gap-1 pr-1">
                 {glossary.name}
                 <button
                   type="button"
@@ -161,11 +150,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            className="w-[470px] p-0"
-            align="start"
-            portalled={false}
-          >
+          <PopoverContent className="w-[470px] p-0" align="start" portalled={false}>
             <Command shouldFilter={false}>
               <CommandInput
                 placeholder="Search glossary..."
@@ -184,9 +169,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({
                       <div className="flex flex-1 items-center gap-2">
                         <span>{glossary.name}</span>
                         {glossary.type && (
-                          <span className="text-xs text-muted-foreground">
-                            ({glossary.type})
-                          </span>
+                          <span className="text-xs text-muted-foreground">({glossary.type})</span>
                         )}
                       </div>
                       {selectedIds.includes(glossary.itemId) && (

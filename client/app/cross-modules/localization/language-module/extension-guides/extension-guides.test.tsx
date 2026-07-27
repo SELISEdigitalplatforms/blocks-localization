@@ -1,6 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExtensionGuides } from "./extension-guides";
+
+const setClipboard = (value: unknown) =>
+  Object.defineProperty(navigator, "clipboard", {
+    value,
+    configurable: true,
+    writable: true,
+  });
 
 const { getRuntimeEnvMock } = vi.hoisted(() => ({
   getRuntimeEnvMock: vi.fn(),
@@ -31,9 +38,7 @@ describe("ExtensionGuides", () => {
 
     expect(screen.getByText("https://runtime-api.example.com")).toBeTruthy();
     expect(screen.getByText("runtime-blocks-key")).toBeTruthy();
-    expect(getRuntimeEnvMock).toHaveBeenCalledWith(
-      "BLOCKS_PUBLIC_API_BASE_URL",
-    );
+    expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_PUBLIC_API_BASE_URL");
     expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_X_BLOCKS_KEY");
   });
 

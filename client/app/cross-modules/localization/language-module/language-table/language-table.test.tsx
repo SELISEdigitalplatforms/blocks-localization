@@ -24,28 +24,25 @@ vi.mock("@seliseblocks/blocks-kit/hooks", () => ({
 vi.mock("@blocks-utilities/notification", () => ({
   useNotificationListener: vi.fn(),
 }));
-vi.mock(
-  "@blocks-localization/components/language-table-toolbar/language-table-toolbar",
-  () => ({
-    LanguageTableToolbar: () => null,
-    useKeysFilterQueryParams: () => ({
-      queryParams: {
-        pageNumber: 0,
-        pageSize: 10,
-        search: "",
-        moduleIds: [],
-        missingLanguages: [],
-        resourceSearch: "",
-      },
-      setQueryParams,
-    }),
-    useKeysSortQueryParams: () => ({
-      sortQueryParams: { property: "KeyName", isDescending: false },
-      setSortQueryParams,
-      reset: vi.fn(),
-    }),
+vi.mock("@blocks-localization/components/language-table-toolbar/language-table-toolbar", () => ({
+  LanguageTableToolbar: () => null,
+  useKeysFilterQueryParams: () => ({
+    queryParams: {
+      pageNumber: 0,
+      pageSize: 10,
+      search: "",
+      moduleIds: [],
+      missingLanguages: [],
+      resourceSearch: "",
+    },
+    setQueryParams,
   }),
-);
+  useKeysSortQueryParams: () => ({
+    sortQueryParams: { property: "KeyName", isDescending: false },
+    setSortQueryParams,
+    reset: vi.fn(),
+  }),
+}));
 vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", () => ({
   default: () => null,
 }));
@@ -168,9 +165,7 @@ describe("language-module/language-table", () => {
     } as never);
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByText("New Key"));
-    expect(navigate).toHaveBeenCalledWith(
-      "/scoped/services/language/translations/new-key",
-    );
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/new-key");
   });
 
   it("should render a language column value when a language is selected", () => {
@@ -192,9 +187,7 @@ describe("language-module/language-table", () => {
     } as never);
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByText("greeting"));
-    expect(navigate).toHaveBeenCalledWith(
-      "/scoped/services/language/translations/k1",
-    );
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
   });
 
   it("should show the bulk action bar when a row is selected", () => {

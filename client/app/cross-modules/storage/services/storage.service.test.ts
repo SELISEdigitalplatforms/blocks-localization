@@ -99,18 +99,12 @@ describe("storage/services/storage.service", () => {
   it("uploadDmsFile should POST to UPLOAD_DMS_FILE", () => {
     const payload = { upload: [], projectKey: "pk" };
     service.uploadDmsFile(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.UPLOAD_DMS_FILE,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.UPLOAD_DMS_FILE, payload);
   });
 
   it("createDmsFolder should POST to CREATE_FOLDER", () => {
     const payload = { artifactName: "f" } as never;
     service.createDmsFolder(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.CREATE_FOLDER,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.CREATE_FOLDER, payload);
   });
 });

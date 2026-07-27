@@ -21,9 +21,7 @@ describe("language-module/export-history-filters", () => {
       target: { value: "abc" },
     });
     vi.advanceTimersByTime(300);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ search: "abc" }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ search: "abc" }));
     vi.useRealTimers();
   });
 

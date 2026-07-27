@@ -61,9 +61,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each(Object.entries(expected))("should expose %s = %s", (key, value) => {
-      expect((LANGUAGE_KEY_ENDPOINTS as Record<string, string>)[key]).toBe(
-        value,
-      );
+      expect((LANGUAGE_KEY_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });
 
     it("should start every key endpoint with the UILM base", () => {
@@ -85,9 +83,7 @@ describe("localization/constants/endpoint.constant", () => {
       ["DELETE", `${UILM_BASE}/Module/Delete`],
       ["TAG_GLOSSARY", `${UILM_BASE}/Module/TagGlossary`],
     ] as const)("should expose %s = %s", (key, value) => {
-      expect((LANGUAGE_MODULE_ENDPOINTS as Record<string, string>)[key]).toBe(
-        value,
-      );
+      expect((LANGUAGE_MODULE_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });
   });
 
@@ -145,10 +141,7 @@ describe("localization/constants/endpoint.constant", () => {
       ["GETS", `${UILM_BASE}/Glossary/Gets`],
       ["SAVE", `${UILM_BASE}/Glossary/Save`],
       ["DELETE", `${UILM_BASE}/Glossary/Delete`],
-      [
-        "GET_SUGGESTED_GLOSSARIES",
-        `${UILM_BASE}/Glossary/GetSuggestedGlossaries`,
-      ],
+      ["GET_SUGGESTED_GLOSSARIES", `${UILM_BASE}/Glossary/GetSuggestedGlossaries`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((GLOSSARY_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });

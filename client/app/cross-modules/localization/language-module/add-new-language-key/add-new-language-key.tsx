@@ -1,12 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import {
   Command,
   CommandEmpty,
@@ -26,11 +21,7 @@ import {
 } from "@/components/ui-kits/form/form";
 import { Input } from "@/components/ui-kits/input/input";
 import { Label } from "@/components/ui-kits/label/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui-kits/popover/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import {
@@ -86,11 +77,9 @@ const schema = z.object({
   resources: z
     .array(
       z.object({
-        value: z
-          .string()
-          .max(199, {
-            message: "Translation must be less than 200 characters",
-          }),
+        value: z.string().max(199, {
+          message: "Translation must be less than 200 characters",
+        }),
         culture: z.string().min(1, { message: "Culture is required" }),
       }),
     )
@@ -104,22 +93,17 @@ const schema = z.object({
       }
     }),
   routes: z
-    .array(
-      z.object({ value: z.string().min(1, { message: "Route is required" }) }),
-    )
+    .array(z.object({ value: z.string().min(1, { message: "Route is required" }) }))
     .optional(),
   context: z.string().optional(),
 });
 
 function AddNewLanguageKey() {
-  const { isLoading: isLanguageModulesLoading, data: languageModules } =
-    useGetLanguageModules();
-  const { isLoading: isLanguageListLoading, data: languageListData } =
-    useGetLanguages();
+  const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
+  const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
   const navigate = useNavigate();
   const scoped = useScopedPath();
-  const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] =
-    React.useState(false);
+  const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const inputRef = useRef(null);
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
@@ -130,8 +114,7 @@ function AddNewLanguageKey() {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   // Set breadcrumb title synchronously
-  BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] =
-    "New Key";
+  BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
     defaultValues: {
       keyName: "",
@@ -145,11 +128,10 @@ function AddNewLanguageKey() {
   });
 
   // Field array for resources
-  const { fields: resourceFields, replace: replaceResources } =
-    useFieldArray<FormValues>({
-      control: form.control,
-      name: "resources",
-    });
+  const { fields: resourceFields, replace: replaceResources } = useFieldArray<FormValues>({
+    control: form.control,
+    name: "resources",
+  });
 
   // Field array for routes
   const {
@@ -185,12 +167,10 @@ function AddNewLanguageKey() {
           existingResources[index]?.culture !== (lang.languageCode || ""),
       )
     ) {
-      const mergedResources = languageListData.map(
-        (lang: ILanguageConfig, index: number) => ({
-          value: existingResources[index]?.value ?? "",
-          culture: lang.languageCode || "",
-        }),
-      );
+      const mergedResources = languageListData.map((lang: ILanguageConfig, index: number) => ({
+        value: existingResources[index]?.value ?? "",
+        culture: lang.languageCode || "",
+      }));
 
       replaceResources(mergedResources);
     }
@@ -384,27 +364,19 @@ function AddNewLanguageKey() {
                                     aria-expanded={open}
                                     className="h-[37px] w-full justify-between text-low-emphasis shadow-none"
                                   >
-                                    {selectedModule?.moduleName ||
-                                      "Select Module..."}
+                                    {selectedModule?.moduleName || "Select Module..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-0 sm:w-[475px]">
                                   <Command>
-                                    <CommandInput
-                                      placeholder="Search Module..."
-                                      ref={inputRef}
-                                    />
+                                    <CommandInput placeholder="Search Module..." ref={inputRef} />
                                     <CommandList>
-                                      <CommandEmpty>
-                                        No Module found.
-                                      </CommandEmpty>
+                                      <CommandEmpty>No Module found.</CommandEmpty>
                                       <CommandGroup>
                                         <Dialog
                                           open={isNewModuleDialogOpen}
-                                          onOpenChange={
-                                            setIsNewModuleDialogOpen
-                                          }
+                                          onOpenChange={setIsNewModuleDialogOpen}
                                         >
                                           <DialogTrigger asChild>
                                             <div
@@ -418,9 +390,7 @@ function AddNewLanguageKey() {
                                               <div>New Module</div>
                                             </div>
                                           </DialogTrigger>
-                                          <NewModule
-                                            onClose={setIsNewModuleDialogOpen}
-                                          />
+                                          <NewModule onClose={(val) => setIsNewModuleDialogOpen(val ?? false)} />
                                         </Dialog>
                                         <h3 className="py-2 pl-8 font-semibold text-high-emphasis">
                                           Modules
@@ -481,8 +451,7 @@ function AddNewLanguageKey() {
                       render={({ field }) => (
                         <FormItem className="space-y-1">
                           <FormLabel htmlFor="defaultValue">
-                            Default value ({languageListData?.[0]?.languageName}
-                            )
+                            Default value ({languageListData?.[0]?.languageName})
                           </FormLabel>
                           <FormControl>
                             <Textarea
@@ -527,19 +496,13 @@ function AddNewLanguageKey() {
                     {resourceFields.slice(1).map((field, index) => (
                       <div key={field.id} className="grid gap-3">
                         <div className="grid grid-cols-2">
-                          <Label>
-                            {languageListData?.[index + 1]?.languageName}{" "}
-                            Translation
-                          </Label>
+                          <Label>{languageListData?.[index + 1]?.languageName} Translation</Label>
                           <div className="flex justify-end gap-4">
                             <Button
                               size="sm"
                               variant="outline"
                               className="h-7 gap-1"
-                              disabled={
-                                loadingIndex === index ||
-                                !form.watch().resources[0].value
-                              } // Disable only the clicked button.
+                              disabled={loadingIndex === index || !form.watch().resources[0].value} // Disable only the clicked button.
                               onClick={autoTranslate(
                                 languageListData?.[index + 1]?.languageName,
                                 form.getValues().resources[0].value,
@@ -548,9 +511,7 @@ function AddNewLanguageKey() {
                             >
                               <Wand className="h-3.5 w-3.5" />
                               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                {loadingIndex === index
-                                  ? "Loading..."
-                                  : "Auto-Translate"}{" "}
+                                {loadingIndex === index ? "Loading..." : "Auto-Translate"}{" "}
                                 {/* Show loading text */}
                               </span>
                             </Button>
@@ -577,11 +538,7 @@ function AddNewLanguageKey() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="p-0 hover:bg-background"
-                          >
+                          <Button type="button" variant="ghost" className="p-0 hover:bg-background">
                             <Info className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
@@ -600,9 +557,8 @@ function AddNewLanguageKey() {
                             </li>
                             <div className="max-w-[380px] overflow-hidden text-ellipsis whitespace-normal">
                               <p className="text-[12px]">
-                                For example,
-                                http://blocks.seliselocal.com/release-note/:id
-                                will be added as release-note/
+                                For example, http://blocks.seliselocal.com/release-note/:id will be
+                                added as release-note/
                                 <strong>{"{{ dynamic_routing }}"}</strong>
                               </p>
                             </div>
@@ -617,9 +573,7 @@ function AddNewLanguageKey() {
                     {routeFields.map((field, index) => (
                       <div key={field.id} className="flex items-end gap-2">
                         <div className="grid w-full gap-1.5">
-                          <Label htmlFor={`routes.${index}.value`}>
-                            Route {index + 1}
-                          </Label>
+                          <Label htmlFor={`routes.${index}.value`}>Route {index + 1}</Label>
                           <Input
                             id={`routes.${index}.value`}
                             type="text"
@@ -627,13 +581,9 @@ function AddNewLanguageKey() {
                             placeholder="Enter route"
                             {...form.register(`routes.${index}.value`)}
                           />
-                          {form.formState.errors.routes?.[index]?.value
-                            ?.message ? (
+                          {form.formState.errors.routes?.[index]?.value?.message ? (
                             <p className="text-xs text-destructive">
-                              {
-                                form.formState.errors.routes?.[index]?.value
-                                  ?.message
-                              }
+                              {form.formState.errors.routes?.[index]?.value?.message}
                             </p>
                           ) : null}
                         </div>

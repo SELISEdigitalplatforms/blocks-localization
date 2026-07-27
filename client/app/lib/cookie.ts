@@ -42,14 +42,16 @@ export function setCookie(
   name: string,
   value: string,
   days: number = 365,
-  domain: string = ".blocksdevelopers.com"
+  domain: string = ".blocksdevelopers.com",
 ): void {
   if (typeof document === "undefined") return;
 
   // Check size limit
   const encodedValue = encodeURIComponent(value);
   if (encodedValue.length > MAX_COOKIE_SIZE) {
-    console.warn(`Cookie "${name}" value too large (${encodedValue.length} bytes). Max: ${MAX_COOKIE_SIZE}`);
+    console.error(
+      `Cookie "${name}" value too large (${encodedValue.length} bytes). Max: ${MAX_COOKIE_SIZE}`,
+    );
     return;
   }
 
@@ -108,7 +110,7 @@ export function setJsonCookie<T>(
   name: string,
   value: T,
   days: number = 365,
-  domain: string = ".blocksdevelopers.com"
+  domain: string = ".blocksdevelopers.com",
 ): void {
   try {
     const jsonString = JSON.stringify(value);

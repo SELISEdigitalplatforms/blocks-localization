@@ -26,22 +26,16 @@ vi.mock("@blocks-localization/components/modals/new-module/new-module", () => ({
   default: () => null,
 }));
 // Render identifiable content so opening the edit / tag dialogs is observable.
-vi.mock(
-  "@blocks-localization/components/modals/edit-module/edit-module",
-  () => ({
-    default: ({ module }: { module: { moduleName: string } }) => (
-      <div>edit-dialog-{module.moduleName}</div>
-    ),
-  }),
-);
-vi.mock(
-  "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal",
-  () => ({
-    default: ({ module }: { module: { moduleName: string } }) => (
-      <div>tag-dialog-{module.moduleName}</div>
-    ),
-  }),
-);
+vi.mock("@blocks-localization/components/modals/edit-module/edit-module", () => ({
+  default: ({ module }: { module: { moduleName: string } }) => (
+    <div>edit-dialog-{module.moduleName}</div>
+  ),
+}));
+vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal", () => ({
+  default: ({ module }: { module: { moduleName: string } }) => (
+    <div>tag-dialog-{module.moduleName}</div>
+  ),
+}));
 
 const mockModules = vi.mocked(useGetLanguageModules);
 const getUsersByIds = vi.mocked(userLookupService.getUsersByIds);
@@ -61,9 +55,7 @@ const setModules = (data: unknown) =>
   } as never);
 
 const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = screen
-    .getAllByRole("button")
-    .find((b) => b.className.includes("h-8 w-8 p-0"))!;
+  const trigger = screen.getAllByRole("button").find((b) => b.className.includes("h-8 w-8 p-0"))!;
   await user.click(trigger);
 };
 

@@ -60,7 +60,9 @@ export const SortHeader = ({ label, id, value, onChange }: SortHeaderProps) => {
   return (
     <div className="flex cursor-pointer items-center" onClick={onClickHandler}>
       <span className="font-bold text-medium-emphasis">{label}</span>
-      <Icon className={`ml-2 h-4 w-4 ${isActive ? "text-high-emphasis" : "text-medium-emphasis opacity-50"}`}></Icon>
+      <Icon
+        className={`ml-2 h-4 w-4 ${isActive ? "text-high-emphasis" : "text-medium-emphasis opacity-50"}`}
+      ></Icon>
     </div>
   );
 };

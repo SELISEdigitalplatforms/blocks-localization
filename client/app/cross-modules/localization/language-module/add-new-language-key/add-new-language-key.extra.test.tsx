@@ -83,10 +83,7 @@ describe("add-new-language-key (extra coverage)", () => {
   it("surfaces validation errors from a failed save", async () => {
     saveKeyAsync.mockResolvedValue({
       success: false,
-      validationErrors: [
-        { errorMessage: "Name taken" },
-        { errorMessage: "Bad module" },
-      ],
+      validationErrors: [{ errorMessage: "Name taken" }, { errorMessage: "Bad module" }],
     });
     renderWithProviders(<AddNewLanguageKey />, { route });
     fillValidForm();
@@ -154,9 +151,7 @@ describe("add-new-language-key (extra coverage)", () => {
     fillValidForm();
     submitForm();
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -183,9 +178,7 @@ describe("add-new-language-key (extra coverage)", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -197,9 +190,7 @@ describe("add-new-language-key (extra coverage)", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 

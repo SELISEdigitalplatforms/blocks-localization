@@ -2,16 +2,12 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { projectService } from "@blocks-identifier/services/project.service";
-import {
-  useCreateProjectFormState,
-  shortGuidGenerator,
-} from "@/components/create-project/utils";
+import { useCreateProjectFormState, shortGuidGenerator } from "@/components/create-project/utils";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 export const useGetProjects = (tenantGroupId = "") => {
-  const { setProjects, selectedProject, setSelectedProject } =
-    useProjectStore();
+  const { setProjects, selectedProject, setSelectedProject } = useProjectStore();
 
   const query = useQuery({
     queryKey: ["identifier", "projects", tenantGroupId],
@@ -167,8 +163,7 @@ export const useProjectForm = () => {
     try {
       const environments = formData[2]?.environments || [];
       const shortGuid = shortGuidGenerator(5);
-      const baseDomain =
-        import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
+      const baseDomain = import.meta.env.BLOCKS_BASE_DOMAIN || "seliseblocks.com";
       const applicationContexts =
         environments.map((env: { value: string }) => ({
           environment: env.value,
@@ -197,8 +192,7 @@ export const useProjectForm = () => {
         try {
           const projectGroups = await queryClient.fetchQuery({
             queryKey: ["identifier", "projects", response.tenantGroupId],
-            queryFn: () =>
-              projectService.getProjects(0, 100, response.tenantGroupId),
+            queryFn: () => projectService.getProjects(0, 100, response.tenantGroupId),
             staleTime: 0,
           });
 

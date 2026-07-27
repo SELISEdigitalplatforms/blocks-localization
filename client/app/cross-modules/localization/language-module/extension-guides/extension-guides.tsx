@@ -88,9 +88,8 @@ export const ExtensionGuides = () => {
           <div>
             <h2 className="font-medium">Before you begin</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Get the API Base URL and X-Blocks-Key from your Blocks OS
-              administrator. Keep the key private and only enter it in the
-              official extension.
+              Get the API Base URL and X-Blocks-Key from your Blocks OS administrator. Keep the key
+              private and only enter it in the official extension.
             </p>
           </div>
         </div>
@@ -243,8 +242,7 @@ export const ExtensionGuides = () => {
             <div>
               <h3 className="text-sm font-medium">Active instance</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                The ACTIVE label identifies the instance currently selected for
-                sign-in.
+                The ACTIVE label identifies the instance currently selected for sign-in.
               </p>
             </div>
           </div>
@@ -271,10 +269,7 @@ export const ExtensionGuides = () => {
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Plus className="h-4 w-4 text-primary" />
           Need another environment? Return to Manage Instances and select
-          <span className="font-medium text-foreground">
-            Add Cloud Instance
-          </span>
-          .
+          <span className="font-medium text-foreground">Add Cloud Instance</span>.
         </div>
       </Card>
     </div>

@@ -29,9 +29,7 @@ interface GetMeResponse {
 }
 
 const getIamBaseUrl = () => {
-  const iamBaseUrl =
-    getRuntimeEnv("BLOCKS_IAM_BASE_URL") ||
-    "https://dev-iam.blocksdevelopers.com";
+  const iamBaseUrl = getRuntimeEnv("BLOCKS_IAM_BASE_URL") || "https://dev-iam.blocksdevelopers.com";
   return `${iamBaseUrl}/api/iam`;
 };
 
@@ -40,13 +38,9 @@ class UserLookupService {
   private readonly usersPageSize = 100;
 
   getMe(): Promise<GetMeResponse> {
-    return this.httpClient.get(
-      `${getIamBaseUrl()}/me`,
-      undefined,
-      {
-        absoluteUrl: true,
-      },
-    );
+    return this.httpClient.get(`${getIamBaseUrl()}/me`, undefined, {
+      absoluteUrl: true,
+    });
   }
 
   getUsers(payload: {

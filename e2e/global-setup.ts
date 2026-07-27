@@ -38,14 +38,10 @@ export default function globalSetup() {
   );
 
   if (patched === original) {
-    console.log(
-      `[e2e] BLOCKS_LOCALIZATION_BASE_URL already "${baseURL}" — no patch needed.`,
-    );
+    console.log(`[e2e] BLOCKS_LOCALIZATION_BASE_URL already "${baseURL}" — no patch needed.`);
     return;
   }
 
   fs.writeFileSync(indexHtml, patched);
-  console.log(
-    `[e2e] Patched BLOCKS_LOCALIZATION_BASE_URL -> "${baseURL}" in served index.html.`,
-  );
+  console.log(`[e2e] Patched BLOCKS_LOCALIZATION_BASE_URL -> "${baseURL}" in served index.html.`);
 }

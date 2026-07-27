@@ -20,12 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui-kits/tabs/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import {
   IBlocksLanguageKey,
@@ -68,12 +63,10 @@ const KeyDetails = () => {
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [openGptPromt, setGptPromt] = useState<boolean>(false);
-  const [autoTranslateModalOpen, setAutoTranslateModalOpen] =
-    useState<boolean>(false);
+  const [autoTranslateModalOpen, setAutoTranslateModalOpen] = useState<boolean>(false);
 
   // Hooks for translation
-  const { isPending: isTranslating, mutateAsync: translateKeyAsync } =
-    useTranslateKey();
+  const { isPending: isTranslating, mutateAsync: translateKeyAsync } = useTranslateKey();
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
 
   // Pagination/filter state
@@ -81,9 +74,8 @@ const KeyDetails = () => {
 
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
-    BREADCRUMB_CUSTOM_TITLES[
-      `/app/:itemId/services/language/translations/${keyDetails.itemId}`
-    ] = keyDetails.keyName;
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/language/translations/${keyDetails.itemId}`] =
+      keyDetails.keyName;
   }
 
   // Fetch timeline with current pagination
@@ -125,35 +117,32 @@ const KeyDetails = () => {
     }
   }
 
-  const mapTimelineEvents = useCallback(
-    (response: IGetTimelineResponse): TimelineEvents[] => {
-      if (!response || !response.timelines) return [];
+  const mapTimelineEvents = useCallback((response: IGetTimelineResponse): TimelineEvents[] => {
+    if (!response || !response.timelines) return [];
 
-      return response.timelines.map((e) => {
-        const dateObj = new Date(e.createDate);
+    return response.timelines.map((e) => {
+      const dateObj = new Date(e.createDate);
 
-        return {
-          id: e.itemId,
-          date: dateObj.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          time: dateObj.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-          description: getDescription(e.logFrom, e.userName),
-          previousData: e.previousData,
-          currentData: e.currentData,
-          logFrom: e.logFrom,
-          userId: e.userId,
-        };
-      });
-    },
-    [],
-  );
+      return {
+        id: e.itemId,
+        date: dateObj.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+        time: dateObj.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        description: getDescription(e.logFrom, e.userName),
+        previousData: e.previousData,
+        currentData: e.currentData,
+        logFrom: e.logFrom,
+        userId: e.userId,
+      };
+    });
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -247,18 +236,10 @@ const KeyDetails = () => {
       <Tabs defaultValue={tabId} className="mt-5">
         <div className="mb-5 flex justify-between text-base">
           <TabsList className="h-[42px] bg-blocks-primary-shades-300">
-            <TabsTrigger
-              onClick={() => setTabId("details")}
-              value="details"
-              className="h-8"
-            >
+            <TabsTrigger onClick={() => setTabId("details")} value="details" className="h-8">
               Details
             </TabsTrigger>
-            <TabsTrigger
-              onClick={() => setTabId("history")}
-              value="history"
-              className="h-8"
-            >
+            <TabsTrigger onClick={() => setTabId("history")} value="history" className="h-8">
               History
             </TabsTrigger>
           </TabsList>
@@ -282,9 +263,7 @@ const KeyDetails = () => {
                         }}
                       >
                         <Wand className="h-3.5 w-3.5" />
-                        <p className="hover gap-2 border-none pl-0">
-                          Auto-translate
-                        </p>
+                        <p className="hover gap-2 border-none pl-0">Auto-translate</p>
                       </DropdownMenuRadioItem>
                       {/* <DropdownMenuRadioItem
                         value="autoTranslate"
@@ -300,22 +279,15 @@ const KeyDetails = () => {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                   <Dialog open={openGptPromt} onOpenChange={setGptPromt}>
-                    <GptPrompt
-                      defaultValue={keyDetails.context}
-                      keyDetails={keyDetails}
-                    />
+                    <GptPrompt defaultValue={keyDetails.context} keyDetails={keyDetails} />
                   </Dialog>
                 </DropdownMenu>
-                <Dialog
-                  open={autoTranslateModalOpen}
-                  onOpenChange={setAutoTranslateModalOpen}
-                >
+                <Dialog open={autoTranslateModalOpen} onOpenChange={setAutoTranslateModalOpen}>
                   <DialogContent>
                     <DialogHeader className="mb-4">
                       <DialogTitle>Auto-translate this key</DialogTitle>
                       <Label className="!mt-[12px] font-normal text-medium-emphasis">
-                        Are you sure you want to automatically translate this
-                        key?
+                        Are you sure you want to automatically translate this key?
                       </Label>
                     </DialogHeader>
                     <DialogFooter className="mt-6">
@@ -350,10 +322,7 @@ const KeyDetails = () => {
                   </Button>
                 </DialogTrigger>
               </Dialog> */}
-                <Dialog
-                  open={deleteModalOpen}
-                  onOpenChange={setDeleteModalOpen}
-                >
+                <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
                   <DialogTrigger asChild>
                     <Button size="default" variant="outline" className="gap-2">
                       <Trash className="h-4 w-4 text-error" />
@@ -395,21 +364,14 @@ const KeyDetails = () => {
             {/* <ComingSoonPage message="Coming Soon" /> */}
             <CardHeader>
               <CardTitle className="text-xl">Activity</CardTitle>
-              <CardDescription>
-                View language value change timeline.
-              </CardDescription>
+              <CardDescription>View language value change timeline.</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               {/* Scrollable timeline area */}
-              <ScrollArea
-                className="h-[calc(100vh-420px)] pr-2"
-                ref={scrollRef as never}
-              >
+              <ScrollArea className="h-[calc(100vh-420px)] pr-2" ref={scrollRef as never}>
                 {isLoading ? (
-                  <div className="py-10 text-sm text-muted-foreground">
-                    Loading timeline…
-                  </div>
+                  <div className="py-10 text-sm text-muted-foreground">Loading timeline…</div>
                 ) : events.length === 0 ? (
                   <div className="py-10 text-sm text-muted-foreground">
                     No changes found for this page.
@@ -421,18 +383,14 @@ const KeyDetails = () => {
 
               {/* Pagination */}
               <div className="flex items-center justify-end">
-                {!isLoading &&
-                  keyTimelineData &&
-                  keyTimelineData.totalCount > filter.pageSize && (
-                    <Pagination
-                      page={filter.page}
-                      pageSize={filter.pageSize}
-                      totalCount={keyTimelineData.totalCount}
-                      onChange={(page: number) =>
-                        setFilter((prev) => ({ ...prev, page }))
-                      }
-                    />
-                  )}
+                {!isLoading && keyTimelineData && keyTimelineData.totalCount > filter.pageSize && (
+                  <Pagination
+                    page={filter.page}
+                    pageSize={filter.pageSize}
+                    totalCount={keyTimelineData.totalCount}
+                    onChange={(page: number) => setFilter((prev) => ({ ...prev, page }))}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
