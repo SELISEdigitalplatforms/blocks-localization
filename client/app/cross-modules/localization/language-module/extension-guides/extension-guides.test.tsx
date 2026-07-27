@@ -19,6 +19,9 @@ describe("ExtensionGuides", () => {
       if (key === "BLOCKS_X_BLOCKS_KEY") {
         return "runtime-blocks-key";
       }
+      if (key === "BLOCKS_LOCALIZATION_BASE_URL") {
+        return "https://localization.example.com/";
+      }
       return "";
     });
   });
@@ -32,5 +35,22 @@ describe("ExtensionGuides", () => {
       "BLOCKS_PUBLIC_API_BASE_URL",
     );
     expect(getRuntimeEnvMock).toHaveBeenCalledWith("BLOCKS_X_BLOCKS_KEY");
+  });
+
+  it("provides copyable JSON and curl alternatives from runtime configuration", () => {
+    render(<ExtensionGuides />);
+
+    expect(
+      screen.getByText(/"BLOCKS_PUBLIC_API_BASE_URL": "https:\/\/runtime-api\.example\.com"/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/"BLOCKS_X_BLOCKS_KEY": "runtime-blocks-key"/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("curl https://localization.example.com"),
+    ).toBeTruthy();
+    expect(getRuntimeEnvMock).toHaveBeenCalledWith(
+      "BLOCKS_LOCALIZATION_BASE_URL",
+    );
   });
 });
