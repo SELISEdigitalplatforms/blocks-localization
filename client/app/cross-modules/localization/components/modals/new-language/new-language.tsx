@@ -35,14 +35,11 @@ import { toast } from "@/hooks/use-toast";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
 interface NewLanguageProps {
-  onClose: Function;
+  onClose: (value?: boolean) => void;
   existingLanguages?: ILanguageConfig[];
 }
 
-const NewLanguage: React.FC<NewLanguageProps> = ({
-  onClose,
-  existingLanguages = [],
-}) => {
+const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = [] }) => {
   const schema = z.object({
     languageCode: z.string().min(1, { message: "Language is required" }),
   });
@@ -54,28 +51,22 @@ const NewLanguage: React.FC<NewLanguageProps> = ({
   const { isPending, mutateAsync } = useSaveLanguage();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [open, setOpen] = React.useState(false);
-  const [selectedLanguage, setSelectedLanguage] = React.useState(
-    form.getValues("languageCode"),
-  );
+  const [selectedLanguage, setSelectedLanguage] = React.useState(form.getValues("languageCode"));
   const formSubmitHandler = async (data: any) => {
     try {
-      const isDuplicate = existingLanguages.some(
-        (lang) => lang.languageCode === data.languageCode,
-      );
+      const isDuplicate = existingLanguages.some((lang) => lang.languageCode === data.languageCode);
       if (isDuplicate) {
         toast({
           variant: "destructive",
           title: "Error",
-          description:
-            "Language is already added. You can't add this language.",
+          description: "Language is already added. You can't add this language.",
         });
         return;
       }
       const payload = {
         ...data,
-        languageName: langConfigureData.find(
-          (lang) => lang.languageCode === data.languageCode,
-        )?.languageName,
+        languageName: langConfigureData.find((lang) => lang.languageCode === data.languageCode)
+          ?.languageName,
       };
       const res = await mutateAsync(payload);
       onClose();
@@ -126,9 +117,8 @@ const NewLanguage: React.FC<NewLanguageProps> = ({
                       onClick={() => setOpen(true)}
                     >
                       {selectedLanguage
-                        ? langConfigureData.find(
-                            (lang) => lang.languageCode === selectedLanguage,
-                          )?.languageName
+                        ? langConfigureData.find((lang) => lang.languageCode === selectedLanguage)
+                            ?.languageName
                         : "Select language"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>

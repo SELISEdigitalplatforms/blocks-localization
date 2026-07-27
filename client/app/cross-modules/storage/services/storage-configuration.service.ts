@@ -26,38 +26,38 @@ export class StorageConfiguration {
     const resetValues =
       values.storageStrategy === "Amazon"
         ? {
-          host: "",
-          port: "",
-          userName: "",
-          password: "",
-          remoteBasePath: "",
-          connectionString: "",
-        }
-        : values.storageStrategy === "Azure"
-          ? {
             host: "",
             port: "",
             userName: "",
             password: "",
-            accessKey: "",
-            secretKey: "",
-            cloudStorageRegionEndPoint: "",
+            remoteBasePath: "",
+            connectionString: "",
           }
-          : values.storageStrategy === "S3Compatible"
-            ? {
+        : values.storageStrategy === "Azure"
+          ? {
+              host: "",
               port: "",
               userName: "",
               password: "",
-              remoteBasePath: "",
-              connectionString: "",
-              cloudStorageRegionEndPoint: "",
-            }
-            : {
               accessKey: "",
               secretKey: "",
               cloudStorageRegionEndPoint: "",
-              connectionString: "",
-            };
+            }
+          : values.storageStrategy === "S3Compatible"
+            ? {
+                port: "",
+                userName: "",
+                password: "",
+                remoteBasePath: "",
+                connectionString: "",
+                cloudStorageRegionEndPoint: "",
+              }
+            : {
+                accessKey: "",
+                secretKey: "",
+                cloudStorageRegionEndPoint: "",
+                connectionString: "",
+              };
 
     // Merge the reset values with the original values
     const payload = { ...resetValues, ...values };

@@ -1,1 +1,1 @@
-export { ConfigurePage, type WebhookInput } from "./configure.page"
+export { ConfigurePage, type WebhookInput } from "./configure.page";

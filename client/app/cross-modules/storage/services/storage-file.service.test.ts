@@ -43,37 +43,25 @@ describe("storage/services/storage-file.service", () => {
   it("deleteFileByFileId should POST to DELETE_FILE", () => {
     const payload = { fileId: "f", projectKey: "pk" };
     service.deleteFileByFileId(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.DELETE_FILE,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.DELETE_FILE, payload);
   });
 
   it("deleteFolderByFileId should POST to DELETE_FOLDER", () => {
     const payload = { folderId: "fo", projectKey: "pk" };
     service.deleteFolderByFileId(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.DELETE_FOLDER,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.DELETE_FOLDER, payload);
   });
 
   it("getPreSignedUrlForUpload should POST to GET_PRESIGNED_URL", () => {
     const payload = { name: "n" } as never;
     service.getPreSignedUrlForUpload(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.GET_PRESIGNED_URL,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.GET_PRESIGNED_URL, payload);
   });
 
   it("getFilesInfoUrlForUpload should POST to GET_FILES_INFO", () => {
     const payload = { page: 0 } as never;
     service.getFilesInfoUrlForUpload(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      STORAGE_CONFIG_ENDPOINTS.GET_FILES_INFO,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(STORAGE_CONFIG_ENDPOINTS.GET_FILES_INFO, payload);
   });
 
   it("updateFileAdditionalInfo should POST to UPDATE_FILE_ADDITIONAL_INFO", () => {

@@ -71,12 +71,8 @@ export class LanguageManagerService {
     return this.httpClient.post(url, payload);
   };
 
-  fetchBlocksLanguageKeyById = (request: {
-    itemId: string;
-  }): Promise<IBlocksLanguageKey> => {
-    return this.httpClient.get(
-      `${LANGUAGE_KEY_ENDPOINTS.GET}?itemId=${request.itemId}`,
-    );
+  fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {
+    return this.httpClient.get(`${LANGUAGE_KEY_ENDPOINTS.GET}?itemId=${request.itemId}`);
   };
 
   fetchBlocksLanguageModules = (): Promise<IModuleGets[]> => {
@@ -151,10 +147,7 @@ export class LanguageManagerService {
     errors: null | unknown;
     isSuccess: boolean;
   }> => {
-    return this.httpClient.post(
-      LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY,
-      payload,
-    );
+    return this.httpClient.post(LANGUAGE_MODULE_ENDPOINTS.TAG_GLOSSARY, payload);
   };
 
   saveLanguage = (payload: {
@@ -299,9 +292,7 @@ export class LanguageManagerService {
     return this.httpClient.post(url, payload);
   };
 
-  saveLanguageKeyUilmExport = (
-    payload: IKeyUilmExport,
-  ): Promise<IBaseMutationResponse> => {
+  saveLanguageKeyUilmExport = (payload: IKeyUilmExport): Promise<IBaseMutationResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.UILM_EXPORT;
     return this.httpClient.post<IBaseMutationResponse>(url, payload);
   };
@@ -342,9 +333,7 @@ export class LanguageManagerService {
     return this.httpClient.get(url);
   };
 
-  revertKeyTimeline = (payload: {
-    itemId: string;
-  }): Promise<IRollbackResponse> => {
+  revertKeyTimeline = (payload: { itemId: string }): Promise<IRollbackResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.ROLLBACK;
 
     return this.httpClient.post(url, payload);
@@ -374,15 +363,10 @@ export class LanguageManagerService {
       payload.logFromValues.forEach((v) => params.append("LogFromValues", v));
     }
     if (payload.excludeLogFromValues) {
-      payload.excludeLogFromValues.forEach((v) =>
-        params.append("ExcludeLogFromValues", v),
-      );
+      payload.excludeLogFromValues.forEach((v) => params.append("ExcludeLogFromValues", v));
     }
     if (payload.createDateRange?.startDate) {
-      params.append(
-        "CreateDateRange.StartDate",
-        payload.createDateRange.startDate,
-      );
+      params.append("CreateDateRange.StartDate", payload.createDateRange.startDate);
     }
     if (payload.createDateRange?.endDate) {
       params.append("CreateDateRange.EndDate", payload.createDateRange.endDate);
@@ -433,9 +417,7 @@ export class LanguageManagerService {
       params.append("ModuleId", request.moduleId);
     }
 
-    return this.httpClient.get(
-      `${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`,
-    );
+    return this.httpClient.get(`${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`);
   };
 
   saveGlossary = (payload: {
@@ -483,9 +465,7 @@ export class LanguageManagerService {
   };
 
   getGlossaryById = (request: { itemId: string }): Promise<IGlossary> => {
-    return this.httpClient.get(
-      `${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}`,
-    );
+    return this.httpClient.get(`${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}`);
   };
 
   getWebhook = (): Promise<IWebhookConfig | null> => {

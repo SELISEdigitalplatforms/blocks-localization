@@ -10,7 +10,7 @@ vi.mock("@blocks-localization/services/user-lookup.service", () => ({
 }));
 
 const svc = vi.mocked(userLookupService);
-const renderQ = <T,>(cb: () => T) => {
+const renderQ = <T>(cb: () => T) => {
   const { wrapper } = createQueryWrapper();
   return renderHook(cb, { wrapper });
 };

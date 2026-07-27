@@ -1,4 +1,1 @@
-export {
-  ModuleDetailsPage,
-  ModulesListPage,
-} from "./modules-list.page"
+export { ModuleDetailsPage, ModulesListPage } from "./modules-list.page";

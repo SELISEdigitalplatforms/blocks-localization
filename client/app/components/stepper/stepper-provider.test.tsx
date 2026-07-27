@@ -41,9 +41,7 @@ describe("components/stepper/stepper-provider", () => {
       useStepper();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow(
-      "useStepper must be used within a StepperProvider",
-    );
+    expect(() => render(<Broken />)).toThrow("useStepper must be used within a StepperProvider");
   });
 
   it("should start at step 1 with no completed steps", () => {

@@ -24,12 +24,7 @@ type Options = {
  * search-param state.
  */
 export const renderWithProviders = (ui: ReactElement, options: Options = {}) => {
-  const {
-    route = "/",
-    searchParams = "",
-    queryClient = makeTestQueryClient(),
-    ...rest
-  } = options;
+  const { route = "/", searchParams = "", queryClient = makeTestQueryClient(), ...rest } = options;
 
   const Wrapper = ({ children }: { children: ReactNode }) =>
     createElement(
@@ -38,11 +33,7 @@ export const renderWithProviders = (ui: ReactElement, options: Options = {}) => 
       createElement(
         MemoryRouter,
         { initialEntries: [route] },
-        createElement(
-          NuqsTestingAdapter,
-          { searchParams },
-          children,
-        ),
+        createElement(NuqsTestingAdapter, { searchParams }, children),
       ),
     );
 

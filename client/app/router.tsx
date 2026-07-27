@@ -6,15 +6,8 @@ import {
   LoginPage,
   ProfilePage,
 } from "@seliseblocks/blocks-kit/pages";
-import {
-  DashboardRoute,
-  ConsoleLayout,
-} from "@seliseblocks/blocks-kit/layouts";
-import {
-  ProtectedGuard,
-  PublicGuard,
-  AuthResolver,
-} from "@seliseblocks/blocks-kit/guards";
+import { DashboardRoute, ConsoleLayout } from "@seliseblocks/blocks-kit/layouts";
+import { ProtectedGuard, PublicGuard, AuthResolver } from "@seliseblocks/blocks-kit/guards";
 import {
   LocalizationConfigurePage,
   LocalizationExtensionGuidesPage,
@@ -32,8 +25,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
 
 const redirectPaths: Record<string, string> = {
-  "/app/:itemId/services/language/translations/*":
-    "/app/:itemId/services/language",
+  "/app/:itemId/services/language/translations/*": "/app/:itemId/services/language",
 };
 
 export const router = createBrowserRouter([
@@ -89,10 +81,7 @@ export const router = createBrowserRouter([
               {
                 path: ":itemId",
                 element: (
-                  <DashboardRoute
-                    redirectPaths={redirectPaths}
-                    navigationMenus={navigationMenus}
-                  />
+                  <DashboardRoute redirectPaths={redirectPaths} navigationMenus={navigationMenus} />
                 ),
                 children: [
                   { index: true, element: <Navigate to="dashboard" replace /> },

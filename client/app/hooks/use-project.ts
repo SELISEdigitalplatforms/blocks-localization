@@ -5,8 +5,7 @@ import { useProjectStore } from "@seliseblocks/blocks-kit";
 
 const crossProjectService = projectService;
 export const useGetProjects = (tenantGroupId = "") => {
-  const { setProjects, selectedProject, setSelectedProject } =
-    useProjectStore();
+  const { setProjects, selectedProject, setSelectedProject } = useProjectStore();
 
   const query = useQuery({
     queryKey: ["identifier", "projects", tenantGroupId],

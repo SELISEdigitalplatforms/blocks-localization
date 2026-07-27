@@ -1,1 +1,1 @@
-export { AppShellPage, ConsolePage } from "./app-shell.page"
+export { AppShellPage, ConsolePage } from "./app-shell.page";

@@ -52,10 +52,7 @@ describe("hooks/use-toast", () => {
       vi.useFakeTimers();
       const state = reducer(
         {
-          toasts: [
-            makeToast("1") as never,
-            makeToast("2") as never,
-          ],
+          toasts: [makeToast("1") as never, makeToast("2") as never],
         },
         { type: "DISMISS_TOAST", toastId: "1" },
       );

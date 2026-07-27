@@ -80,9 +80,7 @@ describe("components/file-uploader", () => {
   });
 
   it("should navigate items with arrow and delete keys", () => {
-    const { container } = render(
-      <Harness initial={[makeFile("a.png"), makeFile("b.png")]} />,
-    );
+    const { container } = render(<Harness initial={[makeFile("a.png"), makeFile("b.png")]} />);
     const root = container.querySelector('[tabindex="0"]')!;
     fireEvent.keyDown(root, { key: "ArrowDown" });
     fireEvent.keyDown(root, { key: "ArrowUp" });
@@ -120,9 +118,7 @@ describe("components/file-uploader", () => {
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeFile("dropped.png")] } });
     await new Promise((r) => setTimeout(r, 0));
-    expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ name: "dropped.png" }),
-    ]);
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ name: "dropped.png" })]);
   });
 
   it("should reject an oversized file with an error toast", async () => {

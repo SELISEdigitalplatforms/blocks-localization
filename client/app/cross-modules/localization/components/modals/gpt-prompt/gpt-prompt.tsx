@@ -35,7 +35,7 @@ const GptPrompt: React.FC<{
   //     .filter((word: any) => word.length > 0).length;
   // };
 
-  const handleWordsLimit = (event: any) => {
+  const handleWordsLimit = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textAreaText = event.target.value;
     // const wordsArray = textAreaText.trim().split(/\s+/);
     setText(textAreaText);
@@ -63,9 +63,7 @@ const GptPrompt: React.FC<{
             ? keyDetails.resources
             : [],
         routes:
-          keyDetails?.routes?.length && keyDetails?.routes?.length > 0
-            ? keyDetails.routes
-            : [],
+          keyDetails?.routes?.length && keyDetails?.routes?.length > 0 ? keyDetails.routes : [],
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
         context: text,
@@ -96,10 +94,7 @@ const GptPrompt: React.FC<{
   }
 
   return (
-    <DialogContent
-      className="md:min-w-[720px]"
-      aria-describedby="dialog-description"
-    >
+    <DialogContent className="md:min-w-[720px]" aria-describedby="dialog-description">
       <DialogHeader className="mb-2">
         <DialogTitle>Auto translation prompt</DialogTitle>
         <DialogDescription></DialogDescription>
@@ -113,11 +108,7 @@ const GptPrompt: React.FC<{
               <Undo2 className="mr-2 h-5 w-5" />
               Restore default
             </Button>
-            <Button
-              variant="secondary"
-              className="ml-[16px]"
-              onClick={clearValue}
-            >
+            <Button variant="secondary" className="ml-[16px]" onClick={clearValue}>
               <Delete className="mr-2 h-5 w-5" />
               Clear
             </Button>
@@ -131,8 +122,7 @@ const GptPrompt: React.FC<{
               className="h-28 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <div className="border-0 bg-background px-3 py-2 text-sm text-muted-foreground">
-              Translate the following from {"{CurrentLanguage}"} to{" "}
-              {"{DestinationLanguage}"}:&apos;
+              Translate the following from {"{CurrentLanguage}"} to {"{DestinationLanguage}"}:&apos;
               {"{SourceText}"}&apos;.
             </div>
           </div>

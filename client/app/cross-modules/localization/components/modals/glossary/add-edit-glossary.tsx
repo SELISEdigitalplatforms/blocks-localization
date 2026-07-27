@@ -7,11 +7,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui-kits/popover/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -82,11 +78,7 @@ const schema = z.object({
   additionalNote: z.string().optional(),
 });
 
-const AddEditGlossary: FC<AddEditGlossaryProps> = ({
-  onClose,
-  glossary,
-  isOpen,
-}) => {
+const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }) => {
   const isEditMode = !!glossary;
   const prevIsOpenRef = useRef(false);
   const { isPending, mutateAsync } = useSaveGlossary();
@@ -151,16 +143,11 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
         toast({
           variant: "success",
           title: "Success",
-          description: isEditMode
-            ? "Glossary item updated"
-            : "Glossary item added",
+          description: isEditMode ? "Glossary item updated" : "Glossary item added",
         });
         onClose();
       } else {
-        if (
-          Array.isArray(res?.validationErrors) &&
-          res.validationErrors.length > 0
-        ) {
+        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
           res.validationErrors.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
@@ -187,10 +174,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
       </DialogHeader>
 
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(formSubmitHandler)}
-          className="space-y-4"
-        >
+        <form onSubmit={form.handleSubmit(formSubmitHandler)} className="space-y-4">
           <FormField
             name="name"
             control={form.control}
@@ -216,9 +200,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-left font-medium text-high-emphasis">
-                  Language
-                </FormLabel>
+                <FormLabel className="text-left font-medium text-high-emphasis">Language</FormLabel>
                 <FormControl>
                   <Button
                     type="button"
@@ -227,17 +209,13 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                     onClick={() => setLanguageOpen(true)}
                   >
                     {selectedLanguage
-                      ? (languageListData?.find(
-                          (lang) => lang.languageCode === selectedLanguage,
-                        )?.languageName ?? selectedLanguage)
+                      ? (languageListData?.find((lang) => lang.languageCode === selectedLanguage)
+                          ?.languageName ?? selectedLanguage)
                       : "Select language"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </FormControl>
-                <CommandDialog
-                  open={languageOpen}
-                  onOpenChange={setLanguageOpen}
-                >
+                <CommandDialog open={languageOpen} onOpenChange={setLanguageOpen}>
                   <CommandInput placeholder="Search language..." />
                   <CommandList>
                     <CommandEmpty>No language found.</CommandEmpty>
@@ -269,9 +247,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-left font-medium text-high-emphasis">
-                  Type
-                </FormLabel>
+                <FormLabel className="text-left font-medium text-high-emphasis">Type</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -297,10 +273,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             render={({ field }) => (
               <FormItem className="flex flex-row items-center gap-2 space-y-0">
                 <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                 </FormControl>
                 <FormLabel className="cursor-pointer text-left font-medium text-high-emphasis">
                   Add to global context
@@ -323,11 +296,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                     {field.value.map((id) => {
                       const mod = moduleListData?.find((m) => m.itemId === id);
                       return (
-                        <Badge
-                          key={id}
-                          variant="secondary"
-                          className="gap-1 pr-1"
-                        >
+                        <Badge key={id} variant="secondary" className="gap-1 pr-1">
                           {mod?.moduleName ?? id}
                           <button
                             type="button"
@@ -348,10 +317,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                     })}
                   </div>
                 )}
-                <Popover
-                  open={modulePopoverOpen}
-                  onOpenChange={setModulePopoverOpen}
-                >
+                <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
@@ -363,40 +329,27 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent
-                    portalled={false}
-                    className="z-[60] w-[420px] p-0"
-                    align="start"
-                  >
+                  <PopoverContent portalled={false} className="z-[60] w-[420px] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Search modules..." />
                       <CommandList>
                         <CommandEmpty>No modules found.</CommandEmpty>
                         <CommandGroup>
                           {moduleListData?.map((mod) => {
-                            const moduleSearchValue = [
-                              mod.moduleName,
-                              mod.itemId,
-                            ]
+                            const moduleSearchValue = [mod.moduleName, mod.itemId]
                               .filter(Boolean)
                               .join(" ")
                               .toLowerCase();
                             const selectedModuleIds = field.value ?? [];
-                            const isSelected = selectedModuleIds.includes(
-                              mod.itemId,
-                            );
+                            const isSelected = selectedModuleIds.includes(mod.itemId);
 
                             return (
                               <CommandItem
                                 key={mod.itemId}
                                 value={moduleSearchValue}
-                                keywords={[
-                                  mod.moduleName ?? "",
-                                  mod.itemId ?? "",
-                                ]}
+                                keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
                                 onSelect={() => {
-                                  const current =
-                                    form.getValues("moduleIds") ?? [];
+                                  const current = form.getValues("moduleIds") ?? [];
                                   const next = current.includes(mod.itemId)
                                     ? current.filter((id) => id !== mod.itemId)
                                     : [...current, mod.itemId];
@@ -405,9 +358,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                                 }}
                               >
                                 {mod.moduleName}
-                                {isSelected && (
-                                  <Check className="ml-auto h-4 w-4" />
-                                )}
+                                {isSelected && <Check className="ml-auto h-4 w-4" />}
                               </CommandItem>
                             );
                           })}
@@ -426,9 +377,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-left font-medium text-high-emphasis">
-                  Context
-                </FormLabel>
+                <FormLabel className="text-left font-medium text-high-emphasis">Context</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Enter context or description"
@@ -455,12 +404,9 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </FormLabel>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      className="max-w-80 text-sm font-normal"
-                    >
-                      Not utilized for auto translation, only given for
-                      additional comments by the user
+                    <TooltipContent side="top" className="max-w-80 text-sm font-normal">
+                      Not utilized for auto translation, only given for additional comments by the
+                      user
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
