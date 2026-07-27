@@ -31,7 +31,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
         </span>
       </div>
       <div className="flex min-w-0 items-center gap-2 rounded-md border bg-muted/60 p-2 pl-3">
-        <code className="min-w-0 flex-1 break-all text-xs text-foreground sm:text-sm">
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-xs text-foreground sm:text-sm">
           {isAvailable ? value : "Value is not configured"}
         </code>
         <Button

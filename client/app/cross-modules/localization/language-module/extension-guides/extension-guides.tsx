@@ -8,15 +8,35 @@ import {
   Server,
   Trash2,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui-kits/accordion/accordion";
 import { Card } from "@/components/ui-kits/card/card";
 import { getRuntimeEnv } from "@/lib/runtime-env";
-import { CopyableSnippet } from "./copyable-snippet";
-import { SETUP_STEPS } from "./extension-guides.constant";
+import { SETUP_STEPS } from "../../constants/extension-guides.constant";
+import { CopyableSnippet } from "@/components/copyable-snippet/copyable-snippet";
 
 export const ExtensionGuides = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const apiBaseUrl = getRuntimeEnv("BLOCKS_PUBLIC_API_BASE_URL");
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
+  const localizationBaseUrl =
+    getRuntimeEnv("BLOCKS_LOCALIZATION_BASE_URL") ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  const extensionConfig = JSON.stringify(
+    {
+      BLOCKS_PUBLIC_API_BASE_URL: apiBaseUrl,
+      BLOCKS_X_BLOCKS_KEY: blocksKey,
+    },
+    null,
+    2,
+  );
+  const runtimeConfigCommand = localizationBaseUrl
+    ? `curl ${localizationBaseUrl.replace(/\/+$/, "")}`
+    : "";
 
   useEffect(() => {
     if (!copiedField) return;
@@ -82,25 +102,27 @@ export const ExtensionGuides = () => {
           Follow these steps from the extension sign-in screen.
         </p>
 
-        <ol className="mt-6 space-y-0">
+        <Accordion type="multiple" className="mt-4">
           {SETUP_STEPS.map((item, index) => (
-            <li key={item.title} className="relative flex gap-4 pb-6 last:pb-0">
-              {index < SETUP_STEPS.length - 1 && (
-                <div
-                  aria-hidden="true"
-                  className="absolute bottom-0 left-4 top-8 w-px bg-border"
-                />
-              )}
-              <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                {index + 1}
-              </div>
-              <div className="min-w-0 pt-0.5">
-                <h3 className="font-medium">{item.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <AccordionItem
+              key={item.title}
+              value={`setup-step-${index + 1}`}
+              className="last:border-b-0"
+            >
+              <AccordionTrigger className="gap-4 py-4 text-left hover:no-underline">
+                <span className="flex min-w-0 items-center gap-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <span className="font-medium">{item.title}</span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pl-12">
+                <p className="text-sm leading-6 text-muted-foreground">
                   {item.description}
                 </p>
                 {item.image && (
-                  <figure className="mt-4 max-w-md overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-sm">
+                  <figure className="mt-4 w-52 max-w-full overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-sm">
                     <img
                       src={item.image.src}
                       alt={item.image.alt}
@@ -115,10 +137,66 @@ export const ExtensionGuides = () => {
                     </figcaption>
                   </figure>
                 )}
-              </div>
-            </li>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </ol>
+        </Accordion>
+
+        <div className="mt-6 border-t pt-6">
+          <h3 className="font-semibold">Alternative setup options</h3>
+
+          <div className="mt-4 space-y-5">
+            <div>
+              <h4 className="text-sm font-medium">
+                Copy the instance configuration as JSON
+              </h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Copy this configuration and use the API Base URL and
+                X-Blocks-Key values when adding the Blocks OS instance in the
+                extension.
+              </p>
+              <div className="mt-3">
+                <CopyableSnippet
+                  id="extension-config-json"
+                  label="Instance configuration (JSON)"
+                  value={extensionConfig}
+                  copiedField={copiedField}
+                  onCopy={copyToClipboard}
+                />
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium">
+                Get the runtime configuration with curl
+              </h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Run this command in your terminal using your localization
+                domain. In the response, find{" "}
+                <code className="font-medium text-foreground">
+                  BLOCKS_PUBLIC_API_BASE_URL
+                </code>{" "}
+                and{" "}
+                <code className="font-medium text-foreground">
+                  BLOCKS_X_BLOCKS_KEY
+                </code>{" "}
+                under the runtime environment configuration.
+              </p>
+              <div className="mt-3">
+                <CopyableSnippet
+                  id="runtime-config-curl"
+                  label="Terminal command"
+                  value={runtimeConfigCommand}
+                  copiedField={copiedField}
+                  onCopy={copyToClipboard}
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Example: <code>curl https://localization.seliseblocks.com</code>
+              </p>
+            </div>
+          </div>
+        </div>
       </Card>
 
       <Card className="p-4 sm:p-6">
