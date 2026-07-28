@@ -9,7 +9,7 @@ namespace Eurolm.DomainService.Utilities
         public const string TranslateAllKeysQueue = "eurolm_translate_all_keys_listener";
         public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
         public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
-        public const string EnvironmentDataMigrationQueue = "blocks_uilm_environment_data_migration_listener";
+        public const string EnvironmentDataMigrationQueue = "eurolm_environment_data_migration_listener";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
         public const string ServiceName = "blocks-localization";
