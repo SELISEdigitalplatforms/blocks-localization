@@ -1,4 +1,4 @@
-﻿using Blocks.Genesis;
+using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Utilities;
@@ -69,11 +69,9 @@ namespace BlocksTemplate.Api.Controllers
             return await GetLanguagesForCurrentTenant();
         }
         [HttpGet]
-        [Authorize]
-        [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<List<Language>> Gets([FromQuery] string projectKey)
+        public async Task<List<Language>> Gets()
         {
-            return await _languageManagementService.GetLanguagesAsync(projectKey);
+            return await _languageManagementService.GetLanguagesAsync();
         }
 
         /// <summary>
