@@ -2,12 +2,10 @@
   <PropertyGroup>
     <RootNamespace>BlocksTemplate.Api</RootNamespace>
     <IsPackable>false</IsPackable>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>Api.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>Api.xml</DocumentationFile>
+    <!-- Emit XML doc output into the build output (bin/) instead of the source
+         tree, so it is not committed and never shows up as a stale dirty file. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="appsettings.Development.json" />

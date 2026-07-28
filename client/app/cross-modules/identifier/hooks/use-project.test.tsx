@@ -58,10 +58,7 @@ describe("identifier/hooks/use-project", () => {
     ] as never);
     const { result } = renderQ(() => hooks.useGetProjects("g1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(projectStore.setProjects).toHaveBeenCalledWith([
-      { itemId: "p1" },
-      { itemId: "p2" },
-    ]);
+    expect(projectStore.setProjects).toHaveBeenCalledWith([{ itemId: "p1" }, { itemId: "p2" }]);
     expect(projectStore.setSelectedProject).toHaveBeenCalledWith({ itemId: "p1" });
   });
 
@@ -96,11 +93,36 @@ describe("identifier/hooks/use-project", () => {
 
   it.each([
     ["useAddAssets", () => hooks.useAddAssets(), () => svc.addAssets, {} as never],
-    ["useUpdateRepositories", () => hooks.useUpdateRepositories(), () => svc.repoUpdate, {} as never],
-    ["useUpdateProject", () => hooks.useUpdateProject({ projectKey: "p" }), () => svc.updateTenantGroup, { name: "n", tenantGroupId: "g" }],
-    ["useUpdateTenantGroup", () => hooks.useUpdateTenantGroup({ tenantGroupId: "g" }), () => svc.updateTenantGroup, { name: "n", tenantGroupId: "g" }],
-    ["useValidateCNameProject", () => hooks.useValidateCNameProject({ projectKey: "p" }), () => svc.validateCNameProject, {} as never],
-    ["useDisableProject", () => hooks.useDisableProject({ projectKey: "p" }), () => svc.disableProject, {} as never],
+    [
+      "useUpdateRepositories",
+      () => hooks.useUpdateRepositories(),
+      () => svc.repoUpdate,
+      {} as never,
+    ],
+    [
+      "useUpdateProject",
+      () => hooks.useUpdateProject({ projectKey: "p" }),
+      () => svc.updateTenantGroup,
+      { name: "n", tenantGroupId: "g" },
+    ],
+    [
+      "useUpdateTenantGroup",
+      () => hooks.useUpdateTenantGroup({ tenantGroupId: "g" }),
+      () => svc.updateTenantGroup,
+      { name: "n", tenantGroupId: "g" },
+    ],
+    [
+      "useValidateCNameProject",
+      () => hooks.useValidateCNameProject({ projectKey: "p" }),
+      () => svc.validateCNameProject,
+      {} as never,
+    ],
+    [
+      "useDisableProject",
+      () => hooks.useDisableProject({ projectKey: "p" }),
+      () => svc.disableProject,
+      {} as never,
+    ],
     ["useCreateProject", () => hooks.useCreateProject(), () => svc.createProject, {} as never],
   ])("%s mutation should call its service", async (_name, hook, getFn, payload) => {
     getFn().mockResolvedValue({ isSuccess: true } as never);
@@ -118,9 +140,7 @@ describe("identifier/hooks/use-project", () => {
         tenantGroupId: "tg-1",
         errors: null,
       } as never);
-      svc.getProjects.mockResolvedValue([
-        { projects: [{ itemId: "p1" }] },
-      ] as never);
+      svc.getProjects.mockResolvedValue([{ projects: [{ itemId: "p1" }] }] as never);
 
       const { result } = renderQ(() => hooks.useProjectForm());
       await result.current.saveProject();

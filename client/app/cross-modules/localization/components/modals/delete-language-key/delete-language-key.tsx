@@ -19,10 +19,7 @@ interface DeleteLanguageKeyProps {
   onClose: () => void;
 }
 
-const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
-  itemId,
-  onClose,
-}) => {
+const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }) => {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isPending, mutateAsync } = useDeleteLanguageKey();
@@ -54,15 +51,9 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
         if (rawErrors && typeof rawErrors === "object") {
           if (Array.isArray(rawErrors) && rawErrors.length > 0) {
             errorMessage = (rawErrors as string[]).join(", ");
-          } else if (
-            !Array.isArray(rawErrors) &&
-            Object.keys(rawErrors).length > 0
-          ) {
+          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
             const firstError = Object.values(rawErrors)[0];
-            errorMessage =
-              typeof firstError === "string"
-                ? firstError
-                : JSON.stringify(rawErrors);
+            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
           }
         }
         toast({
@@ -75,10 +66,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
   };
@@ -99,12 +87,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({
             Cancel
           </Button>
         </DialogTrigger>
-        <Button
-          size="default"
-          className="bg-error"
-          onClick={deleteKey}
-          disabled={isPending}
-        >
+        <Button size="default" className="bg-error" onClick={deleteKey} disabled={isPending}>
           Delete Key
         </Button>
       </DialogFooter>

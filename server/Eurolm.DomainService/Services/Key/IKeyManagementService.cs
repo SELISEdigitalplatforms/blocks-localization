@@ -17,7 +17,7 @@ namespace Eurolm.DomainService.Services
         Task<string> GetUilmFile(GetUilmFileRequest request);
         Task<string> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key?> GetAsync(GetKeyRequest request);
-        Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request);
+        Task<BaseMutationResponse> DeleteAsync(DeleteKeyRequest request);
         Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request);
         Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request);
         Task SendTranslateAllEvent(TranslateAllRequest request);

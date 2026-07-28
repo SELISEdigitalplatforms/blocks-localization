@@ -47,9 +47,7 @@ describe("components/modals/tag-glossary-modal", () => {
     renderModal();
     expect(screen.getByText("Existing")).toBeTruthy();
     // Each selected badge has a remove (X) button.
-    const removeBtn = screen
-      .getAllByRole("button")
-      .find((b) => b.querySelector(".lucide-x"))!;
+    const removeBtn = screen.getAllByRole("button").find((b) => b.querySelector(".lucide-x"))!;
     fireEvent.click(removeBtn);
     expect(screen.queryByText("Existing")).toBeNull();
   });
@@ -61,9 +59,7 @@ describe("components/modals/tag-glossary-modal", () => {
     const option = await screen.findByText("Fresh");
     await user.click(option);
     // Selecting adds it as a badge.
-    await waitFor(() =>
-      expect(screen.getAllByText("Fresh").length).toBeGreaterThan(0),
-    );
+    await waitFor(() => expect(screen.getAllByText("Fresh").length).toBeGreaterThan(0));
     // Selecting again toggles it off.
     await user.click(screen.getByText("Fresh", { selector: "span" }));
   });
@@ -84,9 +80,7 @@ describe("components/modals/tag-glossary-modal", () => {
     renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 

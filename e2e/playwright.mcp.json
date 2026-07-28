@@ -1,0 +1,18 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "ignoreHTTPSErrors": true,
+    "launchOptions": {
+      "headless": false
+    },
+    "contextOptions": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      }
+    }
+  },
+  "server": {
+    "port": 8931
+  }
+}

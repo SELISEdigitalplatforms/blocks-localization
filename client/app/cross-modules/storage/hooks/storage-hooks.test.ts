@@ -31,7 +31,7 @@ vi.mock("../services/storage.service", () => ({
 }));
 
 const svc = vi.mocked(storageService, true);
-const renderQ = <T,>(cb: () => T) => {
+const renderQ = <T>(cb: () => T) => {
   const { wrapper } = createQueryWrapper();
   return renderHook(cb, { wrapper });
 };
@@ -76,26 +76,19 @@ describe("storage/hooks/use-storage-file", () => {
 
   it("useGetFile should fetch by option", async () => {
     svc.file.getFileByFileId.mockResolvedValue({ url: "u" } as never);
-    const { result } = renderQ(() =>
-      fileHooks.useGetFile({ itemId: "f", projectKey: "pk" }),
-    );
+    const { result } = renderQ(() => fileHooks.useGetFile({ itemId: "f", projectKey: "pk" }));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
   it("useGetFilesInfo should fetch info", async () => {
     svc.file.getFilesInfoUrlForUpload.mockResolvedValue({ data: [] } as never);
-    const { result } = renderQ(() =>
-      fileHooks.useGetFilesInfo({ page: 0 } as never),
-    );
+    const { result } = renderQ(() => fileHooks.useGetFilesInfo({ page: 0 } as never));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
   it("useGetFilesDownload should honor an enabled=false flag", () => {
     const { result } = renderQ(() =>
-      fileHooks.useGetFilesDownload(
-        { fileId: "f", projectKey: "pk" },
-        { enabled: false },
-      ),
+      fileHooks.useGetFilesDownload({ fileId: "f", projectKey: "pk" }, { enabled: false }),
     );
     expect(result.current.fetchStatus).toBe("idle");
   });
@@ -116,13 +109,29 @@ describe("storage/hooks/use-storage-file", () => {
   });
 
   it.each([
-    ["useGetPreSignedUrlForUpload", () => fileHooks.useGetPreSignedUrlForUpload(), () => svc.file.getPreSignedUrlForUpload],
+    [
+      "useGetPreSignedUrlForUpload",
+      () => fileHooks.useGetPreSignedUrlForUpload(),
+      () => svc.file.getPreSignedUrlForUpload,
+    ],
     ["useUploadFile", () => fileHooks.useUploadFile(), () => svc.uploadFile],
-    ["useUploadFileToLocalStorage", () => fileHooks.useUploadFileToLocalStorage(), () => svc.uploadFileToLocalStorage],
+    [
+      "useUploadFileToLocalStorage",
+      () => fileHooks.useUploadFileToLocalStorage(),
+      () => svc.uploadFileToLocalStorage,
+    ],
     ["useDeleteFile", () => fileHooks.useDeleteFile(), () => svc.file.deleteFileByFileId],
     ["useDeleteFolder", () => fileHooks.useDeleteFolder(), () => svc.file.deleteFolderByFileId],
-    ["usePublicCertificateFile", () => fileHooks.usePublicCertificateFile(), () => svc.uploadPublicCertificateFile],
-    ["useGetDmsFileAndFolder", () => fileHooks.useGetDmsFileAndFolder(), () => svc.getFilesAndFolders],
+    [
+      "usePublicCertificateFile",
+      () => fileHooks.usePublicCertificateFile(),
+      () => svc.uploadPublicCertificateFile,
+    ],
+    [
+      "useGetDmsFileAndFolder",
+      () => fileHooks.useGetDmsFileAndFolder(),
+      () => svc.getFilesAndFolders,
+    ],
     ["useUploadDmsFile", () => fileHooks.useUploadDmsFile(), () => svc.uploadDmsFile],
     ["useCreateDmsFolder", () => fileHooks.useCreateDmsFolder(), () => svc.createDmsFolder],
   ])("%s mutation should call its service", async (_name, hook, getFn) => {

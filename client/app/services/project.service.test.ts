@@ -77,11 +77,7 @@ describe("services/project.service", () => {
 
   it("getProject should query by projectId", () => {
     service.getProject({ projectId: "p1" });
-    expect(http.get).toHaveBeenCalledWith(
-      `${PROJECT_ENDPOINTS.GET}?projectId=p1`,
-      undefined,
-      ABS,
-    );
+    expect(http.get).toHaveBeenCalledWith(`${PROJECT_ENDPOINTS.GET}?projectId=p1`, undefined, ABS);
   });
 
   it("getEnvRepositories should build a build/repos-list url", () => {
@@ -96,28 +92,19 @@ describe("services/project.service", () => {
   it("repoUpdate should POST to the cloudbuild url", () => {
     const payload = { projectKey: "p", projectEnv: "dev", repoWithDomains: [] };
     service.repoUpdate(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      "/cloudbuild/v1/build/repo-update",
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith("/cloudbuild/v1/build/repo-update", payload);
   });
 
   it("createProject should POST to the identifier create url", () => {
     const payload = { name: "n" } as never;
     service.createProject(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      "/identifier/v1/Project/Create",
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith("/identifier/v1/Project/Create", payload);
   });
 
   it("validateCNameProject should POST to Domain/Configure", () => {
     const payload = { projectKey: "p", cookieDomain: "d" };
     service.validateCNameProject(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      "/identifier/v1/Domain/Configure",
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith("/identifier/v1/Domain/Configure", payload);
   });
 
   it("updateProject should POST to UpdateProject", () => {
@@ -138,9 +125,7 @@ describe("services/project.service", () => {
 
   it("getProjectLoginOption should GET GetLoginOptions", () => {
     service.getProjectLoginOption();
-    expect(http.get).toHaveBeenCalledWith(
-      "/identifier/v1/Project/GetLoginOptions",
-    );
+    expect(http.get).toHaveBeenCalledWith("/identifier/v1/Project/GetLoginOptions");
   });
 
   it("disableProject should POST to DISABLE", () => {

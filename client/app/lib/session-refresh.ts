@@ -15,10 +15,7 @@ export const ensureLocalizationSession = async (): Promise<void> => {
 };
 
 const refreshLocalizationSession = async (): Promise<void> => {
-  const iamBaseUrl =
-    getRuntimeEnv("BLOCKS_IAM_BASE_URL") ||
-    window.process?.env?.userBaseUrl ||
-    "";
+  const iamBaseUrl = getRuntimeEnv("BLOCKS_IAM_BASE_URL") || window.process?.env?.userBaseUrl || "";
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
   const clientId = getRuntimeEnv("BLOCKS_OIDC_CLIENT_ID");
 
@@ -31,18 +28,15 @@ const refreshLocalizationSession = async (): Promise<void> => {
   body.append("refresh_token", '""');
   body.append("client_id", clientId);
 
-  const response = await fetch(
-    `${iamBaseUrl}/api/oidc/token?tenant_id=${blocksKey}`,
-    {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Blocks-Key": blocksKey,
-      },
-      credentials: "include",
+  const response = await fetch(`${iamBaseUrl}/api/oidc/token?tenant_id=${blocksKey}`, {
+    method: "POST",
+    body,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Blocks-Key": blocksKey,
     },
-  );
+    credentials: "include",
+  });
 
   if (!response.ok) {
     throw new Error("Failed to refresh localization session");

@@ -17,10 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui-kits/form/form";
 import { Label } from "@/components/ui-kits/label/label";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui-kits/radio-group/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useProjectStore } from "@seliseblocks/blocks-kit";
@@ -33,17 +30,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { ModuleName } from "@/constants/modules.constants";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
-import {
-  useGetPreSignedUrlForUpload,
-  useUploadFile,
-} from "@blocks-storage/hooks/use-storage-file";
+import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { Calendar } from "@/components/ui-kits/calendar/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui-kits/popover/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Upload, X, CalendarIcon } from "lucide-react";
@@ -81,9 +71,7 @@ export default function ExportKey() {
   const [date, setDate] = useState<DateRangeType>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
-  const [selectedOutputType, setSelectedOutputType] = useState<number>(
-    outputTypes[0].id,
-  );
+  const [selectedOutputType, setSelectedOutputType] = useState<number>(outputTypes[0].id);
   const [downloadChecked, setDownloadChecked] = useState(false);
   const [referenceFileId, setReferenceFileId] = useState(uuidv4());
   const [xlfFile, setXlfFile] = useState<File | null>(null);
@@ -189,7 +177,7 @@ export default function ExportKey() {
         referenceFileId: exportReferenceFileId,
         callerTenantId: itemId,
         startDate: date?.from ? date.from.toISOString() : undefined,
-        endDate: date?.to ? addOneDay(date.to).toString() : undefined,
+        endDate: date?.to ? date.to.toISOString() : undefined,
       };
 
       const exportResult = await exportAsync(payload);
@@ -224,12 +212,6 @@ export default function ExportKey() {
     }
   };
 
-  const addOneDay = (date: Date) => {
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-    return nextDate.toISOString();
-  };
-
   const handleExport = () => {
     // close();
     onSubmit();
@@ -246,18 +228,13 @@ export default function ExportKey() {
 
     try {
       const parsed = JSON.parse(value);
-      return parsed && typeof parsed === "object"
-        ? (parsed as Record<string, unknown>)
-        : null;
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
     } catch {
       return null;
     }
   };
 
-  const getStringValue = (
-    source: Record<string, unknown> | null | undefined,
-    keys: string[],
-  ) => {
+  const getStringValue = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
     for (const key of keys) {
       const value = source?.[key];
       if (typeof value === "string" && value.trim() !== "") {
@@ -267,10 +244,7 @@ export default function ExportKey() {
     return undefined;
   };
 
-  const getBooleanValue = (
-    source: Record<string, unknown> | null | undefined,
-    keys: string[],
-  ) => {
+  const getBooleanValue = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
     for (const key of keys) {
       const value = source?.[key];
       if (typeof value === "boolean") return value;
@@ -279,9 +253,7 @@ export default function ExportKey() {
     return undefined;
   };
 
-  const extractExportNotification = (
-    notificationData: IUilmExportNotificationData,
-  ) => {
+  const extractExportNotification = (notificationData: IUilmExportNotificationData) => {
     const root = parseJson(notificationData);
     const message = parseJson(root?.message ?? root?.Message);
     const notification = message ?? root;
@@ -320,8 +292,7 @@ export default function ExportKey() {
 
   const handleNotificationData = useCallback(
     async (notificationData: IUilmExportNotificationData) => {
-      const { correlationId, fileId, isSuccess } =
-        extractExportNotification(notificationData);
+      const { correlationId, fileId, isSuccess } = extractExportNotification(notificationData);
       const pendingCorrelationId = pendingExportCorrelationIdRef.current;
 
       if (!pendingCorrelationId) {
@@ -383,7 +354,9 @@ export default function ExportKey() {
     [projectKey, queryClient],
   );
 
-  useNotificationListener("language-import-export", handleNotificationData);
+  useNotificationListener("language-import-export", (data) =>
+    handleNotificationData(data as unknown as IUilmExportNotificationData),
+  );
 
   const showSuccessToast = () => {
     toast({
@@ -417,16 +390,10 @@ export default function ExportKey() {
               <p className="text-sm text-high-emphasis">Date Range</p>
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex w-full justify-between"
-                    type="button"
-                  >
+                  <Button variant="outline" className="flex w-full justify-between" type="button">
                     {!date?.from ? (
                       <div className="flex w-full items-center justify-between">
-                        <span className="font-normal text-low-emphasis">
-                          Set date range
-                        </span>
+                        <span className="font-normal text-low-emphasis">Set date range</span>
                         <CalendarIcon className="ml-2 h-4 w-4" />
                       </div>
                     ) : (
@@ -450,9 +417,7 @@ export default function ExportKey() {
                     initialFocus
                     mode="range"
                     defaultMonth={date?.from}
-                    selected={
-                      date?.from ? { from: date.from, to: date.to } : undefined
-                    }
+                    selected={date?.from ? { from: date.from, to: date.to } : undefined}
                     onSelect={handleDateSelect}
                     numberOfMonths={2}
                   />
@@ -468,11 +433,7 @@ export default function ExportKey() {
                     >
                       Reset
                     </Button>
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={() => setPopoverOpen(false)}
-                    >
+                    <Button type="button" className="w-full" onClick={() => setPopoverOpen(false)}>
                       Apply
                     </Button>
                   </div>
@@ -480,10 +441,7 @@ export default function ExportKey() {
               </Popover>
             </div>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <FormField
                   control={form.control}
                   name="items"
@@ -496,31 +454,22 @@ export default function ExportKey() {
                               <Checkbox
                                 id="select-all"
                                 checked={
-                                  field.value?.length ===
-                                    languageModules.length &&
+                                  field.value?.length === languageModules.length &&
                                   languageModules.length > 0
                                 }
                                 onCheckedChange={(checked) => {
                                   if (checked) {
-                                    field.onChange(
-                                      languageModules.map(
-                                        (item) => item.itemId,
-                                      ),
-                                    );
+                                    field.onChange(languageModules.map((item) => item.itemId));
                                   } else {
                                     field.onChange([]);
                                   }
                                 }}
                               />
                             </FormControl>
-                            <FormLabel className="font-normal">
-                              Select all
-                            </FormLabel>
+                            <FormLabel className="font-normal">Select all</FormLabel>
                           </FormItem>
                         ) : (
-                          <div className="text-sm text-medium-emphasis">
-                            No module found.
-                          </div>
+                          <div className="text-sm text-medium-emphasis">No module found.</div>
                         )}
                       </div>
                       <div className="max-h-80 overflow-y-auto">
@@ -538,29 +487,19 @@ export default function ExportKey() {
                                   >
                                     <FormControl>
                                       <Checkbox
-                                        checked={field.value?.includes(
-                                          item.itemId,
-                                        )}
+                                        checked={field.value?.includes(item.itemId)}
                                         onCheckedChange={(checked) => {
                                           if (checked) {
-                                            field.onChange([
-                                              ...field.value,
-                                              item.itemId,
-                                            ]);
+                                            field.onChange([...field.value, item.itemId]);
                                           } else {
                                             field.onChange(
-                                              field.value?.filter(
-                                                (value) =>
-                                                  value !== item.itemId,
-                                              ),
+                                              field.value?.filter((value) => value !== item.itemId),
                                             );
                                           }
                                         }}
                                       />
                                     </FormControl>
-                                    <FormLabel className="font-normal">
-                                      {item.moduleName}
-                                    </FormLabel>
+                                    <FormLabel className="font-normal">{item.moduleName}</FormLabel>
                                   </FormItem>
                                 )}
                               />
@@ -576,31 +515,19 @@ export default function ExportKey() {
           </StepperWithoutIndicator>
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={2}>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4 pr-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-4">
                 <RadioGroup
-                  value={
-                    outputTypes.find((t) => t.id === selectedOutputType)?.label
-                  }
+                  value={outputTypes.find((t) => t.id === selectedOutputType)?.label}
                   onValueChange={(label) => {
-                    const selected = outputTypes.find(
-                      (type) => type.label === label,
-                    );
+                    const selected = outputTypes.find((type) => type.label === label);
                     if (selected) setSelectedOutputType(selected.id);
                   }}
                   className="space-y-4"
                 >
                   {outputTypes.map((type) => (
-                    <div
-                      key={type.label}
-                      className="flex items-center space-x-2"
-                    >
+                    <div key={type.label} className="flex items-center space-x-2">
                       <RadioGroupItem value={type.label} id={type.label} />
-                      <Label htmlFor={type.label}>
-                        {type.label.toUpperCase()}
-                      </Label>
+                      <Label htmlFor={type.label}>{type.label.toUpperCase()}</Label>
                     </div>
                   ))}
                 </RadioGroup>
@@ -608,9 +535,7 @@ export default function ExportKey() {
                 {/* XLF File Upload Section */}
                 {selectedOutputType === 5 && (
                   <div className="mt-4 space-y-2 rounded-md border border-border-default p-4">
-                    <p className="text-sm font-medium text-high-emphasis">
-                      Upload XLF File
-                    </p>
+                    <p className="text-sm font-medium text-high-emphasis">Upload XLF File</p>
                     <p className="text-xs text-medium-emphasis">
                       Please upload an XLF file to use as a template for export.
                     </p>
@@ -621,9 +546,7 @@ export default function ExportKey() {
                           className="bg-surface-default hover:bg-surface-hover flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-default px-4 py-3 text-sm"
                         >
                           <Upload className="h-4 w-4 text-medium-emphasis" />
-                          <span className="text-medium-emphasis">
-                            Click to select XLF file
-                          </span>
+                          <span className="text-medium-emphasis">Click to select XLF file</span>
                         </label>
                         <input
                           id="xlf-upload"
@@ -638,9 +561,7 @@ export default function ExportKey() {
                       <div className="bg-surface-default mt-2 flex items-center justify-between rounded-md border border-border-default px-3 py-2">
                         <div className="flex items-center gap-2">
                           <Upload className="h-4 w-4 text-success" />
-                          <span className="text-sm text-high-emphasis">
-                            {xlfFile.name}
-                          </span>
+                          <span className="text-sm text-high-emphasis">{xlfFile.name}</span>
                         </div>
                         <button
                           type="button"
@@ -654,9 +575,7 @@ export default function ExportKey() {
 
                     {/* Language Selection Section for XLF */}
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-high-emphasis">
-                        Select Languages
-                      </p>
+                      <p className="text-sm font-medium text-high-emphasis">Select Languages</p>
                       <p className="text-xs text-medium-emphasis">
                         Choose one or more languages to export.
                       </p>
@@ -667,26 +586,20 @@ export default function ExportKey() {
                             <Checkbox
                               id="select-all-languages"
                               checked={
-                                selectedLanguages.length ===
-                                  availableLanguages.length &&
+                                selectedLanguages.length === availableLanguages.length &&
                                 availableLanguages.length > 0
                               }
                               onCheckedChange={(checked) => {
                                 if (checked) {
                                   setSelectedLanguages(
-                                    availableLanguages.map(
-                                      (lang) => lang.languageCode,
-                                    ),
+                                    availableLanguages.map((lang) => lang.languageCode),
                                   );
                                 } else {
                                   setSelectedLanguages([]);
                                 }
                               }}
                             />
-                            <Label
-                              htmlFor="select-all-languages"
-                              className="font-normal"
-                            >
+                            <Label htmlFor="select-all-languages" className="font-normal">
                               Select all
                             </Label>
                           </div>
@@ -694,15 +607,10 @@ export default function ExportKey() {
                           {/* Individual Language Checkboxes */}
                           <div className="max-h-40 space-y-3 overflow-y-auto pl-6">
                             {availableLanguages.map((lang) => (
-                              <div
-                                key={lang.itemId}
-                                className="flex items-start space-x-3"
-                              >
+                              <div key={lang.itemId} className="flex items-start space-x-3">
                                 <Checkbox
                                   id={`lang-${lang.languageCode}`}
-                                  checked={selectedLanguages.includes(
-                                    lang.languageCode,
-                                  )}
+                                  checked={selectedLanguages.includes(lang.languageCode)}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       setSelectedLanguages([
@@ -729,9 +637,7 @@ export default function ExportKey() {
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-2 text-sm text-medium-emphasis">
-                          No languages found.
-                        </div>
+                        <div className="mt-2 text-sm text-medium-emphasis">No languages found.</div>
                       )}
                     </div>
                   </div>
@@ -766,9 +672,7 @@ export default function ExportKey() {
                         <Checkbox
                           id="download"
                           checked={downloadChecked}
-                          onCheckedChange={(checked) =>
-                            setDownloadChecked(checked === true)
-                          }
+                          onCheckedChange={(checked) => setDownloadChecked(checked === true)}
                         />
                       </FormControl>
                       <FormLabel className="font-normal">Download</FormLabel>
@@ -831,8 +735,7 @@ export default function ExportKey() {
                 onClick={handleExport}
                 disabled={
                   downloadChecked === false ||
-                  (selectedOutputType === 5 &&
-                    (!xlfFile || selectedLanguages.length === 0)) ||
+                  (selectedOutputType === 5 && (!xlfFile || selectedLanguages.length === 0)) ||
                   isUploadingXlf
                 }
               >

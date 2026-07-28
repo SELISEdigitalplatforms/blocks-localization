@@ -1,4 +1,3 @@
-
 import React from "react";
 import { FilterToolbar, type FilterChangeHandler } from "@/components/filter-toolbar";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
@@ -23,7 +22,7 @@ export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onCh
   }> = (key, value) => {
     if (key === "created") {
       const { from, to } = (value || {}) as { from?: Date; to?: Date };
-      
+
       // Convert dates to ISO strings without timezone shift
       const formatDateToISO = (date?: Date) => {
         if (!date) return "";
@@ -40,7 +39,7 @@ export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onCh
       if (to && from) {
         const fromStr = from.toDateString();
         const toStr = to.toDateString();
-        
+
         // Only set end date if it's a different day than start date
         if (fromStr !== toStr) {
           endDateFormatted = formatDateToISO(to);
@@ -83,9 +82,7 @@ export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onCh
         values={{
           search: queryParams.search,
           created: {
-            from: queryParams.startDate
-              ? new Date(queryParams.startDate.split("T")[0])
-              : undefined,
+            from: queryParams.startDate ? new Date(queryParams.startDate.split("T")[0]) : undefined,
             to: queryParams.endDate ? new Date(queryParams.endDate.split("T")[0]) : undefined,
           },
         }}

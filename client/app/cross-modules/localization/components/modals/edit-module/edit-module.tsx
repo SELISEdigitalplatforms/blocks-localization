@@ -66,10 +66,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
         form.reset();
         onClose(false);
       } else {
-        if (
-          Array.isArray(res?.validationErrors) &&
-          res.validationErrors.length > 0
-        ) {
+        if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
           res.validationErrors.forEach((error) => {
             showErrorToast({ errors: error.errorMessage });
           });
@@ -124,9 +121,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
             >
               Cancel
             </Button>
-            <Button disabled={isPending || !form.formState.isValid}>
-              Save
-            </Button>
+            <Button disabled={isPending || !form.formState.isValid}>Save</Button>
           </DialogFooter>
         </form>
       </Form>

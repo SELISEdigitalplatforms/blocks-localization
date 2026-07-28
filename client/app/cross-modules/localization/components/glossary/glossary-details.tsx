@@ -1,12 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Button } from "@/components/ui-kits/button/button";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
@@ -55,17 +50,11 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     data: taggedKeysData,
     isLoading: isTaggedKeysLoading,
     isError: isTaggedKeysError,
-  } = useGetKeysByGlossaryId(
-    itemId,
-    glossary?.moduleIds ?? [],
-    keysPage,
-    PAGE_SIZE,
-  );
+  } = useGetKeysByGlossaryId(itemId, glossary?.moduleIds ?? [], keysPage, PAGE_SIZE);
 
   // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
-    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] =
-      glossary.name;
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] = glossary.name;
   }
 
   if (isLoading) {
@@ -95,18 +84,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   }
 
   if (!glossary) {
-    return (
-      <div className="mt-10 text-center text-medium-emphasis">
-        Glossary item not found.
-      </div>
-    );
+    return <div className="mt-10 text-center text-medium-emphasis">Glossary item not found.</div>;
   }
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
 
   const resolvedLanguage =
-    languageListData?.find((l) => l.languageCode === glossary.language)
-      ?.languageName ??
+    languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ??
     glossary.language ??
     "-";
 
@@ -123,16 +107,11 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             <DialogTrigger asChild>
               <Button size="default" variant="outline" className="gap-2">
                 <Pencil className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Edit
-                </span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
               </Button>
             </DialogTrigger>
             {editModalOpen && (
-              <AddEditGlossary
-                glossary={glossary}
-                onClose={() => setEditModalOpen(false)}
-              />
+              <AddEditGlossary glossary={glossary} onClose={() => setEditModalOpen(false)} />
             )}
           </Dialog>
 
@@ -165,46 +144,32 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           <CardContent className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">
-                  Language
-                </h3>
-                <p className="text-base font-normal text-high-emphasis">
-                  {resolvedLanguage}
-                </p>
+                <h3 className="text-sm font-medium text-low-emphasis">Language</h3>
+                <p className="text-base font-normal text-high-emphasis">{resolvedLanguage}</p>
               </div>
               <div className="grid gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
-                <p className="text-base font-normal text-high-emphasis">
-                  {glossary.type ?? "-"}
-                </p>
+                <p className="text-base font-normal text-high-emphasis">{glossary.type ?? "-"}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">
-                  Is Global
-                </h3>
+                <h3 className="text-sm font-medium text-low-emphasis">Is Global</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {glossary.isGlobal ? "True" : "False"}
                 </p>
               </div>
               <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">
-                  Created on
-                </h3>
+                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
                 <p className="text-base font-normal text-high-emphasis">
-                  {glossary.createDate
-                    ? new Date(glossary.createDate).toLocaleDateString()
-                    : "-"}
+                  {glossary.createDate ? new Date(glossary.createDate).toLocaleDateString() : "-"}
                 </p>
               </div>
             </div>
 
             {(glossary.moduleIds?.length ?? 0) > 0 && (
               <div className="grid gap-2">
-                <h3 className="text-sm font-medium text-low-emphasis">
-                  Tagged Modules
-                </h3>
+                <h3 className="text-sm font-medium text-low-emphasis">Tagged Modules</h3>
                 <div className="flex flex-wrap gap-2">
                   {glossary.moduleIds?.map((id) => {
                     const mod = moduleListData?.find((m) => m.itemId === id);
@@ -243,12 +208,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      className="max-w-80 text-sm font-normal"
-                    >
-                      Not utilized for auto translation, only given for
-                      additional comments by the user
+                    <TooltipContent side="top" className="max-w-80 text-sm font-normal">
+                      Not utilized for auto translation, only given for additional comments by the
+                      user
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -275,9 +237,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               ))}
             </div>
           ) : isTaggedKeysError || !taggedKeysData ? (
-            <p className="px-6 pb-6 text-sm text-medium-emphasis">
-              Failed to load tagged keys.
-            </p>
+            <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>
           ) : !taggedKeysData.keys?.length ? (
             <p className="px-6 pb-6 text-sm text-medium-emphasis">
               No keys tagged with this glossary.
@@ -288,12 +248,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                 <Table className="text-sm">
                   <TableHeader>
                     <TableRow className="border-none hover:bg-transparent">
-                      <TableHead className="font-bold text-medium-emphasis">
-                        Key Name
-                      </TableHead>
-                      <TableHead className="font-bold text-medium-emphasis">
-                        Module
-                      </TableHead>
+                      <TableHead className="font-bold text-medium-emphasis">Key Name</TableHead>
+                      <TableHead className="font-bold text-medium-emphasis">Module</TableHead>
                       <TableHead className="font-bold text-medium-emphasis">
                         {defaultLanguage
                           ? `${defaultLanguage.languageName} (Default)`
@@ -303,9 +259,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   </TableHeader>
                   <TableBody>
                     {taggedKeysData.keys.map((key) => {
-                      const mod = moduleListData?.find(
-                        (m) => m.itemId === key.moduleId,
-                      );
+                      const mod = moduleListData?.find((m) => m.itemId === key.moduleId);
                       const defaultResource = key.resources?.find(
                         (r) => r.culture === defaultLanguage?.languageCode,
                       );
@@ -314,19 +268,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                           key={key.itemId}
                           className="cursor-pointer font-normal text-medium-emphasis"
                           onClick={() =>
-                            navigate(
-                              scoped(
-                                `services/language/translations/${key.itemId}`,
-                              ),
-                            )
+                            navigate(scoped(`services/language/translations/${key.itemId}`))
                           }
                         >
                           <TableCell className="font-mono text-xs text-high-emphasis">
                             {key.keyName}
                           </TableCell>
-                          <TableCell>
-                            {mod?.moduleName ?? key.moduleId}
-                          </TableCell>
+                          <TableCell>{mod?.moduleName ?? key.moduleId}</TableCell>
                           <TableCell className="line-clamp-2">
                             {defaultResource?.value || "-"}
                           </TableCell>
@@ -353,10 +301,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={
-                      (keysPage + 1) * PAGE_SIZE >=
-                      (taggedKeysData.totalCount ?? 0)
-                    }
+                    disabled={(keysPage + 1) * PAGE_SIZE >= (taggedKeysData.totalCount ?? 0)}
                     onClick={() => setKeysPage((p) => p + 1)}
                   >
                     Next

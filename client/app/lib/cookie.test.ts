@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  getCookie,
-  getJsonCookie,
-  removeCookie,
-  setCookie,
-  setJsonCookie,
-} from "@/lib/cookie";
+import { getCookie, getJsonCookie, removeCookie, setCookie, setJsonCookie } from "@/lib/cookie";
 
 const ORIGIN = window.location.origin;
 
@@ -42,11 +36,11 @@ describe("lib/cookie", () => {
     it("should return null when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect-error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         expect(getCookie("anything")).toBeNull();
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 
@@ -86,37 +80,34 @@ describe("lib/cookie", () => {
     it("should be a no-op when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect-error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         // Should not throw.
         setCookie("foo", "bar");
         expect(true).toBe(true);
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 
-    it("should use the configured base domain when it matches the current host", () => {
-      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
-      (window as any).__BLOCKS_ENV__ = {
-        ...originalWindowEnv,
-        BLOCKS_BASE_DOMAIN: window.location.hostname,
-      };
-      const descriptor = Object.getOwnPropertyDescriptor(
-        Document.prototype,
-        "cookie",
-      );
+    it("should set a cookie with default 365-day expiry and cross-subdomain domain", () => {
+      // The default domain `.blocksdevelopers.com` won't be readable in jsdom
+      // (origin mismatch), so we verify via a spy on document.cookie setter
+      // that the cookie string was constructed with the expected defaults
+      // (expires, path, domain, SameSite=Lax).
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
 
       const calls: string[] = [];
-      const spy = vi
-        .spyOn(document, "cookie", "set")
-        .mockImplementation(function (this: Document, value: string) {
-          calls.push(value);
-          // @ts-expect-error: call through to original
-          originalSetter.call(this, value);
-        });
+      const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+        this: Document,
+        value: string,
+      ) {
+        calls.push(value);
+        // @ts-expect-error: call through to original
+        originalSetter.call(this, value);
+      });
 
       try {
         setCookie("name", "value");
@@ -169,11 +160,11 @@ describe("lib/cookie", () => {
       expect(getCookie("special")).toBe("a b/c");
     });
 
-    it("should warn and bail when the encoded value exceeds the 3500-byte limit", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it("should log and bail when the encoded value exceeds the 3500-byte limit", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const huge = "x".repeat(4000);
       setCookie("big", huge, 1, "localhost");
-      expect(warnSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
       // Cookie must NOT be set when oversized.
       expect(getCookie("big")).toBeNull();
     });
@@ -190,21 +181,19 @@ describe("lib/cookie", () => {
           value: { ...window.location, protocol: "https:" },
         });
 
-        const descriptor = Object.getOwnPropertyDescriptor(
-          Document.prototype,
-          "cookie",
-        );
+        const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
         const originalSetter = descriptor?.set;
         if (!originalSetter) return;
 
         const calls: string[] = [];
-        const spy = vi
-          .spyOn(document, "cookie", "set")
-          .mockImplementation(function (this: Document, value: string) {
-            calls.push(value);
-            // @ts-expect-error: call through to original
-            originalSetter.call(this, value);
-          });
+        const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+          this: Document,
+          value: string,
+        ) {
+          calls.push(value);
+          // @ts-expect-error: call through to original
+          originalSetter.call(this, value);
+        });
 
         setCookie("secure-cookie", "value", 1, "localhost");
         spy.mockRestore();
@@ -223,21 +212,19 @@ describe("lib/cookie", () => {
 
     it("should NOT add Secure on http origins", () => {
       // Default jsdom origin is http:. setCookie should not add Secure.
-      const descriptor = Object.getOwnPropertyDescriptor(
-        Document.prototype,
-        "cookie",
-      );
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
 
       const calls: string[] = [];
-      const spy = vi
-        .spyOn(document, "cookie", "set")
-        .mockImplementation(function (this: Document, value: string) {
-          calls.push(value);
-          // @ts-expect-error: call through to original
-          originalSetter.call(this, value);
-        });
+      const spy = vi.spyOn(document, "cookie", "set").mockImplementation(function (
+        this: Document,
+        value: string,
+      ) {
+        calls.push(value);
+        // @ts-expect-error: call through to original
+        originalSetter.call(this, value);
+      });
 
       setCookie("http-cookie", "value", 1, "localhost");
       spy.mockRestore();
@@ -253,12 +240,12 @@ describe("lib/cookie", () => {
     it("should be a no-op when document is undefined (SSR safety)", () => {
       const originalDocument = globalThis.document;
       // @ts-expect_error: simulate non-browser env
-      delete (globalThis as any).document;
+      delete (globalThis as unknown as { document?: unknown }).document;
       try {
         removeCookie("foo");
         expect(true).toBe(true);
       } finally {
-        (globalThis as any).document = originalDocument;
+        (globalThis as unknown as { document?: unknown }).document = originalDocument;
       }
     });
 

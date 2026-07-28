@@ -1,0 +1,89 @@
+# EditorConfig for blocks-localization
+# Encodes the naming/formatting conventions actually in use across the repo so
+# that violations surface at build time (see server/Directory.Build.props ->
+# EnforceCodeStyleInBuild). Rules start at `warning` severity so the suite stays
+# green today and can be ratcheted to `error` once the tree is clean.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csproj,props,targets}]
+indent_size = 4
+
+[*.{ts,tsx,js,jsx,json,jsonc,css,scss,html,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ---------------------------------------------------------------------------
+# C# naming conventions
+# ---------------------------------------------------------------------------
+[*.cs]
+# Prefer file-scoped and explicit style; keep these as suggestions.
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# --- Symbol groups ---
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate
+dotnet_naming_symbols.types.applicable_accessibilities = *
+
+dotnet_naming_symbols.non_field_members.applicable_kinds = property, method, event
+dotnet_naming_symbols.non_field_members.applicable_accessibilities = *
+
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, private_protected
+
+dotnet_naming_symbols.parameters.applicable_kinds = parameter
+
+# --- Naming styles ---
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.i_prefixed.capitalization = pascal_case
+dotnet_naming_style.i_prefixed.required_prefix = I
+
+dotnet_naming_style.camel_case.capitalization = camel_case
+
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+
+# --- Rules (warning severity so the build stays green while surfacing drift) ---
+dotnet_naming_rule.interfaces_are_i_prefixed.symbols = interfaces
+dotnet_naming_rule.interfaces_are_i_prefixed.style = i_prefixed
+dotnet_naming_rule.interfaces_are_i_prefixed.severity = warning
+
+dotnet_naming_rule.types_are_pascal_case.symbols = types
+dotnet_naming_rule.types_are_pascal_case.style = pascal_case
+dotnet_naming_rule.types_are_pascal_case.severity = warning
+
+dotnet_naming_rule.members_are_pascal_case.symbols = non_field_members
+dotnet_naming_rule.members_are_pascal_case.style = pascal_case
+dotnet_naming_rule.members_are_pascal_case.severity = warning
+
+dotnet_naming_rule.constants_are_pascal_case.symbols = constants
+dotnet_naming_rule.constants_are_pascal_case.style = pascal_case
+dotnet_naming_rule.constants_are_pascal_case.severity = warning
+
+dotnet_naming_rule.private_fields_are_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_are_underscore_camel_case.style = underscore_camel_case
+dotnet_naming_rule.private_fields_are_underscore_camel_case.severity = suggestion
+
+dotnet_naming_rule.parameters_are_camel_case.symbols = parameters
+dotnet_naming_rule.parameters_are_camel_case.style = camel_case
+dotnet_naming_rule.parameters_are_camel_case.severity = warning
+
+# NOTE: the "Async suffix on Task-returning methods" convention cannot be
+# expressed as a dotnet_naming_rule (return type is not a naming symbol facet);
+# it is documented in CONTRIBUTING.md and reviewed by hand / analyzer VSTHRD200.

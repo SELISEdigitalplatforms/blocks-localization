@@ -56,9 +56,7 @@ describe("language-module/export-history", () => {
       isLoading: false,
       data: {
         totalCount: 1,
-        uilmExportedFiles: [
-          { fileId: "f1", fileName: "export.json", createDate: "2026-01-01" },
-        ],
+        uilmExportedFiles: [{ fileId: "f1", fileName: "export.json", createDate: "2026-01-01" }],
       },
     } as never);
     renderWithProviders(<ExportHistory />, {

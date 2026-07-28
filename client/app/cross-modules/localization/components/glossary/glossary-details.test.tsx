@@ -114,9 +114,7 @@ describe("components/glossary/glossary-details", () => {
       route: "/app/abc/services/glossary/g1",
     });
     fireEvent.click(screen.getByText("greeting"));
-    expect(navigate).toHaveBeenCalledWith(
-      "/scoped/services/language/translations/k1",
-    );
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
   });
 
   it("should show an error state when tagged keys fail to load", () => {

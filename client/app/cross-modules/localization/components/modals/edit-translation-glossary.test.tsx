@@ -69,7 +69,7 @@ describe("modals/edit-translation", () => {
         />,
       ),
     );
-    expect((screen.getByDisplayValue("Hallo") as HTMLTextAreaElement)).toBeTruthy();
+    expect(screen.getByDisplayValue("Hallo") as HTMLTextAreaElement).toBeTruthy();
   });
 
   it("should save an edited translation", async () => {
