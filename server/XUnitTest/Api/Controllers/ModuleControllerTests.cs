@@ -110,7 +110,7 @@ namespace XUnitTest
             };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ReturnsAsync(expectedModules);
 
             // Act
@@ -128,7 +128,7 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
@@ -145,7 +145,7 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
