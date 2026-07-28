@@ -18,10 +18,9 @@ vi.mock("@blocks-localization/components/view-details/view-details", () => ({
   default: () => <div>ViewDetailsStub</div>,
 }));
 vi.mock("../timeline/timeline", () => ({ default: () => <div>TimelineStub</div> }));
-vi.mock(
-  "@blocks-localization/components/modals/delete-language-key/delete-language-key",
-  () => ({ default: () => null }),
-);
+vi.mock("@blocks-localization/components/modals/delete-language-key/delete-language-key", () => ({
+  default: () => null,
+}));
 vi.mock("@blocks-localization/components/modals/gpt-prompt/gpt-prompt", () => ({
   default: () => null,
 }));

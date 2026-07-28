@@ -64,12 +64,7 @@ describe("identifier/services/project.service", () => {
   it("addAssets should POST to ADD_ASSET", () => {
     const payload = { tenantGroupId: "g", resource: { name: "n", link: "l", resourceId: "r" } };
     service.addAssets(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PROJECT_ENDPOINTS.ADD_ASSET,
-      payload,
-      undefined,
-      ABS,
-    );
+    expect(http.post).toHaveBeenCalledWith(PROJECT_ENDPOINTS.ADD_ASSET, payload, undefined, ABS);
   });
 
   it("getEnvRepositories should build a repos-list url", () => {
@@ -94,59 +89,66 @@ describe("identifier/services/project.service", () => {
 
   it("getProject should query by projectId", () => {
     service.getProject({ projectId: "abc" });
-    expect(http.get).toHaveBeenCalledWith(
-      `${PROJECT_ENDPOINTS.GET}?projectId=abc`,
-      undefined,
-      ABS,
-    );
+    expect(http.get).toHaveBeenCalledWith(`${PROJECT_ENDPOINTS.GET}?projectId=abc`, undefined, ABS);
   });
 
   it("createProject should POST to CREATE", () => {
     const payload = { name: "n" } as never;
     service.createProject(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PROJECT_ENDPOINTS.CREATE,
-      payload,
-      undefined,
-      ABS,
-    );
+    expect(http.post).toHaveBeenCalledWith(PROJECT_ENDPOINTS.CREATE, payload, undefined, ABS);
   });
 
   it("validateCNameProject should POST to DOMAIN.CONFIGURE", () => {
     const payload = { projectKey: "p", cookieDomain: "d" };
     service.validateCNameProject(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      DOMAIN_ENDPOINTS.CONFIGURE,
-      payload,
-      undefined,
-      ABS,
-    );
+    expect(http.post).toHaveBeenCalledWith(DOMAIN_ENDPOINTS.CONFIGURE, payload, undefined, ABS);
   });
 
   it("updateProject / updateTenantGroup / disableProject should POST to their endpoints", () => {
     service.updateProject({ name: "n" } as never);
     service.updateTenantGroup({ name: "n", tenantGroupId: "g" });
     service.disableProject({ projectKey: "p" });
-    expect(http.post).toHaveBeenCalledWith(PROJECT_ENDPOINTS.UPDATE, expect.anything(), undefined, ABS);
-    expect(http.post).toHaveBeenCalledWith(PROJECT_ENDPOINTS.UPDATE_TENANT_GROUP, expect.anything(), undefined, ABS);
-    expect(http.post).toHaveBeenCalledWith(PROJECT_ENDPOINTS.DISABLE, expect.anything(), undefined, ABS);
+    expect(http.post).toHaveBeenCalledWith(
+      PROJECT_ENDPOINTS.UPDATE,
+      expect.anything(),
+      undefined,
+      ABS,
+    );
+    expect(http.post).toHaveBeenCalledWith(
+      PROJECT_ENDPOINTS.UPDATE_TENANT_GROUP,
+      expect.anything(),
+      undefined,
+      ABS,
+    );
+    expect(http.post).toHaveBeenCalledWith(
+      PROJECT_ENDPOINTS.DISABLE,
+      expect.anything(),
+      undefined,
+      ABS,
+    );
   });
 
   it("getProjectLoginOption should GET the login options endpoint", () => {
     service.getProjectLoginOption();
-    expect(http.get).toHaveBeenCalledWith(
-      PROJECT_ENDPOINTS.GET_LOGIN_OPTIONS,
-      undefined,
-      ABS,
-    );
+    expect(http.get).toHaveBeenCalledWith(PROJECT_ENDPOINTS.GET_LOGIN_OPTIONS, undefined, ABS);
   });
 
   it("migration methods should POST/GET to migration endpoints", () => {
     service.initiateMigration({} as never);
     service.verifyMigration({} as never);
     service.getMigrationStatus("g1");
-    expect(http.post).toHaveBeenCalledWith(MIGRATION_ENDPOINTS.MIGRATE, expect.anything(), undefined, ABS);
-    expect(http.post).toHaveBeenCalledWith(MIGRATION_ENDPOINTS.VERIFY, expect.anything(), undefined, ABS);
+    expect(http.post).toHaveBeenCalledWith(
+      MIGRATION_ENDPOINTS.MIGRATE,
+      expect.anything(),
+      undefined,
+      ABS,
+    );
+    expect(http.post).toHaveBeenCalledWith(
+      MIGRATION_ENDPOINTS.VERIFY,
+      expect.anything(),
+      undefined,
+      ABS,
+    );
     expect(http.get).toHaveBeenCalledWith(
       `${MIGRATION_ENDPOINTS.GET_STATUS}?tenantGroupId=g1`,
       undefined,

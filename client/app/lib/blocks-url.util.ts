@@ -37,7 +37,7 @@ export function deriveUtilityBaseUrl(): string {
   return deriveBaseUrl("utilities");
 }
 
-export function deriveIdpBaseUrl(): string {
+export function deriveIamBaseUrl(): string {
   return deriveBaseUrl("iam");
 }
 

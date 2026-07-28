@@ -18,22 +18,14 @@ vi.mock("@seliseblocks/blocks-kit/hooks", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
 }));
-vi.mock(
-  "@blocks-localization/components/modals/glossary/add-edit-glossary",
-  () => ({
-    default: ({ glossary }: { glossary?: { name: string } }) => (
-      <div>add-edit-{glossary ? glossary.name : "new"}</div>
-    ),
-  }),
-);
-vi.mock(
-  "@blocks-localization/components/modals/glossary/delete-glossary",
-  () => ({
-    default: ({ glossaryName }: { glossaryName: string }) => (
-      <div>delete-{glossaryName}</div>
-    ),
-  }),
-);
+vi.mock("@blocks-localization/components/modals/glossary/add-edit-glossary", () => ({
+  default: ({ glossary }: { glossary?: { name: string } }) => (
+    <div>add-edit-{glossary ? glossary.name : "new"}</div>
+  ),
+}));
+vi.mock("@blocks-localization/components/modals/glossary/delete-glossary", () => ({
+  default: ({ glossaryName }: { glossaryName: string }) => <div>delete-{glossaryName}</div>,
+}));
 
 const mockGlossaries = vi.mocked(useGetGlossaries);
 
@@ -54,9 +46,7 @@ const setData = (items: unknown[], totalCount = items.length) =>
   } as never);
 
 const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = screen
-    .getAllByRole("button")
-    .find((b) => b.className.includes("h-8 w-8 p-0"))!;
+  const trigger = screen.getAllByRole("button").find((b) => b.className.includes("h-8 w-8 p-0"))!;
   await user.click(trigger);
 };
 
@@ -114,9 +104,7 @@ describe("glossary-table (extra coverage)", () => {
     const footer = container.querySelector(".mt-5") as HTMLElement;
     expect(footer).toBeTruthy();
     const next = Array.from(footer.querySelectorAll("button")).find(
-      (b) =>
-        b.querySelector(".lucide-chevron-right") &&
-        !(b as HTMLButtonElement).disabled,
+      (b) => b.querySelector(".lucide-chevron-right") && !(b as HTMLButtonElement).disabled,
     );
     fireEvent.click(next!);
     // Page 2 label reflects the updated page state.

@@ -2,7 +2,7 @@ import "@seliseblocks/blocks-kit/lib";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
-import { NuqsAdapter } from "nuqs/adapters/react-router/v6";
+import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Toaster } from "./components/ui-kits/toaster/toaster";
 import QueryProvider from "./providers/query-provider";
 import { router } from "./router";

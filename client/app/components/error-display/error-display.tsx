@@ -17,17 +17,9 @@ export function ErrorDisplay({
   textClassName,
 }: ErrorDisplayProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-2",
-        className,
-      )}>
+    <div className={cn("flex flex-col items-center justify-center gap-2", className)}>
       <Icon className={cn("h-8 w-8 text-destructive", iconClassName)} />
-      {text && (
-        <p className={cn("text-sm text-muted-foreground", textClassName)}>
-          {text}
-        </p>
-      )}
+      {text && <p className={cn("text-sm text-muted-foreground", textClassName)}>{text}</p>}
     </div>
   );
 }

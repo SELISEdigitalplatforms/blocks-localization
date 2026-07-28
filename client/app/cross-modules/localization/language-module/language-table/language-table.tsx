@@ -3,13 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
 import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
-import {
-  ColumnDef,
-  Row,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { ColumnDef, Row, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { RowSelectionState } from "@tanstack/react-table";
 import {
   AlignLeft,
@@ -25,12 +19,7 @@ import {
   Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import {
@@ -56,12 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui-kits/table/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui-kits/tabs/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
 import {
   LanguageTableToolbar,
   useKeysFilterQueryParams,
@@ -106,35 +90,30 @@ const getDeleteKeysErrorMessage = (error: unknown) => {
   return "Failed to delete selected keys. Please try again.";
 };
 
-const KeyNameCell = memo(
-  ({ keyName }: { keyName: string | null | undefined }) => {
-    const CHAR_WIDTH = 7.5;
-    const PADDING = 8;
-    const CONTAINER = 150;
+const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) => {
+  const CHAR_WIDTH = 7.5;
+  const PADDING = 8;
+  const CONTAINER = 150;
 
-    // Handle null/undefined keyName gracefully
-    const displayValue = keyName ?? "(Unnamed Key)";
-    const shouldShowTooltip =
-      displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
+  // Handle null/undefined keyName gracefully
+  const displayValue = keyName ?? "(Unnamed Key)";
+  const shouldShowTooltip = displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
 
-    return (
-      <TooltipProvider key={displayValue}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">
-              {displayValue}
-            </div>
-          </TooltipTrigger>
-          {shouldShowTooltip && (
-            <TooltipContent side="top">
-              <p>{displayValue}</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
-    );
-  },
-);
+  return (
+    <TooltipProvider key={displayValue}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">{displayValue}</div>
+        </TooltipTrigger>
+        {shouldShowTooltip && (
+          <TooltipContent side="top">
+            <p>{displayValue}</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
 KeyNameCell.displayName = "KeyNameCell";
 
 const RowActionsCell = memo(
@@ -201,11 +180,7 @@ export function LanguageTable() {
     hasStoredViewSettings,
   } = useLanguageViewStore();
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
-  const {
-    sortQueryParams,
-    setSortQueryParams,
-    reset: sortReset,
-  } = useKeysSortQueryParams();
+  const { sortQueryParams, setSortQueryParams, reset: sortReset } = useKeysSortQueryParams();
 
   const selectedLanguagesRef = useRef(selectedLanguages);
   selectedLanguagesRef.current = selectedLanguages;
@@ -241,8 +216,7 @@ export function LanguageTable() {
         });
         return {
           ...prev,
-          resourceSearch:
-            Object.keys(updated).length > 0 ? JSON.stringify(updated) : "",
+          resourceSearch: Object.keys(updated).length > 0 ? JSON.stringify(updated) : "",
           pageNumber: 0,
         };
       });
@@ -280,8 +254,7 @@ export function LanguageTable() {
           startDate: queryParams.createStartDate || "",
           endDate: queryParams.createEndDate
             ? new Date(
-                new Date(queryParams.createEndDate as string).getTime() +
-                  86400000,
+                new Date(queryParams.createEndDate as string).getTime() + 86400000,
               ).toISOString()
             : "",
         }
@@ -291,8 +264,7 @@ export function LanguageTable() {
           startDate: queryParams.lastUpdateStartDate || "",
           endDate: queryParams.lastUpdateEndDate
             ? new Date(
-                new Date(queryParams.lastUpdateEndDate as string).getTime() +
-                  86400000,
+                new Date(queryParams.lastUpdateEndDate as string).getTime() + 86400000,
               ).toISOString()
             : "",
         }
@@ -301,8 +273,7 @@ export function LanguageTable() {
     queryParams.missingLanguages ?? [],
   );
 
-  const { isLoading: isLanguageModulesLoading, data: languageModules } =
-    useGetLanguageModules();
+  const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
 
   const defaultLanguageCode = useMemo(() => {
@@ -315,33 +286,24 @@ export function LanguageTable() {
   const scoped = useScopedPath();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] =
-    useState(false);
+  const [isAutoTranslateDialogOpen, setIsAutoTranslateDialogOpen] = useState(false);
   const [tabId, setTabId] = useQueryState("languageActivity", {
     defaultValue: "keys",
   });
   const { isPending, mutateAsync } = useGenerateUilmFile();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isPublishChangesDialogOpen, setIsPublishChangesDialogOpen] =
-    useState(false);
-  const [selectedLanguageKeyId, setSelectedLanguageKeyId] = useState<
-    string | null
-  >(null);
+  const [isPublishChangesDialogOpen, setIsPublishChangesDialogOpen] = useState(false);
+  const [selectedLanguageKeyId, setSelectedLanguageKeyId] = useState<string | null>(null);
   const { isPending: isDeleteLanguageKeyPending, mutateAsync: deleteAsync } =
     useDeleteLanguageKey();
-  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } =
-    useTranslateKey();
+  const { isPending: isTranslatingKey, mutateAsync: translateKeyAsync } = useTranslateKey();
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
-  const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(
-    new Set(),
-  );
+  const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(new Set());
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] =
-    useState(false);
-  const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } =
-    useDeleteLanguageKeys();
+  const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
+  const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } = useDeleteLanguageKeys();
   const { isPending: isBulkTranslatingKeys, mutateAsync: bulkTranslateAsync } =
     useTranslateLanguageKeys();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
@@ -413,8 +375,7 @@ export function LanguageTable() {
 
   const translateKeyModalData = {
     dialogTitle: "Auto-translate this key?",
-    dialogSubtitle:
-      "Are you sure you want to automatically translate this language key?",
+    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
     confirmButton: "Translate",
     cancelButton: "Cancel",
   };
@@ -499,15 +460,9 @@ export function LanguageTable() {
         if (rawErrors && typeof rawErrors === "object") {
           if (Array.isArray(rawErrors) && rawErrors.length > 0) {
             errorMessage = (rawErrors as string[]).join(", ");
-          } else if (
-            !Array.isArray(rawErrors) &&
-            Object.keys(rawErrors).length > 0
-          ) {
+          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
             const firstError = Object.values(rawErrors)[0];
-            errorMessage =
-              typeof firstError === "string"
-                ? firstError
-                : JSON.stringify(rawErrors);
+            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
           }
         }
         toast({
@@ -520,10 +475,7 @@ export function LanguageTable() {
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
   };
@@ -536,9 +488,7 @@ export function LanguageTable() {
     if (!languageListData?.length || !isHydrated) return;
 
     const current = selectedLanguagesRef.current;
-    const availableLanguageCodes = languageListData.map(
-      (lang) => lang.languageCode,
-    );
+    const availableLanguageCodes = languageListData.map((lang) => lang.languageCode);
     const validSelectedLanguages = current.filter((langCode) =>
       availableLanguageCodes.includes(langCode),
     );
@@ -552,17 +502,9 @@ export function LanguageTable() {
       const defaultLanguages = languageListData
         .filter((lang) => lang.isDefault)
         .map((lang) => lang.languageCode);
-      setSelectedLanguages(
-        defaultLanguages.length > 0 ? defaultLanguages : availableLanguageCodes,
-      );
+      setSelectedLanguages(defaultLanguages.length > 0 ? defaultLanguages : availableLanguageCodes);
     }
-  }, [
-    languageListData,
-    setSelectedLanguages,
-    tenantId,
-    isHydrated,
-    hasStoredViewSettings,
-  ]);
+  }, [languageListData, setSelectedLanguages, tenantId, isHydrated, hasStoredViewSettings]);
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
@@ -615,9 +557,7 @@ export function LanguageTable() {
                   ? "indeterminate"
                   : false
             }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
           />
         ),
@@ -666,14 +606,8 @@ export function LanguageTable() {
             </div>
           );
         },
-        filterFn: (
-          row,
-          id,
-          filterValue: { text?: string; types?: string[] },
-        ) => {
-          return filterValue.types
-            ? filterValue.types.includes(row.getValue(id))
-            : true;
+        filterFn: (row, id, filterValue: { text?: string; types?: string[] }) => {
+          return filterValue.types ? filterValue.types.includes(row.getValue(id)) : true;
         },
       },
       ...(selectedOptionalColumns.includes("completeness")
@@ -683,19 +617,13 @@ export function LanguageTable() {
               header: () => <span>Completeness</span>,
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
                 const resources = row.original.resources;
-                if (!resources || resources.length === 0)
-                  return "No translation";
+                if (!resources || resources.length === 0) return "No translation";
 
-                const allLanguages =
-                  languageListData?.map((lang) => lang.languageCode) || [];
+                const allLanguages = languageListData?.map((lang) => lang.languageCode) || [];
                 const isComplete = allLanguages.every((lang) => {
                   const resource = resources.find((r) => r.culture === lang);
                   // Check if resource exists and has a non-null, non-empty value
-                  return (
-                    resource &&
-                    resource.value !== null &&
-                    resource.value.trim() !== ""
-                  );
+                  return resource && resource.value !== null && resource.value.trim() !== "";
                 });
                 return isComplete ? "Complete" : "Partial";
               },
@@ -707,28 +635,19 @@ export function LanguageTable() {
         accessorKey: `resources.${lang}`,
         header: () => {
           // Check if any translating key has this language missing
-          const hasTranslatingKey = Array.from(translatingKeys).some(
-            (keyId) => {
-              const keyData = blocksLanguageKeyData?.keys?.find(
-                (k) => k.itemId === keyId,
-              );
-              if (!keyData) return false;
-              const resource = keyData.resources?.find(
-                (r) => r.culture === lang,
-              );
-              return !resource?.value || resource.value.trim() === "";
-            },
-          );
+          const hasTranslatingKey = Array.from(translatingKeys).some((keyId) => {
+            const keyData = blocksLanguageKeyData?.keys?.find((k) => k.itemId === keyId);
+            if (!keyData) return false;
+            const resource = keyData.resources?.find((r) => r.culture === lang);
+            return !resource?.value || resource.value.trim() === "";
+          });
 
           return (
             <div className="w-[300px] md:w-[200px]">
               <div className="font-bold text-medium-emphasis flex items-center gap-1">
-                {languageListData?.find(
-                  (language) => language.languageCode === lang,
-                )?.languageName ?? lang}{" "}
-                {languageListData?.find(
-                  (language) => language.languageCode === lang,
-                )?.isDefault
+                {languageListData?.find((language) => language.languageCode === lang)
+                  ?.languageName ?? lang}{" "}
+                {languageListData?.find((language) => language.languageCode === lang)?.isDefault
                   ? "(Default)"
                   : null}
               </div>
@@ -738,23 +657,15 @@ export function LanguageTable() {
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const keyId = row.original.itemId;
           const isTranslating = translatingKeys.has(keyId);
-          const resource = row.original.resources?.find(
-            (res) => res.culture === lang,
-          );
+          const resource = row.original.resources?.find((res) => res.culture === lang);
           const hasValue = resource?.value && resource.value.trim() !== "";
 
           // Only show "Translating..." if this key is being translated AND the language has no value
           if (isTranslating && !hasValue) {
-            return (
-              <span className="text-blue-600 font-medium">Translating...</span>
-            );
+            return <span className="text-blue-600 font-medium">Translating...</span>;
           }
 
-          return (
-            <div className="ml-2 line-clamp-4 sm:ml-0">
-              {resource?.value ?? ""}
-            </div>
-          );
+          return <div className="ml-2 line-clamp-4 sm:ml-0">{resource?.value ?? ""}</div>;
         },
       })),
 
@@ -774,12 +685,9 @@ export function LanguageTable() {
               ),
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
                 const dateValue = row.original.createDate;
-                if (!dateValue)
-                  return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
+                if (!dateValue) return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
                 const formatted = new Date(dateValue).toLocaleDateString();
-                return (
-                  <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>
-                );
+                return <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>;
               },
               enableSorting: true,
               enableHiding: true,
@@ -802,12 +710,9 @@ export function LanguageTable() {
               ),
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
                 const dateValue = row.original.lastUpdateDate;
-                if (!dateValue)
-                  return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
+                if (!dateValue) return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
                 const formatted = new Date(dateValue).toLocaleDateString();
-                return (
-                  <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>
-                );
+                return <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>;
               },
               enableSorting: true,
               enableHiding: true,
@@ -1022,15 +927,10 @@ export function LanguageTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">
-              Configure keys
-            </h3>
+            <h3 className="text-2xl font-bold tracking-tight">Configure keys</h3>
           </div>
         </div>
-        <Tabs
-          value={tabId}
-          className="mt-[18px] flex w-full flex-col md:mt-[24px]"
-        >
+        <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
           <div className="mb-5 flex flex-col gap-3 text-base sm:flex-row sm:items-center">
             <TabsList className="grid h-auto w-full grid-cols-2 bg-blocks-primary-shades-300 p-1 sm:flex sm:h-[42px] sm:w-auto">
               <TabsTrigger
@@ -1083,19 +983,14 @@ export function LanguageTable() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={() =>
-                        navigate(scoped("services/language/export-history"))
-                      }
+                      onSelect={() => navigate(scoped("services/language/export-history"))}
                     >
                       <History className="mr-2 h-4 w-4" />
                       <span>Export History</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Dialog
-                  open={isImportDialogOpen}
-                  onOpenChange={setIsImportDialogOpen}
-                >
+                <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                   <ImportFileModal
                     dialogTitle="Import Keys"
                     data={[]}
@@ -1103,10 +998,7 @@ export function LanguageTable() {
                     onClose={() => setIsImportDialogOpen(false)}
                   />
                 </Dialog>
-                <Dialog
-                  open={isExportDialogOpen}
-                  onOpenChange={setIsExportDialogOpen}
-                >
+                <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey />
                 </Dialog>
                 <Button
@@ -1116,17 +1008,13 @@ export function LanguageTable() {
                   className="w-full shadow-none sm:w-auto"
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
-                  <span className="sr-only lg:not-sr-only">
-                    Publish Changes
-                  </span>
+                  <span className="sr-only lg:not-sr-only">Publish Changes</span>
                 </Button>
                 <Button
                   size="default"
                   variant="default"
                   className="w-full bg-primary text-primary-foreground shadow-none sm:w-auto"
-                  onClick={() =>
-                    navigate(scoped("services/language/translations/new-key"))
-                  }
+                  onClick={() => navigate(scoped("services/language/translations/new-key"))}
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />
                   <span className="sr-only lg:not-sr-only">New Key</span>
@@ -1139,19 +1027,11 @@ export function LanguageTable() {
           <TabsContent value="keys">
             <Card className="rounded shadow-none">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl text-high-emphasis">
-                  Translations
-                </CardTitle>
+                <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="default"
-                    variant="default"
-                    onClick={handleAutoTranslateClick}
-                  >
+                  <Button size="default" variant="default" onClick={handleAutoTranslateClick}>
                     <Wand className="h-5 w-5 lg:mr-2" />
-                    <span className="sr-only lg:not-sr-only">
-                      Auto-translate all
-                    </span>
+                    <span className="sr-only lg:not-sr-only">Auto-translate all</span>
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1165,10 +1045,7 @@ export function LanguageTable() {
                         <div className="flex items-center space-x-2">
                           <Checkbox
                             id="terms"
-                            checked={
-                              selectedLanguages.length ===
-                              languageListData?.length
-                            }
+                            checked={selectedLanguages.length === languageListData?.length}
                             onCheckedChange={selectAll}
                           />
                           <label htmlFor="terms">Languages</label>
@@ -1179,42 +1056,28 @@ export function LanguageTable() {
                       {languageListData?.map((language) => (
                         <DropdownMenuCheckboxItem
                           key={language.languageCode}
-                          checked={selectedLanguages.includes(
-                            language.languageCode,
-                          )}
-                          onCheckedChange={() =>
-                            toggleLanguage(language.languageCode)
-                          }
+                          checked={selectedLanguages.includes(language.languageCode)}
+                          onCheckedChange={() => toggleLanguage(language.languageCode)}
                         >
                           {language.languageName}
                         </DropdownMenuCheckboxItem>
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuCheckboxItem
-                        checked={selectedOptionalColumns.includes(
-                          "completeness",
-                        )}
-                        onCheckedChange={() =>
-                          toggleOptionalColumn("completeness")
-                        }
+                        checked={selectedOptionalColumns.includes("completeness")}
+                        onCheckedChange={() => toggleOptionalColumn("completeness")}
                       >
                         Completeness
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={selectedOptionalColumns.includes("createDate")}
-                        onCheckedChange={() =>
-                          toggleOptionalColumn("createDate")
-                        }
+                        onCheckedChange={() => toggleOptionalColumn("createDate")}
                       >
                         Created Date
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
-                        checked={selectedOptionalColumns.includes(
-                          "lastUpdateDate",
-                        )}
-                        onCheckedChange={() =>
-                          toggleOptionalColumn("lastUpdateDate")
-                        }
+                        checked={selectedOptionalColumns.includes("lastUpdateDate")}
+                        onCheckedChange={() => toggleOptionalColumn("lastUpdateDate")}
                       >
                         Last Updated Date
                       </DropdownMenuCheckboxItem>
@@ -1247,11 +1110,7 @@ export function LanguageTable() {
                       <Trash className="lg:mr-1 h-4 w-4" />
                       <span className="sr-only lg:not-sr-only">Delete</span>
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRowSelection({})}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setRowSelection({})}>
                       Clear
                     </Button>
                   </div>
@@ -1277,10 +1136,7 @@ export function LanguageTable() {
                   <Table className="text-sm">
                     <TableHeader>
                       {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow
-                          key={headerGroup.id}
-                          className="border-none hover:bg-transparent"
-                        >
+                        <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
                           {headerGroup.headers.map((header) => (
                             <TableHead
                               key={header.id}
@@ -1288,10 +1144,7 @@ export function LanguageTable() {
                             >
                               {header.isPlaceholder
                                 ? null
-                                : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext(),
-                                  )}
+                                : flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                           ))}
                         </TableRow>
@@ -1327,9 +1180,7 @@ export function LanguageTable() {
                                 <div className="w-[300px] md:w-[200px]">
                                   <FilterControls.SearchInput
                                     value={resourceSearchMap[lang] ?? ""}
-                                    onChange={(value) =>
-                                      updateResourceSearch(lang, value)
-                                    }
+                                    onChange={(value) => updateResourceSearch(lang, value)}
                                     placeholder="Search..."
                                     className="h-7 w-full text-xs"
                                   />
@@ -1364,20 +1215,14 @@ export function LanguageTable() {
                           >
                             {row.getVisibleCells().map((cell) => (
                               <TableCell key={cell.id}>
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext(),
-                                )}
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
                               </TableCell>
                             ))}
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell
-                            colSpan={columns.length}
-                            className="h-24 text-center"
-                          >
+                          <TableCell colSpan={columns.length} className="h-24 text-center">
                             No results.
                           </TableCell>
                         </TableRow>
@@ -1386,35 +1231,27 @@ export function LanguageTable() {
                   </Table>
                 </div>
               </CardContent>
-              {!isLoading &&
-                blocksLanguageKeyData &&
-                blocksLanguageKeyData.totalCount > 0 && (
-                  <div className="mt-5 flex items-center md:justify-end">
-                    <Pagination
-                      page={queryParams.pageNumber}
-                      pageSize={queryParams.pageSize}
-                      totalCount={blocksLanguageKeyData?.totalCount || 0}
-                      pageSizeOptions={pageSizeOptions}
-                      onChange={onPageChangeHandler}
-                      onPageSizeChange={onPageSizeChangeHandler}
-                    />
-                  </div>
-                )}
+              {!isLoading && blocksLanguageKeyData && blocksLanguageKeyData.totalCount > 0 && (
+                <div className="mt-5 flex items-center md:justify-end">
+                  <Pagination
+                    page={queryParams.pageNumber}
+                    pageSize={queryParams.pageSize}
+                    totalCount={blocksLanguageKeyData?.totalCount || 0}
+                    pageSizeOptions={pageSizeOptions}
+                    onChange={onPageChangeHandler}
+                    onPageSizeChange={onPageSizeChangeHandler}
+                  />
+                </div>
+              )}
             </Card>
-            <Dialog
-              open={isAutoTranslateDialogOpen}
-              onOpenChange={setIsAutoTranslateDialogOpen}
-            >
+            <Dialog open={isAutoTranslateDialogOpen} onOpenChange={setIsAutoTranslateDialogOpen}>
               <AutoTranslate />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">
             <LocalizationTimeline />
           </TabsContent>
-          <Dialog
-            open={isDeleteDialogOpen}
-            onOpenChange={setIsDeleteDialogOpen}
-          >
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <ConfirmationModal
               onCancel={() => {}}
               onConfirm={onConfirmDelete}
@@ -1422,10 +1259,7 @@ export function LanguageTable() {
               buttonState={{ confirm: { disable: isDeleteLanguageKeyPending } }}
             />
           </Dialog>
-          <Dialog
-            open={isPublishChangesDialogOpen}
-            onOpenChange={setIsPublishChangesDialogOpen}
-          >
+          <Dialog open={isPublishChangesDialogOpen} onOpenChange={setIsPublishChangesDialogOpen}>
             <ConfirmationModal
               onCancel={() => {}}
               onConfirm={generateUilmFiles}
@@ -1433,10 +1267,7 @@ export function LanguageTable() {
               buttonState={{ confirm: { disable: isPending } }}
             />
           </Dialog>
-          <Dialog
-            open={isTranslateDialogOpen}
-            onOpenChange={setIsTranslateDialogOpen}
-          >
+          <Dialog open={isTranslateDialogOpen} onOpenChange={setIsTranslateDialogOpen}>
             <ConfirmationModal
               onCancel={() => {}}
               onConfirm={onConfirmTranslate}
@@ -1444,10 +1275,7 @@ export function LanguageTable() {
               buttonState={{ confirm: { disable: isTranslatingKey } }}
             />
           </Dialog>
-          <Dialog
-            open={isBulkDeleteDialogOpen}
-            onOpenChange={setIsBulkDeleteDialogOpen}
-          >
+          <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
             <ConfirmationModal
               onCancel={() => {}}
               onConfirm={onConfirmBulkDelete}
@@ -1455,10 +1283,7 @@ export function LanguageTable() {
               buttonState={{ confirm: { disable: isBulkDeletingKeys } }}
             />
           </Dialog>
-          <Dialog
-            open={isBulkTranslateDialogOpen}
-            onOpenChange={setIsBulkTranslateDialogOpen}
-          >
+          <Dialog open={isBulkTranslateDialogOpen} onOpenChange={setIsBulkTranslateDialogOpen}>
             <ConfirmationModal
               onCancel={() => {}}
               onConfirm={onConfirmBulkTranslate}

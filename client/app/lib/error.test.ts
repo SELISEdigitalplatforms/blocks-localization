@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getErrorMessage,
-  handleErrorMessages,
-  isErrorWithErrors,
-} from "@/lib/error";
+import { getErrorMessage, handleErrorMessages, isErrorWithErrors } from "@/lib/error";
 
 describe("lib/error", () => {
   // ─── getErrorMessage ─────────────────────────────────────────────────────────
@@ -15,17 +11,12 @@ describe("lib/error", () => {
     });
 
     it("should use the messageMap override when present", () => {
-      const result = getErrorMessage(
-        { code_invalid: "raw" },
-        { code_invalid: "Friendly message" },
-      );
+      const result = getErrorMessage({ code_invalid: "raw" }, { code_invalid: "Friendly message" });
       expect(result).toEqual(["Friendly message"]);
     });
 
     it("should push string values directly", () => {
-      expect(getErrorMessage({ field: "is required" })).toEqual([
-        "is required",
-      ]);
+      expect(getErrorMessage({ field: "is required" })).toEqual(["is required"]);
     });
 
     it("should join non-empty array values with a comma", () => {
@@ -76,15 +67,11 @@ describe("lib/error", () => {
     });
 
     it("should pass custom messages through", () => {
-      expect(
-        handleErrorMessages({ key: "raw" }, { key: "Custom" }),
-      ).toEqual(["Custom"]);
+      expect(handleErrorMessages({ key: "raw" }, { key: "Custom" })).toEqual(["Custom"]);
     });
 
     it("should return the unexpected fallback for arrays", () => {
-      expect(handleErrorMessages([1, 2, 3])).toBe(
-        "An unexpected error occurred.",
-      );
+      expect(handleErrorMessages([1, 2, 3])).toBe("An unexpected error occurred.");
     });
 
     it("should return the unexpected fallback for null/number", () => {

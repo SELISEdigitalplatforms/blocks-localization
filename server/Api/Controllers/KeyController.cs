@@ -52,7 +52,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::save")]
         public async Task<ApiResponse> Save(Key key)
         {
-            if (key == null) BadRequest(new BaseMutationResponse());
+            if (key == null) return new ApiResponse("Key cannot be null.");
             return await _keyManagementService.SaveKeyAsync(key);
         }
 
@@ -75,11 +75,14 @@ namespace BlocksTemplate.Api.Controllers
         /// </summary>
         /// <param name="query">The query parameters containing filters for key retrieval.</param>
         /// <returns>A <see cref="GetKeysQueryResponse"/> containing the filtered list of keys.</returns>
+        // Read-only, but intentionally POST: the query carries a complex filter body
+        // (module, translation status, missing languages, date range, paging) that does not
+        // fit safely in a query string. Not cacheable by design.
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
         public async Task<GetKeysQueryResponse> Gets([FromBody] GetKeysRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetKeysQueryResponse { Keys = new List<Key>() };
             return await _keyManagementService.GetKeysAsync(query);
         }
 
@@ -88,6 +91,8 @@ namespace BlocksTemplate.Api.Controllers
         /// </summary>
         /// <param name="request">The request containing an array of key names.</param>
         /// <returns>A <see cref="GetKeysByKeyNamesResponse"/> containing the matched keys and optional error.</returns>
+        // Read-only, but intentionally POST: the request carries a variable-length list of
+        // key names in the body, which does not fit safely in a query string. Not cacheable by design.
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::key::getkeysbykeynames")]
         public async Task<GetKeysByKeyNamesResponse> GetsByKeyNames([FromBody] GetKeysByKeyNamesRequest request)
@@ -106,7 +111,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::gettimeline")]
         public async Task<GetKeyTimelineQueryResponse> GetTimeline([FromQuery] GetKeyTimelineRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetKeyTimelineQueryResponse();
             return await _keyManagementService.GetKeyTimelineAsync(query);
         }
 
@@ -119,7 +124,7 @@ namespace BlocksTemplate.Api.Controllers
         [Authorize]
         public async Task<GetLocalizationTimelineResponse> GetLocalizationTimeline([FromQuery] GetLocalizationTimelineRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetLocalizationTimelineResponse();
             return await _keyManagementService.GetLocalizationTimelineAsync(query);
         }
 
@@ -132,7 +137,7 @@ namespace BlocksTemplate.Api.Controllers
         [Authorize]
         public async Task<GetKeyTimelineQueryResponse> GetTimelineByOperationId([FromQuery] GetTimelineByOperationIdRequest query)
         {
-            if (query == null) BadRequest(new BaseMutationResponse());
+            if (query == null) return new GetKeyTimelineQueryResponse();
             return await _keyManagementService.GetTimelineByOperationIdAsync(query);
         }
 
@@ -145,23 +150,9 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::get")]
         public async Task<Key?> Get([FromQuery] GetKeyRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return null;
 
             var result = await _keyManagementService.GetAsync(request);
-            if (result == null)
-            {
-                var response = new BaseMutationResponse
-                {
-                    IsSuccess = false,
-                    Errors = new Dictionary<string, string>
-                    {
-                        { "Key", "No key found" }
-                    }
-                };
-
-                BadRequest(response);
-            }
-
             return result;
         }
 
@@ -174,7 +165,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteKeyRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             if (string.IsNullOrWhiteSpace(request.ItemId))
             {
@@ -188,7 +179,7 @@ namespace BlocksTemplate.Api.Controllers
                 });
             }
 
-            var result = await _keyManagementService.DeleteAsysnc(request);
+            var result = await _keyManagementService.DeleteAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
@@ -197,6 +188,10 @@ namespace BlocksTemplate.Api.Controllers
         /// </summary>
         /// <param name="request">The request containing the list of item IDs to delete.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the bulk delete operation.</returns>
+        // Bulk delete requires a request body (the list of item ids). Many proxies and HTTP
+        // clients drop the body of a DELETE request, so POST is accepted as the reliable verb.
+        // The DELETE verb is kept for backward compatibility with existing callers.
+        [HttpPost]
         [HttpDelete]
         [ProtectedEndPoint($"{Constants.ServiceName}::key::deletekeys")]
         public async Task<IActionResult> DeleteKeys([FromBody] DeleteKeysRequest request)
@@ -228,19 +223,26 @@ namespace BlocksTemplate.Api.Controllers
         [Authorize]
         public async Task GetCloudUilmFile([FromQuery] GetUilmFileRequest request)
         {
-           
-            if (request == null) BadRequest(new BaseMutationResponse());;
+            if (request == null)
+            {
+                Response.StatusCode = 400;
+                return;
+            }
             Response.ContentType = "application/json";
 
             string result = await _keyManagementService.GetUilmFile(request);
             await Response.WriteAsync(result ?? "");
         }
         [HttpGet]
+        [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task GetUilmFile([FromQuery] GetUilmFileRequestForClient request)
         {
-
-            if (request == null) BadRequest(new BaseMutationResponse()); ;
+            if (request == null)
+            {
+                Response.StatusCode = 400;
+                return;
+            }
             Response.ContentType = "application/json";
 
             string result = await _keyManagementService.GetUilmFile(request);
@@ -270,9 +272,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::key::translateall")]
         public async Task<IActionResult> TranslateAll(TranslateAllRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
-
-            
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             await _keyManagementService.SendTranslateAllEvent(request);
             return Ok(new BaseMutationResponse { IsSuccess = true });

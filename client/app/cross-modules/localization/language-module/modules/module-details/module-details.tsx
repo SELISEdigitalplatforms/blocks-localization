@@ -2,12 +2,7 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQueryState } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui-kits/tabs/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
 import {
   Table,
   TableBody,
@@ -16,12 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui-kits/table/table";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
@@ -54,8 +44,7 @@ function ModuleDetailsContent({
   });
 
   // Glossary tab - fetch glossaries for this module
-  const { data: glossariesData, isLoading: isGlossariesLoading } =
-    useGetModuleGlossaries(moduleId);
+  const { data: glossariesData, isLoading: isGlossariesLoading } = useGetModuleGlossaries(moduleId);
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
@@ -64,21 +53,14 @@ function ModuleDetailsContent({
     const user = userMap[userId];
     if (user) {
       const firstName =
-        typeof user.firstName === "string" && user.firstName.trim()
-          ? user.firstName
-          : null;
+        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
       const lastName =
-        typeof user.lastName === "string" && user.lastName.trim()
-          ? user.lastName
-          : null;
-      const fullName =
-        firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
+        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
+      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
       return (
         fullName ||
         (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName
-          ? user.userName
-          : null) ||
+        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
         "—"
       );
     }
@@ -87,11 +69,7 @@ function ModuleDetailsContent({
 
   return (
     <div className="space-y-6">
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value)}
-        className="w-full"
-      >
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="w-full">
         <TabsList className="h-[42px] bg-blocks-primary-shades-300">
           <TabsTrigger value="details" className="h-8">
             Details
@@ -103,34 +81,22 @@ function ModuleDetailsContent({
         <TabsContent value="details" className="mt-4">
           <Card className="rounded-sm border border-border shadow-none">
             <CardHeader>
-              <CardTitle className="text-lg text-high-emphasis">
-                About
-              </CardTitle>
+              <CardTitle className="text-lg text-high-emphasis">About</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">
-                    Module Name
-                  </h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">Module Name</h3>
+                  <p className="text-base font-normal text-high-emphasis">{module.moduleName}</p>
+                </div>
+                <div className="grid gap-1">
+                  <h3 className="text-sm font-medium text-low-emphasis">Created Date</h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {module.moduleName}
+                    {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">
-                    Created Date
-                  </h3>
-                  <p className="text-base font-normal text-high-emphasis">
-                    {module.createDate
-                      ? new Date(module.createDate).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-                <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">
-                    Last Update Date
-                  </h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">Last Update Date</h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {module.lastUpdateDate
                       ? new Date(module.lastUpdateDate).toLocaleDateString()
@@ -140,17 +106,13 @@ function ModuleDetailsContent({
               </div>
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">
-                    Created By
-                  </h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">Created By</h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayName(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">
-                    Last Updated By
-                  </h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">Last Updated By</h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayName(module.lastUpdatedBy)}
                   </p>
@@ -178,18 +140,10 @@ function ModuleDetailsContent({
                   <Table className="text-sm">
                     <TableHeader>
                       <TableRow className="border-none hover:bg-transparent">
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Name
-                        </TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Language
-                        </TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Type
-                        </TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Context
-                        </TableHead>
+                        <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
+                        <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+                        <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+                        <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
                         <TableHead className="font-bold text-medium-emphasis">
                           Created Date
                         </TableHead>
@@ -201,9 +155,7 @@ function ModuleDetailsContent({
                           key={glossary.itemId}
                           className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
                         >
-                          <TableCell className="font-medium">
-                            {glossary.name}
-                          </TableCell>
+                          <TableCell className="font-medium">{glossary.name}</TableCell>
                           <TableCell>{glossary.language ?? "—"}</TableCell>
                           <TableCell>{glossary.type ?? "—"}</TableCell>
                           <TableCell className="max-w-[200px] truncate">
@@ -211,9 +163,7 @@ function ModuleDetailsContent({
                           </TableCell>
                           <TableCell>
                             {glossary.createDate
-                              ? new Date(
-                                  glossary.createDate,
-                                ).toLocaleDateString()
+                              ? new Date(glossary.createDate).toLocaleDateString()
                               : "—"}
                           </TableCell>
                         </TableRow>
@@ -237,8 +187,7 @@ function ModuleDetailsContent({
 export function ModuleDetails() {
   const { moduleId } = useParams<{ moduleId: string }>();
 
-  const { data: modules, isLoading: isModulesLoading } =
-    useGetLanguageModules();
+  const { data: modules, isLoading: isModulesLoading } = useGetLanguageModules();
   const module = modules?.find((m) => m.itemId === moduleId);
 
   // Extract unique user IDs from createdBy and lastUpdatedBy
@@ -260,8 +209,7 @@ export function ModuleDetails() {
   });
 
   if (module?.moduleName) {
-    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] =
-      module.moduleName;
+    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] = module.moduleName;
   }
 
   if (!moduleId) {
@@ -299,11 +247,7 @@ export function ModuleDetails() {
         <PageBreadcrumb />
       </div>
       <div className="mt-5">
-        <ModuleDetailsContent
-          module={module}
-          moduleId={moduleId}
-          userMap={userMap}
-        />
+        <ModuleDetailsContent module={module} moduleId={moduleId} userMap={userMap} />
       </div>
     </div>
   );

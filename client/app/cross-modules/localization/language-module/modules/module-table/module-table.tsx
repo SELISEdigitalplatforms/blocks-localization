@@ -4,12 +4,7 @@ import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import {
   Table,
@@ -92,11 +87,7 @@ export function ModuleTable() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const scoped = useScopedPath();
-  const {
-    isLoading: isModulesLoading,
-    data: modulesData,
-    refetch,
-  } = useGetLanguageModules();
+  const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
@@ -133,21 +124,14 @@ export function ModuleTable() {
     const user = userMap[userId];
     if (user) {
       const firstName =
-        typeof user.firstName === "string" && user.firstName.trim()
-          ? user.firstName
-          : null;
+        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
       const lastName =
-        typeof user.lastName === "string" && user.lastName.trim()
-          ? user.lastName
-          : null;
-      const fullName =
-        firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
+        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
+      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
       return (
         fullName ||
         (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName
-          ? user.userName
-          : null) ||
+        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
         "—"
       );
     }
@@ -193,9 +177,7 @@ export function ModuleTable() {
 
         <Card className="mt-[18px] rounded shadow-none md:mt-[24px]">
           <CardHeader>
-            <CardTitle className="text-xl text-high-emphasis">
-              Language Modules
-            </CardTitle>
+            <CardTitle className="text-xl text-high-emphasis">Language Modules</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-4">
@@ -242,13 +224,9 @@ export function ModuleTable() {
                       <TableRow
                         key={module.itemId}
                         className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
-                        onClick={() =>
-                          navigate(scoped(`services/modules/${module.itemId}`))
-                        }
+                        onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
                       >
-                        <TableCell className="truncate font-medium">
-                          {module.moduleName}
-                        </TableCell>
+                        <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
                         <TableCell className="truncate">
                           {getUserDisplayName(module.createdBy)}
                         </TableCell>
@@ -282,10 +260,7 @@ export function ModuleTable() {
           </CardContent>
         </Card>
 
-        <Dialog
-          open={isNewModuleDialogOpen}
-          onOpenChange={setIsNewModuleDialogOpen}
-        >
+        <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
           <NewModule
             onClose={() => {
               setIsNewModuleDialogOpen(false);
@@ -299,29 +274,13 @@ export function ModuleTable() {
         </Dialog>
 
         {/* Edit Module Dialog */}
-        <Dialog
-          open={!!editTarget}
-          onOpenChange={(open) => !open && setEditTarget(null)}
-        >
-          {editTarget && (
-            <EditModule
-              module={editTarget}
-              onClose={() => setEditTarget(null)}
-            />
-          )}
+        <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+          {editTarget && <EditModule module={editTarget} onClose={() => setEditTarget(null)} />}
         </Dialog>
 
         {/* Tag Glossary Dialog */}
-        <Dialog
-          open={!!tagTarget}
-          onOpenChange={(open) => !open && setTagTarget(null)}
-        >
-          {tagTarget && (
-            <TagGlossaryModal
-              module={tagTarget}
-              onClose={() => setTagTarget(null)}
-            />
-          )}
+        <Dialog open={!!tagTarget} onOpenChange={(open) => !open && setTagTarget(null)}>
+          {tagTarget && <TagGlossaryModal module={tagTarget} onClose={() => setTagTarget(null)} />}
         </Dialog>
 
         {/* TODO: Enable delete module feature — restore this dialog when backend is ready */}

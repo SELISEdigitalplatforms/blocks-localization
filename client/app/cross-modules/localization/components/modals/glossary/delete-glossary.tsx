@@ -18,11 +18,7 @@ interface DeleteGlossaryProps {
   onClose: () => void;
 }
 
-const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
-  itemId,
-  glossaryName,
-  onClose,
-}) => {
+const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, onClose }) => {
   const { isPending, mutateAsync } = useDeleteGlossary();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
@@ -58,8 +54,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       <DialogHeader>
         <DialogTitle>Delete Glossary Item</DialogTitle>
         <DialogDescription>
-          Are you sure you want to delete &quot;{glossaryName}&quot;? This
-          action cannot be undone.
+          Are you sure you want to delete &quot;{glossaryName}&quot;? This action cannot be undone.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter className="mt-4">
@@ -68,11 +63,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
             Cancel
           </Button>
         </DialogTrigger>
-        <Button
-          variant="destructive"
-          onClick={deleteGlossary}
-          disabled={isPending}
-        >
+        <Button variant="destructive" onClick={deleteGlossary} disabled={isPending}>
           Delete
         </Button>
       </DialogFooter>

@@ -103,9 +103,7 @@ describe("language-module/add-new-language-key", () => {
       target: { value: "Hello" },
     });
 
-    fireEvent.submit(
-      screen.getByPlaceholderText("Enter key name").closest("form")!,
-    );
+    fireEvent.submit(screen.getByPlaceholderText("Enter key name").closest("form")!);
 
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(

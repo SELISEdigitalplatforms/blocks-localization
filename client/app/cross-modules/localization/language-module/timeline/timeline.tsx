@@ -3,10 +3,7 @@
 import React, { useState } from "react";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { EllipsisVertical, RotateCcw } from "lucide-react";
-import {
-  TimelineEvents,
-  IBlocksLanguageKey,
-} from "@blocks-localization/models/language";
+import { TimelineEvents, IBlocksLanguageKey } from "@blocks-localization/models/language";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,27 +45,19 @@ const getCultures = (
   prev?: IBlocksLanguageKey | IBlocksLanguageKey[],
   curr?: IBlocksLanguageKey | IBlocksLanguageKey[],
 ) => {
-  const prevCultures = asArray(prev).flatMap(
-    (d) => d.resources?.map((r) => r.culture) ?? [],
-  );
-  const currCultures = asArray(curr).flatMap(
-    (d) => d.resources?.map((r) => r.culture) ?? [],
-  );
+  const prevCultures = asArray(prev).flatMap((d) => d.resources?.map((r) => r.culture) ?? []);
+  const currCultures = asArray(curr).flatMap((d) => d.resources?.map((r) => r.culture) ?? []);
   return Array.from(new Set([...prevCultures, ...currCultures]));
 };
 
 const Timeline = (props: TimelineProps) => {
   const isMobile = useIsMobile();
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
-  const [selectedEvent, setSelectedEvent] = useState<TimelineEvents | null>(
-    null,
-  );
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvents | null>(null);
   const [isRevertDialogOpen, setIsRevertDialogOpen] = useState(false);
-  const [selectedRevertEvent, setSelectedRevertEvent] =
-    useState<TimelineEvents | null>(null);
+  const [selectedRevertEvent, setSelectedRevertEvent] = useState<TimelineEvents | null>(null);
 
-  const { isPending: isRevertPending, mutateAsync: rollbackUilmKey } =
-    useRevertKeyTimeline();
+  const { isPending: isRevertPending, mutateAsync: rollbackUilmKey } = useRevertKeyTimeline();
 
   const handleRevert = async (row: TimelineEvents) => {
     const payload = {
@@ -149,10 +138,7 @@ const Timeline = (props: TimelineProps) => {
                       {isMobile && event.previousData ? (
                         <div className="flex w-[25%] justify-end">
                           <DropdownMenu>
-                            <DropdownMenuTrigger
-                              asChild
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button variant="ghost" className="h-5 w-5 p-0">
                                 <EllipsisVertical width={20} height={20} />
                               </Button>
@@ -206,10 +192,7 @@ const Timeline = (props: TimelineProps) => {
       </div>
 
       {/* Differences Modal */}
-      <Dialog
-        open={!!selectedEvent}
-        onOpenChange={() => setSelectedEvent(null)}
-      >
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Language Difference</DialogTitle>
@@ -219,9 +202,7 @@ const Timeline = (props: TimelineProps) => {
             (selectedEvent.logFrom === "Published" &&
             !selectedEvent.currentData &&
             !selectedEvent.previousData ? (
-              <p className="py-4 text-sm text-muted-foreground">
-                No changes published.
-              </p>
+              <p className="py-4 text-sm text-muted-foreground">No changes published.</p>
             ) : (
               <Table>
                 <TableHeader>
