@@ -9,7 +9,7 @@ namespace Eurolm.DomainService.Utilities
         public const string TranslateAllKeysQueue = "eurolm_translate_all_keys_listener";
         public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
         public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
-        public const string EnvironmentDataMigrationQueue = "blocks_uilm_environment_data_migration_listener";
+        public const string EnvironmentDataMigrationQueue = "blocks_localization_environment_data_migration_listener";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
         public const string ServiceName = "blocks-localization";
@@ -28,12 +28,12 @@ namespace Eurolm.DomainService.Utilities
 
         private static string GetProvider(string messageConnectionString)
         {
-	        if (Uri.TryCreate(messageConnectionString, UriKind.Absolute, out var uri) &&
-	            (uri.Scheme.Equals("amqp", StringComparison.OrdinalIgnoreCase) ||
-	             uri.Scheme.Equals("amqps", StringComparison.OrdinalIgnoreCase)))
-	        {
-	            return RabbitMqProvider;
-	        }
+            if (Uri.TryCreate(messageConnectionString, UriKind.Absolute, out var uri) &&
+                (uri.Scheme.Equals("amqp", StringComparison.OrdinalIgnoreCase) ||
+                 uri.Scheme.Equals("amqps", StringComparison.OrdinalIgnoreCase)))
+            {
+                return RabbitMqProvider;
+            }
 
             return DefaultProvider;
         }
@@ -64,6 +64,6 @@ namespace Eurolm.DomainService.Utilities
                     Topics = []
                 }
             };
-        } 
+        }
     }
 }
