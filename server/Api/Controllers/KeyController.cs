@@ -1,4 +1,4 @@
-﻿using Blocks.Genesis;
+using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Utilities;
@@ -234,9 +234,7 @@ namespace BlocksTemplate.Api.Controllers
             await Response.WriteAsync(result ?? "");
         }
         [HttpGet]
-        [Authorize]
-        [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task GetUilmFile([FromQuery] GetUilmFileRequestForClient request)
+        public async Task GetUilmFile([FromQuery] GetUilmFileRequest request )
         {
             if (request == null)
             {
