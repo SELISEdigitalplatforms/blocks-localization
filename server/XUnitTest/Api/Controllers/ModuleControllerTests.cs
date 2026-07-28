@@ -114,7 +114,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedModules);
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().NotBeNull();
@@ -132,7 +132,7 @@ namespace XUnitTest
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().BeEmpty();
@@ -149,7 +149,7 @@ namespace XUnitTest
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            Func<Task> act = async () => await _controller.Gets("test");
+            Func<Task> act = async () => await _controller.Gets();
 
             // Assert
             await act.Should().ThrowAsync<Exception>();
@@ -161,7 +161,7 @@ namespace XUnitTest
         public async Task Gets_WithUnmappedProjectKey_ReturnsNull()
         {
             // No mock set up for the given project key -> service returns default (null).
-            var result = await _controller.Gets("unmapped");
+            var result = await _controller.Gets();
 
             result.Should().BeNull();
         }
