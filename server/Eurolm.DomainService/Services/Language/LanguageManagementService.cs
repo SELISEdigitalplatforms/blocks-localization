@@ -52,7 +52,7 @@ namespace Eurolm.DomainService.Services
         {
             return await _languageRepository.GetAllLanguagesAsync(projectKey);
         }
-        public async Task<BaseMutationResponse> DeleteAsysnc(DeleteLanguageRequest request)
+        public async Task<BaseMutationResponse> DeleteAsync(DeleteLanguageRequest request)
         {
             _logger.LogInformation("Deleting language start");
 

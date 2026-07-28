@@ -15,9 +15,7 @@ const fullConfig: Record<string, string> = {
 
 describe("lib/session-refresh", () => {
   beforeEach(() => {
-    vi.mocked(getRuntimeEnv).mockImplementation(
-      (key: string) => fullConfig[key] ?? "",
-    );
+    vi.mocked(getRuntimeEnv).mockImplementation((key: string) => fullConfig[key] ?? "");
   });
 
   afterEach(() => {
@@ -33,9 +31,7 @@ describe("lib/session-refresh", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe(
-      "https://iam.example.com/api/oidc/token?tenant_id=blocks-key",
-    );
+    expect(url).toBe("https://iam.example.com/api/oidc/token?tenant_id=blocks-key");
     expect(options.method).toBe("POST");
     expect(options.credentials).toBe("include");
     expect(options.headers["X-Blocks-Key"]).toBe("blocks-key");

@@ -71,9 +71,7 @@ describe("components/view-details", () => {
       isFetching: true,
       data: undefined,
     } as never);
-    const { container } = renderWithProviders(
-      <ViewDetails keyDetails={keyDetails} />,
-    );
+    const { container } = renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
   });
 
@@ -102,9 +100,7 @@ describe("components/view-details", () => {
     h.useGetGlossaries.mockReturnValue({
       data: { items: [{ itemId: "gl1", name: "Widget" }] },
     } as never);
-    renderWithProviders(
-      <ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />,
-    );
+    renderWithProviders(<ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />);
     expect(screen.getByText("Widget")).toBeTruthy();
   });
 

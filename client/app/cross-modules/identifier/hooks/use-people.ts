@@ -2,11 +2,7 @@ import { useProjectStore } from "@seliseblocks/blocks-kit";
 import { peopleService } from "@blocks-identifier/services/people.service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useGetPeople = (option: {
-  page: number;
-  pageSize: number;
-  filter: string;
-}) => {
+export const useGetPeople = (option: { page: number; pageSize: number; filter: string }) => {
   const projectGroupId = useProjectStore().selectedTenantGroup || "";
   return useQuery({
     queryKey: ["people", option, projectGroupId],

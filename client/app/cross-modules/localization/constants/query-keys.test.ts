@@ -6,9 +6,7 @@ describe("localization/constants/query-keys", () => {
   // ─── languageKeys.all ─────────────────────────────────────────────────────
   describe("languageKeys.all", () => {
     it("should be a constant tuple", () => {
-      expect(localizationQueryKeys.languageKeys.all).toEqual([
-        "get-blocksLanguageKeys",
-      ]);
+      expect(localizationQueryKeys.languageKeys.all).toEqual(["get-blocksLanguageKeys"]);
     });
   });
 
@@ -41,9 +39,7 @@ describe("localization/constants/query-keys", () => {
       expect(result[7]).toBe("keyName");
       expect(result[8]).toBe(true);
       // resourceSearchFilters + missingLanguages are JSON-stringified
-      expect(result[13]).toBe(
-        JSON.stringify([{ culture: "en", searchText: "hi" }]),
-      );
+      expect(result[13]).toBe(JSON.stringify([{ culture: "en", searchText: "hi" }]));
       expect(result[14]).toBe(JSON.stringify(["de", "fr"]));
     });
 
@@ -96,24 +92,24 @@ describe("localization/constants/query-keys", () => {
     });
 
     it("should have a constant prefix", () => {
-      expect(localizationQueryKeys.languageKeys.detailPrefix).toEqual([
-        "get-blocksLanguageKey",
-      ]);
+      expect(localizationQueryKeys.languageKeys.detailPrefix).toEqual(["get-blocksLanguageKey"]);
     });
   });
 
   // ─── languageKeys.timeline ────────────────────────────────────────────────
   describe("languageKeys.timeline", () => {
     it("should embed tenantId, pageNumber, pageSize, keyId", () => {
-      expect(
-        localizationQueryKeys.languageKeys.timeline("t1", 2, 50, "k1"),
-      ).toEqual(["get-uilm-timeline", "t1", 2, 50, "k1"]);
+      expect(localizationQueryKeys.languageKeys.timeline("t1", 2, 50, "k1")).toEqual([
+        "get-uilm-timeline",
+        "t1",
+        2,
+        50,
+        "k1",
+      ]);
     });
 
     it("should have a constant prefix", () => {
-      expect(localizationQueryKeys.languageKeys.timelinePrefix).toEqual([
-        "get-uilm-timeline",
-      ]);
+      expect(localizationQueryKeys.languageKeys.timelinePrefix).toEqual(["get-uilm-timeline"]);
     });
   });
 
@@ -153,32 +149,35 @@ describe("localization/constants/query-keys", () => {
     });
 
     it("should have a constant prefix", () => {
-      expect(
-        localizationQueryKeys.languageKeys.localizationTimelinePrefix,
-      ).toEqual(["get-localization-timeline"]);
+      expect(localizationQueryKeys.languageKeys.localizationTimelinePrefix).toEqual([
+        "get-localization-timeline",
+      ]);
     });
   });
 
   // ─── languageKeys.timelineByOperation ──────────────────────────────────────
   describe("languageKeys.timelineByOperation", () => {
     it("should embed tenantId, operationId, pageNumber, pageSize", () => {
-      expect(
-        localizationQueryKeys.languageKeys.timelineByOperation(
-          "t1",
-          "op1",
-          3,
-          40,
-        ),
-      ).toEqual(["get-timeline-by-operation", "t1", "op1", 3, 40]);
+      expect(localizationQueryKeys.languageKeys.timelineByOperation("t1", "op1", 3, 40)).toEqual([
+        "get-timeline-by-operation",
+        "t1",
+        "op1",
+        3,
+        40,
+      ]);
     });
   });
 
   // ─── languageKeys.byGlossary ──────────────────────────────────────────────
   describe("languageKeys.byGlossary", () => {
     it("should embed tenantId, glossaryId, pageNumber, pageSize", () => {
-      expect(
-        localizationQueryKeys.languageKeys.byGlossary("t1", "g1", 0, 25),
-      ).toEqual(["get-keys-by-glossary", "t1", "g1", 0, 25]);
+      expect(localizationQueryKeys.languageKeys.byGlossary("t1", "g1", 0, 25)).toEqual([
+        "get-keys-by-glossary",
+        "t1",
+        "g1",
+        0,
+        25,
+      ]);
     });
   });
 
@@ -188,31 +187,20 @@ describe("localization/constants/query-keys", () => {
       expect(localizationQueryKeys.languages.all).toEqual(["get-languages"]);
     });
     it("should build a per-tenant list key", () => {
-      expect(localizationQueryKeys.languages.list("t1")).toEqual([
-        "get-languages",
-        "t1",
-      ]);
+      expect(localizationQueryKeys.languages.list("t1")).toEqual(["get-languages", "t1"]);
     });
   });
 
   // ─── modules ──────────────────────────────────────────────────────────────
   describe("modules", () => {
     it("should expose an 'all' tuple", () => {
-      expect(localizationQueryKeys.modules.all).toEqual([
-        "get-language-modules",
-      ]);
+      expect(localizationQueryKeys.modules.all).toEqual(["get-language-modules"]);
     });
     it("should build a per-tenant list key", () => {
-      expect(localizationQueryKeys.modules.list("t1")).toEqual([
-        "get-language-modules",
-        "t1",
-      ]);
+      expect(localizationQueryKeys.modules.list("t1")).toEqual(["get-language-modules", "t1"]);
     });
     it("should build a per-project key", () => {
-      expect(localizationQueryKeys.modules.byProject("p1")).toEqual([
-        "language-modules",
-        "p1",
-      ]);
+      expect(localizationQueryKeys.modules.byProject("p1")).toEqual(["language-modules", "p1"]);
     });
   });
 
@@ -222,9 +210,15 @@ describe("localization/constants/query-keys", () => {
       expect(localizationQueryKeys.exportHistory.all).toEqual(["export-history"]);
     });
     it("should embed projectKey, pageNumber, pageSize, searchText, startDate, endDate", () => {
-      expect(
-        localizationQueryKeys.exportHistory.list("p1", 0, 20, "s", "d1", "d2"),
-      ).toEqual(["export-history", "p1", 0, 20, "s", "d1", "d2"]);
+      expect(localizationQueryKeys.exportHistory.list("p1", 0, 20, "s", "d1", "d2")).toEqual([
+        "export-history",
+        "p1",
+        0,
+        20,
+        "s",
+        "d1",
+        "d2",
+      ]);
     });
   });
 
@@ -234,9 +228,13 @@ describe("localization/constants/query-keys", () => {
       expect(localizationQueryKeys.glossaries.all).toEqual(["get-glossaries"]);
     });
     it("should build a tenant+paged list key", () => {
-      expect(
-        localizationQueryKeys.glossaries.list("t1", 0, 25, "search"),
-      ).toEqual(["get-glossaries", "t1", 0, 25, "search"]);
+      expect(localizationQueryKeys.glossaries.list("t1", 0, 25, "search")).toEqual([
+        "get-glossaries",
+        "t1",
+        0,
+        25,
+        "search",
+      ]);
     });
     it("should build a global key", () => {
       expect(localizationQueryKeys.glossaries.global("t1")).toEqual([
@@ -271,9 +269,7 @@ describe("localization/constants/query-keys", () => {
         "t1",
         "i1",
       ]);
-      expect(localizationQueryKeys.glossaries.detailPrefix).toEqual([
-        "get-glossary",
-      ]);
+      expect(localizationQueryKeys.glossaries.detailPrefix).toEqual(["get-glossary"]);
       expect(localizationQueryKeys.glossaries.suggestedPrefix).toEqual([
         "get-suggested-glossaries",
       ]);
@@ -286,10 +282,7 @@ describe("localization/constants/query-keys", () => {
       expect(localizationQueryKeys.webhook.all).toEqual(["get-webhook"]);
     });
     it("should build a per-tenant detail key", () => {
-      expect(localizationQueryKeys.webhook.detail("t1")).toEqual([
-        "get-webhook",
-        "t1",
-      ]);
+      expect(localizationQueryKeys.webhook.detail("t1")).toEqual(["get-webhook", "t1"]);
     });
   });
 

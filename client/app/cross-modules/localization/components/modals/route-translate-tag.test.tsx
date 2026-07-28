@@ -52,7 +52,7 @@ describe("modals/edit-route", () => {
 
   it("should render existing routes", () => {
     render(withDialog(<EditRoute keyDetails={keyDetails} onClose={vi.fn()} />));
-    expect((screen.getByDisplayValue("/home") as HTMLInputElement)).toBeTruthy();
+    expect(screen.getByDisplayValue("/home") as HTMLInputElement).toBeTruthy();
   });
 
   it("should add a new route field", () => {
@@ -74,10 +74,7 @@ describe("modals/edit-route", () => {
     saveKeyAsync.mockResolvedValue({ success: true });
     render(
       withDialog(
-        <EditRoute
-          keyDetails={{ ...keyDetails, routes: ["/home", "/about"] }}
-          onClose={vi.fn()}
-        />,
+        <EditRoute keyDetails={{ ...keyDetails, routes: ["/home", "/about"] }} onClose={vi.fn()} />,
       ),
     );
     // The delete (trash) buttons are the icon buttons next to each input.
@@ -89,11 +86,7 @@ describe("modals/edit-route", () => {
   });
 
   it("should render an empty prompt when there are no routes", () => {
-    render(
-      withDialog(
-        <EditRoute keyDetails={{ ...keyDetails, routes: [] }} onClose={vi.fn()} />,
-      ),
-    );
+    render(withDialog(<EditRoute keyDetails={{ ...keyDetails, routes: [] }} onClose={vi.fn()} />));
     expect(screen.getByText("No routes added yet")).toBeTruthy();
   });
 });
@@ -122,9 +115,7 @@ describe("modals/auto-translate", () => {
     render(withDialog(<AutoTranslate />));
     fireEvent.click(screen.getByRole("button", { name: "Yes" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 });
@@ -166,10 +157,12 @@ describe("modals/tag-glossary-modal", () => {
     const onClose = vi.fn();
     render(withDialog(<TagGlossaryModal module={module} onClose={onClose} />));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(tagGlossaryAsync).toHaveBeenCalledWith({
-      moduleId: "m1",
-      glossaryIds: ["g1"],
-    }));
+    await waitFor(() =>
+      expect(tagGlossaryAsync).toHaveBeenCalledWith({
+        moduleId: "m1",
+        glossaryIds: ["g1"],
+      }),
+    );
     expect(onClose).toHaveBeenCalledWith(false);
   });
 

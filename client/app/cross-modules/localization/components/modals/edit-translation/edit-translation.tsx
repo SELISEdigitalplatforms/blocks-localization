@@ -11,10 +11,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { Wand } from "lucide-react";
-import {
-  IBlocksLanguageKey,
-  ILanguageConfig,
-} from "@blocks-localization/models/language";
+import { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import {
   useGetTranslationSuggestion,
   useSaveBlocksLanguageKey,
@@ -41,9 +38,8 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
 
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [translation, setTranslation] = useState(
-    keyDetails.resources?.find(
-      (resource) => resource.culture === destinationLanguageCode,
-    )?.value || "",
+    keyDetails.resources?.find((resource) => resource.culture === destinationLanguageCode)?.value ||
+      "",
   );
 
   function autoTranslate(
@@ -126,9 +122,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             ? keyDetails.resources
             : [],
         routes:
-          keyDetails?.routes?.length && keyDetails?.routes?.length > 0
-            ? keyDetails.routes
-            : [],
+          keyDetails?.routes?.length && keyDetails?.routes?.length > 0 ? keyDetails.routes : [],
         glossaryIds: keyDetails.glossaryIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
         context: keyDetails.context,
@@ -169,20 +163,15 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           <DialogDescription className="text-high-emphasis">
             {
               keyDetails.resources?.find(
-                (resource) =>
-                  resource.culture === languageListData[0].languageCode,
+                (resource) => resource.culture === languageListData[0].languageCode,
               )?.value
             }
           </DialogDescription>
           <div className="mt-3 flex justify-between">
-            <Label
-              htmlFor="configName"
-              className="mt-3 text-left font-medium text-high-emphasis"
-            >
+            <Label htmlFor="configName" className="mt-3 text-left font-medium text-high-emphasis">
               {
-                languageListData.find(
-                  (l) => l.languageCode == destinationLanguageCode,
-                )?.languageName
+                languageListData.find((l) => l.languageCode == destinationLanguageCode)
+                  ?.languageName
               }{" "}
               Translation
             </Label>
@@ -199,24 +188,18 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                 className="gap-2"
                 disabled={
                   isAutoTranslateLoading ||
-                  languageListData.find(
-                    (l) => l.languageCode == destinationLanguageCode,
-                  )?.isDefault
+                  languageListData.find((l) => l.languageCode == destinationLanguageCode)?.isDefault
                 }
                 onClick={autoTranslate(
-                  languageListData.find(
-                    (l) => l.languageCode == destinationLanguageCode,
-                  )?.languageName,
+                  languageListData.find((l) => l.languageCode == destinationLanguageCode)
+                    ?.languageName,
                   keyDetails.resources?.find(
-                    (resource) =>
-                      resource.culture === languageListData[0].languageCode,
+                    (resource) => resource.culture === languageListData[0].languageCode,
                   )?.value || "",
                 )}
               >
                 <Wand className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Auto-Translate
-                </span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Auto-Translate</span>
               </Button>
             </div>
           </div>
@@ -237,11 +220,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           </Button>
         </DialogTrigger>
         <DialogTrigger asChild>
-          <Button
-            size="default"
-            disabled={isPending || !translation}
-            onClick={handleSave}
-          >
+          <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
             Save
           </Button>
         </DialogTrigger>

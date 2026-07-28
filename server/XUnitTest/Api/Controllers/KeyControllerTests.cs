@@ -59,16 +59,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullKey_DelegatesToServiceWithoutThrowing()
+        public async Task Save_WithNullKey_ReturnsFailureWithoutCallingService()
         {
-            // The controller calls BadRequest(...) but discards it and still delegates the null.
-            var response = new ApiResponse { Success = false };
-            _keyManagementServiceMock.Setup(x => x.SaveKeyAsync(null)).ReturnsAsync(response);
-
             var result = await _controller.Save(null);
 
-            result.Should().BeSameAs(response);
-            _keyManagementServiceMock.Verify(x => x.SaveKeyAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Key cannot be null.");
+            _keyManagementServiceMock.Verify(x => x.SaveKeyAsync(It.IsAny<Key>()), Times.Never);
         }
 
         #endregion
@@ -500,7 +498,7 @@ namespace XUnitTest
             var expectedResponse = new BaseMutationResponse { IsSuccess = true };
 
             _keyManagementServiceMock
-                .Setup(x => x.DeleteAsysnc(request))
+                .Setup(x => x.DeleteAsync(request))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -544,7 +542,7 @@ namespace XUnitTest
             var failureResponse = new BaseMutationResponse { IsSuccess = false };
 
             _keyManagementServiceMock
-                .Setup(x => x.DeleteAsysnc(request))
+                .Setup(x => x.DeleteAsync(request))
                 .ReturnsAsync(failureResponse);
 
             // Act
@@ -904,12 +902,39 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetTimeline_WithNullQuery_ReturnsServiceResult()
+        public async Task GetTimeline_WithNullQuery_ReturnsEmptyWithoutCallingService()
         {
-            // BadRequest(...) is discarded; the (null) query is passed to the service which is mocked to return null.
+            // The null guard now returns an empty response early instead of discarding
+            // BadRequest and passing the null query through to the service.
             var result = await _controller.GetTimeline(null);
 
-            result.Should().BeNull();
+            result.Should().NotBeNull();
+            result.Timelines.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetKeyTimelineAsync(It.IsAny<GetKeyTimelineRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Gets_WithNullQuery_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.Gets(null);
+
+            result.Should().NotBeNull();
+            result.Keys.Should().NotBeNull();
+            result.Keys.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetKeysAsync(It.IsAny<GetKeysRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimeline_WithNullQuery_ReturnsEmptyWithoutCallingService()
+        {
+            var result = await _controller.GetLocalizationTimeline(null);
+
+            result.Should().NotBeNull();
+            result.Operations.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _keyManagementServiceMock.Verify(x => x.GetLocalizationTimelineAsync(It.IsAny<GetLocalizationTimelineRequest>()), Times.Never);
         }
 
         [Fact]
@@ -930,9 +955,10 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Delete_WithNullRequest_ThrowsNullReferenceException()
+        public async Task Delete_WithNullRequest_ReturnsBadRequest()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Delete(null));
+            var result = await _controller.Delete(null);
+            result.Should().BeOfType<BadRequestObjectResult>();
         }
 
         [Fact]
@@ -952,12 +978,12 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task TranslateAll_WithNullRequest_ReturnsOk()
+        public async Task TranslateAll_WithNullRequest_ReturnsBadRequest()
         {
-            // BadRequest(...) is discarded; the null request flows to the service and Ok is returned.
+            // Null request is now short-circuited with BadRequest instead of flowing to the service.
             var result = await _controller.TranslateAll(null);
 
-            result.Should().BeOfType<OkObjectResult>();
+            result.Should().BeOfType<BadRequestObjectResult>();
         }
 
         [Fact]

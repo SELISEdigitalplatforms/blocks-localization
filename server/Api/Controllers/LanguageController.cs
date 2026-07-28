@@ -40,7 +40,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::save")]
         public async Task<ApiResponse> Save(Language language)
         {
-            if (language == null) BadRequest(new BaseMutationResponse());
+            if (language == null) return new ApiResponse("Language cannot be null.");
             return await _languageManagementService.SaveLanguageAsync(language);
         }
 
@@ -51,11 +51,25 @@ namespace BlocksTemplate.Api.Controllers
         
         [HttpGet]
         [Authorize]
-        public async Task<List<Language>> GetCloudsLanguages()
+        public async Task<List<Language>> GetLanguagesForCurrentTenant()
         {
             return await _languageManagementService.GetLanguagesAsync();
         }
+
+        /// <summary>
+        /// Retrieves all available languages for the current tenant.
+        /// </summary>
+        /// <remarks>"Clouds" was an unclear alias for the current tenant. Use GetLanguagesForCurrentTenant.</remarks>
         [HttpGet]
+        [Authorize]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [Obsolete("Renamed to GetLanguagesForCurrentTenant.")]
+        public async Task<List<Language>> GetCloudsLanguages()
+        {
+            return await GetLanguagesForCurrentTenant();
+        }
+        [HttpGet]
+        [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<List<Language>> Gets([FromQuery] string projectKey)
         {
@@ -71,7 +85,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteLanguageRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {
@@ -85,7 +99,7 @@ namespace BlocksTemplate.Api.Controllers
                 });
             }
 
-            var result = await _languageManagementService.DeleteAsysnc(request);
+            var result = await _languageManagementService.DeleteAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
@@ -98,7 +112,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::language::setdefault")]
         public async Task<IActionResult> SetDefault(SetDefaultLanguageRequest request)
         {
-            if (request == null) BadRequest(new BaseMutationResponse());
+            if (request == null) return BadRequest(new BaseMutationResponse());
 
             if (string.IsNullOrWhiteSpace(request.LanguageName))
             {

@@ -47,28 +47,19 @@ describe("identifier/services/people.service", () => {
   it("resendInvitation should POST to RESEND_INVITATION", () => {
     const payload = { email: "e", groupId: "g" };
     service.resendInvitation(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PEOPLE_ENDPOINTS.RESEND_INVITATION,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(PEOPLE_ENDPOINTS.RESEND_INVITATION, payload);
   });
 
   it("removeAccess should POST to REMOVE_ACCESS", () => {
     const payload = { userIds: ["u"], projectKey: "p" };
     service.removeAccess(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PEOPLE_ENDPOINTS.REMOVE_ACCESS,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(PEOPLE_ENDPOINTS.REMOVE_ACCESS, payload);
   });
 
   it("removeEnvironmentAccess should POST to REMOVE_ACCESS", () => {
     const payload = { email: "e", projectKeys: ["p"], groupId: "g" };
     service.removeEnvironmentAccess(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PEOPLE_ENDPOINTS.REMOVE_ACCESS,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(PEOPLE_ENDPOINTS.REMOVE_ACCESS, payload);
   });
 
   it("confirmInvitation should POST to CONFIRM_INVITATION", () => {
@@ -81,9 +72,6 @@ describe("identifier/services/people.service", () => {
   it("transferOwnership should POST to TRANSFER_OWNERSHIP", () => {
     const payload = { tenantGroupId: "g", transferToUserEmail: "e" };
     service.transferOwnership(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      PEOPLE_ENDPOINTS.TRANSFER_OWNERSHIP,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(PEOPLE_ENDPOINTS.TRANSFER_OWNERSHIP, payload);
   });
 });

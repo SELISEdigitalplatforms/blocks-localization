@@ -121,9 +121,7 @@ describe("localization-timeline (extra coverage)", () => {
     } as never);
     renderWithProviders(<LocalizationTimeline />);
     fireEvent.click(screen.getByText("Translate all by Alice"));
-    expect(
-      screen.getByText("No details found for this operation."),
-    ).toBeTruthy();
+    expect(screen.getByText("No details found for this operation.")).toBeTruthy();
   });
 
   it("shows a 'no changes published' message for empty publish operations", () => {
