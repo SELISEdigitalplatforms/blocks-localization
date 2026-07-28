@@ -8,6 +8,7 @@ type CopyableSnippetProps = {
   value: string;
   copiedField: string | null;
   onCopy: (value: string, id: string) => void;
+  className?: string;
 };
 
 export const CopyableSnippet: FC<CopyableSnippetProps> = ({
@@ -16,12 +17,13 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
   value,
   copiedField,
   onCopy,
+  className,
 }) => {
   const isCopied = copiedField === id;
   const isAvailable = Boolean(value);
 
   return (
-    <div>
+    <div className={className}>
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <span className="text-xs text-muted-foreground" aria-live="polite">

@@ -23,7 +23,7 @@ export const SETUP_STEPS = [
         , then open it to reach the sign-in screen.
       </>
     ),
-    image: null,
+    images: [],
   },
   {
     title: "Open Manage Instances",
@@ -34,13 +34,14 @@ export const SETUP_STEPS = [
         list.
       </>
     ),
-    image: {
-      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_1.png`,
-      alt: "SELISE Blocks sign-in screen highlighting the Manage instances button",
-      caption: "Open instance management from the sign-in screen.",
-      width: 708,
-      height: 1394,
-    },
+    images: [
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_1.png`,
+        alt: "SELISE Blocks sign-in screen highlighting the Manage instances button",
+        width: 708,
+        height: 1394,
+      },
+    ],
   },
   {
     title: "Add a cloud instance",
@@ -50,30 +51,38 @@ export const SETUP_STEPS = [
         here later to edit or remove them.
       </>
     ),
-    image: {
-      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_2.png`,
-      alt: "Manage Instances screen showing the Add Cloud Instance button",
-      caption: "Select Add Cloud Instance to create a new configuration.",
-      width: 708,
-      height: 1396,
-    },
+    images: [
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_2.png`,
+        alt: "Manage Instances screen showing the Add Cloud Instance button",
+        width: 708,
+        height: 1396,
+      },
+    ],
   },
   {
     title: "Enter the instance details",
     description: (
       <>
-        Give the instance a recognizable name, select its microservice version, then copy the
-        matching API Base URL and X-Blocks-Key from the Blocks instances section below and paste
-        them into the extension.
+        Give the instance a recognizable name and select its microservice version(i.e. V4 - Blocks
+        OS). Use the manual setup to enter the API Base URL and X-Blocks-Key, or select the JSON
+        setup method and paste the instance configuration from below.
       </>
     ),
-    image: {
-      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_3.png`,
-      alt: "Add New Cloud Instance form with the name, version, API URL, and X-Blocks-Key fields",
-      caption: "Enter the instance name, version, API Base URL, and X-Blocks-Key.",
-      width: 714,
-      height: 1392,
-    },
+    images: [
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_3.png`,
+        alt: "Manual setup form with the instance name, version, API URL, and X-Blocks-Key fields",
+        width: 714,
+        height: 1392,
+      },
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_4.png`,
+        alt: "JSON setup form for adding a Blocks OS V4 instance configuration",
+        width: 698,
+        height: 1380,
+      },
+    ],
   },
   {
     title: "Save and select the instance",
@@ -83,28 +92,36 @@ export const SETUP_STEPS = [
         the <strong>Choose Instance</strong> list. The selected instance is marked as active.
       </>
     ),
-    image: {
-      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_4.png`,
-      alt: "Manage Instances screen showing saved Blocks Cloud and Blocks OS instances",
-      caption: "Confirm that the new instance appears in your saved instances.",
-      width: 700,
-      height: 1396,
-    },
+    images: [
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_5.png`,
+        alt: "Manage Instances screen showing saved Blocks Cloud and Blocks OS instances",
+        width: 700,
+        height: 1396,
+      },
+    ],
   },
   {
     title: "Sign in",
     description: (
       <>
-        Enter the account credentials for the selected Blocks environment and select{" "}
-        <strong>Sign in</strong>. You can now use the extension with that instance.
+        Select the Blocks OS instance from the <strong>Choose Instance</strong> list, then click{" "}
+        <strong>Sign in with Blocks OS</strong>. You can now use the extension with that instance.
       </>
     ),
-    image: {
-      src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_5.png`,
-      alt: "SELISE Blocks sign-in screen with the instance selector open",
-      caption: "Choose the saved instance, then enter your credentials and sign in.",
-      width: 706,
-      height: 1398,
-    },
+    images: [
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_6.png`,
+        alt: "SELISE Blocks sign-in screen with the instance selector open",
+        width: 704,
+        height: 1392,
+      },
+      {
+        src: `${EXTENSION_GUIDE_IMAGE_PATH}/guide_7.png`,
+        alt: "SELISE Blocks sign-in screen with a Blocks OS instance selected",
+        width: 704,
+        height: 1380,
+      },
+    ],
   },
 ] as const;
