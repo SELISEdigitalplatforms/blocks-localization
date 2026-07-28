@@ -1,4 +1,4 @@
-﻿using Blocks.Genesis;
+using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
@@ -76,7 +76,7 @@ namespace BlocksTemplate.Api.Controllers
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
         {
-            return await _moduleManagementService.GetModulesAsync(projectKey);
+            return await _moduleManagementService.GetModulesAsync(projectKey,null);
         }
 
         //[HttpDelete]
