@@ -1082,7 +1082,7 @@ namespace XUnitTest
         [Fact]
         public async Task GetUilmFile_ClientOverload_WritesJsonContent()
         {
-            var request = new GetUilmFileRequestForClient { Language = "en", ModuleName = "auth", projectKey = "p1" };
+            var request = new GetUilmFileRequest { Language = "en", ModuleName = "auth"};
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
             _controller.ControllerContext.HttpContext = context;

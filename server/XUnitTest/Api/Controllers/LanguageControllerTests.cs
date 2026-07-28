@@ -83,11 +83,11 @@ namespace XUnitTest
             };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(expectedLanguages);
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().NotBeNull();
@@ -101,11 +101,11 @@ namespace XUnitTest
             var request = new GetLanguagesRequest {  };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language>());
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().BeEmpty();
@@ -218,7 +218,7 @@ namespace XUnitTest
         public async Task Gets_WithUnmappedProjectKey_ReturnsNull()
         {
             // No mock set up for this project key -> service returns default (null).
-            var result = await _controller.Gets("unmapped");
+            var result = await _controller.Gets();
 
             result.Should().BeNull();
         }
