@@ -190,7 +190,7 @@
             <param name="language">The language object to be saved.</param>
             <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the success or failure of the operation.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.GetCloudstLanguagesAsync">
+        <member name="M:BlocksTemplate.Api.Controllers.LanguageController.GetCloudsLanguages">
             <summary>
             Retrieves all available languages.
             </summary>
@@ -228,7 +228,7 @@
             <param name="module">The module object to be saved.</param>
             <returns>An <see cref="T:Eurolm.DomainService.Shared.ApiResponse"/> indicating the result of the save operation.</returns>
         </member>
-        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.GetCloudsModulesAsync">
+        <member name="M:BlocksTemplate.Api.Controllers.ModuleController.GetCloudsModules">
             <summary>
             Retrieves a list of all available modules.
             </summary>
