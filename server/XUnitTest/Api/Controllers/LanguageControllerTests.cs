@@ -83,7 +83,7 @@ namespace XUnitTest
             };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(expectedLanguages);
 
             // Act
@@ -101,7 +101,7 @@ namespace XUnitTest
             var request = new GetLanguagesRequest {  };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language>());
 
             // Act
