@@ -14,10 +14,7 @@ const COOKIE_NAME = "language-view-storage";
  * We set a host-only cookie directly so jsdom can read it back consistently.
  */
 const seedCookie = (
-  data: Record<
-    string,
-    { selectedLanguages?: string[]; selectedOptionalColumns?: string[] }
-  >,
+  data: Record<string, { selectedLanguages?: string[]; selectedOptionalColumns?: string[] }>,
 ) => {
   const value = encodeURIComponent(JSON.stringify(data));
   // Use the jsdom origin's host; no Domain attribute so the cookie is host-only
@@ -63,21 +60,13 @@ describe("localization/store/use-language-view-store", () => {
   describe("setSelectedLanguages", () => {
     it("should accept a list of valid language codes", () => {
       useLanguageViewStore.getState().setSelectedLanguages(["en-US", "de-DE"]);
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "en-US",
-        "de-DE",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US", "de-DE"]);
     });
 
     it("should filter out invalid codes", () => {
-      useLanguageViewStore
-        .getState()
-        .setSelectedLanguages(["en-US", "invalid", "EN-us", "fr-FR"]);
+      useLanguageViewStore.getState().setSelectedLanguages(["en-US", "invalid", "EN-us", "fr-FR"]);
       // "invalid" fails the regex, "EN-us" fails case check (must be xx-XX).
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "en-US",
-        "fr-FR",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US", "fr-FR"]);
     });
 
     it("should set hasStoredViewSettings to true", () => {
@@ -90,17 +79,13 @@ describe("localization/store/use-language-view-store", () => {
   describe("toggleLanguage", () => {
     it("should add a valid code when not present", () => {
       useLanguageViewStore.getState().toggleLanguage("en-US");
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "en-US",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US"]);
     });
 
     it("should remove a valid code when already present", () => {
       useLanguageViewStore.getState().setSelectedLanguages(["en-US", "de-DE"]);
       useLanguageViewStore.getState().toggleLanguage("en-US");
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "de-DE",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["de-DE"]);
     });
 
     it("should ignore invalid codes (no state change)", () => {
@@ -120,12 +105,8 @@ describe("localization/store/use-language-view-store", () => {
   // ─── resetSelectedLanguages ─────────────────────────────────────────────
   describe("resetSelectedLanguages", () => {
     it("should clear both selected languages and optional columns", () => {
-      useLanguageViewStore
-        .getState()
-        .setSelectedLanguages(["en-US", "de-DE"]);
-      useLanguageViewStore
-        .getState()
-        .setSelectedOptionalColumns(["completeness", "createDate"]);
+      useLanguageViewStore.getState().setSelectedLanguages(["en-US", "de-DE"]);
+      useLanguageViewStore.getState().setSelectedOptionalColumns(["completeness", "createDate"]);
       useLanguageViewStore.getState().resetSelectedLanguages();
       const s = useLanguageViewStore.getState();
       expect(s.selectedLanguages).toEqual([]);
@@ -140,18 +121,12 @@ describe("localization/store/use-language-view-store", () => {
 
     it("should accept valid column names", () => {
       useLanguageViewStore.getState().setSelectedOptionalColumns(VALID);
-      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(
-        VALID,
-      );
+      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(VALID);
     });
 
     it("should filter out unknown column names", () => {
-      useLanguageViewStore
-        .getState()
-        .setSelectedOptionalColumns([...VALID, "unknown", "bogus"]);
-      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(
-        VALID,
-      );
+      useLanguageViewStore.getState().setSelectedOptionalColumns([...VALID, "unknown", "bogus"]);
+      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(VALID);
     });
 
     it("should mark hasStoredViewSettings", () => {
@@ -164,26 +139,18 @@ describe("localization/store/use-language-view-store", () => {
   describe("toggleOptionalColumn", () => {
     it("should add a valid column when not present", () => {
       useLanguageViewStore.getState().toggleOptionalColumn("completeness");
-      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual([
-        "completeness",
-      ]);
+      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(["completeness"]);
     });
 
     it("should remove a valid column when already present", () => {
-      useLanguageViewStore
-        .getState()
-        .setSelectedOptionalColumns(["completeness", "createDate"]);
+      useLanguageViewStore.getState().setSelectedOptionalColumns(["completeness", "createDate"]);
       useLanguageViewStore.getState().toggleOptionalColumn("completeness");
-      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual([
-        "createDate",
-      ]);
+      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual(["createDate"]);
     });
 
     it("should ignore invalid column names", () => {
       useLanguageViewStore.getState().toggleOptionalColumn("unknown");
-      expect(
-        useLanguageViewStore.getState().selectedOptionalColumns,
-      ).toEqual([]);
+      expect(useLanguageViewStore.getState().selectedOptionalColumns).toEqual([]);
     });
   });
 
@@ -200,7 +167,7 @@ describe("localization/store/use-language-view-store", () => {
 
     it("should hydrate stored data for the matching tenant", () => {
       // Seed the cookie with stored data for tenant-A.
-      seedCookie( {
+      seedCookie({
         "tenant-A": {
           selectedLanguages: ["en-US", "de-DE"],
           selectedOptionalColumns: ["completeness"],
@@ -214,22 +181,18 @@ describe("localization/store/use-language-view-store", () => {
     });
 
     it("should isolate data between tenants", () => {
-      seedCookie( {
+      seedCookie({
         "tenant-A": { selectedLanguages: ["en-US"] },
         "tenant-B": { selectedLanguages: ["fr-FR"] },
       });
       updateLanguageViewTenantId("tenant-A");
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "en-US",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US"]);
       updateLanguageViewTenantId("tenant-B");
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "fr-FR",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["fr-FR"]);
     });
 
     it("should sanitize invalid language codes when hydrating", () => {
-      seedCookie( {
+      seedCookie({
         "tenant-A": {
           selectedLanguages: ["en-US", "BAD", "EN-us"],
           selectedOptionalColumns: ["completeness", "BOGUS"],
@@ -242,7 +205,7 @@ describe("localization/store/use-language-view-store", () => {
     });
 
     it("should reset to defaults when no data exists for the tenant", () => {
-      seedCookie( {
+      seedCookie({
         "tenant-A": { selectedLanguages: ["en-US"] },
       });
       updateLanguageViewTenantId("tenant-NEW");
@@ -275,14 +238,11 @@ describe("localization/store/use-language-view-store", () => {
     });
 
     it("should load tenant's stored settings when present", () => {
-      updateLanguageViewTenantId("tenant-A");
       seedCookie({
         "tenant-A": { selectedLanguages: ["de-DE"] },
       });
       rehydrateLanguageViewStore();
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "de-DE",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["de-DE"]);
     });
   });
 
@@ -303,7 +263,7 @@ describe("localization/store/use-language-view-store", () => {
       // The store is created with skipHydration: true and the cookieStorage
       // adapter short-circuits the automatic rehydration by returning null.
       // We assert this directly by invoking the adapter's getItem.
-      const persistOptions = (useLanguageViewStore as any).persist?.getOptions?.();
+      const persistOptions = (useLanguageViewStore as unknown as { persist?: { getOptions?: () => { storage?: unknown } } }).persist?.getOptions?.();
       const storage = persistOptions?.storage;
       expect(storage).toBeDefined();
       expect(typeof storage.getItem).toBe("function");
@@ -317,9 +277,7 @@ describe("localization/store/use-language-view-store", () => {
 
       useLanguageViewStore.setState({ tenantId: "tenant-A" });
       // Should not throw despite malformed existing cookie.
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["en-US"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["en-US"])).not.toThrow();
 
       // The new write should still succeed and overwrite the malformed value.
       const cookieValue = document.cookie
@@ -344,8 +302,7 @@ describe("localization/store/use-language-view-store", () => {
       removeSpy.mockClear();
       // Direct invocation requires reaching into the persist internals;
       // we use a helper that just verifies the spy contract:
-      const storage = (useLanguageViewStore as any).persist?.getOptions?.()
-        ?.storage;
+      const storage = (useLanguageViewStore as unknown as { persist?: { getOptions?: () => { storage?: unknown } } }).persist?.getOptions?.()?.storage;
       if (storage && typeof storage.removeItem === "function") {
         storage.removeItem();
         expect(removeSpy).toHaveBeenCalledWith(COOKIE_NAME);
@@ -382,9 +339,7 @@ describe("localization/store/use-language-view-store", () => {
         "tenant-minimal": {},
       });
       useLanguageViewStore.setState({ tenantId: "tenant-minimal" });
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["fr-FR"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["fr-FR"])).not.toThrow();
     });
 
     it("setItem() should fall back to empty array when parsed.state has no languages/columns", () => {
@@ -394,9 +349,7 @@ describe("localization/store/use-language-view-store", () => {
         JSON.stringify({ "tenant-X": {} }),
       )};path=/`;
       useLanguageViewStore.setState({ tenantId: "tenant-X" });
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["en-US"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["en-US"])).not.toThrow();
     });
 
     it("setItem() should use empty arrays when state payload languages/columns are null", () => {
@@ -411,9 +364,7 @@ describe("localization/store/use-language-view-store", () => {
         }),
       )};path=/`;
       useLanguageViewStore.setState({ tenantId: "tenant-X" });
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["en-US"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["en-US"])).not.toThrow();
     });
   });
 
@@ -425,17 +376,13 @@ describe("localization/store/use-language-view-store", () => {
       document.cookie = `${COOKIE_NAME}=${encodeURIComponent("not-json")};path=/`;
       useLanguageViewStore.setState({ tenantId: "tenant-A" });
       // Should not throw.
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["en-US"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["en-US"])).not.toThrow();
     });
 
     it("should fall back to empty object when parsed JSON is falsy (e.g. 'null')", () => {
       document.cookie = `${COOKIE_NAME}=${encodeURIComponent("null")};path=/`;
       useLanguageViewStore.setState({ tenantId: "tenant-A" });
-      expect(() =>
-        useLanguageViewStore.getState().setSelectedLanguages(["en-US"]),
-      ).not.toThrow();
+      expect(() => useLanguageViewStore.getState().setSelectedLanguages(["en-US"])).not.toThrow();
     });
   });
 
@@ -448,9 +395,7 @@ describe("localization/store/use-language-view-store", () => {
       });
       updateLanguageViewTenantId("tenant-A");
       expect(useLanguageViewStore.getState().tenantId).toBe("tenant-A");
-      expect(useLanguageViewStore.getState().selectedLanguages).toEqual([
-        "en-US",
-      ]);
+      expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US"]);
 
       // Now switch to empty tenantId.
       updateLanguageViewTenantId("");
@@ -502,8 +447,7 @@ describe("localization/store/use-language-view-store", () => {
       // (zustand's wrapper) does not include tenantId because of `partialize`.
       // The wrapper structure is { [tenantId]: { selectedLanguages, selectedOptionalColumns } }.
       const tenantEntry = (payload as Record<string, unknown>)["tenant-A"] as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       expect(tenantEntry).toBeDefined();
       expect(tenantEntry).not.toHaveProperty("tenantId");
     });

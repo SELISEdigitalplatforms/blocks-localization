@@ -18,14 +18,12 @@ describe("localization/models/language", () => {
       expect(modules[0]).toEqual({ value: "UILM Tool", label: "UILM Tool" });
     });
 
-    it.each([
-      ["UILM Tool"],
-      ["Commission"],
-      ["Performance"],
-      ["Resource Centre"],
-    ])("should contain module value %s", (value) => {
-      expect(modules.some((m) => m.value === value)).toBe(true);
-    });
+    it.each([["UILM Tool"], ["Commission"], ["Performance"], ["Resource Centre"]])(
+      "should contain module value %s",
+      (value) => {
+        expect(modules.some((m) => m.value === value)).toBe(true);
+      },
+    );
 
     it("should have matching value and label for each entry", () => {
       for (const m of modules) {
@@ -68,9 +66,7 @@ describe("localization/models/language", () => {
     });
 
     it.each(expectedTypes)("should include %s", (type) => {
-      expect(GLOSSARY_TYPE_OPTIONS.some((opt) => opt.value === type)).toBe(
-        true,
-      );
+      expect(GLOSSARY_TYPE_OPTIONS.some((opt) => opt.value === type)).toBe(true);
     });
 
     it("should have value and label identical for each entry", () => {

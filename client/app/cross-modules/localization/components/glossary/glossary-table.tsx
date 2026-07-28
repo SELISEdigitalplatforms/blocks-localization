@@ -2,18 +2,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui-kits/card/card";
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import {
   Table,
   TableBody,
@@ -49,13 +39,9 @@ const GlossaryTable: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(
-    undefined,
-  );
+  const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(undefined);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(
-    undefined,
-  );
+  const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(undefined);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -71,11 +57,7 @@ const GlossaryTable: React.FC = () => {
     }, 400);
   }, []);
 
-  const { data, isLoading } = useGetGlossaries(
-    pageNumber,
-    pageSize,
-    debouncedSearch,
-  );
+  const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, debouncedSearch);
 
   const handleEditClick = useCallback((glossary: IGlossary) => {
     setEditGlossary(glossary);
@@ -112,9 +94,8 @@ const GlossaryTable: React.FC = () => {
         cell: ({ row }) => (
           <div className="flex items-center">
             <span>
-              {langConfigureData.find(
-                (lang) => lang.languageCode === row.original.language,
-              )?.languageName ?? "-"}
+              {langConfigureData.find((lang) => lang.languageCode === row.original.language)
+                ?.languageName ?? "-"}
             </span>
           </div>
         ),
@@ -149,16 +130,11 @@ const GlossaryTable: React.FC = () => {
         accessorKey: "additionalNote",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              Additional Note
-            </span>
+            <span className="font-bold text-medium-emphasis">Additional Note</span>
           </div>
         ),
         cell: ({ row }) => (
-          <div
-            className="max-w-[200px] truncate"
-            title={row.original.additionalNote}
-          >
+          <div className="max-w-[200px] truncate" title={row.original.additionalNote}>
             {row.original.additionalNote ?? "-"}
           </div>
         ),
@@ -195,10 +171,7 @@ const GlossaryTable: React.FC = () => {
                 <EllipsisVertical width={20} height={20} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
                 className="cursor-pointer"
                 onClick={(e) => {
@@ -250,10 +223,7 @@ const GlossaryTable: React.FC = () => {
               <span className="sr-only sm:not-sr-only">New Glossary</span>
             </Button>
           </DialogTrigger>
-          <AddEditGlossary
-            onClose={() => setAddModalOpen(false)}
-            isOpen={addModalOpen}
-          />
+          <AddEditGlossary onClose={() => setAddModalOpen(false)} isOpen={addModalOpen} />
         </Dialog>
       </div>
 
@@ -276,21 +246,12 @@ const GlossaryTable: React.FC = () => {
             <Table className="text-sm">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow
-                    key={headerGroup.id}
-                    className="px-4 py-3 hover:bg-transparent"
-                  >
+                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
                     {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className="font-bold text-medium-emphasis"
-                      >
+                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
                         {header.isPlaceholder
                           ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
+                          : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -312,26 +273,18 @@ const GlossaryTable: React.FC = () => {
                     <TableRow
                       key={row.id}
                       className="cursor-pointer font-normal text-medium-emphasis"
-                      onClick={() =>
-                        navigate(scoped(`services/glossary/${row.original.itemId}`))
-                      }
+                      onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
                       No results.
                     </TableCell>
                   </TableRow>

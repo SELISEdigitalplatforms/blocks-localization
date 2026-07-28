@@ -2,10 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { serviceInstances } from "@/lib/http-client";
 import { SERVICE_REGISTRY_ENDPOINTS } from "@blocks-identifier/constants/endpoint.constant";
-import {
-  serviceRegistryService,
-  ServiceRegistryService,
-} from "./service-registery.service";
+import { serviceRegistryService, ServiceRegistryService } from "./service-registry.service";
 
 vi.mock("@/lib/http-client", () => ({
   serviceInstances: {
@@ -15,7 +12,7 @@ vi.mock("@/lib/http-client", () => ({
 
 const http = serviceInstances.logicService;
 
-describe("identifier/services/service-registery.service", () => {
+describe("identifier/services/service-registry.service", () => {
   let service: ServiceRegistryService;
 
   beforeEach(() => {
@@ -31,18 +28,12 @@ describe("identifier/services/service-registery.service", () => {
   it("registerService should POST to REGISTER", () => {
     const payload = { serviceName: "s", projectKey: "p", tags: [] };
     service.registerService(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      SERVICE_REGISTRY_ENDPOINTS.REGISTER,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(SERVICE_REGISTRY_ENDPOINTS.REGISTER, payload);
   });
 
   it("getAllServices should POST to GET_ALL", () => {
     const payload = { page: 0, pageSize: 10, projectKey: "p" };
     service.getAllServices(payload);
-    expect(http.post).toHaveBeenCalledWith(
-      SERVICE_REGISTRY_ENDPOINTS.GET_ALL,
-      payload,
-    );
+    expect(http.post).toHaveBeenCalledWith(SERVICE_REGISTRY_ENDPOINTS.GET_ALL, payload);
   });
 });

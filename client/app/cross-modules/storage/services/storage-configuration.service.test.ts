@@ -53,26 +53,26 @@ describe("storage/services/storage-configuration.service", () => {
     const [url, payload] = vi.mocked(http.post).mock.calls[0];
     expect(url).toBe(STORAGE_CONFIG_ENDPOINTS.SAVE_CONFIG);
     // original values win (spread after reset), so provided host is preserved
-    expect((payload as any).host).toBe("h");
-    expect((payload as any).accessKey).toBe("ak");
+    expect((payload as unknown as Record<string, unknown>).host).toBe("h");
+    expect((payload as unknown as Record<string, unknown>).accessKey).toBe("ak");
   });
 
   it("save should merge reset defaults for Azure strategy", () => {
     service.save({ ...baseValues, storageStrategy: "Azure" });
     const [, payload] = vi.mocked(http.post).mock.calls[0];
-    expect((payload as any).storageStrategy).toBe("Azure");
+    expect((payload as unknown as Record<string, unknown>).storageStrategy).toBe("Azure");
   });
 
   it("save should handle S3Compatible strategy", () => {
     service.save({ ...baseValues, storageStrategy: "S3Compatible" });
     const [, payload] = vi.mocked(http.post).mock.calls[0];
-    expect((payload as any).storageStrategy).toBe("S3Compatible");
+    expect((payload as unknown as Record<string, unknown>).storageStrategy).toBe("S3Compatible");
   });
 
   it("save should handle the default (SFTP) strategy branch", () => {
     service.save({ ...baseValues, storageStrategy: "SftpStorage" });
     const [, payload] = vi.mocked(http.post).mock.calls[0];
-    expect((payload as any).storageStrategy).toBe("SftpStorage");
+    expect((payload as unknown as Record<string, unknown>).storageStrategy).toBe("SftpStorage");
   });
 
   it("delete should POST with ProjectKey and ConfigurationName query params", () => {

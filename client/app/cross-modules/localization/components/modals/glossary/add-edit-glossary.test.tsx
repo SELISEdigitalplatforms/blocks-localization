@@ -58,7 +58,7 @@ describe("modals/glossary/add-edit-glossary", () => {
       ),
     );
     expect(screen.getByText("Edit Glossary")).toBeTruthy();
-    expect((screen.getByDisplayValue("Widget") as HTMLInputElement)).toBeTruthy();
+    expect(screen.getByDisplayValue("Widget") as HTMLInputElement).toBeTruthy();
     expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
   });
 
@@ -87,9 +87,7 @@ describe("modals/glossary/add-edit-glossary", () => {
       target: { value: "Acme" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() =>
-      expect(showErrorToast).toHaveBeenCalledWith({ errors: "duplicate name" }),
-    );
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith({ errors: "duplicate name" }));
   });
 
   it("should cancel", () => {

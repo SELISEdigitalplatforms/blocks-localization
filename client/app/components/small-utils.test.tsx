@@ -20,32 +20,22 @@ describe("components/data-table-faceted-filter", () => {
 
   it("should render the trigger with a title", () => {
     render(
-      <DataTableFacetedFilter
-        column={makeColumn() as never}
-        title="Types"
-        options={options}
-      />,
+      <DataTableFacetedFilter column={makeColumn() as never} title="Types" options={options} />,
     );
     expect(screen.getAllByText("Types").length).toBeGreaterThan(0);
   });
 
   it("should select an option and set the column filter", () => {
     const column = makeColumn();
-    render(
-      <DataTableFacetedFilter column={column as never} title="Types" options={options} />,
-    );
+    render(<DataTableFacetedFilter column={column as never} title="Types" options={options} />);
     fireEvent.click(screen.getAllByText("Types")[0]);
     fireEvent.click(screen.getByRole("option", { name: /Alpha/ }));
-    expect(column.setFilterValue).toHaveBeenCalledWith(
-      expect.objectContaining({ types: ["a"] }),
-    );
+    expect(column.setFilterValue).toHaveBeenCalledWith(expect.objectContaining({ types: ["a"] }));
   });
 
   it("should show a Clear action when values are selected", () => {
     const column = makeColumn(["a"]);
-    render(
-      <DataTableFacetedFilter column={column as never} title="Types" options={options} />,
-    );
+    render(<DataTableFacetedFilter column={column as never} title="Types" options={options} />);
     fireEvent.click(screen.getAllByText("Types")[0]);
     fireEvent.click(screen.getByRole("option", { name: "Clear" }));
     expect(column.setFilterValue).toHaveBeenCalledWith(undefined);
@@ -67,9 +57,7 @@ describe("components/date-range-filter", () => {
   });
 
   it("should render without a range when date is undefined", () => {
-    render(
-      <DateRangeFilter title="Created" date={undefined} onDateChange={vi.fn()} />,
-    );
+    render(<DateRangeFilter title="Created" date={undefined} onDateChange={vi.fn()} />);
     expect(screen.getByText("Created")).toBeTruthy();
   });
 });

@@ -170,3 +170,49 @@ server/Api/wwwroot/**
 # Ignore environment-specific app settings, keep base appsettings.json
 # **/appsettings.*.json
 # **/appsetting.*.json
+
+# build output (never commit)
+builds/
+# Build / scratch artifacts that must never be committed
+# (generated XML doc output is emitted into bin/ via GenerateDocumentationFile)
+server/Api/Api.xml
+server/Api/Blocks.Genesis.xml
+server/**/*.Backup.tmp
+*.Backup.tmp
+puku-embeddings.db
+a.txt
+.sonarqube/
+.scannerwork/
+*.trufflehog.json
+*-secrets.json
+*sbom*.json
+*.cdx.json
+zap-*.xml
+*-semgrep.sarif
+
+# --- AI assistant artifacts: never track ---
+.claude/
+.cursor/
+.codex/
+.hermes/
+.aider*
+.windsurf/
+.gemini/
+.kiro/
+.trae/
+graphify-out/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.cursorrules
+.mcp.json
+copilot-instructions.md
+
+# --- markdown policy: only standard docs tracked ---
+*.md
+!README.md
+!LICENSE.md
+!CONTRIBUTING.md
+!SECURITY.md
+!CODE_OF_CONDUCT.md
+scripts/scan.sh

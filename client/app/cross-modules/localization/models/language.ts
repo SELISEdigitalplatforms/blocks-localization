@@ -1,8 +1,6 @@
 /** UILM export SSE payload shape (self-contained for Vite client). */
 export interface IUilmExportNotificationMessage {
-  denormalizedPayload:
-    | string
-    | { Message?: string; FileId?: string; fileId?: string };
+  denormalizedPayload: string | { Message?: string; FileId?: string; fileId?: string };
 }
 
 export type LanguageKeys = { en?: string; de?: string; fr?: string };
@@ -229,12 +227,7 @@ export interface IGetTimelineByOperationIdResponse {
 // Glossary types
 
 export type GlossaryType =
-  | "Full form"
-  | "Acronym"
-  | "Abbreviation"
-  | "Short form"
-  | "Phrase"
-  | "Variant";
+  "Full form" | "Acronym" | "Abbreviation" | "Short form" | "Phrase" | "Variant";
 
 export const GLOSSARY_TYPE_OPTIONS: { value: GlossaryType; label: string }[] = [
   { value: "Full form", label: "Full form" },

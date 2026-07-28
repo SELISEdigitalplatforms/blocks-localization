@@ -55,29 +55,14 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className,
-    )}
-    {...props}
-  />
+const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4",
-      className,
-    )}
+    className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4", className)}
     {...props}
   />
 );
@@ -89,10 +74,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className,
-    )}
+    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
     {...props}
   />
 ));
@@ -105,10 +87,7 @@ const DialogDescription = React.forwardRef<
   }
 >(({ className, children, optional, ...props }, ref) => {
   // Check if there is actual content to render
-  const hasContent =
-    children !== undefined &&
-    children !== null &&
-    String(children).trim() !== "";
+  const hasContent = children !== undefined && children !== null && String(children).trim() !== "";
 
   // If no content and not optional (forced to render), don't render at all
   // This prevents the Radix accessibility warning when description is empty
