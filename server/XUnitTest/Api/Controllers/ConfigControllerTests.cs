@@ -159,12 +159,12 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetCloudWebHook_ReturnsWebhookFromService()
+        public async Task GetWebHookForCurrentTenant_ReturnsWebhookFromService()
         {
             var webhook = new BlocksWebhook { Url = "https://example.com/webhook", ContentType = "application/json", BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "s", HeaderKey = "h" } };
             _webHookServiceMock.Setup(x => x.GetWebhookAsync()).ReturnsAsync(webhook);
 
-            var result = await _controller.GetCloudWebHook();
+            var result = await _controller.GetWebHookForCurrentTenant();
 
             result.Should().BeSameAs(webhook);
         }
@@ -198,15 +198,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task SaveWebHook_WithNullWebhook_DelegatesToServiceWithoutThrowing()
+        public async Task SaveWebHook_WithNullWebhook_ReturnsFailureWithoutCallingService()
         {
-            var response = new ApiResponse { Success = false };
-            _webHookServiceMock.Setup(x => x.SaveWebhookAsync(null)).ReturnsAsync(response);
-
             var result = await _controller.SaveWebHook(null);
 
-            result.Should().BeSameAs(response);
-            _webHookServiceMock.Verify(x => x.SaveWebhookAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Webhook cannot be null.");
+            _webHookServiceMock.Verify(x => x.SaveWebhookAsync(It.IsAny<BlocksWebhook>()), Times.Never);
         }
     }
 }

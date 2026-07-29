@@ -56,9 +56,7 @@ describe("components/modals/new-language", () => {
       withDialog(
         <NewLanguage
           onClose={vi.fn()}
-          existingLanguages={
-            [{ languageCode: "en-US", languageName: "English" }] as never
-          }
+          existingLanguages={[{ languageCode: "en-US", languageName: "English" }] as never}
         />,
       ),
     );

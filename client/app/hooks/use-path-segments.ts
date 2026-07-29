@@ -1,5 +1,8 @@
 import { useLocation } from "react-router-dom";
-import { BREADCRUMB_CUSTOM_TITLES, BREADCRUMB_SKIP_PATHS } from "@/constants/breadcrumb-custom-title";
+import {
+  BREADCRUMB_CUSTOM_TITLES,
+  BREADCRUMB_SKIP_PATHS,
+} from "@/constants/breadcrumb-custom-title";
 
 const useRoutePathSegments = () => {
   const { pathname } = useLocation();
@@ -35,9 +38,7 @@ const useRoutePathSegments = () => {
 
     const matchedPattern = Object.entries(BREADCRUMB_CUSTOM_TITLES)
       .filter(
-        ([pattern]) =>
-          pattern !== breadcrumb.href &&
-          matchDynamicPath(pattern, breadcrumb.href),
+        ([pattern]) => pattern !== breadcrumb.href && matchDynamicPath(pattern, breadcrumb.href),
       )
       .sort(([patternA], [patternB]) => {
         const dynamicCountA = countDynamicSegments(patternA);

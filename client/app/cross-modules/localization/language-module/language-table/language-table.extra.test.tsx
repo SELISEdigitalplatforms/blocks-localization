@@ -30,25 +30,21 @@ vi.mock("@seliseblocks/blocks-kit/hooks", () => ({
 vi.mock("@blocks-utilities/notification", () => ({
   useNotificationListener: vi.fn(),
 }));
-vi.mock(
-  "@blocks-localization/components/language-table-toolbar/language-table-toolbar",
-  () => ({
-    LanguageTableToolbar: () => null,
-    useKeysFilterQueryParams: () => ({
-      queryParams: queryParamsState,
-      setQueryParams,
-    }),
-    useKeysSortQueryParams: () => ({
-      sortQueryParams: { property: "KeyName", isDescending: false },
-      setSortQueryParams,
-      reset: sortReset,
-    }),
+vi.mock("@blocks-localization/components/language-table-toolbar/language-table-toolbar", () => ({
+  LanguageTableToolbar: () => null,
+  useKeysFilterQueryParams: () => ({
+    queryParams: queryParamsState,
+    setQueryParams,
   }),
-);
-vi.mock(
-  "@blocks-localization/components/modals/auto-translate/auto-translate",
-  () => ({ default: () => null }),
-);
+  useKeysSortQueryParams: () => ({
+    sortQueryParams: { property: "KeyName", isDescending: false },
+    setSortQueryParams,
+    reset: sortReset,
+  }),
+}));
+vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", () => ({
+  default: () => null,
+}));
 vi.mock("@blocks-localization/components/modals/export-key/export-key", () => ({
   default: () => null,
 }));
@@ -76,9 +72,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
 // state and clobbers whatever we set up.
 vi.mock("@blocks-localization/store/use-language-view-store", async (importOriginal) => {
   const actual =
-    await importOriginal<
-      typeof import("@blocks-localization/store/use-language-view-store")
-    >();
+    await importOriginal<typeof import("@blocks-localization/store/use-language-view-store")>();
   return {
     ...actual,
     updateLanguageViewTenantId: vi.fn(),
@@ -154,10 +148,7 @@ const oneKey = (overrides: Record<string, unknown> = {}) => ({
 });
 
 // Set the persisted view store deterministically before each render.
-const primeStore = (
-  selectedLanguages: string[] = [],
-  selectedOptionalColumns: string[] = [],
-) =>
+const primeStore = (selectedLanguages: string[] = [], selectedOptionalColumns: string[] = []) =>
   useLanguageViewStore.setState({
     selectedLanguages,
     selectedOptionalColumns,
@@ -337,9 +328,9 @@ describe("language-table (extra coverage)", () => {
       setKeys(oneKey());
       const { container } = renderWithProviders(<LanguageTable />);
       // The clear (X) buttons call onChange("") synchronously.
-      const clearButtons = Array.from(
-        container.querySelectorAll("button"),
-      ).filter((b) => b.querySelector(".lucide-x"));
+      const clearButtons = Array.from(container.querySelectorAll("button")).filter((b) =>
+        b.querySelector(".lucide-x"),
+      );
       fireEvent.click(clearButtons[clearButtons.length - 1]);
       const updater = setQueryParams.mock.calls.at(-1)![0] as (
         prev: Record<string, unknown>,
@@ -379,9 +370,7 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       await user.click(getRowActionsTrigger());
       await user.click(await screen.findByText("View details"));
-      expect(navigate).toHaveBeenCalledWith(
-        "/scoped/services/language/translations/k1",
-      );
+      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
     });
 
     it("opens and confirms the single-key translate dialog", async () => {
@@ -393,9 +382,7 @@ describe("language-table (extra coverage)", () => {
       await user.click(getRowActionsTrigger());
       await user.click(await screen.findByText("Translate"));
       expect(await screen.findByText("Auto-translate this key?")).toBeTruthy();
-      const confirm = screen
-        .getAllByRole("button", { name: "Translate" })
-        .at(-1)!;
+      const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
       // After a successful translate the empty de-DE cell shows the loading text.
@@ -410,9 +397,7 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       await user.click(getRowActionsTrigger());
       await user.click(await screen.findByText("Translate"));
-      const confirm = screen
-        .getAllByRole("button", { name: "Translate" })
-        .at(-1)!;
+      const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
     });
@@ -425,9 +410,7 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       await user.click(getRowActionsTrigger());
       await user.click(await screen.findByText("Translate"));
-      const confirm = screen
-        .getAllByRole("button", { name: "Translate" })
-        .at(-1)!;
+      const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
     });
@@ -501,34 +484,26 @@ describe("language-table (extra coverage)", () => {
       await openView();
       await user.click(await screen.findByText("Completeness"));
       await waitFor(() =>
-        expect(
-          useLanguageViewStore.getState().selectedOptionalColumns,
-        ).toContain("completeness"),
+        expect(useLanguageViewStore.getState().selectedOptionalColumns).toContain("completeness"),
       );
 
       await openView();
       await user.click(await screen.findByText("Created Date"));
       await waitFor(() =>
-        expect(
-          useLanguageViewStore.getState().selectedOptionalColumns,
-        ).toContain("createDate"),
+        expect(useLanguageViewStore.getState().selectedOptionalColumns).toContain("createDate"),
       );
 
       await openView();
       await user.click(await screen.findByText("Last Updated Date"));
       await waitFor(() =>
-        expect(
-          useLanguageViewStore.getState().selectedOptionalColumns,
-        ).toContain("lastUpdateDate"),
+        expect(useLanguageViewStore.getState().selectedOptionalColumns).toContain("lastUpdateDate"),
       );
 
       // Toggle a language via the checkbox item.
       await openView();
       await user.click(await screen.findByText("German"));
       await waitFor(() =>
-        expect(useLanguageViewStore.getState().selectedLanguages).toContain(
-          "de-DE",
-        ),
+        expect(useLanguageViewStore.getState().selectedLanguages).toContain("de-DE"),
       );
     });
 
@@ -540,9 +515,7 @@ describe("language-table (extra coverage)", () => {
       await user.click(screen.getByText("View"));
       // The "Languages" master checkbox is checked; clicking clears selection.
       await user.click(await screen.findByLabelText("Languages"));
-      await waitFor(() =>
-        expect(useLanguageViewStore.getState().selectedLanguages).toEqual([]),
-      );
+      await waitFor(() => expect(useLanguageViewStore.getState().selectedLanguages).toEqual([]));
     });
 
     it("select-all selects every language when none are selected", async () => {
@@ -553,9 +526,10 @@ describe("language-table (extra coverage)", () => {
       await user.click(screen.getByText("View"));
       await user.click(await screen.findByLabelText("Languages"));
       await waitFor(() =>
-        expect(
-          useLanguageViewStore.getState().selectedLanguages.sort(),
-        ).toEqual(["de-DE", "en-US"]),
+        expect(useLanguageViewStore.getState().selectedLanguages.sort()).toEqual([
+          "de-DE",
+          "en-US",
+        ]),
       );
     });
   });
@@ -594,9 +568,7 @@ describe("language-table (extra coverage)", () => {
       const { container } = renderWithProviders(<LanguageTable />);
       await user.click(openTopMenu(container));
       await user.click(await screen.findByText("Export History"));
-      expect(navigate).toHaveBeenCalledWith(
-        "/scoped/services/language/export-history",
-      );
+      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/export-history");
     });
   });
 
@@ -678,9 +650,7 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       selectRow();
       fireEvent.click(screen.getByText("Translate"));
-      const confirm = screen
-        .getAllByRole("button", { name: "Translate" })
-        .at(-1)!;
+      const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       fireEvent.click(confirm);
       await waitFor(() => expect(bulkTranslateAsync).toHaveBeenCalled());
     });
@@ -692,9 +662,7 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       selectRow();
       fireEvent.click(screen.getByText("Translate"));
-      const confirm = screen
-        .getAllByRole("button", { name: "Translate" })
-        .at(-1)!;
+      const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       fireEvent.click(confirm);
       await waitFor(() => expect(bulkTranslateAsync).toHaveBeenCalled());
     });

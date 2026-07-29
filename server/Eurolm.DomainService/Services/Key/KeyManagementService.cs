@@ -320,7 +320,8 @@ namespace Eurolm.DomainService.Services
                     if (!string.IsNullOrWhiteSpace(glossary.Name) &&
                         System.Text.RegularExpressions.Regex.IsMatch(
                             resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Name),
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+                            System.TimeSpan.FromSeconds(1)))
                     {
                         isMatch = true;
                         break;
@@ -329,7 +330,8 @@ namespace Eurolm.DomainService.Services
                     if (!string.IsNullOrWhiteSpace(glossary.Context) &&
                         System.Text.RegularExpressions.Regex.IsMatch(
                             resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Context),
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+                            System.TimeSpan.FromSeconds(1)))
                     {
                         isMatch = true;
                         break;
@@ -344,7 +346,7 @@ namespace Eurolm.DomainService.Services
             return response;
         }
 
-        public async Task<BaseMutationResponse> DeleteAsysnc(DeleteKeyRequest request)
+        public async Task<BaseMutationResponse> DeleteAsync(DeleteKeyRequest request)
         {
             _logger.LogInformation("Deleting Key start");
 

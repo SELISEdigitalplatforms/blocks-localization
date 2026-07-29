@@ -1,14 +1,18 @@
-# Blocks EuroLM (blocks-localization)
+# Blocks Localization (blocks-localization)
 
-ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud admin** surfaces with **EuroLM** domain extensions (`Eurolm.DomainService`). The web host (**Genesis**/Blocks configuration, FluentValidation, health checks) serves the SPA from `server/Api/wwwroot`; `GlobalApiRoutePrefixConvention` prefixes attribute routes with `api`. A separate **Worker** (`blocks-eurolm-worker`) runs message consumers. Node/npm are for the client toolchain (`npm install`, `npm run dev`, `npm run build`).
+> Product name: **Blocks Localization**. The legacy name *EuroLM* survives only
+> in internal plumbing (namespaces such as `Eurolm.DomainService`, `eurolm_*`
+> message queues) and is being retired incrementally.
+
+ASP.NET Core (**net10.0**) + React (Vite, TypeScript) **Blocks Identity / cloud admin** surfaces with **Blocks Localization** domain extensions (`Eurolm.DomainService`, legacy *EuroLM* naming). The web host (**Genesis**/Blocks configuration, FluentValidation, health checks) serves the SPA from `server/Api/wwwroot`; `GlobalApiRoutePrefixConvention` prefixes attribute routes with `api`. A separate **Worker** (`blocks-eurolm-worker`) runs message consumers. Node/npm are for the client toolchain (`npm install`, `npm run dev`, `npm run build`).
 
 ## Project structure
 
 ```
 blocks-localization/
-├── client/                                   # React + Vite + TypeScript (package name: blocks-idp-client)
-│   ├── app/                                  # Source (idp, cross-modules, routes, components, lib, …)
-│   │   ├── idp/                              # Auth, IAM, captcha, API settings, …
+├── client/                                   # React + Vite + TypeScript (package name: blocks-localization-client)
+│   ├── app/                                  # Source (iam, cross-modules, routes, components, lib, …)
+│   │   ├── iam/                              # Auth, IAM, captcha, API settings, …
 │   │   ├── cross-modules/                     # Shared areas (ai, communication, identifier, lmt, …)
 │   │   ├── routes/, pages/, layouts/, hooks/
 │   │   └── lib/                              # e.g. get-api-path.ts, runtime-env.ts, http-client.ts
@@ -25,7 +29,7 @@ blocks-localization/
 │   │   └── Properties/launchSettings.json    # Example: http://localhost:5000
 │   ├── Worker/                               # Background consumers (hosted service name in code)
 │   ├── Eurolm.DomainService/                  # EuroLM-specific services and data
-│   ├── DomainService/                        # Standalone *.csproj on disk — not in Blocks.slnx; most `DomainService.*` namespaces live under other *Domain* projects
+│   ├── DomainService/                        # Standalone *.csproj on disk; not in Blocks.slnx; most `DomainService.*` namespaces live under other *Domain* projects
 │   ├── Authentication.DomainService/
 │   ├── Captcha.DomainService/
 │   ├── Cloud.DomainService/
@@ -43,6 +47,8 @@ blocks-localization/
 ├── run-api-only.sh                           # Free :5000, dotnet run Api
 ├── run-fe-only.sh                            # Prompt for Vite `--host`; map /etc/hosts; npm run dev
 ├── run-worker-only.sh                         # dotnet run Worker
+├── e2e/                                      # Playwright end-to-end tests (see e2e/README.md)
+├── scripts/                                  # scan.sh and deploy.sh entry points
 ├── Dockerfile, Dockerfile.worker              # CI/production images (multi-stage API + Worker)
 ├── LICENSE
 ├── README.md
@@ -53,12 +59,12 @@ blocks-localization/
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) — see `server/Directory.Build.props` (`net10.0`)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download); see `server/Directory.Build.props` (`net10.0`)
 - [Node.js](https://nodejs.org/) (local dev; **[Dockerfile](Dockerfile)** uses **Node 22** for reproducible frontend builds)
 
 ### Local infrastructure
 
-This app expects Genesis/Blocks configuration and backing services appropriate to your environment. For local stacks (databases, messaging, related services), use **[blocks-infra](https://github.com/SELISEdigitalplatforms/blocks-infra)** Docker Compose **as documented in that repository** (`docker compose up`, etc.) — bring Compose up **before** or alongside the API/Worker here so connectivity and vault/secrets behave as intended.
+This app expects Genesis/Blocks configuration and backing services appropriate to your environment. For local stacks (databases, messaging, related services), use **[blocks-infra](https://github.com/SELISEdigitalplatforms/blocks-infra)** Docker Compose **as documented in that repository** (`docker compose up`, etc.); bring Compose up **before** or alongside the API/Worker here so connectivity and vault/secrets behave as intended.
 
 Docker alone is optional for raw `dotnet`/`npm` runs unless you explicitly depend on that Compose stack.
 
@@ -95,7 +101,7 @@ chmod +x run.sh   # once
 
 - Installs **`client/node_modules`** with `npm i` only if missing
 - Builds the client (`npm run build`)
-- If **`client/dist/`** exists, rsync-syncs **`client/dist/`** → **`server/Api/wwwroot/`** (`rsync -a --delete`) — redundant when Vite output already targets `wwwroot` (current config)
+- If **`client/dist/`** exists, rsync-syncs **`client/dist/`** → **`server/Api/wwwroot/`** (`rsync -a --delete`); redundant when Vite output already targets `wwwroot` (current config)
 - Frees listeners on **`5000`** via `lsof` + kill
 - Starts **Worker** as a **background** job, then runs **Api** (foreground); **Ctrl+C** / cleanup stops the Worker
 
@@ -188,7 +194,7 @@ Copy **`client/.env.example`** → **`client/.env`** for values consumed at **`n
 | **`BLOCKS_BLOCKED_MENU`** | JSON string for menu filtering (`client/app/hooks/use-filtered-menus.ts`) |
 | **`BLOCKS_GITHUB_CLIENT_ID`** | DevOps/GitHub OAuth client id (`client/app/cross-modules/devops/services/providers.service.ts`) |
 
-Type-only / optional: **`BLOCKS_CLOUD_DASHBOARD_URL`** is declared in `client/app/vite-env.d.ts` — search usages if you rely on it.
+Type-only / optional: **`BLOCKS_CLOUD_DASHBOARD_URL`** is declared in `client/app/vite-env.d.ts`: search usages if you rely on it.
 
 Server-side (**API** startup): **`BLOCKS_VAULT_TYPE`** selects Genesis vault parsing when set; otherwise **`ASPNETCORE_ENVIRONMENT`/`Development` → OnPrem**, else **`Azure`** (`server/Api/Program.cs`, `server/Worker`).
 
@@ -207,12 +213,46 @@ No Node process is needed on the server at runtime unless you deliberately run t
 
 Worker image/pattern: **`Dockerfile.worker`**.
 
+## Tests
+
+Run from the repository root:
+
+```bash
+# backend unit tests (xUnit)
+dotnet test server/XUnitTest/XUnitTest.csproj
+
+# frontend unit tests (Vitest)
+npm --prefix client run test
+
+# end-to-end tests (Playwright); needs a reachable app and e2e/.env.e2e,
+# see e2e/README.md for setup and target modes
+npm --prefix e2e run test
+```
+
+Coverage:
+
+```bash
+dotnet test server/XUnitTest/XUnitTest.csproj --collect:"XPlat Code Coverage"
+npm --prefix client run test -- --coverage
+```
+
+## Scanning and deployment
+
+- `scripts/scan.sh` is the security scan entry point (SAST, SCA and secret scanning). It is intentionally not tracked in git; internal environments provide it.
+- `scripts/deploy.sh` is the maintainer deploy script for a systemd host: it checks out the latest `inception`, builds the client, publishes the Api and Worker projects, and installs and restarts their systemd services.
+
 ## API / routing
 
 - Controllers: **`server/Api/Controllers/`** (e.g. **Authentication**, **Iam**, **Mfa**, **Captcha**, **Key**, **Mail**, **Storage**, **Assistant**, **Module**, **Project**, **People**, **Language**, **Glossary**, **Migration**, **Log**, **Trace**, **Notification**, **Discovery** (routes under **`[Route(".well-known")]`** prefixed with **`api`**), …).
-- Global prefix: **`api`** — **`GlobalApiRoutePrefixConvention`** in **`Program.cs`** prefixes every controller **`[Route(...)]`**.
+- Global prefix: **`api`**: **`GlobalApiRoutePrefixConvention`** in **`Program.cs`** prefixes every controller **`[Route(...)]`**.
 - SPA: **`UseDefaultFiles`**, **`UseStaticFiles`**, **`MapFallbackToFile("/index.html")`** when `wwwroot/index.html` exists (`Program.cs`).
-- **`/api`** is effectively reserved by the ASP.NET routing convention; Genesis may also expose other path prefixes in middleware — tune CORS/origin **when splitting Vite (**`:4000`**) from Kestrel (**`:5000`**)**.
+- **`/api`** is effectively reserved by the ASP.NET routing convention; Genesis may also expose other path prefixes in middleware; tune CORS/origin **when splitting Vite (**`:4000`**) from Kestrel (**`:5000`**)**.
+
+## Contributing and security
+
+- Contribution conventions and workflow: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Reporting a vulnerability: [SECURITY.md](SECURITY.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ## License
 

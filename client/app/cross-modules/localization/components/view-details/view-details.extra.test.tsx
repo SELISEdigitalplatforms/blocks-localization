@@ -89,9 +89,7 @@ describe("view-details (extra coverage)", () => {
     h.useGetGlobalGlossaries.mockReturnValue({
       data: { items: [{ itemId: "gg1", name: "GlobalTerm" }] },
     } as never);
-    renderWithProviders(
-      <ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />,
-    );
+    renderWithProviders(<ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />);
     expect(screen.getByText("TaggedTerm")).toBeTruthy();
     expect(screen.getByText("GlobalTerm")).toBeTruthy();
   });
@@ -104,9 +102,7 @@ describe("view-details (extra coverage)", () => {
     h.useGetGlobalGlossaries.mockReturnValue({
       data: { items: [{ itemId: "gl1", name: "TaggedTerm" }] },
     } as never);
-    renderWithProviders(
-      <ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />,
-    );
+    renderWithProviders(<ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />);
     // Only the tagged badge renders it once.
     expect(screen.getAllByText("TaggedTerm").length).toBe(1);
   });
@@ -120,8 +116,6 @@ describe("view-details (extra coverage)", () => {
     expect(screen.getByText("SuggestedTerm")).toBeTruthy();
     fireEvent.click(screen.getByTitle("Tag to key"));
     await waitFor(() => expect(saveKey).toHaveBeenCalled());
-    expect(saveKey).toHaveBeenCalledWith(
-      expect.objectContaining({ glossaryIds: ["sg1"] }),
-    );
+    expect(saveKey).toHaveBeenCalledWith(expect.objectContaining({ glossaryIds: ["sg1"] }));
   });
 });

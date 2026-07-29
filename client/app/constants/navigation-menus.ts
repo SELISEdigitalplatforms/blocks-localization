@@ -1,4 +1,4 @@
-import { BookText, Languages, Blocks, Cog, Home, Package } from "lucide-react";
+import { BookText, Languages, Blocks, Cog, Home, Package, FileText } from "lucide-react";
 import { Menu } from "@/models/menu-models";
 
 export const navigationMenus: Menu[] = [
@@ -40,6 +40,13 @@ export const navigationMenus: Menu[] = [
     name: "Configuration",
     path: "/app/services/configure",
     icon: Cog,
+  },
+  {
+    type: "menu",
+    id: "service-localization__extension-guides",
+    name: "Extension Guides",
+    path: "/app/services/extension-guides",
+    icon: FileText,
   },
   {
     id: "environments",

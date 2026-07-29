@@ -47,11 +47,7 @@ describe("identifier/constants/index", () => {
   });
 
   it("REGISTER_SERVICE_TYPES should list the three labelled options", () => {
-    expect(REGISTER_SERVICE_TYPES.map((t) => t.label)).toEqual([
-      "None",
-      "API",
-      "Worker",
-    ]);
+    expect(REGISTER_SERVICE_TYPES.map((t) => t.label)).toEqual(["None", "API", "Worker"]);
   });
 
   it("should expose environment, log-level, service-status and trace-status tables", () => {

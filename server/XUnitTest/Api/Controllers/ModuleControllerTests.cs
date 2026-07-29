@@ -58,19 +58,16 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullModule_DelegatesToServiceWithoutThrowing()
+        public async Task Save_WithNullModule_ReturnsFailureWithoutCallingService()
         {
-            // The controller calls BadRequest(...) but discards the result and still delegates
-            // to the service with the null argument; it must not throw.
-            var response = new ApiResponse { Success = false };
-            _moduleManagementServiceMock
-                .Setup(x => x.SaveModuleAsync(null))
-                .ReturnsAsync(response);
-
+            // The null guard now returns a failed ApiResponse early instead of
+            // discarding BadRequest and delegating the null argument to the service.
             var result = await _controller.Save(null);
 
-            result.Should().BeSameAs(response);
-            _moduleManagementServiceMock.Verify(x => x.SaveModuleAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Module cannot be null.");
+            _moduleManagementServiceMock.Verify(x => x.SaveModuleAsync(It.IsAny<SaveModuleRequest>()), Times.Never);
         }
 
         [Fact]
@@ -113,11 +110,11 @@ namespace XUnitTest
             };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ReturnsAsync(expectedModules);
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().NotBeNull();
@@ -131,11 +128,11 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ReturnsAsync(new List<BlocksLanguageModule>());
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().BeEmpty();
@@ -148,11 +145,11 @@ namespace XUnitTest
             var query = new GetModulesQuery { };
 
             _moduleManagementServiceMock
-                .Setup(x => x.GetModulesAsync("test"))
+                .Setup(x => x.GetModulesAsync())
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            Func<Task> act = async () => await _controller.Gets("test");
+            Func<Task> act = async () => await _controller.Gets();
 
             // Assert
             await act.Should().ThrowAsync<Exception>();
@@ -164,18 +161,18 @@ namespace XUnitTest
         public async Task Gets_WithUnmappedProjectKey_ReturnsNull()
         {
             // No mock set up for the given project key -> service returns default (null).
-            var result = await _controller.Gets("unmapped");
+            var result = await _controller.Gets();
 
             result.Should().BeNull();
         }
 
         [Fact]
-        public async Task GetCloudsModules_ReturnsAllModules()
+        public async Task GetModulesForCurrentTenant_ReturnsAllModules()
         {
             var modules = new List<BlocksLanguageModule> { new BlocksLanguageModule { ModuleName = "auth" } };
             _moduleManagementServiceMock.Setup(x => x.GetModulesAsync((string?)null)).ReturnsAsync(modules);
 
-            var result = await _controller.GetCloudsModules();
+            var result = await _controller.GetModulesForCurrentTenant();
 
             result.Should().HaveCount(1);
         }

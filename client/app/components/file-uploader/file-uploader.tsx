@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui-kits/input/input";
 import { cn } from "@/lib/utils";
 import {
@@ -71,7 +70,6 @@ export const FileUploader = forwardRef<
     ref,
   ) => {
     const [isFileTooBig, setIsFileTooBig] = useState(false);
-    const [isLOF, setIsLOF] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
     const {
       accept = {
@@ -84,6 +82,8 @@ export const FileUploader = forwardRef<
 
     const reSelectAll = maxFiles === 1 ? true : reSelect;
     const direction: DirectionOptions = dir === "rtl" ? "rtl" : "ltr";
+    // Derived during render instead of via a state-setting effect.
+    const isLOF = !!value && value.length === maxFiles;
 
     const removeFileFromSet = useCallback(
       (i: number) => {
@@ -184,20 +184,20 @@ export const FileUploader = forwardRef<
           for (let i = 0; i < rejectedFiles.length; i++) {
             if (rejectedFiles[i].errors[0]?.code === "file-too-large") {
               showErrorToast({
-                errors: `File is too large. Max size is ${maxSize / 1024 / 1024}MB`
+                errors: `File is too large. Max size is ${maxSize / 1024 / 1024}MB`,
               });
               break;
             }
             if (rejectedFiles[i].errors[0]?.code === "file-invalid-type") {
               showErrorToast({
-                errors: "Invalid file type"
+                errors: "Invalid file type",
               });
               break;
             }
             if (rejectedFiles[i].errors[0]?.message) {
               toast.error(rejectedFiles[i].errors[0].message);
               showErrorToast({
-                errors: rejectedFiles[i].errors[0].message
+                errors: rejectedFiles[i].errors[0].message,
               });
               break;
             }
@@ -208,14 +208,6 @@ export const FileUploader = forwardRef<
       [reSelectAll, value],
     );
 
-    useEffect(() => {
-      if (!value) return;
-      if (value.length === maxFiles) {
-        setIsLOF(true);
-        return;
-      }
-      setIsLOF(false);
-    }, [value, maxFiles]);
 
     const opts = dropzoneOptions ? dropzoneOptions : { accept, maxFiles, maxSize, multiple };
 
@@ -265,7 +257,6 @@ export const FileUploaderContent = forwardRef<HTMLDivElement, React.HTMLAttribut
     const containerRef = useRef<HTMLDivElement>(null);
 
     return (
-      // eslint-disable-next-line jsx-a11y/aria-props
       <div className={cn("w-full px-1")} ref={containerRef} aria-description="content file holder">
         <div
           {...props}

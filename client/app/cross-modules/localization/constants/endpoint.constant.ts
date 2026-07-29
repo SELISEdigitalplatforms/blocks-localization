@@ -29,7 +29,7 @@ export const LANGUAGE_KEY_ENDPOINTS = {
 
 // Language Module endpoints
 export const LANGUAGE_MODULE_ENDPOINTS = {
-  GETS: `${API_BASES.UILM}${MODULE_SUBPATH}/GetCloudsModules`,
+  GETS: `${API_BASES.UILM}${MODULE_SUBPATH}/GetModulesForCurrentTenant`,
   SAVE: `${API_BASES.UILM}${MODULE_SUBPATH}/Save`,
   DELETE: `${API_BASES.UILM}${MODULE_SUBPATH}/Delete`,
   TAG_GLOSSARY: `${API_BASES.UILM}${MODULE_SUBPATH}/TagGlossary`,
@@ -37,7 +37,7 @@ export const LANGUAGE_MODULE_ENDPOINTS = {
 
 // Language endpoints
 export const LANGUAGE_ENDPOINTS = {
-  GETS: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/GetCloudsLanguages`,
+  GETS: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/GetLanguagesForCurrentTenant`,
   SAVE: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/Save`,
   DELETE: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/Delete`,
   SET_DEFAULT: `${API_BASES.UILM}${LANGUAGE_SUBPATH}/SetDefault`,
@@ -50,7 +50,7 @@ export const LANGUAGE_ASSISTANT_ENDPOINTS = {
 
 // Config endpoints
 export const CONFIG_ENDPOINTS = {
-  GET_WEBHOOK: `${API_BASES.UILM}${CONFIG_SUBPATH}/GetCloudWebHook`,
+  GET_WEBHOOK: `${API_BASES.UILM}${CONFIG_SUBPATH}/GetWebHookForCurrentTenant`,
   SAVE_WEBHOOK: `${API_BASES.UILM}${CONFIG_SUBPATH}/SaveWebHook`,
 } as const;
 

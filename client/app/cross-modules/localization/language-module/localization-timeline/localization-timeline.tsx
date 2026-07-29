@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Card,
@@ -138,7 +137,9 @@ function OperationDetailModal({
           </div>
         ) : !data || data.timelines.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">No details found for this operation.</p>
-        ) : data.timelines[0]?.logFrom === "Published" && !data.timelines[0]?.currentData && !data.timelines[0]?.previousData ? (
+        ) : data.timelines[0]?.logFrom === "Published" &&
+          !data.timelines[0]?.currentData &&
+          !data.timelines[0]?.previousData ? (
           <p className="py-4 text-sm text-muted-foreground">No changes published.</p>
         ) : (
           <>

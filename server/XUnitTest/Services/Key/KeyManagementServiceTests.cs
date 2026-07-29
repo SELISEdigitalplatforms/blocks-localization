@@ -593,7 +593,7 @@ namespace XUnitTest
                 .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _service.DeleteAsysnc(request);
+            var result = await _service.DeleteAsync(request);
 
             // Assert
             result.Should().NotBeNull();
@@ -611,7 +611,7 @@ namespace XUnitTest
                 .ReturnsAsync((Key)null);
 
             // Act
-            var result = await _service.DeleteAsysnc(request);
+            var result = await _service.DeleteAsync(request);
 
             // Assert
             result.Should().NotBeNull();
