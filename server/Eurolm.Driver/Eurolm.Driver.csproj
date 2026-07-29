@@ -2,8 +2,8 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
-		<Version>4.0.0</Version>
-		<PackageId>SeliseBlocks.EurolmDriver.OS</PackageId>
+		<Version>4.0.1</Version>
+		<PackageId>SeliseBlocks.Localization.OS</PackageId>
 		<Authors>SeliseBlocks</Authors>
 		<Company>SeliseBlocks</Company>
 		<Description>Blocks Eurolm Driver</Description>
