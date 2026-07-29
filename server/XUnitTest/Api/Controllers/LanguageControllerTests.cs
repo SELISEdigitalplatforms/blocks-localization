@@ -57,17 +57,14 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Save_WithNullLanguage_DelegatesToServiceWithoutThrowing()
+        public async Task Save_WithNullLanguage_ReturnsFailureWithoutCallingService()
         {
-            var response = new ApiResponse { Success = false };
-            _languageManagementServiceMock
-                .Setup(x => x.SaveLanguageAsync(null))
-                .ReturnsAsync(response);
-
             var result = await _controller.Save(null);
 
-            result.Should().BeSameAs(response);
-            _languageManagementServiceMock.Verify(x => x.SaveLanguageAsync(null), Times.Once);
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Language cannot be null.");
+            _languageManagementServiceMock.Verify(x => x.SaveLanguageAsync(It.IsAny<Language>()), Times.Never);
         }
 
         #endregion
@@ -86,11 +83,11 @@ namespace XUnitTest
             };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(expectedLanguages);
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().NotBeNull();
@@ -104,11 +101,11 @@ namespace XUnitTest
             var request = new GetLanguagesRequest {  };
 
             _languageManagementServiceMock
-                .Setup(x => x.GetLanguagesAsync("test"))
+                .Setup(x => x.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language>());
 
             // Act
-            var result = await _controller.Gets("test");
+            var result = await _controller.Gets();
 
             // Assert
             result.Should().BeEmpty();
@@ -126,7 +123,7 @@ namespace XUnitTest
             var expectedResponse = new BaseMutationResponse { IsSuccess = true };
 
             _languageManagementServiceMock
-                .Setup(x => x.DeleteAsysnc(request))
+                .Setup(x => x.DeleteAsync(request))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -221,15 +218,29 @@ namespace XUnitTest
         public async Task Gets_WithUnmappedProjectKey_ReturnsNull()
         {
             // No mock set up for this project key -> service returns default (null).
-            var result = await _controller.Gets("unmapped");
+            var result = await _controller.Gets();
 
             result.Should().BeNull();
         }
 
         [Fact]
-        public async Task Delete_WithNullRequest_ThrowsNullReferenceException()
+        public async Task Delete_WithNullRequest_ReturnsBadRequest()
         {
-            await Assert.ThrowsAsync<NullReferenceException>(() => _controller.Delete(null));
+            // The null guard now returns BadRequest early instead of discarding it and
+            // dereferencing the null request (which used to throw NullReferenceException).
+            var result = await _controller.Delete(null);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _languageManagementServiceMock.Verify(x => x.DeleteAsync(It.IsAny<DeleteLanguageRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SetDefault_WithNullRequest_ReturnsBadRequest()
+        {
+            var result = await _controller.SetDefault(null);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _languageManagementServiceMock.Verify(x => x.SetDefaultLanguage(It.IsAny<SetDefaultLanguageRequest>()), Times.Never);
         }
     }
 }

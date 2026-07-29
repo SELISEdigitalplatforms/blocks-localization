@@ -55,20 +55,12 @@ const AutoTranslate: React.FC = () => {
       </DialogHeader>
       <DialogFooter className="mt-6">
         <DialogTrigger asChild>
-          <Button
-            disabled={isPending}
-            variant="secondary"
-            className="min-w-[80px]"
-          >
+          <Button disabled={isPending} variant="secondary" className="min-w-[80px]">
             Cancel
           </Button>
         </DialogTrigger>
         <DialogTrigger asChild>
-          <Button
-            disabled={isPending}
-            className="min-w-[80px]"
-            onClick={handleTranslate}
-          >
+          <Button disabled={isPending} className="min-w-[80px]" onClick={handleTranslate}>
             Yes
           </Button>
         </DialogTrigger>

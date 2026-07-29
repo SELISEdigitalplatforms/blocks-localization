@@ -77,18 +77,14 @@ describe("components/search-input", () => {
   };
 
   it("should show a toggle button when toggleable and hidden", () => {
-    const { container } = render(
-      <Harness toggleable isVisible={false} onSearch={vi.fn()} />,
-    );
+    const { container } = render(<Harness toggleable isVisible={false} onSearch={vi.fn()} />);
     // Only the toggle button is rendered (no input).
     expect(container.querySelector("input")).toBeNull();
     expect(container.querySelector("button")).toBeTruthy();
   });
 
   it("should reveal the input when the toggle button is clicked", () => {
-    const { container } = render(
-      <Harness toggleable isVisible={false} onSearch={vi.fn()} />,
-    );
+    const { container } = render(<Harness toggleable isVisible={false} onSearch={vi.fn()} />);
     fireEvent.click(container.querySelector("button")!);
     expect(container.querySelector("input")).toBeTruthy();
   });
@@ -112,9 +108,7 @@ describe("components/search-input", () => {
   });
 
   it("should hide the input on clear when toggleable", () => {
-    const { container } = render(
-      <Harness value="preset" toggleable onSearch={vi.fn()} />,
-    );
+    const { container } = render(<Harness value="preset" toggleable onSearch={vi.fn()} />);
     const buttons = container.querySelectorAll("button");
     fireEvent.click(buttons[buttons.length - 1]);
     // toggleable clear collapses back to the toggle button.

@@ -17,18 +17,18 @@ vi.mock("@seliseblocks/blocks-kit/lib", () => {
 import { HttpClient, serviceInstances } from "@/lib/http-client";
 
 describe("lib/http-client", () => {
-  it("should expose localization, logic and idp service instances", () => {
+  it("should expose localization, logic and iam service instances", () => {
     expect(serviceInstances.localizationService).toBeInstanceOf(HttpClient);
     expect(serviceInstances.logicService).toBeInstanceOf(HttpClient);
-    expect(serviceInstances.idpService).toBeInstanceOf(HttpClient);
+    expect(serviceInstances.iamService).toBeInstanceOf(HttpClient);
   });
 
   it("should build each client with the resolved runtime env values", () => {
-    expect((serviceInstances.localizationService as any).config).toEqual({
+    expect((serviceInstances.localizationService as unknown as { config: unknown }).config).toEqual({
       baseURL: "env:BLOCKS_LOCALIZATION_BASE_URL",
       blocksKey: "env:BLOCKS_X_BLOCKS_KEY",
     });
-    expect((serviceInstances.logicService as any).config).toEqual({
+    expect((serviceInstances.logicService as unknown as { config: unknown }).config).toEqual({
       baseURL: "env:BLOCKS_LOGIC_BASE_URL",
       blocksKey: "env:BLOCKS_X_BLOCKS_KEY",
     });

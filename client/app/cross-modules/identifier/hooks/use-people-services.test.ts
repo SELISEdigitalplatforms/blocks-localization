@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { peopleService } from "@blocks-identifier/services/people.service";
-import { serviceRegistryService } from "@blocks-identifier/services/service-registery.service";
+import { serviceRegistryService } from "@blocks-identifier/services/service-registry.service";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as peopleHooks from "./use-people";
 import * as serviceHooks from "./use-services";
@@ -21,7 +21,7 @@ vi.mock("@blocks-identifier/services/people.service", () => ({
     transferOwnership: vi.fn(),
   },
 }));
-vi.mock("@blocks-identifier/services/service-registery.service", () => ({
+vi.mock("@blocks-identifier/services/service-registry.service", () => ({
   serviceRegistryService: {
     registerService: vi.fn(),
     getAllServices: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("@blocks-identifier/services/service-registery.service", () => ({
 
 const people = vi.mocked(peopleService);
 const services = vi.mocked(serviceRegistryService);
-const renderQ = <T,>(cb: () => T) => {
+const renderQ = <T>(cb: () => T) => {
   const { wrapper } = createQueryWrapper();
   return renderHook(cb, { wrapper });
 };
@@ -59,9 +59,21 @@ describe("identifier/hooks/use-people", () => {
     ["useInvitePeople", () => peopleHooks.useInvitePeople(), () => people.invitePeople],
     ["useResendInvitation", () => peopleHooks.useResendInvitation(), () => people.resendInvitation],
     ["useRemoveAccess", () => peopleHooks.useRemoveAccess(), () => people.removeAccess],
-    ["useRemoveEnvironmentAccess", () => peopleHooks.useRemoveEnvironmentAccess(), () => people.removeEnvironmentAccess],
-    ["useConfirmInvitation", () => peopleHooks.useConfirmInvitation(), () => people.confirmInvitation],
-    ["useTransferOwnership", () => peopleHooks.useTransferOwnership(), () => people.transferOwnership],
+    [
+      "useRemoveEnvironmentAccess",
+      () => peopleHooks.useRemoveEnvironmentAccess(),
+      () => people.removeEnvironmentAccess,
+    ],
+    [
+      "useConfirmInvitation",
+      () => peopleHooks.useConfirmInvitation(),
+      () => people.confirmInvitation,
+    ],
+    [
+      "useTransferOwnership",
+      () => peopleHooks.useTransferOwnership(),
+      () => people.transferOwnership,
+    ],
   ])("%s mutation should call its service", async (_name, hook, getFn) => {
     getFn().mockResolvedValue({ isSuccess: true } as never);
     const { result } = renderQ(hook as never);

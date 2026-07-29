@@ -20,6 +20,7 @@ vi.mock("@/constants/endpoint.constant", () => ({
     UILM: "/api",
     UTILITIES: "/api",
     CLOUD_BUILD: "/api",
+    IAM: "/api",
     IDP: "/api",
     IDENTIFIER: "/api",
     LMT: "/api",
@@ -60,9 +61,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each(Object.entries(expected))("should expose %s = %s", (key, value) => {
-      expect((LANGUAGE_KEY_ENDPOINTS as Record<string, string>)[key]).toBe(
-        value,
-      );
+      expect((LANGUAGE_KEY_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });
 
     it("should start every key endpoint with the UILM base", () => {
@@ -79,14 +78,12 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Module/GetCloudsModules`],
+      ["GETS", `${UILM_BASE}/Module/GetModulesForCurrentTenant`],
       ["SAVE", `${UILM_BASE}/Module/Save`],
       ["DELETE", `${UILM_BASE}/Module/Delete`],
       ["TAG_GLOSSARY", `${UILM_BASE}/Module/TagGlossary`],
     ] as const)("should expose %s = %s", (key, value) => {
-      expect((LANGUAGE_MODULE_ENDPOINTS as Record<string, string>)[key]).toBe(
-        value,
-      );
+      expect((LANGUAGE_MODULE_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });
   });
 
@@ -97,7 +94,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GETS", `${UILM_BASE}/Language/GetCloudsLanguages`],
+      ["GETS", `${UILM_BASE}/Language/GetLanguagesForCurrentTenant`],
       ["SAVE", `${UILM_BASE}/Language/Save`],
       ["DELETE", `${UILM_BASE}/Language/Delete`],
       ["SET_DEFAULT", `${UILM_BASE}/Language/SetDefault`],
@@ -126,7 +123,7 @@ describe("localization/constants/endpoint.constant", () => {
     });
 
     it.each([
-      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetCloudWebHook`],
+      ["GET_WEBHOOK", `${UILM_BASE}/Config/GetWebHookForCurrentTenant`],
       ["SAVE_WEBHOOK", `${UILM_BASE}/Config/SaveWebHook`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((CONFIG_ENDPOINTS as Record<string, string>)[key]).toBe(value);
@@ -144,10 +141,7 @@ describe("localization/constants/endpoint.constant", () => {
       ["GETS", `${UILM_BASE}/Glossary/Gets`],
       ["SAVE", `${UILM_BASE}/Glossary/Save`],
       ["DELETE", `${UILM_BASE}/Glossary/Delete`],
-      [
-        "GET_SUGGESTED_GLOSSARIES",
-        `${UILM_BASE}/Glossary/GetSuggestedGlossaries`,
-      ],
+      ["GET_SUGGESTED_GLOSSARIES", `${UILM_BASE}/Glossary/GetSuggestedGlossaries`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((GLOSSARY_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });

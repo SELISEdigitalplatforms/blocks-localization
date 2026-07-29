@@ -15,10 +15,9 @@ vi.mock("@seliseblocks/blocks-kit", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
-vi.mock(
-  "@blocks-localization/components/modals/new-language/new-language",
-  () => ({ default: () => null }),
-);
+vi.mock("@blocks-localization/components/modals/new-language/new-language", () => ({
+  default: () => null,
+}));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguages: vi.fn(),
   useGetWebhook: vi.fn(),
@@ -64,9 +63,7 @@ const setDefaults = () => {
 
 // Open the first row's action menu (the German, non-default row).
 const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-  const triggers = screen
-    .getAllByRole("button")
-    .filter((b) => b.className.includes("h-8 w-8 p-0"));
+  const triggers = screen.getAllByRole("button").filter((b) => b.className.includes("h-8 w-8 p-0"));
   await user.click(triggers[triggers.length - 1]);
 };
 
@@ -98,9 +95,7 @@ describe("configure (extra coverage)", () => {
     await user.click(await screen.findByText("Make default language"));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -112,9 +107,7 @@ describe("configure (extra coverage)", () => {
     await user.click(await screen.findByText("Make default language"));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -205,10 +198,9 @@ describe("configure (extra coverage)", () => {
   it("handles a thrown error from the webhook save", async () => {
     saveWebhookAsync.mockRejectedValue(new Error("network"));
     const { container } = renderWithProviders(<Configure />);
-    fireEvent.change(
-      screen.getByPlaceholderText("https://example.com/webhook"),
-      { target: { value: "https://hooks.example.com/x" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("https://example.com/webhook"), {
+      target: { value: "https://hooks.example.com/x" },
+    });
     fireEvent.change(screen.getByPlaceholderText("application/json"), {
       target: { value: "application/json" },
     });
@@ -220,9 +212,7 @@ describe("configure (extra coverage)", () => {
     });
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 });

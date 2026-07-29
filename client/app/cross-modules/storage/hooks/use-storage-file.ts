@@ -31,8 +31,7 @@ export const useGetPreSignedUrlForUpload = () => {
 export const useUploadFile = () => {
   return useMutation({
     mutationKey: ["storage", "file", "getPresignedUrl"],
-    mutationFn: (payload: IUploadImagePayload) =>
-      storageService.uploadFile(payload),
+    mutationFn: (payload: IUploadImagePayload) => storageService.uploadFile(payload),
   });
 };
 
@@ -69,8 +68,7 @@ export const useDeleteFile = () => {
 
   return useMutation({
     mutationKey: ["storage", "file", "delete"],
-    mutationFn: (payload: IDeleteFilePayload) =>
-      storageService.file.deleteFileByFileId(payload),
+    mutationFn: (payload: IDeleteFilePayload) => storageService.file.deleteFileByFileId(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "file", "getFilesInfo"],
@@ -134,8 +132,7 @@ export const useUploadDmsFile = () => {
 
   return useMutation({
     mutationKey: ["upload", "dms-file"],
-    mutationFn: (payload: IUploadDmsFilePayload) =>
-      storageService.uploadDmsFile(payload),
+    mutationFn: (payload: IUploadDmsFilePayload) => storageService.uploadDmsFile(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "file", "dms-file-and-folder"],
@@ -149,8 +146,7 @@ export const useCreateDmsFolder = () => {
 
   return useMutation({
     mutationKey: ["create-folder", "dms-folder"],
-    mutationFn: (payload: ICreateDmsFolderPayload) =>
-      storageService.createDmsFolder(payload),
+    mutationFn: (payload: ICreateDmsFolderPayload) => storageService.createDmsFolder(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["storage", "file", "dms-file-and-folder"],

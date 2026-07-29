@@ -1,7 +1,10 @@
 import React from "react";
-import { FilterChangeHandler, FilterToolbar, useSortQueryParams } from "@/components/filter-toolbar";
+import {
+  FilterChangeHandler,
+  FilterToolbar,
+  useSortQueryParams,
+} from "@/components/filter-toolbar";
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-
 
 export const useKeysFilterQueryParams = () => {
   const [queryParams, setQueryParams] = useQueryStates({
@@ -29,10 +32,13 @@ export function LanguageTableToolbar({
   languagesData: Array<{ languageCode: string; languageName: string }>;
 }) {
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
-  const onChange: FilterChangeHandler<{ search: string; moduleIds: string[]; missingLanguages: string[]; createDate: { from?: Date; to?: Date } | null, lastUpdateDate: { from?: Date; to?: Date } | null }> = (
-    key,
-    value
-  ) => {
+  const onChange: FilterChangeHandler<{
+    search: string;
+    moduleIds: string[];
+    missingLanguages: string[];
+    createDate: { from?: Date; to?: Date } | null;
+    lastUpdateDate: { from?: Date; to?: Date } | null;
+  }> = (key, value) => {
     if (key === "createDate") {
       const dateValue = value as { from?: Date; to?: Date } | null;
       const from = dateValue?.from;
@@ -42,7 +48,7 @@ export function LanguageTableToolbar({
         ...prev,
         createStartDate: from?.toISOString() || "",
         createEndDate: to?.toISOString() || "",
-        pageNumber: 0
+        pageNumber: 0,
       }));
     }
     if (key === "lastUpdateDate") {
@@ -54,7 +60,7 @@ export function LanguageTableToolbar({
         ...prev,
         lastUpdateStartDate: from?.toISOString() || "",
         lastUpdateEndDate: to?.toISOString() || "",
-        pageNumber: 0
+        pageNumber: 0,
       }));
     }
     setQueryParams((prev) => ({
@@ -118,12 +124,21 @@ export function LanguageTableToolbar({
           to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
         },
         lastUpdateDate: {
-          from: queryParams.lastUpdateStartDate ? new Date(queryParams.lastUpdateStartDate) : undefined,
+          from: queryParams.lastUpdateStartDate
+            ? new Date(queryParams.lastUpdateStartDate)
+            : undefined,
           to: queryParams.lastUpdateEndDate ? new Date(queryParams.lastUpdateEndDate) : undefined,
         },
         resourceSearch: queryParams.resourceSearch,
       }}
-      defaultValues={{ search: "", moduleIds: [], missingLanguages: [], createDate: { from: undefined, to: undefined }, lastUpdateDate: { from: undefined, to: undefined }, resourceSearch: "" }}
+      defaultValues={{
+        search: "",
+        moduleIds: [],
+        missingLanguages: [],
+        createDate: { from: undefined, to: undefined },
+        lastUpdateDate: { from: undefined, to: undefined },
+        resourceSearch: "",
+      }}
       onChange={onChange}
       onReset={onReset}
     />

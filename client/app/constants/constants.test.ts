@@ -9,10 +9,7 @@ import {
 import { environmentOptions } from "@/constants/environment-options";
 import { ModuleName } from "@/constants/modules.constants";
 import { navigationMenus } from "@/constants/navigation-menus";
-import {
-  MIGRATION_ENDPOINTS,
-  PROJECT_ENDPOINTS,
-} from "@/constants/projects";
+import { MIGRATION_ENDPOINTS, PROJECT_ENDPOINTS } from "@/constants/projects";
 
 describe("constants/endpoint.constant", () => {
   it("should expose /api-scoped bases", () => {
@@ -21,6 +18,7 @@ describe("constants/endpoint.constant", () => {
   });
   it("should append /api to runtime-derived bases", () => {
     expect(API_BASES.LOGIC).toContain("/api");
+    expect(API_BASES.IAM).toContain("/api");
     expect(API_BASES.IDP).toContain("/api");
   });
 });
@@ -30,16 +28,12 @@ describe("constants/breadcrumb-custom-title", () => {
     expect(BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language"]).toBe(
       "Language Translation Keys",
     );
-    expect(BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/configure"]).toBe(
-      "Configure",
-    );
+    expect(BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/configure"]).toBe("Configure");
   });
 
   it("should keep the explicit title for a dynamic route that also has one", () => {
     // This route is both `dynamic` and has a `title`; title wins in the loop.
-    expect(
-      BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/modules/:moduleId"],
-    ).toBe("Module");
+    expect(BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/modules/:moduleId"]).toBe("Module");
   });
 
   it("should collect skip paths", () => {
@@ -58,9 +52,7 @@ describe("constants/breadcrumb-custom-title", () => {
 describe("constants/environment-options", () => {
   it("should expose 8 ordered environment options", () => {
     expect(environmentOptions).toHaveLength(8);
-    expect(environmentOptions.map((e) => e.index)).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 7,
-    ]);
+    expect(environmentOptions.map((e) => e.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
   it("should end with Production", () => {
     expect(environmentOptions[7]).toMatchObject({
@@ -87,9 +79,7 @@ describe("constants/navigation-menus", () => {
   });
 
   it("should include exactly one separator", () => {
-    expect(navigationMenus.filter((m) => m.type === "separator")).toHaveLength(
-      1,
-    );
+    expect(navigationMenus.filter((m) => m.type === "separator")).toHaveLength(1);
   });
 
   it("should give every menu entry a path", () => {

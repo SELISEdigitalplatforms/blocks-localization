@@ -30,10 +30,9 @@ vi.mock("../timeline/timeline", () => ({
     </div>
   ),
 }));
-vi.mock(
-  "@blocks-localization/components/modals/delete-language-key/delete-language-key",
-  () => ({ default: () => <div>DeleteKeyStub</div> }),
-);
+vi.mock("@blocks-localization/components/modals/delete-language-key/delete-language-key", () => ({
+  default: () => <div>DeleteKeyStub</div>,
+}));
 vi.mock("@blocks-localization/components/modals/gpt-prompt/gpt-prompt", () => ({
   default: () => null,
 }));
@@ -110,13 +109,9 @@ describe("key-details (extra coverage)", () => {
     expect(screen.getByText("desc:Key deleted by Alice.")).toBeTruthy();
     expect(screen.getByText("desc:Key created by Alice.")).toBeTruthy();
     expect(screen.getByText("desc:Translate rolled back by Alice.")).toBeTruthy();
-    expect(
-      screen.getByText("desc:Key has been published by Alice."),
-    ).toBeTruthy();
+    expect(screen.getByText("desc:Key has been published by Alice.")).toBeTruthy();
     expect(screen.getByText("desc:Key failed to publish.")).toBeTruthy();
-    expect(
-      screen.getByText("desc:A translation update action occurred."),
-    ).toBeTruthy();
+    expect(screen.getByText("desc:A translation update action occurred.")).toBeTruthy();
   });
 
   it("renders an empty message when a history page has no changes", () => {
@@ -191,9 +186,7 @@ describe("key-details (extra coverage)", () => {
     await user.click(await screen.findByText("Auto-translate"));
     await user.click(await screen.findByRole("button", { name: "Yes" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 
@@ -208,9 +201,7 @@ describe("key-details (extra coverage)", () => {
     await user.click(await screen.findByText("Auto-translate"));
     await user.click(await screen.findByRole("button", { name: "Yes" }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      ),
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
   });
 

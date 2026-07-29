@@ -1,4 +1,4 @@
-﻿using Blocks.Genesis;
+using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
@@ -42,7 +42,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::module::save")]
         public async Task<ApiResponse> Save([FromBody] SaveModuleRequest module)
         {
-            if (module == null) BadRequest(new BaseMutationResponse());
+            if (module == null) return new ApiResponse("Module cannot be null.");
             return await _moduleManagementService.SaveModuleAsync(module);
         }
 
@@ -54,15 +54,27 @@ namespace BlocksTemplate.Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
+        public async Task<List<BlocksLanguageModule>> GetModulesForCurrentTenant()
         {
             return await _moduleManagementService.GetModulesAsync();
         }
+
+        /// <summary>
+        /// Retrieves all available modules for the current tenant.
+        /// </summary>
+        /// <remarks>"Clouds" was an unclear alias for the current tenant. Use GetModulesForCurrentTenant.</remarks>
         [HttpGet]
+        [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<List<BlocksLanguageModule>> Gets(string projectKey)
+        [Obsolete("Renamed to GetModulesForCurrentTenant.")]
+        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
         {
-            return await _moduleManagementService.GetModulesAsync(projectKey);
+            return await GetModulesForCurrentTenant();
+        }
+        [HttpGet]
+        public async Task<List<BlocksLanguageModule>> Gets()
+        {
+            return await _moduleManagementService.GetModulesAsync();
         }
 
         //[HttpDelete]

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { languageManagerService } from "@blocks-localization/services/language.manager.service";
+import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as hooks from "./use-language-manager";
 
@@ -9,7 +9,7 @@ vi.mock("@seliseblocks/blocks-kit", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
 }));
 
-vi.mock("@blocks-localization/services/language.manager.service", () => ({
+vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: {
     fetchBlocksLanguageKey: vi.fn(),
     fetchBlocksLanguageKeyById: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock("@blocks-localization/services/language.manager.service", () => ({
 
 const svc = vi.mocked(languageManagerService);
 
-const renderQ = <T,>(cb: () => T) => {
+const renderQ = <T>(cb: () => T) => {
   const { wrapper } = createQueryWrapper();
   return renderHook(cb, { wrapper });
 };
@@ -65,9 +65,7 @@ describe("localization/hooks/use-language-manager", () => {
   // ─── Query hooks ────────────────────────────────────────────────────────────
   it("useGetBlocksLanguageKey should fetch keys and pass filters", async () => {
     svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 1, keys: [] } as never);
-    const { result } = renderQ(() =>
-      hooks.useGetBlocksLanguageKey(0, 25, "search", ["m1"], false),
-    );
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 25, "search", ["m1"], false));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
       expect.objectContaining({ pageNumber: 0, pageSize: 25, searchKey: "search" }),
@@ -114,9 +112,7 @@ describe("localization/hooks/use-language-manager", () => {
 
   it("useGetExportHistory should fetch with filters", async () => {
     svc.getExportHistory.mockResolvedValue({ totalCount: 0, uilmExportedFiles: [] } as never);
-    const { result } = renderQ(() =>
-      hooks.useGetExportHistory(0, 20, "pk", { searchText: "x" }),
-    );
+    const { result } = renderQ(() => hooks.useGetExportHistory(0, 20, "pk", { searchText: "x" }));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(svc.getExportHistory).toHaveBeenCalled();
   });
@@ -147,9 +143,7 @@ describe("localization/hooks/use-language-manager", () => {
     svc.fetchGlossaries.mockResolvedValue({ items: [], totalCount: 0 } as never);
     const { result } = renderQ(() => hooks.useGetGlobalGlossaries());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(svc.fetchGlossaries).toHaveBeenCalledWith(
-      expect.objectContaining({ isGlobal: true }),
-    );
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith(expect.objectContaining({ isGlobal: true }));
   });
 
   it("useGetModuleGlossaries should be disabled without a moduleId", () => {
@@ -196,9 +190,7 @@ describe("localization/hooks/use-language-manager", () => {
       totalCount: 3,
       keys: [{ itemId: "a" }, { itemId: "b" }, { itemId: "c" }],
     } as never);
-    const { result } = renderQ(() =>
-      hooks.useGetKeysByGlossaryId("g1", ["m1"], 0, 2),
-    );
+    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", ["m1"], 0, 2));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual({
       totalCount: 3,
@@ -207,9 +199,7 @@ describe("localization/hooks/use-language-manager", () => {
   });
 
   it("useGetKeysByGlossaryId should be disabled without moduleIds", () => {
-    const { result } = renderQ(() =>
-      hooks.useGetKeysByGlossaryId("g1", [], 0, 2),
-    );
+    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", [], 0, 2));
     expect(result.current.fetchStatus).toBe("idle");
   });
 
@@ -379,9 +369,7 @@ describe("localization/hooks/use-language-manager", () => {
         resources: [{ culture: "de-DE", value: "Hallo" }],
       } as never);
       const onComplete = vi.fn();
-      renderQ(() =>
-        hooks.useTranslateKeyWithPolling("k1", "tenant-1", onComplete),
-      );
+      renderQ(() => hooks.useTranslateKeyWithPolling("k1", "tenant-1", onComplete));
       await vi.advanceTimersByTimeAsync(2000);
       expect(svc.fetchBlocksLanguageKeyById).toHaveBeenCalledWith({ itemId: "k1" });
       await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
@@ -392,23 +380,17 @@ describe("localization/hooks/use-language-manager", () => {
       svc.fetchBlocksLanguageKeyById.mockResolvedValue({
         resources: [{ culture: "en-US", value: "Hello" }],
       } as never);
-      renderQ(() =>
-        hooks.useTranslateKeyWithPolling("k1", "tenant-1", undefined),
-      );
+      renderQ(() => hooks.useTranslateKeyWithPolling("k1", "tenant-1", undefined));
       await vi.advanceTimersByTimeAsync(2000);
       const firstCallCount = svc.fetchBlocksLanguageKeyById.mock.calls.length;
       await vi.advanceTimersByTimeAsync(2000);
-      expect(
-        svc.fetchBlocksLanguageKeyById.mock.calls.length,
-      ).toBeGreaterThan(firstCallCount);
+      expect(svc.fetchBlocksLanguageKeyById.mock.calls.length).toBeGreaterThan(firstCallCount);
     });
 
     it("should keep polling after a fetch error", async () => {
       vi.useFakeTimers();
       svc.fetchBlocksLanguageKeyById.mockRejectedValue(new Error("boom"));
-      renderQ(() =>
-        hooks.useTranslateKeyWithPolling("k1", "tenant-1", undefined),
-      );
+      renderQ(() => hooks.useTranslateKeyWithPolling("k1", "tenant-1", undefined));
       await vi.advanceTimersByTimeAsync(2000);
       expect(svc.fetchBlocksLanguageKeyById).toHaveBeenCalled();
     });

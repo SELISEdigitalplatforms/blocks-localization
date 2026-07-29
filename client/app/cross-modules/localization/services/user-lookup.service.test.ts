@@ -6,7 +6,7 @@ import { userLookupService } from "./user-lookup.service";
 
 vi.mock("@/lib/http-client", () => ({
   serviceInstances: {
-    idpService: {
+    iamService: {
       get: vi.fn(),
       post: vi.fn(),
     },
@@ -17,7 +17,7 @@ vi.mock("@/lib/runtime-env", () => ({
   getRuntimeEnv: vi.fn(),
 }));
 
-const http = serviceInstances.idpService;
+const http = serviceInstances.iamService;
 
 describe("localization/services/user-lookup.service", () => {
   beforeEach(() => {
@@ -29,11 +29,9 @@ describe("localization/services/user-lookup.service", () => {
     it("should GET the /me endpoint with absoluteUrl", () => {
       vi.mocked(http.get).mockResolvedValue({ data: {}, errors: null });
       userLookupService.getMe();
-      expect(http.get).toHaveBeenCalledWith(
-        "https://iam.example.com/api/iam/me",
-        undefined,
-        { absoluteUrl: true },
-      );
+      expect(http.get).toHaveBeenCalledWith("https://iam.example.com/api/iam/me", undefined, {
+        absoluteUrl: true,
+      });
     });
 
     it("should fall back to the default IAM base url when env is empty", () => {
@@ -79,7 +77,7 @@ describe("localization/services/user-lookup.service", () => {
         name: "Alice",
       });
       const [, body] = vi.mocked(http.post).mock.calls[0];
-      expect((body as any).filter).toEqual({ email: "a@b.com", name: "Alice" });
+      expect((body as unknown as Record<string, unknown>).filter).toEqual({ email: "a@b.com", name: "Alice" });
     });
   });
 

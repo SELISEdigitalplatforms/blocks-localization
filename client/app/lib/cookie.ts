@@ -1,6 +1,6 @@
 /**
  * Cookie utility for cross-subdomain storage
- * Cookies are shared across subdomains (e.g., stg-localization.blocksdevelopers.com and stg-idp.blocksdevelopers.com)
+ * Cookies are shared across subdomains (e.g., stg-localization.blocksdevelopers.com and stg-iam.blocksdevelopers.com)
  *
  * Security Notes:
  * - Uses SameSite=Lax for OIDC compatibility
@@ -76,14 +76,16 @@ export function setCookie(
   name: string,
   value: string,
   days: number = 365,
-  domain?: string,
+  domain: string = ".blocksdevelopers.com",
 ): void {
   if (typeof document === "undefined") return;
 
   // Check size limit
   const encodedValue = encodeURIComponent(value);
   if (encodedValue.length > MAX_COOKIE_SIZE) {
-    console.warn(`Cookie "${name}" value too large (${encodedValue.length} bytes). Max: ${MAX_COOKIE_SIZE}`);
+    console.error(
+      `Cookie "${name}" value too large (${encodedValue.length} bytes). Max: ${MAX_COOKIE_SIZE}`,
+    );
     return;
   }
 
@@ -152,7 +154,7 @@ export function setJsonCookie<T>(
   name: string,
   value: T,
   days: number = 365,
-  domain?: string,
+  domain: string = ".blocksdevelopers.com",
 ): void {
   try {
     const jsonString = JSON.stringify(value);
