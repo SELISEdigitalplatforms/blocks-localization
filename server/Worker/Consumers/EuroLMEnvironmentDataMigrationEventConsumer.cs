@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Events;
+using Eurolm.DomainService.Utilities;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -269,7 +270,7 @@ namespace Worker.Consumers
 
             await _messageClient.SendToMassConsumerAsync(new ConsumerMessage<MigrationCompletionEvent>
             {
-                ConsumerName = "blocks_migration_topic",
+                ConsumerName = Constants.MigrationCompletionTopic,
                 Payload = completionEvent
             });
         }

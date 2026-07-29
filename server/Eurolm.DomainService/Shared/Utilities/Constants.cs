@@ -10,6 +10,8 @@ namespace Eurolm.DomainService.Utilities
         public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
         public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
         public const string EnvironmentDataMigrationQueue = "blocks_localization_environment_data_migration_listener";
+        public const string MigrationCompletionTopic = "blocks_migration_topic";
+        public const string MigrationCompletionTopicQueue = "blocks_migration_topic_queue";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
         public const string ServiceName = "blocks-localization";
@@ -49,7 +51,8 @@ namespace Eurolm.DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(EnvironmentDataMigrationQueue),
                                              ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue),
-                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue)],
+                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue),
+                                             ConsumerSubscription.BindToQueueViaExchange(queueName: MigrationCompletionTopicQueue, exchangeName: MigrationCompletionTopic)],
                 }
             };
         }
