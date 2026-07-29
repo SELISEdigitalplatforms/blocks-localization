@@ -11,7 +11,7 @@ const projectStore = {
   setSelectedProject: vi.fn(),
 };
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => projectStore,
 }));
 vi.mock("@/services/project.service", () => ({

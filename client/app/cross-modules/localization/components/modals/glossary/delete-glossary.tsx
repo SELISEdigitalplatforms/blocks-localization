@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useDeleteGlossary } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 

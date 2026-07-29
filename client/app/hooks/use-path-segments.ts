@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import {
   BREADCRUMB_CUSTOM_TITLES,
   BREADCRUMB_SKIP_PATHS,
