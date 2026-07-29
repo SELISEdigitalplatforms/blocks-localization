@@ -1361,7 +1361,7 @@ namespace Eurolm.DomainService.Services
             var fileData = await _storageDriverService.GetUrlForDownloadFileAsync(new GetFileRequest
             {
                 FileId = fileId,
-                ProjectKey = projectKey
+               // ProjectKey = projectKey
             });
             if (fileData is null)
             {
