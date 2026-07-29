@@ -17,7 +17,7 @@ import {
   useSaveBlocksLanguageKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 
 interface EditTranslationProps {
   dialogTitle: string;

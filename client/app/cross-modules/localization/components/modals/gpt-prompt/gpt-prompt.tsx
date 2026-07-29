@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 
 const GptPrompt: React.FC<{
   defaultValue?: string;
