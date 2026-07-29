@@ -12,7 +12,7 @@ const saveKeyAsync = vi.fn();
 const translateAllAsync = vi.fn();
 const tagGlossaryAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));

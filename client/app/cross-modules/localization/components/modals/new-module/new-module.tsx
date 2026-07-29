@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui-kits/form/form";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 
 interface NewModuleProps {
   onClose: (value?: boolean) => void;
@@ -34,22 +34,24 @@ const schema = z.object({
     .max(50, { message: "Module name must be less than 50 characters" }),
 });
 
+type FormValues = z.infer<typeof schema>;
+
 const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
   const { isPending, mutateAsync } = useSaveLanguageModule();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  const form = useForm<ILanguageModule>({
+  const form = useForm<FormValues>({
     defaultValues: {
       moduleName: "",
     },
     resolver: zodResolver(schema),
   });
 
-  const formSubmitHandler = async (data: ILanguageModule) => {
+  const formSubmitHandler = async (data: FormValues) => {
     try {
       const payload = {
         ...data,
-      };
+      } as ILanguageModule;
       const res = await mutateAsync(payload);
       onClose();
       if (res?.success) {

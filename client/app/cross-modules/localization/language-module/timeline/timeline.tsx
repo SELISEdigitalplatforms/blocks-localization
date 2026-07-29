@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { useRevertKeyTimeline } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 

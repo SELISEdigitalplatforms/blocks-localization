@@ -7,7 +7,7 @@ import Timeline from "./timeline";
 
 const rollbackMock = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
