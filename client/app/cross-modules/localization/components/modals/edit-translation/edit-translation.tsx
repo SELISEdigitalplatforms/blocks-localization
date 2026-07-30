@@ -103,15 +103,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         },
       ];
     }
-    // keyDetails.resources = keyDetails?.resources && keyDetails.resources.map(resource => {
-    //   if (resource.culture === destinationLanguageCode) {
-    //     return {
-    //       ...resource,
-    //       value: translation,
-    //     };
-    //   }
-    //   return resource;
-    // });
     try {
       const payload = {
         itemId: keyDetails.itemId,
@@ -134,8 +125,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           title: "Success",
           description: "Language key updated successfully",
         });
-        // form.reset();
-        // router.replace("/services/language");
       } else {
         toast({
           variant: "destructive",

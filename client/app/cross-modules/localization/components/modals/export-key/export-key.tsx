@@ -66,7 +66,6 @@ export default function ExportKey() {
   const { data: languageModules } = useGetLanguageModule(projectKey);
   const { data: availableLanguages } = useGetLanguages();
   const itemId = useProjectStore().selectedProject?.itemId || "";
-  // const { language } = useLanguage();
 
   const [date, setDate] = useState<DateRangeType>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -213,13 +212,9 @@ export default function ExportKey() {
   };
 
   const handleExport = () => {
-    // close();
     onSubmit();
   };
 
-  // const checkActivity = () => {
-  //   router.push(`/services/language?languageActivity=activity`);
-  // };
 
   const parseJson = (value: unknown): Record<string, unknown> | null => {
     if (!value) return null;
