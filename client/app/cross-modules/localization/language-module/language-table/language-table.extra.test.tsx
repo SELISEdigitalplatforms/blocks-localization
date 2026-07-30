@@ -251,7 +251,6 @@ describe("language-table (extra coverage)", () => {
       );
       renderWithProviders(<LanguageTable />);
       expect(screen.getByText("Hallo Welt")).toBeTruthy();
-      // German (non-default) header has no "(Default)" suffix, English does.
       expect(screen.getByText("German")).toBeTruthy();
     });
 
