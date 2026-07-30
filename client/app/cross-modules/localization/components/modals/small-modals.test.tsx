@@ -13,7 +13,7 @@ const deleteGlossaryAsync = vi.fn();
 const saveModuleAsync = vi.fn();
 const saveKeyAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({

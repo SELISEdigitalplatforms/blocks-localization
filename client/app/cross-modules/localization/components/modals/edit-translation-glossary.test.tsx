@@ -10,7 +10,7 @@ import EditKeyGlossary from "./edit-key-glossary/edit-key-glossary";
 const saveKeyAsync = vi.fn();
 const autoTranslateAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));

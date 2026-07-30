@@ -9,15 +9,15 @@ import { AddNewLanguageKey } from "./add-new-language-key";
 const navigate = vi.fn();
 const saveKeyAsync = vi.fn();
 
-vi.mock("react-router-dom", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-router-dom")>()),
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => navigate,
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
-vi.mock("@seliseblocks/blocks-kit/hooks", () => ({
+vi.mock("@seliseblocks/genesis-os/hooks", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/components/modals/new-module/new-module", () => ({
