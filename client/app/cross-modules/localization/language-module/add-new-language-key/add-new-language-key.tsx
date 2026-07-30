@@ -33,7 +33,7 @@ import {
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useGetLanguageModules,
@@ -44,8 +44,8 @@ import {
 import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
+import { useNavigate } from "react-router";
+import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -55,15 +55,6 @@ interface MutationResponse {
   validationErrors?: Array<{
     errorMessage?: string;
   }>;
-}
-
-// Define an explicit type for your form values
-interface FormValues {
-  keyName: string;
-  moduleId: string;
-  resources: { value: string; culture: string }[];
-  routes: { value: string }[];
-  context?: string;
 }
 
 const schema = z.object({
@@ -92,11 +83,11 @@ const schema = z.object({
         });
       }
     }),
-  routes: z
-    .array(z.object({ value: z.string().min(1, { message: "Route is required" }) }))
-    .optional(),
+  routes: z.array(z.object({ value: z.string().min(1, { message: "Route is required" }) })),
   context: z.string().optional(),
 });
+
+type FormValues = z.infer<typeof schema>;
 
 function AddNewLanguageKey() {
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();

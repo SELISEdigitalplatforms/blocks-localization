@@ -5,7 +5,7 @@ import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import ViewDetails from "./view-details";
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({

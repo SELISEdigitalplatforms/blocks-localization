@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui-kits/badge/badge";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useSaveBlocksLanguageKey, useSearchGlossaries } from "../../../hooks/use-language-manager";
 import { IBlocksLanguageKey, IGlossary } from "../../../models/language";
 

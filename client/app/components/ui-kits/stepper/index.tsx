@@ -17,16 +17,16 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
     const {
       className,
       children,
-      orientation: orientationProp,
+      orientation: orientationProp = "horizontal",
       state,
-      responsive,
+      responsive = true,
       checkIcon,
       errorIcon,
       onClickStep,
       mobileBreakpoint,
       expandVerticalSteps = false,
       initialStep = 0,
-      size,
+      size = "md",
       steps,
       variant,
       styles,
@@ -40,7 +40,7 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
     const items = [] as React.ReactElement[];
 
     const footer = childArr.map((child) => {
-      if (!React.isValidElement(child)) {
+      if (!React.isValidElement<{ children?: React.ReactNode }>(child)) {
         throw new Error("Stepper children must be valid React elements.");
       }
       if (child.type === Step) {
@@ -111,11 +111,6 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
   },
 );
 
-Stepper.defaultProps = {
-  size: "md",
-  orientation: "horizontal",
-  responsive: true,
-};
 Stepper.displayName = "Stepper";
 const VerticalContent = ({ children }: { children: React.ReactNode }) => {
   const { activeStep } = useStepper();
@@ -159,7 +154,7 @@ const HorizontalContent = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {React.Children.map(childArr[activeStep], (node) => {
-        if (!React.isValidElement(node)) {
+        if (!React.isValidElement<{ children?: React.ReactNode }>(node)) {
           return null;
         }
         return React.Children.map(node.props.children, (childNode) => childNode);

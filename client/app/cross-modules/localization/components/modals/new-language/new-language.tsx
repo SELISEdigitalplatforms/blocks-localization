@@ -30,7 +30,7 @@ import {
 } from "@/components/ui-kits/command/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { toast } from "@/hooks/use-toast";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 

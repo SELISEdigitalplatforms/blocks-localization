@@ -51,12 +51,14 @@ export async function loginToProject(
       timeout: 20_000,
     });
 
+    // Use .last() so we pick the innermost card, not a parent that wraps
+    // multiple project cards (each with its own Development chip).
     const projectCard = page
       .getByRole("main")
       .locator("div")
       .filter({ has: page.getByText(projectName, { exact: true }) })
       .filter({ has: page.getByRole("button", { name: "Development" }) })
-      .first();
+      .last();
 
     await projectCard.getByRole("button", { name: "Development" }).click();
     await page.waitForURL(/\/app\/[0-9a-f-]{36}\/dashboard/, {

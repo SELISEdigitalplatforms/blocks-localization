@@ -11,13 +11,13 @@ const toastMock = vi.fn();
 const navigateMock = vi.fn();
 let tenantId = "t1";
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId } }),
 }));
-vi.mock("@seliseblocks/blocks-kit/hooks", () => ({
+vi.mock("@seliseblocks/genesis-os/hooks", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigateMock }));
+vi.mock("react-router", () => ({ useNavigate: () => navigateMock }));
 vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => toastMock(...a) }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useDeleteLanguageKey: () => ({ isPending: false, mutateAsync: deleteKeyMock }),

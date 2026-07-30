@@ -20,7 +20,7 @@ import { Label } from "@/components/ui-kits/label/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import {
   useGetLanguageModule,
   useGetLanguages,
@@ -388,7 +388,7 @@ export default function ExportKey() {
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={1}>
             <div className="mb-6 flex flex-col gap-1.5">
               <p className="text-sm text-high-emphasis">Date Range</p>
-              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="flex w-full justify-between" type="button">
                     {!date?.from ? (
@@ -412,7 +412,7 @@ export default function ExportKey() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0" align="start" portalled={false}>
                   <Calendar
                     initialFocus
                     mode="range"

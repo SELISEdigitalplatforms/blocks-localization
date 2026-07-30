@@ -10,11 +10,11 @@ import { KeyDetails } from "./key-details";
 let params: Record<string, string> = { keyId: "k1" };
 const translateKeyAsync = vi.fn();
 
-vi.mock("react-router-dom", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-router-dom")>()),
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
   useParams: () => params,
 }));
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
