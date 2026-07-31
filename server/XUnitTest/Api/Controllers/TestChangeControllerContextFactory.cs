@@ -14,15 +14,5 @@ namespace XUnitTest
         /// </summary>
 
 
-
-
-        //    mongoCollectionMock.Setup(c => c.FindSync(
-        //        It.IsAny<FilterDefinition<BsonDocument>>(),
-        //        It.IsAny<FindOptions<BsonDocument, BsonDocument>>(),
-        //        It.IsAny<CancellationToken>()))
-        //        .Returns(asyncCursorMock.Object);
-
-
-
     }
 }

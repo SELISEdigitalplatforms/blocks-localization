@@ -93,15 +93,6 @@ namespace XUnitTest
         }
 
 
-
-
-
-
-        //    // Assert
-        //    result.SuggestedGlossaries.Should().HaveCount(2);
-        //    result.SuggestedGlossaries.Should().Contain(g => g.Name == "SDK");
-        //}
-
         [Fact]
         public async Task GetSuggestedGlossariesAsync_KeyNotFound_ReturnsEmptyList()
         {

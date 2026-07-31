@@ -42,45 +42,56 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       "",
   );
 
+  // Split so the click handler itself returns void. React ignores a promise
+  // returned from an event handler, so an async handler leaves a rejection
+  // unobserved; the await happens in here, where the catch turns a failure into
+  // a toast the user actually sees.
+  async function runAutoTranslate(
+    destinationLanguage: string | undefined,
+    defaultLanguageText: string,
+  ) {
+    try {
+      const payload = {
+        sourceText: defaultLanguageText,
+        destinationLanguage: destinationLanguage || "English",
+        currentLanguage: "English",
+        temperature: 0.1,
+        // elementDetailContext: keyDetails.context,
+        glossaryIds: keyDetails.glossaryIds,
+        moduleId: keyDetails.moduleId,
+        destinationLanguageCode: destinationLanguageCode,
+      };
+      const res = await autoTranslateAsync(payload);
+      if (res.content) {
+        setTranslation(res.content);
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Translated successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: JSON.stringify(res?.errors),
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    }
+  }
+
   function autoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
   ): React.MouseEventHandler<HTMLButtonElement> {
-    return async (e) => {
+    return (e) => {
       e.preventDefault();
-      try {
-        const payload = {
-          sourceText: defaultLanguageText,
-          destinationLanguage: destinationLanguage || "English",
-          currentLanguage: "English",
-          temperature: 0.1,
-          // elementDetailContext: keyDetails.context,
-          glossaryIds: keyDetails.glossaryIds,
-          moduleId: keyDetails.moduleId,
-          destinationLanguageCode: destinationLanguageCode,
-        };
-        const res = await autoTranslateAsync(payload);
-        if (res.content) {
-          setTranslation(res.content);
-          toast({
-            variant: "success",
-            title: "Success",
-            description: "Translated successfully",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: JSON.stringify(res?.errors),
-          });
-        }
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(error),
-        });
-      }
+      void runAutoTranslate(destinationLanguage, defaultLanguageText);
     };
   }
 
