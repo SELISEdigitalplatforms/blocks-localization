@@ -370,7 +370,8 @@ function AddNewLanguageKey() {
                                           onOpenChange={setIsNewModuleDialogOpen}
                                         >
                                           <DialogTrigger asChild>
-                                            <div
+                                            <button
+                                              type="button"
                                               aria-expanded={open}
                                               onClick={() => {
                                                 setIsNewModuleDialogOpen(true);
@@ -379,7 +380,7 @@ function AddNewLanguageKey() {
                                             >
                                               <Plus className="h-5 w-5 shrink-0 pl-[-6px] text-medium-emphasis" />
                                               <div>New Module</div>
-                                            </div>
+                                            </button>
                                           </DialogTrigger>
                                           <NewModule onClose={(val) => setIsNewModuleDialogOpen(val ?? false)} />
                                         </Dialog>
