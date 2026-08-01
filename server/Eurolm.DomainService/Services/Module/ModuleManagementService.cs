@@ -11,19 +11,16 @@ namespace Eurolm.DomainService.Services
         private readonly IValidator<Module> _validator;
         private readonly IModuleRepository _moduleRepository;
         private readonly ILogger<ModuleManagementService> _logger;
-        //private readonly Lazy<IKeyBulkOperationsService> _keyBulkOperationsService;
         private readonly IGlossaryRepository _glossaryRepository;
 
         public ModuleManagementService(IValidator<Module> validator,
                                       IModuleRepository moduleRepository,
                                       ILogger<ModuleManagementService> logger,
-                                      //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
                                       IGlossaryRepository glossaryRepository)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
             _logger = logger;
-            //_keyBulkOperationsService = keyBulkOperationsService;
             _glossaryRepository = glossaryRepository;
         }
 
@@ -68,30 +65,6 @@ namespace Eurolm.DomainService.Services
             var module = await _moduleRepository.GetByIdAsync(projectKey,moduleId);
             return module != null ? new List<BlocksLanguageModule> { module } : new List<BlocksLanguageModule>();
         }
-
-        //public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(request.TargetModuleId))
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkDeleteByModuleAsync(request.ItemId, request.ProjectKey ?? "");
-        //        }
-        //        else
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkMoveByModuleAsync(request.ItemId, request.TargetModuleId, request.ProjectKey ?? "");
-        //        }
-
-        //        await _moduleRepository.DeleteAsync(request.ItemId);
-        //        return new BaseMutationResponse { IsSuccess = true };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError("Error while deleting BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
-        //        return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
-        //    }
-        //}
-
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {
             try

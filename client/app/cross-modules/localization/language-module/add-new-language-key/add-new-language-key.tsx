@@ -224,13 +224,12 @@ function AddNewLanguageKey() {
     return "Unable to save language key";
   };
 
-  function autoTranslate(
+  async function runAutoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
-  ): React.MouseEventHandler<HTMLButtonElement> {
-    return async (e) => {
-      e.preventDefault();
+  ): Promise<void> {
+    {
       setLoadingIndex(index); // Set the loading state for the clicked button
       try {
         const payload = {
@@ -264,6 +263,19 @@ function AddNewLanguageKey() {
       } finally {
         setLoadingIndex(null); // Reset the loading state.
       }
+    }
+  }
+
+  // The handler itself must return void: a promise handed back to React is never
+  // awaited, so a rejection would surface as an unhandled rejection instead.
+  function autoTranslate(
+    destinationLanguage: string | undefined,
+    defaultLanguageText: string,
+    index: number,
+  ): React.MouseEventHandler<HTMLButtonElement> {
+    return (e) => {
+      e.preventDefault();
+      void runAutoTranslate(destinationLanguage, defaultLanguageText, index);
     };
   }
 

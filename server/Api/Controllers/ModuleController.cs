@@ -77,14 +77,6 @@ namespace BlocksTemplate.Api.Controllers
             return await _moduleManagementService.GetModulesAsync();
         }
 
-        //[HttpDelete]
-        //[ProtectedEndPoint]
-        //public async Task<BaseMutationResponse> Delete([FromQuery] DeleteModuleRequest request)
-        //{
-        //    if (request == null) return new BaseMutationResponse { IsSuccess = false };
-        //    _changeControllerContext.ChangeContext(request);
-        //    return await _moduleManagementService.DeleteModuleAsync(request);
-        //}
 
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]
