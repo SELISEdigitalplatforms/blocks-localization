@@ -87,7 +87,11 @@ const detectDelimiter = (line: string): string => {
     count: (line.match(new RegExp(`\\${d}`, "g")) || []).length,
   }));
   // Return the delimiter with the highest count, default to comma
-  const best = counts.reduce((prev, curr) => (curr.count > prev.count ? curr : prev));
+  // Seeded so an empty candidate list falls back to the comma rather than throwing.
+  const best = counts.reduce<{ delimiter: string; count: number }>(
+    (prev, curr) => (curr.count > prev.count ? curr : prev),
+    { delimiter: ",", count: 0 },
+  );
   return best.count > 0 ? best.delimiter : ",";
 };
 
@@ -979,14 +983,13 @@ export default function ImportCommunicationsModal({
                 <SelectItem value="json">JSON</SelectItem>
               </SelectContent>
             </Select>
-            <div
-              className="flex cursor-pointer flex-row gap-2 text-primary"
-              onClick={downloadTemplate}
-            >
+            <div className="flex flex-row gap-2 text-primary">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost">
+                    {/* The inner Button is the real control, so it owns the handler.
+                        A wrapper button here would nest a button inside a button. */}
+                    <Button size="icon" variant="ghost" onClick={downloadTemplate}>
                       <ArrowDownToLine size={20} />
                     </Button>
                   </TooltipTrigger>

@@ -107,7 +107,7 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", [...uniqueCreatedByIds].sort()],
+    queryKey: ["module-users", [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
