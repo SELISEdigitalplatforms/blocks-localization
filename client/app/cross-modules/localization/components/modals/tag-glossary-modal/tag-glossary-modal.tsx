@@ -50,9 +50,6 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
   const { data: searchResults } = useSearchGlossaries(searchText, popoverOpen);
   const { isPending, mutateAsync } = useTagGlossary();
 
-  // Initialise selection from the fetched module glossaries when the response
-  // changes (adjust-state-during-render; avoids a state-setting effect while
-  // preserving user edits between response changes).
   const [prevGlossariesResponse, setPrevGlossariesResponse] =
     useState<typeof moduleGlossariesResponse>(undefined);
   if (prevGlossariesResponse !== moduleGlossariesResponse) {

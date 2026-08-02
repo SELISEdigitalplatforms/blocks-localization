@@ -11,6 +11,18 @@ import { getRuntimeEnv } from "@/lib/runtime-env";
 import { SETUP_STEPS } from "../../constants/extension-guides.constant";
 import { CopyableSnippet } from "@/components/copyable-snippet/copyable-snippet";
 
+/**
+ * Drops trailing slashes without a regex. `/\/+$/` is an anchored repeat, so a long run of
+ * slashes that fails to match backtracks quadratically.
+ */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end--;
+  }
+  return value.slice(0, end);
+}
+
 export const ExtensionGuides = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const apiBaseUrl = getRuntimeEnv("BLOCKS_PUBLIC_API_BASE_URL");
@@ -27,7 +39,7 @@ export const ExtensionGuides = () => {
     2,
   );
   const runtimeConfigCommand = localizationBaseUrl
-    ? `curl ${localizationBaseUrl.replace(/\/+$/, "")}`
+    ? `curl ${trimTrailingSlashes(localizationBaseUrl)}`
     : "";
 
   useEffect(() => {
