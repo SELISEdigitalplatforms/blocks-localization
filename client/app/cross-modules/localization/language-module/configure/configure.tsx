@@ -247,23 +247,6 @@ function Configure() {
   };
 
   const columns: ColumnDef<ILanguageConfig>[] = [
-    // {
-    //   accessorKey: "itemId",
-    //   header: () => {
-    //     return (
-    //       <div className="flex items-center">
-    //         <span className="font-bold text-medium-emphasis">#</span>
-    //       </div>
-    //     );
-    //   },
-    //   cell: ({ row }) => {
-    //     return (
-    //       <div className="flex w-[120px] items-center">
-    //         <span>{row.getValue("itemId")}</span>
-    //       </div>
-    //     );
-    //   },
-    // },
     {
       accessorKey: "languageName",
       header: () => {

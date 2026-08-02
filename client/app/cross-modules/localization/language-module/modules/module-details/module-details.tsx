@@ -200,7 +200,7 @@ export function ModuleDetails() {
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", [...uniqueUserIds].sort()],
+    queryKey: ["module-detail-users", [...uniqueUserIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueUserIds);
     },

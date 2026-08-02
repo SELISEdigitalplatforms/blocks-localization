@@ -12,7 +12,7 @@ namespace XUnitTest
             Constants.UilmImportExportQueue.Should().Be("eurolm_import_export_listener");
             Constants.TranslateAllKeysQueue.Should().Be("eurolm_translate_all_keys_listener");
             Constants.TranslateBlocksLanguageKeyQueue.Should().Be("eurolm_translate_blocks_language_key_listener");
-            Constants.EnvironmentDataMigrationQueue.Should().Be("eurolm_environment_data_migration_listener");
+            Constants.EnvironmentDataMigrationQueue.Should().Be("blocks_localization_environment_data_migration_listener");
         }
 
         [Fact]
