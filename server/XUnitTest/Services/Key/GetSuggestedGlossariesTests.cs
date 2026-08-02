@@ -92,43 +92,6 @@ namespace XUnitTest
             result.SuggestedGlossaries.Should().NotContain(g => g.Name == "SDK");
         }
 
-        //[Fact]
-        //public async Task GetSuggestedGlossariesAsync_WithMatchingContext_ReturnsSuggestions()
-        //{
-        //    // Arrange
-        //    var key = new KeyModel
-        //    {
-        //        ItemId = "key-2",
-        //        KeyName = "sdk.download",
-        //        ModuleId = "mod-1",
-        //        Resources = new[]
-        //        {
-        //            new Resource { Culture = "en-US", Value = "Download the Software Development Kit" }
-        //        }
-        //    };
-
-        //    var glossaries = new GetGlossariesResponse
-        //    {
-        //        Items = new List<GlossaryModel>
-        //        {
-        //            new GlossaryModel { ItemId = "g1", Name = "API", Context = "Rest endpoint" },
-        //            new GlossaryModel { ItemId = "g2", Name = "SDK", Context = "Software Development Kit" }
-        //        },
-        //        TotalCount = 2
-        //    };
-
-        //    _keyRepositoryMock.Setup(r => r.GetByIdAsync("key-2")).ReturnsAsync(key);
-        //    _glossaryRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<GetGlossariesRequest>())).ReturnsAsync(glossaries);
-
-        //    var request = new GetSuggestedGlossariesRequest { ItemId = "key-2", MaxResults = 5 };
-
-        //    // Act
-        //    var result = await _service.GetSuggestedGlossariesAsync(request);
-
-        //    // Assert
-        //    result.SuggestedGlossaries.Should().HaveCount(2);
-        //    result.SuggestedGlossaries.Should().Contain(g => g.Name == "SDK");
-        //}
 
         [Fact]
         public async Task GetSuggestedGlossariesAsync_KeyNotFound_ReturnsEmptyList()

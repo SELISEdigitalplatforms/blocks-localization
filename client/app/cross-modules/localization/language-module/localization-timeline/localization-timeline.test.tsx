@@ -121,4 +121,45 @@ describe("language-module/localization-timeline", () => {
     expect(screen.getByText("Activity Log")).toBeTruthy();
     expect(screen.getByText("Everything")).toBeTruthy();
   });
+
+  it.each([["Enter"], [" "]])("should open the operation detail modal when %s is pressed on a row", (key) => {
+    mockTimeline.mockReturnValue({
+      isLoading: false,
+      data: {
+        totalCount: 1,
+        operations: [
+          {
+            operationId: "op1",
+            logFrom: "Rollback",
+            userName: "Alice",
+            createDate: "2026-01-01T10:00:00Z",
+            affectedKeysCount: 1,
+          },
+        ],
+      },
+    } as never);
+    mockByOp.mockReturnValue({
+      isLoading: false,
+      data: {
+        totalCount: 1,
+        timelines: [
+          {
+            itemId: "t1",
+            logFrom: "Rollback",
+            userName: "Alice",
+            createDate: "2026-01-01T10:00:00Z",
+            previousData: { keyName: "k", resources: [{ culture: "en-US", value: "Old" }] },
+            currentData: { keyName: "k", resources: [{ culture: "en-US", value: "New" }] },
+          },
+        ],
+      },
+    } as never);
+    renderWithProviders(<LocalizationTimeline />);
+
+    const row = screen.getByText("Rolled back by Alice").closest('[role="button"]') as HTMLElement;
+    fireEvent.keyDown(row, { key });
+
+    expect(screen.getByText("Old")).toBeTruthy();
+    expect(screen.getByText("New")).toBeTruthy();
+  });
 });
