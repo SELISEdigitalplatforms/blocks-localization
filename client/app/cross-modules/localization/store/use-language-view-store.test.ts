@@ -238,6 +238,7 @@ describe("localization/store/use-language-view-store", () => {
     });
 
     it("should load tenant's stored settings when present", () => {
+      useLanguageViewStore.setState({ tenantId: "tenant-A" });
       seedCookie({
         "tenant-A": { selectedLanguages: ["de-DE"] },
       });
