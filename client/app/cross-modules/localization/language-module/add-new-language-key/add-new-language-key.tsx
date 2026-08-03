@@ -33,7 +33,7 @@ import {
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useGetLanguageModules,
@@ -44,8 +44,8 @@ import {
 import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
+import { useNavigate } from "react-router";
+import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -55,15 +55,6 @@ interface MutationResponse {
   validationErrors?: Array<{
     errorMessage?: string;
   }>;
-}
-
-// Define an explicit type for your form values
-interface FormValues {
-  keyName: string;
-  moduleId: string;
-  resources: { value: string; culture: string }[];
-  routes: { value: string }[];
-  context?: string;
 }
 
 const schema = z.object({
@@ -92,11 +83,11 @@ const schema = z.object({
         });
       }
     }),
-  routes: z
-    .array(z.object({ value: z.string().min(1, { message: "Route is required" }) }))
-    .optional(),
+  routes: z.array(z.object({ value: z.string().min(1, { message: "Route is required" }) })),
   context: z.string().optional(),
 });
+
+type FormValues = z.infer<typeof schema>;
 
 function AddNewLanguageKey() {
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
@@ -233,13 +224,12 @@ function AddNewLanguageKey() {
     return "Unable to save language key";
   };
 
-  function autoTranslate(
+  async function runAutoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
-  ): React.MouseEventHandler<HTMLButtonElement> {
-    return async (e) => {
-      e.preventDefault();
+  ): Promise<void> {
+    {
       setLoadingIndex(index); // Set the loading state for the clicked button
       try {
         const payload = {
@@ -273,6 +263,19 @@ function AddNewLanguageKey() {
       } finally {
         setLoadingIndex(null); // Reset the loading state.
       }
+    }
+  }
+
+  // The handler itself must return void: a promise handed back to React is never
+  // awaited, so a rejection would surface as an unhandled rejection instead.
+  function autoTranslate(
+    destinationLanguage: string | undefined,
+    defaultLanguageText: string,
+    index: number,
+  ): React.MouseEventHandler<HTMLButtonElement> {
+    return (e) => {
+      e.preventDefault();
+      void runAutoTranslate(destinationLanguage, defaultLanguageText, index);
     };
   }
 
@@ -379,7 +382,8 @@ function AddNewLanguageKey() {
                                           onOpenChange={setIsNewModuleDialogOpen}
                                         >
                                           <DialogTrigger asChild>
-                                            <div
+                                            <button
+                                              type="button"
                                               aria-expanded={open}
                                               onClick={() => {
                                                 setIsNewModuleDialogOpen(true);
@@ -388,7 +392,7 @@ function AddNewLanguageKey() {
                                             >
                                               <Plus className="h-5 w-5 shrink-0 pl-[-6px] text-medium-emphasis" />
                                               <div>New Module</div>
-                                            </div>
+                                            </button>
                                           </DialogTrigger>
                                           <NewModule onClose={(val) => setIsNewModuleDialogOpen(val ?? false)} />
                                         </Dialog>

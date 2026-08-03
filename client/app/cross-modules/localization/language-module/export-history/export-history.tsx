@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui-kits/table/table";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useGetExportHistory } from "@blocks-localization/hooks/use-language-manager";
 import { IExportFileDetails } from "@blocks-localization/models/language";
 import { ExportHistoryFilters } from "./export-history-filters";

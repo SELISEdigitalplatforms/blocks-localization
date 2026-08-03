@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Events;
+using Eurolm.DomainService.Utilities;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -96,7 +97,7 @@ namespace Worker.Consumers
             // Get existing modules from target to preserve their ItemIds
             var sourceModuleNames = sourceModules.Select(m => m.ModuleName).ToList();
             var existingTargetModules = await _migrationRepository.GetExistingModulesByNamesAsync(sourceModuleNames, @event.TargetedProjectKey);
-            
+
             // Handle potential duplicates by taking the first occurrence
             var existingModuleByName = existingTargetModules
                 .GroupBy(m => m.ModuleName)
@@ -181,7 +182,7 @@ namespace Worker.Consumers
             // Prepare keys for target environment with mapped ModuleIds
             // Deduplicate source keys by (ModuleName, KeyName) - take the first/latest occurrence
             var targetKeys = sourceKeys
-                .Where(sourceKey => sourceModuleIdToNameMap.ContainsKey(sourceKey.ModuleId) 
+                .Where(sourceKey => sourceModuleIdToNameMap.ContainsKey(sourceKey.ModuleId)
                                  && targetModuleNameToIdMap.ContainsKey(sourceModuleIdToNameMap[sourceKey.ModuleId]))
                 .GroupBy(sourceKey => (ModuleName: sourceModuleIdToNameMap[sourceKey.ModuleId], sourceKey.KeyName))
                 .Select(group =>
@@ -214,12 +215,12 @@ namespace Worker.Consumers
 
             // Log any keys that couldn't be migrated due to missing module mapping or deduplication
             var processedKeysCount = sourceKeys
-                .Where(k => sourceModuleIdToNameMap.ContainsKey(k.ModuleId) 
+                .Where(k => sourceModuleIdToNameMap.ContainsKey(k.ModuleId)
                          && targetModuleNameToIdMap.ContainsKey(sourceModuleIdToNameMap[k.ModuleId]))
                 .Count();
             var skippedKeysCount = sourceKeys.Count - processedKeysCount;
             var deduplicatedCount = processedKeysCount - targetKeys.Count;
-            
+
             if (skippedKeysCount > 0)
             {
                 _logger.LogWarning("Skipped {SkippedCount} keys due to missing module mapping in target environment", skippedKeysCount);
@@ -269,7 +270,7 @@ namespace Worker.Consumers
 
             await _messageClient.SendToMassConsumerAsync(new ConsumerMessage<MigrationCompletionEvent>
             {
-                ConsumerName = "migration_topic",
+                ConsumerName = Constants.MigrationCompletionTopic,
                 Payload = completionEvent
             });
         }
