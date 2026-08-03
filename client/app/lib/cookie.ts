@@ -28,9 +28,7 @@ const normalizeDomain = (domain: string): string =>
  * host-only cookie instead of silently rejecting the write.
  */
 const resolveCookieDomain = (domain?: string): string | undefined => {
-  const normalizedDomain = normalizeDomain(
-    domain ?? getRuntimeEnv("BLOCKS_BASE_DOMAIN"),
-  );
+  const normalizedDomain = normalizeDomain(domain ?? getRuntimeEnv("BLOCKS_BASE_DOMAIN"));
   if (!normalizedDomain) return undefined;
 
   // An explicitly supplied domain remains supported for callers and tests.
@@ -39,8 +37,7 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
   }
 
   const hostname = window.location.hostname.toLowerCase();
-  return hostname === normalizedDomain ||
-    hostname.endsWith(`.${normalizedDomain}`)
+  return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`)
     ? normalizedDomain
     : undefined;
 };
@@ -70,14 +67,9 @@ export function getCookie(name: string): string | null {
  * @param name - Cookie name
  * @param value - Cookie value
  * @param days - Number of days until expiration (default: 365)
- * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
+ * @param domain - Optional domain override. When omitted, uses BLOCKS_BASE_DOMAIN.
  */
-export function setCookie(
-  name: string,
-  value: string,
-  days: number = 365,
-  domain: string = ".blocksdevelopers.com",
-): void {
+export function setCookie(name: string, value: string, days: number = 365, domain?: string): void {
   if (typeof document === "undefined") return;
 
   // Check size limit
@@ -148,13 +140,13 @@ export function getJsonCookie<T>(name: string): T | null {
  * @param name - Cookie name
  * @param value - Object to store
  * @param days - Number of days until expiration
- * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
+ * @param domain - Optional domain override. When omitted, uses BLOCKS_BASE_DOMAIN.
  */
 export function setJsonCookie<T>(
   name: string,
   value: T,
   days: number = 365,
-  domain: string = ".blocksdevelopers.com",
+  domain?: string,
 ): void {
   try {
     const jsonString = JSON.stringify(value);
