@@ -3603,9 +3603,6 @@ namespace XUnitTest
         [Fact]
         public async Task XlfImport_BaseFileThenLanguageFile_PreservesKeyAndAddsTranslation()
         {
-            // First import: base file creates the key
-            // Second import: language file adds translation
-            // Testing ProcessXlfFile which uses batch fetch and upsert
 
             var existingKeyAfterBaseImport = new BlocksLanguageKey
             {
@@ -3621,8 +3618,6 @@ namespace XUnitTest
                 .ReturnsAsync(() => 
                 {
                     callCount++;
-                    // First call (base file import): no existing key
-                    // Second call (language file import): key exists from base import
                     return callCount == 1 
                         ? new List<BlocksLanguageKey>() 
                         : new List<BlocksLanguageKey> { existingKeyAfterBaseImport };

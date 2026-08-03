@@ -15,8 +15,8 @@ const projectStore = {
   selectedTenantGroup: "group-1",
 };
 
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => projectStore,
 }));
 vi.mock("@/hooks/use-toast", () => ({

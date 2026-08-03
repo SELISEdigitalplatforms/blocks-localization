@@ -281,8 +281,16 @@ export default function LocalizationTimeline({
                   return (
                     <div
                       key={entry.operationId + index}
+                      role="button"
+                      tabIndex={0}
                       className="flex min-h-[66px] w-full cursor-pointer rounded-md hover:bg-muted/50"
                       onClick={() => setSelectedOperationId(entry.operationId)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedOperationId(entry.operationId);
+                        }
+                      }}
                     >
                       {/* Left: time/date */}
                       <div

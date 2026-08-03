@@ -54,7 +54,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">
@@ -247,23 +247,6 @@ function Configure() {
   };
 
   const columns: ColumnDef<ILanguageConfig>[] = [
-    // {
-    //   accessorKey: "itemId",
-    //   header: () => {
-    //     return (
-    //       <div className="flex items-center">
-    //         <span className="font-bold text-medium-emphasis">#</span>
-    //       </div>
-    //     );
-    //   },
-    //   cell: ({ row }) => {
-    //     return (
-    //       <div className="flex w-[120px] items-center">
-    //         <span>{row.getValue("itemId")}</span>
-    //       </div>
-    //     );
-    //   },
-    // },
     {
       accessorKey: "languageName",
       header: () => {

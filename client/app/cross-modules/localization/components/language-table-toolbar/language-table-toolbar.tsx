@@ -44,24 +44,26 @@ export function LanguageTableToolbar({
       const from = dateValue?.from;
       const to = dateValue?.to;
 
-      return setQueryParams((prev) => ({
+      setQueryParams((prev) => ({
         ...prev,
         createStartDate: from?.toISOString() || "",
         createEndDate: to?.toISOString() || "",
         pageNumber: 0,
       }));
+      return;
     }
     if (key === "lastUpdateDate") {
       const dateValue = value as { from?: Date; to?: Date } | null;
       const from = dateValue?.from;
       const to = dateValue?.to;
 
-      return setQueryParams((prev) => ({
+      setQueryParams((prev) => ({
         ...prev,
         lastUpdateStartDate: from?.toISOString() || "",
         lastUpdateEndDate: to?.toISOString() || "",
         pageNumber: 0,
       }));
+      return;
     }
     setQueryParams((prev) => ({
       ...prev,

@@ -8,8 +8,8 @@ import { ModuleDetails } from "./module-details";
 
 let params: Record<string, string> = { moduleId: "m1" };
 
-vi.mock("react-router-dom", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-router-dom")>()),
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
   useParams: () => params,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
