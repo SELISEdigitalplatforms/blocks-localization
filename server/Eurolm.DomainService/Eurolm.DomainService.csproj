@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,7 +9,7 @@
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Newtonsoft.Json" />
-    <PackageReference Include="SeliseBlocks.Genesis" />
-    <PackageReference Include="SeliseBlocks.StorageDriver" />
+    <PackageReference Include="SeliseBlocks.Genesis.OS" />
+    <PackageReference Include="SeliseBlocks.StorageDriver.OS" />
   </ItemGroup>
 </Project>

@@ -11,7 +11,7 @@ const saveWebhookAsync = vi.fn();
 const deleteAsync = vi.fn();
 const setDefaultAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));

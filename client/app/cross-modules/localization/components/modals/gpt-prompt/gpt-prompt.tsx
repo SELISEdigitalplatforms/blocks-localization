@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 
 const GptPrompt: React.FC<{
   defaultValue?: string;
@@ -26,22 +26,11 @@ const GptPrompt: React.FC<{
   const [text, setText] = useState(defaultValue);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
-  // const wordsLimit = 60;
 
-  // const wordCount = (text: string) => {
-  //   return text
-  //     .trim()
-  //     .split(/\s+/)
-  //     .filter((word: any) => word.length > 0).length;
-  // };
 
   const handleWordsLimit = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textAreaText = event.target.value;
-    // const wordsArray = textAreaText.trim().split(/\s+/);
     setText(textAreaText);
-    // if (wordsArray.length <= wordsLimit) {
-    //   setText(textAreaText);
-    // }
   };
 
   const restoreDefault = () => {
@@ -75,8 +64,6 @@ const GptPrompt: React.FC<{
           title: "Success",
           description: "Auto translation prompt updated successfully",
         });
-        // form.reset();
-        // router.replace("/services/language");
       } else {
         toast({
           variant: "destructive",
