@@ -63,6 +63,37 @@ describe("components/filter-toolbar/sort-header", () => {
     expect(onChange).toHaveBeenCalledWith({ property: "name", isDescending: false });
   });
 
+  it("should use the configured descending direction when a date column becomes active", () => {
+    const onChange = vi.fn();
+    render(
+      <SortHeader
+        id="CreateDate"
+        label="Created Date"
+        value={{ property: "KeyName", isDescending: false }}
+        onChange={onChange}
+        defaultDescending
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Created Date" }));
+
+    expect(onChange).toHaveBeenCalledWith({ property: "CreateDate", isDescending: true });
+  });
+
+  it("should show a neutral icon on an inactive column", () => {
+    const { container } = render(
+      <SortHeader
+        id="LastUpdateDate"
+        label="Last Updated Date"
+        value={{ property: "CreateDate", isDescending: true }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(".lucide-arrow-up-down")).toBeTruthy();
+    expect(container.querySelector(".lucide-arrow-down")).toBeNull();
+  });
+
   it("should not let the click reach an enclosing row handler", () => {
     const onRowClick = vi.fn();
     const onChange = vi.fn();

@@ -78,7 +78,7 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { FilterControls } from "@/components/filter-toolbar";
+import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 
 const getDeleteKeysErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
@@ -182,6 +182,17 @@ export function LanguageTable() {
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const { sortQueryParams, setSortQueryParams, reset: sortReset } = useKeysSortQueryParams();
 
+  const handleSortChange = useCallback(
+    (sort: SortValue) => {
+      setSortQueryParams(sort);
+      setQueryParams((prev) => ({
+        ...prev,
+        pageNumber: 0,
+      }));
+    },
+    [setQueryParams, setSortQueryParams],
+  );
+
   const selectedLanguagesRef = useRef(selectedLanguages);
   selectedLanguagesRef.current = selectedLanguages;
 
@@ -243,11 +254,7 @@ export function LanguageTable() {
     queryParams.search ?? "",
     queryParams.moduleIds ?? [],
     false,
-    sortQueryParams.property
-      ? sortQueryParams.property === "keyName"
-        ? "Key"
-        : sortQueryParams.property
-      : "",
+    sortQueryParams.property,
     sortQueryParams.isDescending,
     queryParams.createStartDate || queryParams.createEndDate
       ? {
@@ -580,7 +587,7 @@ export function LanguageTable() {
               label="Key"
               id="KeyName"
               value={sortQueryParams}
-              onChange={setSortQueryParams}
+              onChange={handleSortChange}
             />
           </div>
         ),
@@ -677,9 +684,10 @@ export function LanguageTable() {
                 <div className="w-[150px]">
                   <FilterControls.SortHeader
                     label="Created Date"
-                    id="createDate"
+                    id="CreateDate"
                     value={sortQueryParams}
-                    onChange={setSortQueryParams}
+                    onChange={handleSortChange}
+                    defaultDescending
                   />
                 </div>
               ),
@@ -702,9 +710,10 @@ export function LanguageTable() {
                 <div className="w-[150px]">
                   <FilterControls.SortHeader
                     label="Last Updated Date"
-                    id="lastUpdateDate"
+                    id="LastUpdateDate"
                     value={sortQueryParams}
-                    onChange={setSortQueryParams}
+                    onChange={handleSortChange}
+                    defaultDescending
                   />
                 </div>
               ),
@@ -741,7 +750,7 @@ export function LanguageTable() {
       selectedLanguages,
       selectedOptionalColumns,
       sortQueryParams,
-      setSortQueryParams,
+      handleSortChange,
     ],
   );
 
