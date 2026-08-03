@@ -61,7 +61,6 @@ namespace BlocksTemplate.Api.Controllers
         }
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]
-        //[ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ApiResponse> SaveWebHook([FromBody] BlocksWebhook webhook)
         {
             if (webhook == null) return new ApiResponse("Webhook cannot be null.");

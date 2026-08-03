@@ -5,7 +5,7 @@ import { languageManagerService } from "@blocks-localization/services/language-m
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as hooks from "./use-language-manager";
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
 }));
 

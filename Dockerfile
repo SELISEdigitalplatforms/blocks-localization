@@ -9,7 +9,7 @@ ARG DOTNET_PUBLISH_PLATFORM=linux/amd64
 # -----------------------------------------------------------------------------
 # Stage: frontend — Vite build → server/Api/wwwroot (see client/vite.config.ts)
 # -----------------------------------------------------------------------------
-FROM node:22-alpine AS client
+FROM node:22.22-alpine AS client
 WORKDIR /src
 
 COPY client/package.json client/package-lock.json ./client/

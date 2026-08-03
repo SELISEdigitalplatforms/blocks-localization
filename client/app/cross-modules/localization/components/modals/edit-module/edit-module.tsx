@@ -17,7 +17,7 @@ import {
 } from "@/components/ui-kits/form/form";
 import { useSaveLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";

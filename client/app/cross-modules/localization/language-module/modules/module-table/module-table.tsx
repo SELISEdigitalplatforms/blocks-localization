@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useScopedPath } from "@seliseblocks/blocks-kit/hooks";
+import { useNavigate } from "react-router";
+import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -107,7 +107,7 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", [...uniqueCreatedByIds].sort()],
+    queryKey: ["module-users", [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
