@@ -90,11 +90,12 @@ describe("lib/cookie", () => {
       }
     });
 
-    it("should set a cookie with default 365-day expiry and cross-subdomain domain", () => {
-      // The default domain `.blocksdevelopers.com` won't be readable in jsdom
-      // (origin mismatch), so we verify via a spy on document.cookie setter
-      // that the cookie string was constructed with the expected defaults
-      // (expires, path, domain, SameSite=Lax).
+    it("should use BLOCKS_BASE_DOMAIN with the default 365-day expiry", () => {
+      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
+      (window as any).__BLOCKS_ENV__ = {
+        ...originalWindowEnv,
+        BLOCKS_BASE_DOMAIN: window.location.hostname,
+      };
       const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
