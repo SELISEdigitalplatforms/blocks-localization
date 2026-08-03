@@ -106,8 +106,12 @@ export class TranslationsListPage {
     const monthGrid = popover.getByRole("grid").first();
 
     const clickDay = async (day: number) => {
+      // Dual-month calendars can show the same day number twice (in-month +
+      // day-outside from the adjacent month). Prefer the in-month cell.
       await monthGrid
-        .getByRole("gridcell", { name: String(day), exact: true, disabled: false })
+        .locator(`button[role="gridcell"]:not(.day-outside)`, {
+          hasText: new RegExp(`^${day}$`),
+        })
         .click();
     };
 

@@ -1361,7 +1361,7 @@ namespace Eurolm.DomainService.Services
             var fileData = await _storageDriverService.GetUrlForDownloadFileAsync(new GetFileRequest
             {
                 FileId = fileId,
-                ProjectKey = projectKey
+               // ProjectKey = projectKey
             });
             if (fileData is null)
             {
@@ -1702,8 +1702,6 @@ namespace Eurolm.DomainService.Services
                     }
                     else
                     {
-                        // Non-base file: import translations for the target language only
-                        // Do NOT add source language resource - only import the target language from the file
                         if (!string.IsNullOrEmpty(targetLanguage))
                         {
                             var targetResource = resourceList.FirstOrDefault(r => r.Culture == targetLanguage);

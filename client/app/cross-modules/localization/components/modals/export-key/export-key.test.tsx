@@ -13,7 +13,7 @@ import ExportKey from "./export-key";
 
 const exportAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({
     selectedProject: { tenantId: "t1", itemId: "app-1" },
   }),
@@ -151,13 +151,19 @@ describe("components/modals/export-key", () => {
     ).toBe(true);
   });
 
-  it("should reset and apply the date range popover", () => {
+  it("should reset and apply the date range popover", async () => {
     renderExport();
-    fireEvent.click(screen.getByText("Set date range"));
+    fireEvent.click(screen.getByRole("button", { name: "Set date range" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Reset" })).toBeTruthy();
+    });
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-    fireEvent.click(screen.getByText("Set date range"));
+    fireEvent.click(screen.getByRole("button", { name: "Set date range" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Apply" })).toBeTruthy();
+    });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    expect(screen.getByText("Set date range")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Set date range" })).toBeTruthy();
   });
 
   // The export component registers a notification listener; grab the latest
