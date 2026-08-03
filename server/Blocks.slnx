@@ -1,9 +1,7 @@
 <Solution>
   <Project Path="Api/Api.csproj" />
   <Project Path="Eurolm.DomainService/Eurolm.DomainService.csproj" />
-  <Project Path="Eurolm.Driver/Eurolm.Driver.csproj">
-    <Build Solution="Debug|*" Project="false" />
-  </Project>
+  <Project Path="Eurolm.Driver/Eurolm.Driver.csproj" />
   <Project Path="Worker/Worker.csproj" />
   <Project Path="XUnitTest/XUnitTest.csproj" />
 </Solution>

@@ -7,7 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../ui-kits/breadcrumb/breadcrumb";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import useRoutePathSegments from "@/hooks/use-path-segments";
 
 const PageBreadcrumb: React.FC<{ breadcrumbIndex?: number }> = ({ breadcrumbIndex }) => {
