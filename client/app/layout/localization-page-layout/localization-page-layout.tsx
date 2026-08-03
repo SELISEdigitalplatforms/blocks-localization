@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import GlossaryTable from "@blocks-localization/components/glossary/glossary-table";
 import GlossaryDetails from "@blocks-localization/components/glossary/glossary-details";
 import { AddNewLanguageKey } from "@blocks-localization/language-module/add-new-language-key/add-new-language-key";

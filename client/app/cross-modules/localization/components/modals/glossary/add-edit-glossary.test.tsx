@@ -8,7 +8,7 @@ import AddEditGlossary from "./add-edit-glossary";
 
 const saveGlossaryAsync = vi.fn();
 
-vi.mock("@seliseblocks/blocks-kit", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({

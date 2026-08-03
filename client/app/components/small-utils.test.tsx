@@ -52,7 +52,6 @@ describe("components/date-range-filter", () => {
       />,
     );
     expect(screen.getByText("Created")).toBeTruthy();
-    // formatDate(..., true) renders dd/mm/yyyy for both endpoints.
     expect(screen.getByText(/01\/01\/2026/)).toBeTruthy();
   });
 

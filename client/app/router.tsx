@@ -1,13 +1,13 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import {
   CallbackPage,
   ConsolePage,
   DashboardOverview,
   LoginPage,
   ProfilePage,
-} from "@seliseblocks/blocks-kit/pages";
-import { DashboardRoute, ConsoleLayout } from "@seliseblocks/blocks-kit/layouts";
-import { ProtectedGuard, PublicGuard, AuthResolver } from "@seliseblocks/blocks-kit/guards";
+} from "@seliseblocks/genesis-os/pages";
+import { DashboardRoute, ConsoleLayout } from "@seliseblocks/genesis-os/layouts";
+import { ProtectedGuard, PublicGuard, AuthResolver } from "@seliseblocks/genesis-os/guards";
 import {
   LocalizationConfigurePage,
   LocalizationExtensionGuidesPage,

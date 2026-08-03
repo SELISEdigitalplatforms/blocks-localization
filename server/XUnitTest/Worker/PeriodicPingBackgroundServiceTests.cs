@@ -225,12 +225,21 @@ namespace XUnitTest.Worker
             var mockHttpHandler = CreateMockHttpHandler(statusCode);
             var mockHttpFactory = CreateMockHttpClientFactory(mockHttpHandler.Object);
             var mockLogger = new Mock<ILogger<PeriodicPingBackgroundService>>();
+            var logged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            mockLogger
+                .Setup(x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("server error")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+                .Callback(() => logged.TrySetResult());
             var service = new PeriodicPingBackgroundService(mockHttpFactory.Object, config, mockLogger.Object);
             var cts = new CancellationTokenSource();
 
-            // Act
+            // Act — wait for the expected log instead of a fixed delay (avoids cancel-before-log races)
             await service.StartAsync(cts.Token);
-            await Task.Delay(200);
+            await logged.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -238,7 +247,7 @@ namespace XUnitTest.Worker
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("server error")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("server error")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);

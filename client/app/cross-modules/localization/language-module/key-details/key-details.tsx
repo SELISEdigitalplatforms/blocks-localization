@@ -46,16 +46,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import GptPrompt from "@blocks-localization/components/modals/gpt-prompt/gpt-prompt";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { toast } from "@/hooks/use-toast";
 import { shortGuidGenerator } from "@/components/create-project/utils";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 const KeyDetails = () => {
   const { keyId } = useParams<{ keyId: string }>();
   const id = keyId ?? "";
   const { data: blocksLanguageKeyData } = useGetBlocksLanguageKeyById(id);
-  // const { data: keyTimelineData } = useGetLanguageKeysTimeline(1, 20, id);
   const [keyDetails, setKeyDetails] = useState<IBlocksLanguageKey | null>(null);
   const [events, setEvents] = useState<TimelineEvents[]>([]);
   const [tabId, setTabId] = useQueryState("translationActivity", {
@@ -349,11 +348,6 @@ const KeyDetails = () => {
               </Button> */}
               </div>
             ) : null
-            // <div className="flex gap-2">
-            //   <Button variant="outline" className="h-10 w-10 p-0">
-            //     <Filter width={20} height={20} />
-            //   </Button>
-            // </div>
           }
         </div>
         <TabsContent value="details">

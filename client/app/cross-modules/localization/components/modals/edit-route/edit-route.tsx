@@ -14,7 +14,7 @@ import { useMemo } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useSaveBlocksLanguageKey } from "../../../hooks/use-language-manager";
 import { IBlocksLanguageKey } from "../../../models/language";
 
