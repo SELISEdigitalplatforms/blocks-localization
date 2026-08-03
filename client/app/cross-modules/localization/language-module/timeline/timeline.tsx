@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { useRevertKeyTimeline } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/blocks-kit";
+import { useProjectStore } from "@seliseblocks/genesis-os";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 
@@ -97,8 +97,16 @@ const Timeline = (props: TimelineProps) => {
         {props.events.map((event, index) => (
           <div
             key={index}
+            role="button"
+            tabIndex={0}
             className="flex min-h-[66px] w-full cursor-pointer"
             onClick={() => setSelectedEvent(event)} // row click => modal
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelectedEvent(event);
+              }
+            }}
           >
             <div className={`${isMobile ? `w-[30%]` : `w-[16%]`} relative`}>
               <div className="absolute -top-[6px] w-full pr-[6px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]">

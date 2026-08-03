@@ -22,6 +22,7 @@ export default defineConfig({
     setupFiles: ["app/test-setup.ts"],
     css: false,
     coverage: {
+      reporter: ["text", "lcov"],
       all: true,
       provider: "v8",
       include: ["app/**/*.{ts,tsx}"],
