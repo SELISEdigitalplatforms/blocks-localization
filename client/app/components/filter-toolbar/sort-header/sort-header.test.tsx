@@ -94,6 +94,23 @@ describe("components/filter-toolbar/sort-header", () => {
     expect(container.querySelector(".lucide-arrow-down")).toBeNull();
   });
 
+  it.each([
+    { isDescending: false, iconClass: ".lucide-arrow-up" },
+    { isDescending: true, iconClass: ".lucide-arrow-down" },
+  ])("should show the correct direction on the active column", ({ isDescending, iconClass }) => {
+    const { container } = render(
+      <SortHeader
+        id="CreateDate"
+        label="Created Date"
+        value={{ property: "CreateDate", isDescending }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(iconClass)).toBeTruthy();
+    expect(container.querySelector(".lucide-arrow-up-down")).toBeNull();
+  });
+
   it("should not let the click reach an enclosing row handler", () => {
     const onRowClick = vi.fn();
     const onChange = vi.fn();

@@ -56,7 +56,10 @@ export const SortHeader = ({
   defaultDescending = false,
 }: SortHeaderProps) => {
   const isActive = id === value.property;
-  const Icon = isActive ? (value.isDescending ? ArrowDown : ArrowUp) : ArrowUpDown;
+  let Icon = ArrowUpDown;
+  if (isActive) {
+    Icon = value.isDescending ? ArrowDown : ArrowUp;
+  }
 
   const onClickHandler = (e: MouseEvent) => {
     e.stopPropagation();
