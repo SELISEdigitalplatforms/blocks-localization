@@ -51,8 +51,9 @@ namespace Eurolm.DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(EnvironmentDataMigrationQueue),
                                              ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue),
-                                              ConsumerSubscription.BindToQueueViaExchange(queueName: MigrationCompletionTopicQueue, exchangeName: MigrationCompletionTopic)],
-                    }
+                                             ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue),
+                                             ConsumerSubscription.BindToQueueViaExchange(queueName: MigrationCompletionTopicQueue, exchangeName: MigrationCompletionTopic)],
+                }
             };
         }
 
