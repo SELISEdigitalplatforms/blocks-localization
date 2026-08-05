@@ -109,17 +109,45 @@ describe("lib/cookie", () => {
         originalSetter.call(this, value);
       });
 
-      setCookie("name", "value");
-      spy.mockRestore();
+      try {
+        setCookie("name", "value");
+      } finally {
+        spy.mockRestore();
+        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+      }
 
       // The cookie write should have happened with all expected attributes.
       expect(calls.length).toBeGreaterThan(0);
       const written = calls[0];
       expect(written).toContain("name=");
       expect(written).toContain("path=/");
-      expect(written).toContain("domain=.blocksdevelopers.com");
+      expect(written).toContain(`domain=${window.location.hostname}`);
       expect(written).toContain("SameSite=Lax");
       expect(written).toContain("expires=");
+    });
+
+    it("should fall back to a host-only cookie when the configured domain does not match", () => {
+      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
+      (window as any).__BLOCKS_ENV__ = {
+        ...originalWindowEnv,
+        BLOCKS_BASE_DOMAIN: "another-domain.example",
+      };
+      const calls: string[] = [];
+      const spy = vi
+        .spyOn(document, "cookie", "set")
+        .mockImplementation((value: string) => {
+          calls.push(value);
+        });
+
+      try {
+        setCookie("name", "value");
+      } finally {
+        spy.mockRestore();
+        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+      }
+
+      expect(calls[0]).not.toContain("domain=");
+      expect(calls[0]).toContain("path=/");
     });
 
     it("should accept custom days and domain", () => {
