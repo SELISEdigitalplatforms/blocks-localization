@@ -242,6 +242,31 @@ describe("language-table (extra coverage)", () => {
       expect(screen.getByText("Last Updated Date")).toBeTruthy();
     });
 
+    it("sorts date columns newest first using backend field names and resets pagination", () => {
+      queryParamsState.pageNumber = 3;
+      primeStore([], ["createDate", "lastUpdateDate"]);
+      setKeys(oneKey());
+      renderWithProviders(<LanguageTable />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Created Date" }));
+
+      expect(setSortQueryParams).toHaveBeenCalledWith({
+        property: "CreateDate",
+        isDescending: true,
+      });
+      const resetCreatedPage = setQueryParams.mock.calls.at(-1)![0] as (
+        prev: Record<string, unknown>,
+      ) => Record<string, unknown>;
+      expect(resetCreatedPage({ pageNumber: 3 }).pageNumber).toBe(0);
+
+      fireEvent.click(screen.getByRole("button", { name: "Last Updated Date" }));
+
+      expect(setSortQueryParams).toHaveBeenLastCalledWith({
+        property: "LastUpdateDate",
+        isDescending: true,
+      });
+    });
+
     it("renders a language column value for the selected language", () => {
       primeStore(["de-DE"], []);
       setKeys(

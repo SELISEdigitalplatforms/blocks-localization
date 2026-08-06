@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { MouseEvent, useCallback } from "react";
 
@@ -9,6 +9,7 @@ type SortHeaderProps = {
   label: string;
   value: SortValue;
   onChange: (params: SortValue) => void;
+  defaultDescending?: boolean;
 };
 
 export const useSortQueryParams = ({
@@ -47,15 +48,26 @@ export const useSortQueryParams = ({
   };
 };
 
-export const SortHeader = ({ label, id, value, onChange }: SortHeaderProps) => {
-  const Icon = value.isDescending ? ArrowDown : ArrowUp;
+export const SortHeader = ({
+  label,
+  id,
+  value,
+  onChange,
+  defaultDescending = false,
+}: SortHeaderProps) => {
+  const isActive = id === value.property;
+  let Icon = ArrowUpDown;
+  if (isActive) {
+    Icon = value.isDescending ? ArrowDown : ArrowUp;
+  }
 
   const onClickHandler = (e: MouseEvent) => {
     e.stopPropagation();
-    onChange({ property: id, isDescending: id !== value.property ? false : !value.isDescending });
+    onChange({
+      property: id,
+      isDescending: isActive ? !value.isDescending : defaultDescending,
+    });
   };
-
-  const isActive = id === value.property;
 
   return (
     <button type="button" className="flex cursor-pointer items-center" onClick={onClickHandler}>

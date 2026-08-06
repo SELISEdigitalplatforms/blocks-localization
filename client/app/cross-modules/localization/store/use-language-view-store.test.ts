@@ -11,9 +11,7 @@ const COOKIE_NAME = "language-view-storage";
 
 /**
  * Helper to seed the cookie with stored settings for one or more tenants.
- * jsdom's `document.cookie` is origin-scoped, so we must NOT use a domain
- * attribute (the production code uses `.blocksdevelopers.com` for cross-subdomain
- * sharing, which jsdom cannot read back). We set the cookie directly here.
+ * We set a host-only cookie directly so jsdom can read it back consistently.
  */
 const seedCookie = (
   data: Record<string, { selectedLanguages?: string[]; selectedOptionalColumns?: string[] }>,
@@ -231,7 +229,7 @@ describe("localization/store/use-language-view-store", () => {
   describe("rehydrateLanguageViewStore", () => {
     it("should use defaults when cookie is absent", () => {
       // No cookie set; call directly.
-      useLanguageViewStore.setState({ tenantId: "tenant-A" });
+      updateLanguageViewTenantId("tenant-A");
       rehydrateLanguageViewStore();
       const s = useLanguageViewStore.getState();
       expect(s.selectedLanguages).toEqual([]);
@@ -240,10 +238,10 @@ describe("localization/store/use-language-view-store", () => {
     });
 
     it("should load tenant's stored settings when present", () => {
+      useLanguageViewStore.setState({ tenantId: "tenant-A" });
       seedCookie({
         "tenant-A": { selectedLanguages: ["de-DE"] },
       });
-      useLanguageViewStore.setState({ tenantId: "tenant-A" });
       rehydrateLanguageViewStore();
       expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["de-DE"]);
     });
@@ -411,10 +409,7 @@ describe("localization/store/use-language-view-store", () => {
 
   // ─── persistence behavior ───────────────────────────────────────────────
   describe("persistence behavior", () => {
-    // NOTE: The production storage adapter calls setJsonCookie with
-    // `domain=".blocksdevelopers.com"` for cross-subdomain sharing. jsdom's
-    // `document.cookie` is origin-scoped and cannot read those back. We
-    // therefore spy on setJsonCookie to verify the persisted payload directly.
+    // Spy on setJsonCookie to verify the persisted payload directly.
     let setJsonCookieSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {

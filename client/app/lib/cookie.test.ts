@@ -90,11 +90,12 @@ describe("lib/cookie", () => {
       }
     });
 
-    it("should set a cookie with default 365-day expiry and cross-subdomain domain", () => {
-      // The default domain `.blocksdevelopers.com` won't be readable in jsdom
-      // (origin mismatch), so we verify via a spy on document.cookie setter
-      // that the cookie string was constructed with the expected defaults
-      // (expires, path, domain, SameSite=Lax).
+    it("should use BLOCKS_BASE_DOMAIN with the default 365-day expiry", () => {
+      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
+      (window as any).__BLOCKS_ENV__ = {
+        ...originalWindowEnv,
+        BLOCKS_BASE_DOMAIN: window.location.hostname,
+      };
       const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
       const originalSetter = descriptor?.set;
       if (!originalSetter) return;
@@ -109,17 +110,45 @@ describe("lib/cookie", () => {
         originalSetter.call(this, value);
       });
 
-      setCookie("name", "value");
-      spy.mockRestore();
+      try {
+        setCookie("name", "value");
+      } finally {
+        spy.mockRestore();
+        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+      }
 
       // The cookie write should have happened with all expected attributes.
       expect(calls.length).toBeGreaterThan(0);
       const written = calls[0];
       expect(written).toContain("name=");
       expect(written).toContain("path=/");
-      expect(written).toContain("domain=.blocksdevelopers.com");
+      expect(written).toContain(`domain=${window.location.hostname}`);
       expect(written).toContain("SameSite=Lax");
       expect(written).toContain("expires=");
+    });
+
+    it("should fall back to a host-only cookie when the configured domain does not match", () => {
+      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
+      (window as any).__BLOCKS_ENV__ = {
+        ...originalWindowEnv,
+        BLOCKS_BASE_DOMAIN: "another-domain.example",
+      };
+      const calls: string[] = [];
+      const spy = vi
+        .spyOn(document, "cookie", "set")
+        .mockImplementation((value: string) => {
+          calls.push(value);
+        });
+
+      try {
+        setCookie("name", "value");
+      } finally {
+        spy.mockRestore();
+        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+      }
+
+      expect(calls[0]).not.toContain("domain=");
+      expect(calls[0]).toContain("path=/");
     });
 
     it("should accept custom days and domain", () => {
