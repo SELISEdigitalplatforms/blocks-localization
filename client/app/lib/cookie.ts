@@ -36,7 +36,7 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
     return normalizedDomain;
   }
 
-  const hostname = window.location.hostname.toLowerCase();
+  const hostname = globalThis.window.location.hostname.toLowerCase();
   return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`)
     ? normalizedDomain
     : undefined;
@@ -85,7 +85,7 @@ export function setCookie(name: string, value: string, days: number = 365, domai
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
 
   // Determine if Secure flag should be used (based on protocol)
-  const isSecure = window.location.protocol === "https:";
+  const isSecure = globalThis.window.location.protocol === "https:";
   const cookieDomain = resolveCookieDomain(domain);
 
   document.cookie = [
