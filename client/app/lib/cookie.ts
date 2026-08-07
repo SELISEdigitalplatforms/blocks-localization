@@ -32,7 +32,7 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
   if (!normalizedDomain) return undefined;
 
   // An explicitly supplied domain remains supported for callers and tests.
-  if (domain !== undefined || typeof window === "undefined") {
+  if (domain !== undefined || typeof globalThis.window === "undefined") {
     return normalizedDomain;
   }
 
