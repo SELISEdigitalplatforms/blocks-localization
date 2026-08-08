@@ -501,4 +501,68 @@ describe("components/import-file-modal", () => {
     fireEvent.click(screen.getByText("remove item 0"));
     await waitFor(() => expect(screen.queryByText("data.json")).toBeNull());
   });
+
+  // The upload catch normalises whatever was thrown into something the toast can
+  // render. Each shape below takes a different branch of that fallback chain, and
+  // the last one is the guard against surfacing nothing useful to the user.
+  describe("upload error messages", () => {
+    const uploadAndCatch = async (thrown: unknown) => {
+      presign.mockRejectedValue(thrown);
+      renderModal();
+      dropFile(
+        makeFile("data.json", JSON.stringify([{ KeyName: "greeting" }]), "application/json"),
+      );
+      await screen.findByText("data.json");
+      fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+      return vi.mocked(showErrorToast).mock.calls.at(-1)?.[0];
+    };
+
+    it("joins an errors array carried on the thrown value", async () => {
+      expect(await uploadAndCatch({ errors: ["too big", "wrong type"] })).toEqual({
+        errors: "too big, wrong type",
+      });
+    });
+
+    it("passes through a field keyed errors object", async () => {
+      // isErrorWithErrors only matches when errors is itself an object, so a
+      // validation map reaches the toast unflattened.
+      const errors = { keyName: ["is required"] };
+      expect(await uploadAndCatch({ errors })).toEqual({ errors });
+    });
+
+    it("keeps the whole value when errors is a bare string", async () => {
+      // A string errors field fails the isErrorWithErrors guard, so this lands in
+      // the generic object branch rather than being unwrapped.
+      const thrown = { errors: "single failure" };
+      expect(await uploadAndCatch(thrown)).toEqual({ errors: thrown });
+    });
+
+    it("uses the message of a thrown Error", async () => {
+      expect(await uploadAndCatch(new Error("network down"))).toEqual({
+        errors: "network down",
+      });
+    });
+
+    it("joins a thrown array", async () => {
+      expect(await uploadAndCatch(["first", "second"])).toEqual({
+        errors: "first, second",
+      });
+    });
+
+    it("passes through a thrown string", async () => {
+      expect(await uploadAndCatch("plain failure")).toEqual({ errors: "plain failure" });
+    });
+
+    it("passes through a thrown object as is", async () => {
+      const thrown = { code: 500 };
+      expect(await uploadAndCatch(thrown)).toEqual({ errors: thrown });
+    });
+
+    it("falls back to a readable message when nothing usable was thrown", async () => {
+      expect(await uploadAndCatch(null)).toEqual({
+        errors: "An unexpected error occurred during upload. Please try again.",
+      });
+    });
+  });
 });
