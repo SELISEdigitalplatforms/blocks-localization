@@ -32,7 +32,7 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
   if (!normalizedDomain) return undefined;
 
   // An explicitly supplied domain remains supported for callers and tests.
-  if (domain !== undefined || typeof globalThis.window === "undefined") {
+  if (domain !== undefined || globalThis.window === undefined) {
     return normalizedDomain;
   }
 
@@ -46,16 +46,15 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
  * Gets a cookie value by name
  */
 export function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
+  if (globalThis.document === undefined) return null;
 
   const nameEQ = `${name}=`;
   const cookies = document.cookie.split(";");
-  for (let i = 0; i < cookies.length; i++) {
-    let cookie = cookies[i];
-    while (cookie.charAt(0) === " ") {
+  for (let cookie of cookies) {
+    while (cookie.startsWith(" ")) {
       cookie = cookie.substring(1);
     }
-    if (cookie.indexOf(nameEQ) === 0) {
+    if (cookie.startsWith(nameEQ)) {
       return decodeURIComponent(cookie.substring(nameEQ.length));
     }
   }
@@ -70,7 +69,7 @@ export function getCookie(name: string): string | null {
  * @param domain - Optional domain override. When omitted, uses BLOCKS_BASE_DOMAIN.
  */
 export function setCookie(name: string, value: string, days: number = 365, domain?: string): void {
-  if (typeof document === "undefined") return;
+  if (globalThis.document === undefined) return;
 
   // Check size limit
   const encodedValue = encodeURIComponent(value);
@@ -106,7 +105,7 @@ export function setCookie(name: string, value: string, days: number = 365, domai
  * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
  */
 export function removeCookie(name: string, domain?: string): void {
-  if (typeof document === "undefined") return;
+  if (globalThis.document === undefined) return;
   const cookieDomain = resolveCookieDomain(domain);
   // Set expiration to past date to remove
   document.cookie = [

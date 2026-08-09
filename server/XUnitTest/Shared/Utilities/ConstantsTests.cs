@@ -43,7 +43,26 @@ namespace XUnitTest
 
             config.Should().NotBeNull();
             config.RabbitMqConfiguration.Should().NotBeNull();
-            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(6);
+            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(7);
+            config.RabbitMqConfiguration.ConsumerSubscriptions
+                .Select(subscription => subscription.QueueName)
+                .Should()
+                .BeEquivalentTo(new[]
+                {
+                    Constants.UilmQueue,
+                    Constants.UilmImportExportQueue,
+                    Constants.EnvironmentDataMigrationQueue,
+                    Constants.TranslateAllKeysQueue,
+                    Constants.TranslateBlocksLanguageKeyQueue,
+                    Constants.TranslateBlocksLanguageKeysQueue,
+                    Constants.MigrationCompletionTopicQueue,
+                });
+
+            config.RabbitMqConfiguration.ConsumerSubscriptions
+                .Single(subscription => subscription.QueueName == Constants.MigrationCompletionTopicQueue)
+                .ExchangeName
+                .Should()
+                .Be(Constants.MigrationCompletionTopic);
         }
 
         [Fact]
