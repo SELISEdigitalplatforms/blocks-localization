@@ -50,12 +50,13 @@ export function getCookie(name: string): string | null {
 
   const nameEQ = `${name}=`;
   const cookies = document.cookie.split(";");
-  for (let cookie of cookies) {
-    while (cookie.startsWith(" ")) {
-      cookie = cookie.substring(1);
+  for (const cookie of cookies) {
+    let trimmed = cookie;
+    while (trimmed.startsWith(" ")) {
+      trimmed = trimmed.substring(1);
     }
-    if (cookie.startsWith(nameEQ)) {
-      return decodeURIComponent(cookie.substring(nameEQ.length));
+    if (trimmed.startsWith(nameEQ)) {
+      return decodeURIComponent(trimmed.substring(nameEQ.length));
     }
   }
   return null;
