@@ -121,6 +121,28 @@ export const useSaveBlocksLanguageKey = () => {
   });
 };
 
+export const useSaveBlocksLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["save-blocks-language-keys", "bulk"],
+    mutationFn: languageManagerService.saveBlocksLanguageKeys,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+      });
+    },
+  });
+};
+
 export const useSaveLanguageModule = () => {
   const queryClient = useQueryClient();
   return useMutation({

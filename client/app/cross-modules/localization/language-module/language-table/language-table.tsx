@@ -1,33 +1,28 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
 import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
-import { ColumnDef, Row, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { RowSelectionState } from "@tanstack/react-table";
 import {
-  AlignLeft,
   EllipsisVertical,
   FolderInput,
   FolderOutput,
   History,
+  PencilLine,
   Plus,
   Rocket,
   Settings2,
   Trash,
   Wand,
   Languages,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui-kits/tooltip/tooltip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -64,7 +59,6 @@ import {
   useTranslateKeyWithPolling,
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
-import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import {
   useLanguageViewStore,
   updateLanguageViewTenantId,
@@ -79,97 +73,21 @@ import ConfirmationModal from "@/components/confirmation-modal/confirmation-moda
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
-
-const getDeleteKeysErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === "string" && error) return error;
-  if (Array.isArray(error) && error.length > 0) return error.join(", ");
-  if (error && typeof error === "object" && Object.keys(error).length > 0) {
-    return JSON.stringify(error);
-  }
-  return "Failed to delete selected keys. Please try again.";
-};
-
-const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) => {
-  const CHAR_WIDTH = 7.5;
-  const PADDING = 8;
-  const CONTAINER = 150;
-
-  // Handle null/undefined keyName gracefully
-  const displayValue = keyName ?? "(Unnamed Key)";
-  const shouldShowTooltip = displayValue.length * CHAR_WIDTH + PADDING > CONTAINER;
-
-  return (
-    <TooltipProvider key={displayValue}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">{displayValue}</div>
-        </TooltipTrigger>
-        {shouldShowTooltip && (
-          <TooltipContent side="top">
-            <p>{displayValue}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
-  );
-});
-KeyNameCell.displayName = "KeyNameCell";
-
-const RowActionsCell = memo(
-  ({
-    onView,
-    onDelete,
-    onTranslate,
-  }: {
-    onView: () => void;
-    onDelete: () => void;
-    onTranslate: () => void;
-  }) => (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <EllipsisVertical width={20} height={20} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem className="cursor-pointer" onClick={onView}>
-          <AlignLeft className="mr-2 h-4 w-4" />
-          <span>View details</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            onTranslate();
-          }}
-        >
-          <Languages className="mr-2 h-4 w-4" />
-          <span>Translate</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer text-error"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash className="mr-2 h-4 w-4" />
-          <span>Delete key</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ),
-);
-RowActionsCell.displayName = "RowActionsCell";
+import { InlineKeyDetails } from "./components/inline-key-details";
+import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
+import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
+import {
+  getDeleteKeysErrorMessage,
+  getInclusiveDateRange,
+  getPageSizeOptions,
+  getResourceSearchFilters,
+  parseResourceSearch,
+  updateResourceSearchValue,
+} from "./language-table.utils";
 
 export function LanguageTable() {
+  "use no memo";
+
   const {
     selectedLanguages,
     setSelectedLanguages,
@@ -196,41 +114,23 @@ export function LanguageTable() {
   const selectedLanguagesRef = useRef(selectedLanguages);
   selectedLanguagesRef.current = selectedLanguages;
 
-  const resourceSearchMap: Record<string, string> = useMemo(() => {
-    if (!queryParams.resourceSearch) return {};
-    try {
-      return JSON.parse(queryParams.resourceSearch);
-    } catch {
-      return {};
-    }
-  }, [queryParams.resourceSearch]);
+  const resourceSearchMap = useMemo(
+    () => parseResourceSearch(queryParams.resourceSearch),
+    [queryParams.resourceSearch],
+  );
 
-  const resourceSearchFilters = useMemo(() => {
-    return Object.entries(resourceSearchMap)
-      .filter(([, searchText]) => searchText.trim() !== "")
-      .map(([culture, searchText]) => ({ culture, searchText }));
-  }, [resourceSearchMap]);
+  const resourceSearchFilters = useMemo(
+    () => getResourceSearchFilters(resourceSearchMap),
+    [resourceSearchMap],
+  );
 
   const updateResourceSearch = useCallback(
     (culture: string, searchText: string) => {
-      setQueryParams((prev) => {
-        let current: Record<string, string> = {};
-        try {
-          current = prev.resourceSearch ? JSON.parse(prev.resourceSearch) : {};
-        } catch {
-          current = {};
-        }
-        const updated = { ...current, [culture]: searchText };
-        // Remove empty entries
-        Object.keys(updated).forEach((key) => {
-          if (!updated[key]) delete updated[key];
-        });
-        return {
-          ...prev,
-          resourceSearch: Object.keys(updated).length > 0 ? JSON.stringify(updated) : "",
-          pageNumber: 0,
-        };
-      });
+      setQueryParams((prev) => ({
+        ...prev,
+        resourceSearch: updateResourceSearchValue(prev.resourceSearch, culture, searchText),
+        pageNumber: 0,
+      }));
     },
     [setQueryParams],
   );
@@ -256,26 +156,8 @@ export function LanguageTable() {
     false,
     sortQueryParams.property,
     sortQueryParams.isDescending,
-    queryParams.createStartDate || queryParams.createEndDate
-      ? {
-          startDate: queryParams.createStartDate || "",
-          endDate: queryParams.createEndDate
-            ? new Date(
-                new Date(queryParams.createEndDate as string).getTime() + 86400000,
-              ).toISOString()
-            : "",
-        }
-      : undefined,
-    queryParams.lastUpdateStartDate || queryParams.lastUpdateEndDate
-      ? {
-          startDate: queryParams.lastUpdateStartDate || "",
-          endDate: queryParams.lastUpdateEndDate
-            ? new Date(
-                new Date(queryParams.lastUpdateEndDate as string).getTime() + 86400000,
-              ).toISOString()
-            : "",
-        }
-      : undefined,
+    getInclusiveDateRange(queryParams.createStartDate, queryParams.createEndDate),
+    getInclusiveDateRange(queryParams.lastUpdateStartDate, queryParams.lastUpdateEndDate),
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
     queryParams.missingLanguages ?? [],
   );
@@ -310,6 +192,8 @@ export function LanguageTable() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
+  const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } = useDeleteLanguageKeys();
   const { isPending: isBulkTranslatingKeys, mutateAsync: bulkTranslateAsync } =
     useTranslateLanguageKeys();
@@ -317,7 +201,6 @@ export function LanguageTable() {
 
   // Poll for translation completion when a key translation is in progress
   useTranslateKeyWithPolling(pollingKeyId || "", tenantId, () => {
-    // Remove key from translating set once confirmed complete
     if (pollingKeyId) {
       setTranslatingKeys((prev) => {
         const next = new Set(prev);
@@ -329,7 +212,6 @@ export function LanguageTable() {
   });
 
   // Listen for translate-all completion notification to clear translatingKeys
-  // This clears the "Translating..." state when the backend signals completion via WebSocket
   useNotificationListener("translate-all", () => {
     setTranslatingKeys(new Set());
   });
@@ -487,10 +369,6 @@ export function LanguageTable() {
     }
   };
 
-  // Sync selectedLanguages with the available languages for the current project.
-  // Also runs on tenantId change to reset stale language codes from the previous project.
-  // Only resets to defaults if the current tenant has no persisted view settings.
-  // Wait for store to hydrate from the cookie before applying any logic.
   useEffect(() => {
     if (!languageListData?.length || !isHydrated) return;
 
@@ -500,8 +378,6 @@ export function LanguageTable() {
       availableLanguageCodes.includes(langCode),
     );
 
-    // Only reset to defaults when this tenant has no saved settings yet, or
-    // when stored language codes are no longer valid for the current tenant.
     if (
       (!hasStoredViewSettings && current.length === 0) ||
       validSelectedLanguages.length !== current.length
@@ -537,227 +413,32 @@ export function LanguageTable() {
     }));
   };
 
-  // Fixed standard page size options plus "All" showing total count
-  const pageSizeOptions = useMemo(() => {
-    const totalCount = blocksLanguageKeyData?.totalCount || 0;
-    const fixedOptions = [10, 30, 50, 100];
-    if (totalCount > 100) {
-      return [...fixedOptions, totalCount];
-    }
-    // If totalCount is between 10 and 100, cap at totalCount as the last option
-    if (totalCount > 0) {
-      return fixedOptions.filter((opt) => opt <= totalCount).concat(totalCount);
-    }
-    return [10];
-  }, [blocksLanguageKeyData?.totalCount]);
-
-  const columns = useMemo<ColumnDef<IBlocksLanguageKey>[]>(
-    () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected()
-                ? true
-                : table.getIsSomePageRowsSelected()
-                  ? "indeterminate"
-                  : false
-            }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
-        accessorKey: "keyName",
-        header: () => (
-          <div className="w-[300px] md:w-[200px]">
-            <FilterControls.SortHeader
-              label="Key"
-              id="KeyName"
-              value={sortQueryParams}
-              onChange={handleSortChange}
-            />
-          </div>
-        ),
-        cell: ({ row }) => {
-          const keyName = row.getValue("keyName") as string;
-          return <KeyNameCell keyName={keyName} />;
-        },
-      },
-      {
-        accessorKey: "moduleId",
-        header: "Module",
-        cell: ({ row }) => {
-          const keyModule = languageModules?.find(
-            (module) => module.itemId === row.getValue("moduleId"),
-          );
-
-          if (!keyModule) {
-            return null;
-          }
-          return (
-            <div className="ml-2 truncate sm:ml-0 sm:w-[150px]">
-              <span>{keyModule.moduleName}</span>
-            </div>
-          );
-        },
-        filterFn: (row, id, filterValue: { text?: string; types?: string[] }) => {
-          return filterValue.types ? filterValue.types.includes(row.getValue(id)) : true;
-        },
-      },
-      ...(selectedOptionalColumns.includes("completeness")
-        ? [
-            {
-              accessorKey: "resources",
-              header: () => <span>Completeness</span>,
-              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const resources = row.original.resources;
-                if (!resources || resources.length === 0) return "No translation";
-
-                const allLanguages = languageListData?.map((lang) => lang.languageCode) || [];
-                const isComplete = allLanguages.every((lang) => {
-                  const resource = resources.find((r) => r.culture === lang);
-                  // Check if resource exists and has a non-null, non-empty value
-                  return resource && resource.value !== null && resource.value.trim() !== "";
-                });
-                return isComplete ? "Complete" : "Partial";
-              },
-              enableHiding: true,
-            } as ColumnDef<IBlocksLanguageKey>,
-          ]
-        : []),
-      ...selectedLanguages.map((lang) => ({
-        accessorKey: `resources.${lang}`,
-        header: () => {
-          // Check if any translating key has this language missing
-          const hasTranslatingKey = Array.from(translatingKeys).some((keyId) => {
-            const keyData = blocksLanguageKeyData?.keys?.find((k) => k.itemId === keyId);
-            if (!keyData) return false;
-            const resource = keyData.resources?.find((r) => r.culture === lang);
-            return !resource?.value || resource.value.trim() === "";
-          });
-
-          return (
-            <div className="w-[300px] md:w-[200px]">
-              <div className="font-bold text-medium-emphasis flex items-center gap-1">
-                {languageListData?.find((language) => language.languageCode === lang)
-                  ?.languageName ?? lang}{" "}
-                {languageListData?.find((language) => language.languageCode === lang)?.isDefault
-                  ? "(Default)"
-                  : null}
-              </div>
-            </div>
-          );
-        },
-        cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-          const keyId = row.original.itemId;
-          const isTranslating = translatingKeys.has(keyId);
-          const resource = row.original.resources?.find((res) => res.culture === lang);
-          const hasValue = resource?.value && resource.value.trim() !== "";
-
-          // Only show "Translating..." if this key is being translated AND the language has no value
-          if (isTranslating && !hasValue) {
-            return <span className="text-blue-600 font-medium">Translating...</span>;
-          }
-
-          return <div className="ml-2 line-clamp-4 sm:ml-0">{resource?.value ?? ""}</div>;
-        },
-      })),
-
-      ...(selectedOptionalColumns.includes("createDate")
-        ? [
-            {
-              accessorKey: "createDate",
-              header: () => (
-                <div className="w-[150px]">
-                  <FilterControls.SortHeader
-                    label="Created Date"
-                    id="CreateDate"
-                    value={sortQueryParams}
-                    onChange={handleSortChange}
-                    defaultDescending
-                  />
-                </div>
-              ),
-              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const dateValue = row.original.createDate;
-                if (!dateValue) return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
-                const formatted = new Date(dateValue).toLocaleDateString();
-                return <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>;
-              },
-              enableSorting: true,
-              enableHiding: true,
-            } as ColumnDef<IBlocksLanguageKey>,
-          ]
-        : []),
-      ...(selectedOptionalColumns.includes("lastUpdateDate")
-        ? [
-            {
-              accessorKey: "lastUpdateDate",
-              header: () => (
-                <div className="w-[150px]">
-                  <FilterControls.SortHeader
-                    label="Last Updated Date"
-                    id="LastUpdateDate"
-                    value={sortQueryParams}
-                    onChange={handleSortChange}
-                    defaultDescending
-                  />
-                </div>
-              ),
-              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const dateValue = row.original.lastUpdateDate;
-                if (!dateValue) return <div className="ml-2 sm:ml-0 sm:w-[150px]">—</div>;
-                const formatted = new Date(dateValue).toLocaleDateString();
-                return <div className="ml-2 sm:ml-0 sm:w-[150px]">{formatted}</div>;
-              },
-              enableSorting: true,
-              enableHiding: true,
-            } as ColumnDef<IBlocksLanguageKey>,
-          ]
-        : []),
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          return (
-            <RowActionsCell
-              onView={() => handleRowClick(row.original.itemId)}
-              onDelete={() => onDeleteClick(row.original.itemId)}
-              onTranslate={() => onTranslateClick(row.original.itemId)}
-            />
-          );
-        },
-      },
-    ],
-    [
-      handleRowClick,
-      onTranslateClick,
-      languageListData,
-      languageModules,
-      selectedLanguages,
-      selectedOptionalColumns,
-      sortQueryParams,
-      handleSortChange,
-    ],
+  const pageSizeOptions = useMemo(
+    () => getPageSizeOptions(blocksLanguageKeyData?.totalCount || 0),
+    [blocksLanguageKeyData?.totalCount],
   );
+
+  const handleToggleExpanded = useCallback((itemId: string) => {
+    setExpandedRowId((current) => (current === itemId ? null : itemId));
+  }, []);
+
+  const columns = useLanguageTableColumns({
+    expandedRowId,
+    languageListData,
+    languageModules,
+    onSortChange: handleSortChange,
+    onToggleExpanded: handleToggleExpanded,
+    selectedLanguages,
+    selectedOptionalColumns,
+    sortQueryParams,
+    translatingKeys,
+  });
 
   const tableData = useMemo(() => {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: tableData,
     columns,
@@ -770,9 +451,8 @@ export function LanguageTable() {
     enableRowSelection: true,
   });
 
-  const selectedKeys = useMemo(() => {
-    return table.getSelectedRowModel().rows.map((row) => row.original.itemId);
-  }, [table.getSelectedRowModel().rows]);
+  const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
+  const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
 
   const bulkDeleteModalData = {
     dialogTitle: "Delete language keys?",
@@ -1096,11 +776,32 @@ export function LanguageTable() {
               </CardHeader>
               {selectedKeys.length > 0 && (
                 <div className="mb-4 flex items-center justify-between rounded bg-blocks-primary-shades-300 px-4 py-2">
-                  <span className="text-sm font-medium">
-                    {selectedKeys.length} key
-                    {selectedKeys.length > 1 ? "s" : ""} selected
-                  </span>
                   <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 shrink-0"
+                      aria-label="Clear selection"
+                      title="Clear selection"
+                      onClick={() => setRowSelection({})}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                      {selectedKeys.length} key
+                      {selectedKeys.length > 1 ? "s" : ""} selected
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => setIsBulkEditDialogOpen(true)}
+                    >
+                      <PencilLine className="h-4 w-4 lg:mr-1" />
+                      <span className="sr-only lg:not-sr-only">Bulk edit</span>
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1118,9 +819,6 @@ export function LanguageTable() {
                     >
                       <Trash className="lg:mr-1 h-4 w-4" />
                       <span className="sr-only lg:not-sr-only">Delete</span>
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setRowSelection({})}>
-                      Clear
                     </Button>
                   </div>
                 </div>
@@ -1197,8 +895,6 @@ export function LanguageTable() {
                               </TableHead>
                             );
                           }
-
-                          // Empty cell for columns with no filter (moduleId, actions, optional columns)
                           return <TableHead key={column.id} />;
                         })}
                       </TableRow>
@@ -1215,20 +911,38 @@ export function LanguageTable() {
                           </TableRow>
                         ))
                       ) : table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            className="cursor-pointer font-normal text-medium-emphasis"
-                            data-state={row.getIsSelected() && "selected"}
-                            onClick={() => handleRowClick(row.original.itemId)}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
+                        table.getRowModel().rows.map((row) => {
+                          const isRowExpanded = expandedRowId === row.original.itemId;
+                          return (
+                            <Fragment key={row.id}>
+                              <TableRow
+                                className="cursor-pointer font-normal text-medium-emphasis"
+                                data-state={row.getIsSelected() && "selected"}
+                                onClick={() => handleRowClick(row.original.itemId)}
+                              >
+                                {row.getVisibleCells().map((cell) => (
+                                  <TableCell key={cell.id}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                              {isRowExpanded && (
+                                <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
+                                  <TableCell colSpan={columns.length} className="p-0">
+                                    <InlineKeyDetails
+                                      key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
+                                      keyDetails={row.original}
+                                      languageListData={languageListData || []}
+                                      languageModules={languageModules || []}
+                                      onDelete={() => onDeleteClick(row.original.itemId)}
+                                      onTranslate={() => onTranslateClick(row.original.itemId)}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
+                          );
+                        })
                       ) : (
                         <TableRow>
                           <TableCell colSpan={columns.length} className="h-24 text-center">
@@ -1299,6 +1013,19 @@ export function LanguageTable() {
               data={bulkTranslateModalData}
               buttonState={{ confirm: { disable: isBulkTranslatingKeys } }}
             />
+          </Dialog>
+          <Dialog open={isBulkEditDialogOpen} onOpenChange={setIsBulkEditDialogOpen}>
+            {isBulkEditDialogOpen && (
+              <BulkEditKeysDialog
+                keys={selectedKeyRows}
+                languages={languageListData ?? []}
+                onCancel={() => setIsBulkEditDialogOpen(false)}
+                onSaved={() => {
+                  setIsBulkEditDialogOpen(false);
+                  setRowSelection({});
+                }}
+              />
+            )}
           </Dialog>
         </Tabs>
       </div>

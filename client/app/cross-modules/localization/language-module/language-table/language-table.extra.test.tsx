@@ -64,6 +64,12 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useTranslateKey: vi.fn(),
   useTranslateKeyWithPolling: vi.fn(),
   useTranslateLanguageKeys: vi.fn(),
+  useSaveBlocksLanguageKey: vi.fn(),
+  useGetTranslationSuggestion: vi.fn(),
+  useGetGlossaries: vi.fn(),
+  useGetModuleGlossaries: vi.fn(),
+  useSearchGlossaries: vi.fn(),
+  useSaveBlocksLanguageKeys: vi.fn(),
 }));
 
 // Keep the real zustand store, but neutralise the tenant re-hydration side
@@ -87,6 +93,9 @@ const translateKeyAsync = vi.fn();
 const bulkDeleteAsync = vi.fn();
 const bulkTranslateAsync = vi.fn();
 const generateAsync = vi.fn();
+const saveTranslationAsync = vi.fn();
+const suggestTranslationAsync = vi.fn();
+const bulkSaveAsync = vi.fn();
 
 const baseLanguages = [
   { languageCode: "en-US", languageName: "English", isDefault: true },
@@ -120,6 +129,21 @@ const setBaseMocks = (languages: unknown = baseLanguages) => {
     mutateAsync: bulkTranslateAsync,
   } as never);
   h.useTranslateKeyWithPolling.mockReturnValue(undefined as never);
+  h.useSaveBlocksLanguageKey.mockReturnValue({
+    isPending: false,
+    mutateAsync: saveTranslationAsync,
+  } as never);
+  h.useGetTranslationSuggestion.mockReturnValue({
+    isPending: false,
+    mutateAsync: suggestTranslationAsync,
+  } as never);
+  h.useGetGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useGetModuleGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useSearchGlossaries.mockReturnValue({ data: { items: [] } } as never);
+  h.useSaveBlocksLanguageKeys.mockReturnValue({
+    isPending: false,
+    mutateAsync: bulkSaveAsync,
+  } as never);
 };
 
 const setKeys = (data: unknown) =>
@@ -157,10 +181,11 @@ const primeStore = (selectedLanguages: string[] = [], selectedOptionalColumns: s
     tenantId: "t1",
   });
 
-// Locate the ellipsis trigger inside a rendered data row.
-const getRowActionsTrigger = () => {
-  const buttons = screen.getAllByRole("button");
-  return buttons.find((b) => b.className.includes("h-8 w-8 p-0"))!;
+const getRowExpandTrigger = () => screen.getByRole("button", { name: "Expand greeting" });
+
+const openExpandedRowActions = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(getRowExpandTrigger());
+  await user.click(screen.getByRole("button", { name: "Actions for greeting" }));
 };
 
 describe("language-table (extra coverage)", () => {
@@ -179,6 +204,73 @@ describe("language-table (extra coverage)", () => {
   });
 
   describe("optional & language column renderers", () => {
+    it("edits and saves a translation directly in the expanded row", async () => {
+      const user = userEvent.setup();
+      saveTranslationAsync.mockResolvedValue({ success: true });
+      primeStore([], []);
+      setKeys(oneKey());
+      renderWithProviders(<LanguageTable />);
+
+      await user.click(screen.getByRole("button", { name: "Expand greeting" }));
+
+      const englishTranslation = screen.getByRole("textbox", { name: "English translation" });
+      expect((englishTranslation as HTMLTextAreaElement).value).toBe("Hello");
+      expect(englishTranslation.className).toContain("bg-background");
+      expect(englishTranslation.className).not.toContain("bg-transparent");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("border-blocks-primary-50");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("dark:border-blocks-primary-100");
+      expect(
+        screen.getByRole("button", { name: "Actions for greeting" }).parentElement?.className,
+      ).toContain("row-start-1");
+      expect(screen.queryByRole("dialog")).toBeNull();
+
+      await user.clear(englishTranslation);
+      await user.type(englishTranslation, "Hello there");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() =>
+        expect(saveTranslationAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            itemId: "k1",
+            resources: [{ culture: "en-US", value: "Hello there" }],
+          }),
+        ),
+      );
+    });
+
+    it("puts an auto-translated value directly into its language field", async () => {
+      const user = userEvent.setup();
+      suggestTranslationAsync.mockResolvedValue({ content: "Hallo" });
+      setKeys(oneKey());
+      renderWithProviders(<LanguageTable />);
+
+      await user.click(getRowExpandTrigger());
+      const autoTranslateButton = screen.getByRole("button", { name: "Auto-translate German" });
+      expect(autoTranslateButton.textContent).toBe("");
+
+      await user.hover(autoTranslateButton);
+      expect((await screen.findByRole("tooltip")).textContent).toBe("Auto-translate");
+      await user.unhover(autoTranslateButton);
+      await user.click(autoTranslateButton);
+
+      const germanTranslation = await screen.findByRole("textbox", {
+        name: "German translation",
+      });
+      expect((germanTranslation as HTMLTextAreaElement).value).toBe("Hallo");
+      expect(suggestTranslationAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceText: "Hello",
+          destinationLanguage: "German",
+          currentLanguage: "English",
+          destinationLanguageCode: "de-DE",
+        }),
+      );
+    });
+
     it("renders completeness as Complete when every language has a value", () => {
       primeStore(["en-US", "de-DE"], ["completeness"]);
       setKeys(
@@ -386,14 +478,13 @@ describe("language-table (extra coverage)", () => {
     });
   });
 
-  describe("row actions menu", () => {
-    it("navigates to details from the View details action", async () => {
+  describe("row actions", () => {
+    it("navigates to details from the key row", async () => {
       const user = userEvent.setup();
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("View details"));
+      await user.click(screen.getByText("greeting"));
       expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
     });
 
@@ -403,8 +494,8 @@ describe("language-table (extra coverage)", () => {
       primeStore(["de-DE"], []);
       setKeys(oneKey({ resources: [{ culture: "de-DE", value: "" }] }));
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Translate"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Translate" }));
       expect(await screen.findByText("Auto-translate this key?")).toBeTruthy();
       const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
@@ -419,8 +510,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Translate"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Translate" }));
       const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
@@ -432,8 +523,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Translate"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Translate" }));
       const confirm = screen.getAllByRole("button", { name: "Translate" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
@@ -445,8 +536,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Delete key"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
       expect(await screen.findByText("Delete language key?")).toBeTruthy();
       const confirm = screen.getAllByRole("button", { name: "Delete" }).at(-1)!;
       await user.click(confirm);
@@ -459,8 +550,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Delete key"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
       const confirm = screen.getAllByRole("button", { name: "Delete" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(deleteAsync).toHaveBeenCalled());
@@ -475,8 +566,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Delete key"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
       const confirm = screen.getAllByRole("button", { name: "Delete" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(deleteAsync).toHaveBeenCalled());
@@ -488,8 +579,8 @@ describe("language-table (extra coverage)", () => {
       primeStore([], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
-      await user.click(getRowActionsTrigger());
-      await user.click(await screen.findByText("Delete key"));
+      await openExpandedRowActions(user);
+      await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
       const confirm = screen.getAllByRole("button", { name: "Delete" }).at(-1)!;
       await user.click(confirm);
       await waitFor(() => expect(deleteAsync).toHaveBeenCalled());
