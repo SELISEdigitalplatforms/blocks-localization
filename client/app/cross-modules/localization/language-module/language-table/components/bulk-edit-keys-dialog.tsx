@@ -221,6 +221,9 @@ export function BulkEditKeysDialog({
   );
   const trimmedTranslation = translationValue.trim();
   const overwriteCount = keys.length * languages.length;
+  const valueLabel = overwriteCount === 1 ? "value" : "values";
+  const languageNamesText =
+    languages.length > 0 ? ` across ${languages.map((language) => language.languageName).join(", ")}` : "";
   const pendingPayload = useMemo(
     () =>
       buildBulkEditPayload(
@@ -329,12 +332,8 @@ export function BulkEditKeysDialog({
               <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
                 <p>
-                  Saving will overwrite {overwriteCount} translation{" "}
-                  {overwriteCount === 1 ? "value" : "values"}
-                  {languages.length > 0
-                    ? ` across ${languages.map((language) => language.languageName).join(", ")}`
-                    : ""}
-                  .
+                  Saving will overwrite {overwriteCount} translation {valueLabel}
+                  {languageNamesText}.
                 </p>
               </div>
             )}

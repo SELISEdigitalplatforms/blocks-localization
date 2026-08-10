@@ -87,6 +87,42 @@ interface UseLanguageTableColumnsOptions {
   translatingKeys: Set<string>;
 }
 
+const buildLanguageColumns = (
+  selectedLanguages: string[],
+  languageListData?: ILanguageConfig[],
+  translatingKeys?: Set<string>,
+): ColumnDef<IBlocksLanguageKey>[] =>
+  selectedLanguages.map((languageCode) => {
+    const language = languageListData?.find(
+      (candidate) => candidate.languageCode === languageCode,
+    );
+    const header = (
+      <div className="w-[300px] md:w-[200px]">
+        <div className="font-bold text-medium-emphasis flex items-center gap-1">
+          {language?.languageName ?? languageCode} {language?.isDefault ? "(Default)" : null}
+        </div>
+      </div>
+    );
+
+    const cell = ({ row }: { row: Row<IBlocksLanguageKey> }) => {
+      const isTranslating = translatingKeys?.has(row.original.itemId) ?? false;
+      const resource = findResourceByCulture(row.original.resources, languageCode);
+      const hasValue = hasNonEmptyValue(resource);
+
+      if (isTranslating && !hasValue) {
+        return <span className="text-blue-600 font-medium">Translating...</span>;
+      }
+
+      return <div className="ml-2 line-clamp-4 sm:ml-0">{resource?.value ?? ""}</div>;
+    };
+
+    return {
+      accessorKey: `resources.${languageCode}` as const,
+      header: () => header,
+      cell,
+    };
+  });
+
 export const useLanguageTableColumns = ({
   expandedRowId,
   languageListData,
@@ -169,32 +205,7 @@ export const useLanguageTableColumns = ({
             } as ColumnDef<IBlocksLanguageKey>,
           ]
         : []),
-      ...selectedLanguages.map((languageCode) => ({
-        accessorKey: `resources.${languageCode}`,
-        header: () => {
-          const language = languageListData?.find(
-            (candidate) => candidate.languageCode === languageCode,
-          );
-          return (
-            <div className="w-[300px] md:w-[200px]">
-              <div className="font-bold text-medium-emphasis flex items-center gap-1">
-                {language?.languageName ?? languageCode} {language?.isDefault ? "(Default)" : null}
-              </div>
-            </div>
-          );
-        },
-        cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-          const isTranslating = translatingKeys.has(row.original.itemId);
-          const resource = findResourceByCulture(row.original.resources, languageCode);
-          const hasValue = hasNonEmptyValue(resource);
-
-          if (isTranslating && !hasValue) {
-            return <span className="text-blue-600 font-medium">Translating...</span>;
-          }
-
-          return <div className="ml-2 line-clamp-4 sm:ml-0">{resource?.value ?? ""}</div>;
-        },
-      })),
+      ...buildLanguageColumns(selectedLanguages, languageListData, translatingKeys),
       ...(selectedOptionalColumns.includes("createDate")
         ? [
             {
