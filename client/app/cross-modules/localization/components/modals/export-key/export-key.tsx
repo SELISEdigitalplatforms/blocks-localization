@@ -96,34 +96,43 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
     setCurrentStep(1);
   };
 
-  const handleModuleToggle = (fieldValue: string[], fieldOnChange: (value: string[]) => void, itemId: string, checked: boolean) => {
-    if (checked) {
+  const handleModuleToggle = (
+    fieldValue: string[],
+    fieldOnChange: (value: string[]) => void,
+    itemId: string,
+    checked: boolean | string,
+  ) => {
+    if (checked === true) {
       fieldOnChange([...fieldValue, itemId]);
-    } else {
+    } else if (checked === false) {
       fieldOnChange(fieldValue.filter((value) => value !== itemId));
     }
   };
 
-  const handleSelectAllModules = (fieldOnChange: (value: string[]) => void, checked: boolean, modules: { itemId: string }[]) => {
-    if (checked) {
+  const handleSelectAllModules = (
+    fieldOnChange: (value: string[]) => void,
+    checked: boolean | string,
+    modules: { itemId: string }[],
+  ) => {
+    if (checked === true) {
       fieldOnChange(modules.map((item) => item.itemId));
-    } else {
+    } else if (checked === false) {
       fieldOnChange([]);
     }
   };
 
-  const handleLanguageToggle = (code: string, checked: boolean) => {
-    if (checked) {
+  const handleLanguageToggle = (code: string, checked: boolean | string) => {
+    if (checked === true) {
       setSelectedLanguages([...selectedLanguages, code]);
-    } else {
+    } else if (checked === false) {
       setSelectedLanguages(selectedLanguages.filter((c) => c !== code));
     }
   };
 
-  const handleSelectAllLanguages = (checked: boolean) => {
-    if (checked) {
+  const handleSelectAllLanguages = (checked: boolean | string) => {
+    if (checked === true) {
       setSelectedLanguages(availableLanguages?.map((lang) => lang.languageCode) || []);
-    } else {
+    } else if (checked === false) {
       setSelectedLanguages([]);
     }
   };
@@ -506,7 +515,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                                   languageModules.length > 0
                                 }
                                 onCheckedChange={(checked) => {
-                                  handleSelectAllModules(field.onChange, !!checked, languageModules);
+                                  handleSelectAllModules(field.onChange, checked, languageModules);
                                 }}
                               />
                             </FormControl>
@@ -528,7 +537,12 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                                   <Checkbox
                                     checked={field.value?.includes(item.itemId)}
                                     onCheckedChange={(checked) => {
-                                      handleModuleToggle(field.value, field.onChange, item.itemId, !!checked);
+                                      handleModuleToggle(
+                                        field.value,
+                                        field.onChange,
+                                        item.itemId,
+                                        checked,
+                                      );
                                     }}
                                   />
                                 </FormControl>
@@ -637,7 +651,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                                   id={`lang-${lang.languageCode}`}
                                   checked={selectedLanguages.includes(lang.languageCode)}
                                   onCheckedChange={(checked) => {
-                                    handleLanguageToggle(lang.languageCode, !!checked);
+                                    handleLanguageToggle(lang.languageCode, checked);
                                   }}
                                 />
                                 <Label

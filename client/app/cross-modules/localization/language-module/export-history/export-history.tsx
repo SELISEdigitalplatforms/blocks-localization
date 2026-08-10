@@ -99,6 +99,55 @@ export const ExportHistory = () => {
     });
   };
 
+  const renderTableContent = () => {
+    if (isLoadingExportHistory || totalCount === 0) {
+      if (isLoadingExportHistory) {
+        return Array.from({ length: pageSize }).map((_) => (
+          <TableRow key={crypto.randomUUID()}>
+            {columns.map((_) => (
+              <TableCell key={crypto.randomUUID()}>
+                <Skeleton className="h-6 w-full rounded" />
+              </TableCell>
+            ))}
+          </TableRow>
+        ));
+      }
+      return (
+        <TableRow>
+          <TableCell colSpan={columns.length}>
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <FileX className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
+              <p className="mb-1 text-base font-medium text-medium-emphasis">
+                No export history found
+              </p>
+              <p className="text-sm">
+                Your exported files will appear here once you create an export.
+              </p>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    return exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
+      <TableRow key={crypto.randomUUID()}>
+        <TableCell>{item.fileName || "--"}</TableCell>
+        <TableCell>{formatExportDate(item.createDate)}</TableCell>
+        <TableCell>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadSelectedFile(item.fileId);
+            }}
+            variant="ghost"
+            className="h-10 w-10 p-0"
+          >
+            <Download width={20} height={20} />
+          </Button>
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <PageBreadcrumb />
@@ -138,57 +187,7 @@ export const ExportHistory = () => {
                 </TableRow>
               </TableHeader>
             )}
-
-            <TableBody>
-              {isLoadingExportHistory ? (
-                Array.from({ length: pageSize }).map((_, rowIdx) => (
-                  <TableRow key={rowIdx}>
-                    {columns.map((_, colIdx) => (
-                      <TableCell key={colIdx}>
-                        <Skeleton className="h-6 w-full rounded" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : totalCount === 0 ? (
-                // Empty State
-                <TableRow>
-                  <TableCell colSpan={columns.length}>
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <FileX className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
-                      <p className="mb-1 text-base font-medium text-medium-emphasis">
-                        No export history found
-                      </p>
-                      <p className="text-sm">
-                        Your exported files will appear here once you create an export.
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                // Data
-                exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
-                  <TableRow key={item.fileId}>
-                    <TableCell>{item.fileName || "--"}</TableCell>
-                    <TableCell>
-                      {formatExportDate(item.createDate)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadSelectedFile(item.fileId);
-                        }}
-                        variant="ghost"
-                        className="h-10 w-10 p-0"
-                      >
-                        <Download width={20} height={20} />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
+            <TableBody>{renderTableContent()}</TableBody>
           </Table>
         </ScrollArea>
 

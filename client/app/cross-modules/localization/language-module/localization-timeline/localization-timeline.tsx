@@ -91,7 +91,11 @@ const DEFAULT_TIMELINE_EXCLUDES = [
 ] as const;
 
 // Cultures from both sides for diff table
-const asArray = <T,>(x?: T | T[]): T[] => (Array.isArray(x) ? x : x ? [x] : []);
+const asArray = <T,>(x?: T | T[]): T[] => {
+  if (Array.isArray(x)) return x;
+  if (!x) return [];
+  return [x];
+};
 const getCultures = (
   prev?: IBlocksLanguageKey | IBlocksLanguageKey[],
   curr?: IBlocksLanguageKey | IBlocksLanguageKey[],
@@ -119,114 +123,128 @@ function OperationDetailModal({
     detailPageSize,
   );
 
-  const dialogTitle = data && data.timelines.length > 0
-    ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName)
-    : "Operation Details";
+  const dialogTitle =
+    data && data.timelines.length > 0
+      ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName)
+      : "Operation Details";
 
-  const isEmptyData = !data || data.timelines.length === 0;
-
-  const isPublishedWithNoChanges = data?.timelines[0]?.logFrom === "Published" &&
+  const isPublishedWithNoChanges =
+    data?.timelines[0]?.logFrom === "Published" &&
     !data.timelines[0]?.currentData &&
     !data.timelines[0]?.previousData;
+
+  const renderDetailsContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    if (!data || data.timelines.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+          <FileX className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
+          <p className="text-sm font-medium text-medium-emphasis">No details found</p>
+          <p className="text-xs">No details available for this operation.</p>
+        </div>
+      );
+    }
+
+    if (isPublishedWithNoChanges) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+          <Clock className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
+          <p className="text-sm font-medium text-medium-emphasis">No changes published</p>
+          <p className="text-xs">This publish operation had no changes.</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Key</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Changes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.timelines.map((timeline) => {
+              const { date, time } = formatDate(timeline.createDate);
+              const keyName =
+                timeline.currentData?.keyName ?? timeline.previousData?.keyName ?? "-";
+
+              const cultures = getCultures(timeline.previousData, timeline.currentData);
+
+              return (
+                <TableRow key={timeline.itemId}>
+                  <TableCell className="font-medium">{keyName}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {date} {time}
+                  </TableCell>
+                  <TableCell>
+                    {cultures.length > 0 ? (
+                      <div className="space-y-1">
+                        {cultures.map((culture) => {
+                          const prevVal =
+                            asArray(timeline.previousData)
+                              .flatMap((d) => d.resources ?? [])
+                              .find((r) => r.culture === culture)?.value ?? "-";
+                          const currVal =
+                            asArray(timeline.currentData)
+                              .flatMap((d) => d.resources ?? [])
+                              .find((r) => r.culture === culture)?.value ?? "-";
+
+                          if (prevVal === currVal) return null;
+
+                          return (
+                            <div key={culture} className="text-xs">
+                              <span className="font-medium">{culture}:</span>{" "}
+                              <span className="text-destructive line-through">{prevVal}</span>
+                              {" → "}
+                              <span className="text-green-600">{currVal}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        {data.totalCount > detailPageSize && (
+          <div className="mt-4 flex items-center justify-end">
+            <Pagination
+              page={detailPage}
+              pageSize={detailPageSize}
+              totalCount={data.totalCount}
+              onChange={(page: number) => setDetailPage(page)}
+            />
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {dialogTitle}
-          </DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : isEmptyData ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <FileX className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
-            <p className="text-sm font-medium text-medium-emphasis">No details found</p>
-            <p className="text-xs">No details available for this operation.</p>
-          </div>
-        ) : isPublishedWithNoChanges ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Clock className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
-            <p className="text-sm font-medium text-medium-emphasis">No changes published</p>
-            <p className="text-xs">This publish operation had no changes.</p>
-          </div>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Key</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Changes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.timelines.map((timeline) => {
-                  const { date, time } = formatDate(timeline.createDate);
-                  const keyName =
-                    timeline.currentData?.keyName ?? timeline.previousData?.keyName ?? "-";
-
-                  const cultures = getCultures(timeline.previousData, timeline.currentData);
-
-                  return (
-                    <TableRow key={timeline.itemId}>
-                      <TableCell className="font-medium">{keyName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {date} {time}
-                      </TableCell>
-                      <TableCell>
-                        {cultures.length > 0 ? (
-                          <div className="space-y-1">
-                            {cultures.map((culture) => {
-                              const prevVal =
-                                asArray(timeline.previousData)
-                                  .flatMap((d) => d.resources ?? [])
-                                  .find((r) => r.culture === culture)?.value ?? "-";
-                              const currVal =
-                                asArray(timeline.currentData)
-                                  .flatMap((d) => d.resources ?? [])
-                                  .find((r) => r.culture === culture)?.value ?? "-";
-
-                              if (prevVal === currVal) return null;
-
-                              return (
-                                <div key={culture} className="text-xs">
-                                  <span className="font-medium">{culture}:</span>{" "}
-                                  <span className="text-destructive line-through">{prevVal}</span>
-                                  {" → "}
-                                  <span className="text-green-600">{currVal}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-
-            {data.totalCount > detailPageSize && (
-              <div className="mt-4 flex items-center justify-end">
-                <Pagination
-                  page={detailPage}
-                  pageSize={detailPageSize}
-                  totalCount={data.totalCount}
-                  onChange={(page: number) => setDetailPage(page)}
-                />
-              </div>
-            )}
-          </>
-        )}
+        {renderDetailsContent()}
       </DialogContent>
     </Dialog>
   );
@@ -268,6 +286,89 @@ export default function LocalizationTimeline({
 
   const timelineData = data as IGetLocalizationTimelineResponse | undefined;
 
+  const renderTimelineContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    if (!timelineData || timelineData.operations.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <History className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
+          <p className="mb-1 text-base font-medium text-medium-emphasis">No history found</p>
+          <p className="text-sm">Your localization activity will appear here.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-4 flex flex-col items-start">
+        {timelineData.operations.map((entry, index) => {
+          const { date, time } = formatDate(entry.createDate);
+          const description = getOperationDescription(entry.logFrom, entry.userName);
+
+          return (
+            <div
+              key={entry.operationId + index}
+              role="button"
+              tabIndex={0}
+              className="flex min-h-[66px] w-full cursor-pointer rounded-md hover:bg-muted/50"
+              onClick={() => setSelectedOperationId(entry.operationId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedOperationId(entry.operationId);
+                }
+              }}
+            >
+              {/* Left: time/date */}
+              <div
+                className={`${isMobile ? "w-[30%]" : "w-[16%]"} flex-shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
+              >
+                <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
+                  {time}
+                </p>
+                <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
+                  {date}
+                </p>
+              </div>
+
+              {/* Center: dot + line */}
+              <div className="relative flex-shrink-0">
+                {index !== timelineData.operations.length - 1 && (
+                  <div className="absolute left-[37%] h-full w-[4px] bg-[#D9D9D9]" />
+                )}
+                <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
+              </div>
+
+              {/* Right: description + badge */}
+              <div className="w-full pl-[18px] pt-[2px] md:pl-[20px]">
+                <div className="flex w-full flex-row items-start justify-between gap-2">
+                  <p className="w-[65%] text-[12px] font-medium leading-[20px] text-medium-emphasis md:text-[14px] md:leading-[24px]">
+                    {description}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {entry.affectedKeysCount > 1 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {entry.affectedKeysCount} keys
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <>
       <Card className="mt-6 h-min rounded-sm shadow-none">
@@ -277,80 +378,7 @@ export default function LocalizationTimeline({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="h-[calc(100vh-420px)] overflow-y-auto pr-2">
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : !timelineData || timelineData.operations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <History className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
-                <p className="mb-1 text-base font-medium text-medium-emphasis">
-                  No history found
-                </p>
-                <p className="text-sm">Your localization activity will appear here.</p>
-              </div>
-            ) : (
-              <div className="mt-4 flex flex-col items-start">
-                {timelineData.operations.map((entry, index) => {
-                  const { date, time } = formatDate(entry.createDate);
-                  const description = getOperationDescription(entry.logFrom, entry.userName);
-
-                  return (
-                    <div
-                      key={entry.operationId + index}
-                      role="button"
-                      tabIndex={0}
-                      className="flex min-h-[66px] w-full cursor-pointer rounded-md hover:bg-muted/50"
-                      onClick={() => setSelectedOperationId(entry.operationId)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelectedOperationId(entry.operationId);
-                        }
-                      }}
-                    >
-                      {/* Left: time/date */}
-                      <div
-                        className={`${isMobile ? "w-[30%]" : "w-[16%]"} flex-shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
-                      >
-                        <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
-                          {time}
-                        </p>
-                        <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
-                          {date}
-                        </p>
-                      </div>
-
-                      {/* Center: dot + line */}
-                      <div className="relative flex-shrink-0">
-                        {index !== timelineData.operations.length - 1 && (
-                          <div className="absolute left-[37%] h-full w-[4px] bg-[#D9D9D9]" />
-                        )}
-                        <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
-                      </div>
-
-                      {/* Right: description + badge */}
-                      <div className="w-full pl-[18px] pt-[2px] md:pl-[20px]">
-                        <div className="flex w-full flex-row items-start justify-between gap-2">
-                          <p className="w-[65%] text-[12px] font-medium leading-[20px] text-medium-emphasis md:text-[14px] md:leading-[24px]">
-                            {description}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            {entry.affectedKeysCount > 1 && (
-                              <Badge variant="secondary" className="text-xs">
-                                {entry.affectedKeysCount} keys
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {renderTimelineContent()}
           </div>
 
           {!isLoading && timelineData && timelineData.totalCount > pageSize && (
