@@ -47,6 +47,34 @@ const DateCell = ({ value }: { value: string | null | undefined }) => (
   </div>
 );
 
+const hasNonEmptyValue = (resource: IBlocksLanguageKey["resources"][number] | undefined): boolean =>
+  resource?.value !== null && resource?.value !== undefined && resource.value.trim() !== "";
+
+const isKeyComplete = (
+  resources: IBlocksLanguageKey["resources"],
+  languageCodes: string[],
+): boolean =>
+  languageCodes.every((languageCode) => {
+    const resource = resources.find((candidate) => candidate.culture === languageCode);
+    return hasNonEmptyValue(resource);
+  });
+
+const getCompletenessCellValue = (
+  resources: IBlocksLanguageKey["resources"],
+  languageListData?: ILanguageConfig[],
+): string => {
+  if (!resources || resources.length === 0) return "No translation";
+
+  const languageCodes = languageListData?.map((language) => language.languageCode) || [];
+  return isKeyComplete(resources, languageCodes) ? "Complete" : "Partial";
+};
+
+const findResourceByCulture = (
+  resources: IBlocksLanguageKey["resources"],
+  languageCode: string,
+): IBlocksLanguageKey["resources"][number] | undefined =>
+  resources?.find((candidate) => candidate.culture === languageCode);
+
 interface UseLanguageTableColumnsOptions {
   expandedRowId: string | null;
   languageListData?: ILanguageConfig[];
@@ -110,7 +138,7 @@ export const useLanguageTableColumns = ({
             />
           </div>
         ),
-        cell: ({ row }) => <KeyNameCell keyName={row.getValue("keyName") as string} />,
+        cell: ({ row }) => <KeyNameCell keyName={row.getValue("keyName")} />,
       },
       {
         accessorKey: "moduleId",
@@ -135,20 +163,8 @@ export const useLanguageTableColumns = ({
             {
               accessorKey: "resources",
               header: () => <span>Completeness</span>,
-              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
-                const resources = row.original.resources;
-                if (!resources || resources.length === 0) return "No translation";
-
-                const allLanguages =
-                  languageListData?.map((language) => language.languageCode) || [];
-                const isComplete = allLanguages.every((languageCode) => {
-                  const resource = resources.find(
-                    (candidate) => candidate.culture === languageCode,
-                  );
-                  return resource && resource.value !== null && resource.value.trim() !== "";
-                });
-                return isComplete ? "Complete" : "Partial";
-              },
+              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) =>
+                getCompletenessCellValue(row.original.resources, languageListData),
               enableHiding: true,
             } as ColumnDef<IBlocksLanguageKey>,
           ]
@@ -169,10 +185,8 @@ export const useLanguageTableColumns = ({
         },
         cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => {
           const isTranslating = translatingKeys.has(row.original.itemId);
-          const resource = row.original.resources?.find(
-            (candidate) => candidate.culture === languageCode,
-          );
-          const hasValue = resource?.value && resource.value.trim() !== "";
+          const resource = findResourceByCulture(row.original.resources, languageCode);
+          const hasValue = hasNonEmptyValue(resource);
 
           if (isTranslating && !hasValue) {
             return <span className="text-blue-600 font-medium">Translating...</span>;

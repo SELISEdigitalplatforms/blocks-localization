@@ -114,7 +114,7 @@ function KeyGlossaryAssignments({
   moduleId,
   onModuleGlossariesResolved,
   pendingGlossaries,
-}: KeyGlossaryAssignmentsProps) {
+}: Readonly<KeyGlossaryAssignmentsProps>) {
   const { data: moduleGlossariesData, isLoading: isLoadingModuleGlossaries } =
     useGetModuleGlossaries(moduleId);
 
@@ -166,22 +166,25 @@ function KeyGlossaryAssignments({
 
   return (
     <>
-      {assignments.map((glossary) => (
-        <Badge
-          key={glossary.itemId}
-          variant={glossary.source === "pending" ? "secondary" : "outline"}
-          className="font-normal"
-          title={
-            glossary.source === "pending"
-              ? "Will be assigned when saved"
-              : glossary.source === "module"
-                ? "Assigned through this key's module"
-                : "Assigned directly to this key"
-          }
-        >
-          {glossary.name}
-        </Badge>
-      ))}
+      {assignments.map((glossary) => {
+        const glossaryTitle =
+          glossary.source === "pending"
+            ? "Will be assigned when saved"
+            : glossary.source === "module"
+              ? "Assigned through this key's module"
+              : "Assigned directly to this key";
+
+        return (
+          <Badge
+            key={glossary.itemId}
+            variant={glossary.source === "pending" ? "secondary" : "outline"}
+            className="font-normal"
+            title={glossaryTitle}
+          >
+            {glossary.name}
+          </Badge>
+        );
+      })}
       {isLoading && <span className="text-xs text-low-emphasis">Loading glossaries...</span>}
     </>
   );
@@ -192,7 +195,7 @@ export function BulkEditKeysDialog({
   languages,
   onCancel,
   onSaved,
-}: BulkEditKeysDialogProps) {
+}: Readonly<BulkEditKeysDialogProps>) {
   const [translationValue, setTranslationValue] = useState("");
   const [searchText, setSearchText] = useState("");
   const [isGlossaryPickerOpen, setIsGlossaryPickerOpen] = useState(false);
@@ -229,6 +232,7 @@ export function BulkEditKeysDialog({
       ),
     [glossariesToApply, keys, languages, moduleGlossaryIdsByModule, trimmedTranslation],
   );
+  const saveButtonLabel = `Save ${pendingPayload.length} ${pendingPayload.length === 1 ? "key" : "keys"}`;
 
   const handleModuleGlossariesResolved = useCallback((moduleId: string, glossaryIds: string[]) => {
     setModuleGlossaryIdsByModule((current) => {
@@ -465,9 +469,7 @@ export function BulkEditKeysDialog({
           disabled={pendingPayload.length === 0 || isPending}
           onClick={() => void handleSave()}
         >
-          {isPending
-            ? "Saving changes..."
-            : `Save ${pendingPayload.length} ${pendingPayload.length === 1 ? "key" : "keys"}`}
+          {isPending ? "Saving changes..." : saveButtonLabel}
         </Button>
       </DialogFooter>
     </DialogContent>

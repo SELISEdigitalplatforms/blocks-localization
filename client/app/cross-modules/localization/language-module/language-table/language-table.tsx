@@ -900,56 +900,64 @@ export function LanguageTable() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isLoading ? (
-                        Array.from({ length: 10 }).map((_, index) => (
-                          <TableRow key={index}>
-                            {columns.map((_, colIndex) => (
-                              <TableCell key={colIndex}>
-                                <Skeleton className="h-6 w-full rounded" />
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
-                      ) : table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row) => {
-                          const isRowExpanded = expandedRowId === row.original.itemId;
-                          return (
-                            <Fragment key={row.id}>
-                              <TableRow
-                                className="cursor-pointer font-normal text-medium-emphasis"
-                                data-state={row.getIsSelected() && "selected"}
-                                onClick={() => handleRowClick(row.original.itemId)}
-                              >
-                                {row.getVisibleCells().map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                  </TableCell>
-                                ))}
+                      {isLoading
+                        ? Array.from({ length: 10 }).map((_, index) => (
+                            <TableRow key={index}>
+                              {columns.map((_, colIndex) => (
+                                <TableCell key={colIndex}>
+                                  <Skeleton className="h-6 w-full rounded" />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))
+                        : (() => {
+                            const tableRows = table.getRowModel().rows;
+                            return tableRows?.length ? (
+                              tableRows.map((row) => {
+                                const isRowExpanded = expandedRowId === row.original.itemId;
+                                return (
+                                  <Fragment key={row.id}>
+                                    <TableRow
+                                      className="cursor-pointer font-normal text-medium-emphasis"
+                                      data-state={row.getIsSelected() && "selected"}
+                                      onClick={() => handleRowClick(row.original.itemId)}
+                                    >
+                                      {row.getVisibleCells().map((cell) => (
+                                        <TableCell key={cell.id}>
+                                          {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                          )}
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                    {isRowExpanded && (
+                                      <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
+                                        <TableCell colSpan={columns.length} className="p-0">
+                                          <InlineKeyDetails
+                                            key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
+                                            keyDetails={row.original}
+                                            languageListData={languageListData ?? []}
+                                            languageModules={languageModules ?? []}
+                                            onDelete={() => onDeleteClick(row.original.itemId)}
+                                            onTranslate={() =>
+                                              onTranslateClick(row.original.itemId)
+                                            }
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </Fragment>
+                                );
+                              })
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                  No results.
+                                </TableCell>
                               </TableRow>
-                              {isRowExpanded && (
-                                <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
-                                  <TableCell colSpan={columns.length} className="p-0">
-                                    <InlineKeyDetails
-                                      key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
-                                      keyDetails={row.original}
-                                      languageListData={languageListData || []}
-                                      languageModules={languageModules || []}
-                                      onDelete={() => onDeleteClick(row.original.itemId)}
-                                      onTranslate={() => onTranslateClick(row.original.itemId)}
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </Fragment>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="h-24 text-center">
-                            No results.
-                          </TableCell>
-                        </TableRow>
-                      )}
+                            );
+                          })()}
                     </TableBody>
                   </Table>
                 </div>
