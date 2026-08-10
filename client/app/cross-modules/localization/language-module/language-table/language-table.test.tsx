@@ -167,7 +167,39 @@ describe("language-module/language-table", () => {
       data: oneKey,
     } as never);
     const { container } = renderWithProviders(<LanguageTable />);
-    expect(within(container).getByText("greeting")).toBeTruthy();
+    const keyName = within(container).getByText("greeting");
+    expect(keyName).toBeTruthy();
+    expect(keyName.className).toContain("w-full");
+    expect(keyName.className).not.toContain("w-[150px]");
+    expect(keyName.className).not.toContain("md:w-[200px]");
+  });
+
+  it("should preserve the rendered table dimensions when filter loading starts", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    const { container, rerender } = renderWithProviders(<LanguageTable />);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+    expect(container.querySelector("table")?.className).toContain("table-fixed");
+    expect(container.querySelectorAll("colgroup col").length).toBeGreaterThan(0);
+    const tableViewport = container.querySelector("table")?.parentElement?.parentElement;
+    expect(tableViewport?.style.minHeight).toBe("520px");
+
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: true,
+      data: undefined,
+    } as never);
+    rerender(<LanguageTable />);
+
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+    const skeletons = Array.from(container.querySelectorAll("tbody .animate-pulse"));
+    expect(skeletons.some((skeleton) => skeleton.className.includes("w-[150px]"))).toBe(true);
+    expect(skeletons.every((skeleton) => !skeleton.className.includes("w-full"))).toBe(true);
+    expect(tableViewport?.style.minHeight).toBe("520px");
+    expect(
+      container.querySelector('[aria-hidden="true"].invisible.pointer-events-none')?.textContent,
+    ).toContain("Page 1 of 1");
   });
 
   it("should navigate to the new-key page", () => {

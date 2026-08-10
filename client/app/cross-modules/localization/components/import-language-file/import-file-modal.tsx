@@ -25,7 +25,7 @@ import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile } from "@blocks-localization/models/language";
 import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
@@ -737,6 +737,7 @@ interface IImportFilesModalProps {
   dialogTitle: string;
   data: [];
   projectKey: string;
+  open?: boolean;
   onClose?: () => void;
 }
 
@@ -751,9 +752,17 @@ const TEMPLATE_URLS: Record<TemplateFormat, string> = {
 export default function ImportCommunicationsModal({
   dialogTitle,
   projectKey,
+  open,
   onClose,
-}: IImportFilesModalProps) {
+}: Readonly<IImportFilesModalProps>) {
   const [files, setFiles] = useState<File[] | null>(null);
+
+  // Reset files state when modal is closed
+  useEffect(() => {
+    if (open === false && files !== null) {
+      setFiles(null);
+    }
+  }, [open, files]);
   const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
 
   const { mutateAsync: getPresignedUrl, isPending: isGettingPresignedUrl } =

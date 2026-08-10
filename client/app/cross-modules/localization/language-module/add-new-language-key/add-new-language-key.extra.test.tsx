@@ -197,8 +197,15 @@ describe("add-new-language-key (extra coverage)", () => {
   it("adds and removes a route field", () => {
     renderWithProviders(<AddNewLanguageKey />, { route });
     fireEvent.click(screen.getByRole("button", { name: /Add Route/ }));
-    expect(screen.getAllByPlaceholderText("Enter route").length).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Remove Route" }));
+    const routeInput = screen.getByPlaceholderText("Enter route");
+    const removeRouteButton = screen.getByRole("button", { name: "Remove Route" });
+
+    expect(routeInput.getAttribute("aria-required")).toBe("true");
+    expect(document.querySelector('label[for="routes.0.value"] span')?.textContent).toBe("*");
+    expect(routeInput.parentElement?.contains(removeRouteButton)).toBe(true);
+    expect(removeRouteButton.getAttribute("type")).toBe("button");
+
+    fireEvent.click(removeRouteButton);
     expect(screen.queryAllByPlaceholderText("Enter route").length).toBe(0);
   });
 

@@ -30,6 +30,7 @@ interface NewModuleProps {
 const schema = z.object({
   moduleName: z
     .string()
+    .trim()
     .min(1, { message: "Module name is required" })
     .max(50, { message: "Module name must be less than 50 characters" }),
 });
@@ -45,6 +46,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
       moduleName: "",
     },
     resolver: zodResolver(schema),
+    mode: "onChange",
   });
 
   const formSubmitHandler = async (data: FormValues) => {
@@ -53,7 +55,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         ...data,
       } as ILanguageModule;
       const res = await mutateAsync(payload);
-      onClose();
       if (res?.success) {
         toast({
           variant: "success",
@@ -117,7 +118,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
                 Cancel
               </Button>
             </DialogTrigger>
-            <Button disabled={isPending}>Create</Button>
+            <Button disabled={isPending || !form.formState.isValid}>Create</Button>
           </DialogFooter>
         </form>
       </Form>

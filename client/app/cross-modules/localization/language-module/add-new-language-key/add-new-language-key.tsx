@@ -291,7 +291,7 @@ function AddNewLanguageKey() {
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">
-        <PageBreadcrumb breadcrumbIndex={2} />
+        <PageBreadcrumb />
       </div>
       {/* <div className="ml-10 hidden min-h-screen max-w-80 flex-col gap-5 bg-background p-5 pt-24 md:flex">
         <div className="mx-2 my-3">
@@ -334,7 +334,9 @@ function AddNewLanguageKey() {
                         name="keyName"
                         render={({ field }) => (
                           <FormItem className="space-y-1">
-                            <FormLabel htmlFor="keyName">Key name</FormLabel>
+                            <FormLabel htmlFor="keyName">
+                              Key name <span className="text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 id="keyName"
@@ -357,10 +359,13 @@ function AddNewLanguageKey() {
                           );
                           return (
                             <FormItem className="space-y-1">
-                              <FormLabel htmlFor="moduleId">Module</FormLabel>
+                              <FormLabel htmlFor="moduleId">
+                                Module <span className="text-destructive">*</span>
+                              </FormLabel>
                               <Popover open={open} onOpenChange={setOpen}>
                                 <PopoverTrigger asChild>
                                   <Button
+                                    type="button"
                                     id="moduleId"
                                     variant="outline"
                                     role="combobox"
@@ -394,7 +399,9 @@ function AddNewLanguageKey() {
                                               <div>New Module</div>
                                             </button>
                                           </DialogTrigger>
-                                          <NewModule onClose={(val) => setIsNewModuleDialogOpen(val ?? false)} />
+                                          <NewModule
+                                            onClose={(val) => setIsNewModuleDialogOpen(val ?? false)}
+                                          />
                                         </Dialog>
                                         <h3 className="py-2 pl-8 font-semibold text-high-emphasis">
                                           Modules
@@ -453,10 +460,11 @@ function AddNewLanguageKey() {
                       control={form.control}
                       name="resources.0.value"
                       render={({ field }) => (
-                        <FormItem className="space-y-1">
-                          <FormLabel htmlFor="defaultValue">
-                            Default value ({languageListData?.[0]?.languageName})
-                          </FormLabel>
+                          <FormItem className="space-y-1">
+                            <FormLabel htmlFor="defaultValue">
+                              Default value ({languageListData?.[0]?.languageName}){" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
                           <FormControl>
                             <Textarea
                               id="defaultValue"
@@ -575,30 +583,38 @@ function AddNewLanguageKey() {
                 <CardContent>
                   <div className="grid gap-4">
                     {routeFields.map((field, index) => (
-                      <div key={field.id} className="flex items-end gap-2">
-                        <div className="grid w-full gap-1.5">
-                          <Label htmlFor={`routes.${index}.value`}>Route {index + 1}</Label>
+                      <div key={field.id} className="grid gap-1.5">
+                        <Label htmlFor={`routes.${index}.value`}>
+                          Route {index + 1}{" "}
+                          <span className="text-destructive" aria-hidden="true">
+                            *
+                          </span>
+                        </Label>
+                        <div className="flex items-center gap-2">
                           <Input
                             id={`routes.${index}.value`}
                             type="text"
                             className="w-full shadow-none"
                             placeholder="Enter route"
+                            aria-required="true"
                             {...form.register(`routes.${index}.value`)}
                           />
-                          {form.formState.errors.routes?.[index]?.value?.message ? (
-                            <p className="text-xs text-destructive">
-                              {form.formState.errors.routes?.[index]?.value?.message}
-                            </p>
-                          ) : null}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => removeRoute(index)}
+                            aria-label="Remove Route"
+                          >
+                            <Trash className="h-5 w-5 text-error" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeRoute(index)}
-                          aria-label="Remove Route"
-                        >
-                          <Trash className="h-6 w-6 text-error" />
-                        </Button>
+                        {form.formState.errors.routes?.[index]?.value?.message ? (
+                          <p className="text-xs text-destructive">
+                            {form.formState.errors.routes?.[index]?.value?.message}
+                          </p>
+                        ) : null}
                       </div>
                     ))}
                     <Button

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Fragment,
+} from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -84,6 +91,30 @@ import {
   parseResourceSearch,
   updateResourceSearchValue,
 } from "./language-table.utils";
+
+const getTableSkeletonClassName = (columnId: string) => {
+  if (columnId === "select") return "h-4 w-4 rounded";
+  if (columnId === "keyName") return "h-5 w-[150px] rounded md:w-[200px]";
+  if (columnId === "moduleId") return "h-5 w-24 rounded sm:w-[150px]";
+  if (columnId.startsWith("resources_")) {
+    return "h-5 w-[300px] rounded md:w-[200px]";
+  }
+  if (columnId === "createDate" || columnId === "lastUpdateDate") {
+    return "h-5 w-[150px] rounded";
+  }
+  if (columnId === "actions") return "h-8 w-8 rounded";
+  return "h-5 w-24 rounded";
+};
+
+const getTableColumnClassName = (columnId: string) => {
+  if (columnId === "select") return "w-12";
+  if (columnId === "keyName") return "w-[332px] md:w-[232px]";
+  if (columnId === "moduleId") return "w-32 sm:w-[182px]";
+  if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
+  if (columnId === "createDate" || columnId === "lastUpdateDate") return "w-[182px]";
+  if (columnId === "actions") return "w-14";
+  return "w-36";
+};
 
 export function LanguageTable() {
   "use no memo";
@@ -413,9 +444,13 @@ export function LanguageTable() {
     }));
   };
 
+  const currentTotalCount = blocksLanguageKeyData?.totalCount ?? 0;
+  const previousTotalCountRef = useRef(currentTotalCount);
+  if (!isLoading) previousTotalCountRef.current = currentTotalCount;
+  const stableTotalCount = isLoading ? previousTotalCountRef.current : currentTotalCount;
   const pageSizeOptions = useMemo(
-    () => getPageSizeOptions(blocksLanguageKeyData?.totalCount || 0),
-    [blocksLanguageKeyData?.totalCount],
+    () => getPageSizeOptions(stableTotalCount),
+    [stableTotalCount],
   );
 
   const handleToggleExpanded = useCallback((itemId: string) => {
@@ -437,6 +472,16 @@ export function LanguageTable() {
   const tableData = useMemo(() => {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
+  const previousTableRowCountRef = useRef(queryParams.pageSize ?? 10);
+
+  useEffect(() => {
+    if (!isLoading) {
+      previousTableRowCountRef.current = Math.max(tableData.length, 1);
+    }
+  }, [isLoading, tableData.length]);
+
+  const skeletonRowCount = previousTableRowCountRef.current;
+  const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -684,11 +729,15 @@ export function LanguageTable() {
                     dialogTitle="Import Keys"
                     data={[]}
                     projectKey={tenantId}
+                    open={isImportDialogOpen}
                     onClose={() => setIsImportDialogOpen(false)}
                   />
                 </Dialog>
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                  <ExportKey />
+                  <ExportKey
+                    open={isExportDialogOpen}
+                    onClose={() => setIsExportDialogOpen(false)}
+                  />
                 </Dialog>
                 <Button
                   onClick={onPublishChangesClick}
@@ -839,8 +888,16 @@ export function LanguageTable() {
                 )}
               </div>
               <CardContent>
-                <div className="w-full overflow-x-auto">
-                  <Table className="text-sm">
+                <div
+                  className="w-full overflow-x-auto"
+                  style={{ minHeight: `${tableViewportMinHeight}px` }}
+                >
+                  <Table className="table-fixed text-sm">
+                    <colgroup>
+                      {table.getVisibleLeafColumns().map((column) => (
+                        <col key={column.id} className={getTableColumnClassName(column.id)} />
+                      ))}
+                    </colgroup>
                     <TableHeader>
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
@@ -901,11 +958,11 @@ export function LanguageTable() {
                     </TableHeader>
                     <TableBody>
                       {isLoading
-                        ? Array.from({ length: 10 }).map((_, index) => (
-                            <TableRow key={index}>
-                              {columns.map((_, colIndex) => (
-                                <TableCell key={colIndex}>
-                                  <Skeleton className="h-6 w-full rounded" />
+                        ? Array.from({ length: skeletonRowCount }).map(() => (
+                            <TableRow key={crypto.randomUUID()} className="h-9 md:h-11">
+                              {table.getVisibleLeafColumns().map((column) => (
+                                <TableCell key={column.id}>
+                                  <Skeleton className={getTableSkeletonClassName(column.id)} />
                                 </TableCell>
                               ))}
                             </TableRow>
@@ -962,12 +1019,15 @@ export function LanguageTable() {
                   </Table>
                 </div>
               </CardContent>
-              {!isLoading && blocksLanguageKeyData && blocksLanguageKeyData.totalCount > 0 && (
-                <div className="mt-5 flex items-center md:justify-end">
+              {stableTotalCount > 0 && (
+                <div
+                  className={`mt-5 flex min-h-10 items-center md:justify-end ${isLoading ? "invisible pointer-events-none" : ""}`}
+                  aria-hidden={isLoading || undefined}
+                >
                   <Pagination
                     page={queryParams.pageNumber}
                     pageSize={queryParams.pageSize}
-                    totalCount={blocksLanguageKeyData?.totalCount || 0}
+                    totalCount={stableTotalCount}
                     pageSizeOptions={pageSizeOptions}
                     onChange={onPageChangeHandler}
                     onPageSizeChange={onPageSizeChangeHandler}

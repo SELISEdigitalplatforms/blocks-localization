@@ -73,6 +73,32 @@ describe("localization/hooks/use-language-manager", () => {
     );
   });
 
+  it("useGetBlocksLanguageKey should keep the current rows during a search refetch", async () => {
+    const firstPage = { totalCount: 1, keys: [{ itemId: "key-1", keyName: "Greeting" }] };
+    let resolveFiltered!: (value: typeof firstPage) => void;
+    const filteredPage = new Promise<typeof firstPage>((resolve) => {
+      resolveFiltered = resolve;
+    });
+    svc.fetchBlocksLanguageKey.mockImplementation(({ searchKey }) =>
+      searchKey === "first" ? Promise.resolve(firstPage as never) : (filteredPage as never),
+    );
+    const { wrapper } = createQueryWrapper();
+    const { result, rerender } = renderHook(
+      ({ search }) => hooks.useGetBlocksLanguageKey(0, 10, search, [], false),
+      { initialProps: { search: "first" }, wrapper },
+    );
+
+    await waitFor(() => expect(result.current.data).toEqual(firstPage));
+    rerender({ search: "filtered" });
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
+
+    expect(result.current.data).toEqual(firstPage);
+    expect(result.current.isLoading).toBe(false);
+
+    resolveFiltered({ totalCount: 0, keys: [] });
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+  });
+
   it("useGetBlocksLanguageKeyById should be disabled without an itemId", async () => {
     const { result } = renderQ(() => hooks.useGetBlocksLanguageKeyById(""));
     expect(result.current.fetchStatus).toBe("idle");

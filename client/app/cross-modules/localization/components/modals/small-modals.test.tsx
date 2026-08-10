@@ -87,10 +87,33 @@ describe("modals/new-module", () => {
     fireEvent.change(screen.getByPlaceholderText("Enter Module name"), {
       target: { value: "Payments" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    const createButton = screen.getByRole("button", { name: "Create" }) as HTMLButtonElement;
+    await waitFor(() => expect(createButton.disabled).toBe(false));
+    fireEvent.click(createButton);
     await waitFor(() => expect(saveModuleAsync).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
   });
+
+  it.each(["", "   "])(
+    "should show an inline error and block submission for an invalid name: %j",
+    async (moduleName) => {
+      render(withDialog(<NewModule onClose={vi.fn()} />));
+      const moduleNameInput = screen.getByPlaceholderText("Enter Module name");
+      const createButton = screen.getByRole("button", { name: "Create" }) as HTMLButtonElement;
+
+      expect(createButton.disabled).toBe(true);
+      fireEvent.change(moduleNameInput, { target: { value: "Payments" } });
+      await waitFor(() => expect(createButton.disabled).toBe(false));
+      fireEvent.change(moduleNameInput, {
+        target: { value: moduleName },
+      });
+
+      expect(await screen.findByText("Module name is required")).toBeTruthy();
+      expect(createButton.disabled).toBe(true);
+      expect(saveModuleAsync).not.toHaveBeenCalled();
+      expect(showErrorToast).not.toHaveBeenCalled();
+    },
+  );
 
   it("should surface validation errors on failure", async () => {
     saveModuleAsync.mockResolvedValue({
@@ -101,7 +124,9 @@ describe("modals/new-module", () => {
     fireEvent.change(screen.getByPlaceholderText("Enter Module name"), {
       target: { value: "Payments" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    const createButton = screen.getByRole("button", { name: "Create" }) as HTMLButtonElement;
+    await waitFor(() => expect(createButton.disabled).toBe(false));
+    fireEvent.click(createButton);
     await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith({ errors: "duplicate" }));
   });
 });
