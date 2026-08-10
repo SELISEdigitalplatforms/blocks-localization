@@ -98,6 +98,12 @@ const getErrorMessage = (error: unknown) => {
   return "The selected keys could not be updated. Review the values and try again.";
 };
 
+const getGlossaryAssignmentTitle = (source: "key" | "module" | "pending"): string => {
+  if (source === "pending") return "Will be assigned when saved";
+  if (source === "module") return "Assigned through this key's module";
+  return "Assigned directly to this key";
+};
+
 interface KeyGlossaryAssignmentsProps {
   directGlossaryIds: string[];
   glossaryById: Map<string, IGlossary>;
@@ -166,25 +172,16 @@ function KeyGlossaryAssignments({
 
   return (
     <>
-      {assignments.map((glossary) => {
-        const glossaryTitle =
-          glossary.source === "pending"
-            ? "Will be assigned when saved"
-            : glossary.source === "module"
-              ? "Assigned through this key's module"
-              : "Assigned directly to this key";
-
-        return (
-          <Badge
-            key={glossary.itemId}
-            variant={glossary.source === "pending" ? "secondary" : "outline"}
-            className="font-normal"
-            title={glossaryTitle}
-          >
-            {glossary.name}
-          </Badge>
-        );
-      })}
+      {assignments.map((glossary) => (
+        <Badge
+          key={glossary.itemId}
+          variant={glossary.source === "pending" ? "secondary" : "outline"}
+          className="font-normal"
+          title={getGlossaryAssignmentTitle(glossary.source)}
+        >
+          {glossary.name}
+        </Badge>
+      ))}
       {isLoading && <span className="text-xs text-low-emphasis">Loading glossaries...</span>}
     </>
   );
@@ -223,7 +220,9 @@ export function BulkEditKeysDialog({
   const overwriteCount = keys.length * languages.length;
   const valueLabel = overwriteCount === 1 ? "value" : "values";
   const languageNamesText =
-    languages.length > 0 ? ` across ${languages.map((language) => language.languageName).join(", ")}` : "";
+    languages.length > 0
+      ? ` across ${languages.map((language) => language.languageName).join(", ")}`
+      : "";
   const pendingPayload = useMemo(
     () =>
       buildBulkEditPayload(
