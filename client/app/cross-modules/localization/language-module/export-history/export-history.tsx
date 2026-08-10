@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Download, FileX } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
@@ -21,34 +21,30 @@ import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { flushSync } from "react-dom";
 
-export const ExportHistory: React.FC = () => {
+export const ExportHistory = () => {
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
-
-  // Filters
   const [filters, setFilters] = useState<{
     searchText?: string;
     startDate?: string;
     endDate?: string;
   }>({ searchText: "", startDate: "", endDate: "" });
-
-  // Pagination
   const [pageNumber, setPageNumber] = useState<number>(0);
   const [pageSize] = useState<number>(10);
-
-  // Format dates properly for API
   const formattedStartDate = filters.startDate ? filters.startDate : "";
 
-  const formattedEndDate = filters.endDate
-    ? (() => {
-        const dateStr = filters.endDate.split("T")[0];
-        return `${dateStr}T23:59:59.999Z`;
-      })()
-    : filters.startDate
-      ? (() => {
-          const dateStr = filters.startDate.split("T")[0];
-          return `${dateStr}T23:59:59.999Z`;
-        })()
-      : "";
+  const getFormattedEndDate = (): string => {
+    if (filters.endDate) {
+      const dateStr = filters.endDate.split("T")[0];
+      return `${dateStr}T23:59:59.999Z`;
+    }
+    if (filters.startDate) {
+      const dateStr = filters.startDate.split("T")[0];
+      return `${dateStr}T23:59:59.999Z`;
+    }
+    return "";
+  };
+
+  const formattedEndDate = getFormattedEndDate();
 
   const { data: exportHistoryData, isLoading: isLoadingExportHistory } = useGetExportHistory(
     pageNumber,
@@ -94,6 +90,64 @@ export const ExportHistory: React.FC = () => {
   const columns = ["File Name", "Date", "Download"];
   const totalCount = exportHistoryData?.totalCount ?? 0;
 
+  const formatExportDate = (dateStr: string | undefined | null): string => {
+    if (!dateStr) return "--";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const renderTableContent = () => {
+    if (isLoadingExportHistory || totalCount === 0) {
+      if (isLoadingExportHistory) {
+        return Array.from({ length: pageSize }).map((_) => (
+          <TableRow key={crypto.randomUUID()}>
+            {columns.map((_) => (
+              <TableCell key={crypto.randomUUID()}>
+                <Skeleton className="h-6 w-full rounded" />
+              </TableCell>
+            ))}
+          </TableRow>
+        ));
+      }
+      return (
+        <TableRow>
+          <TableCell colSpan={columns.length}>
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <FileX className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
+              <p className="mb-1 text-base font-medium text-medium-emphasis">
+                No export history found
+              </p>
+              <p className="text-sm">
+                Your exported files will appear here once you create an export.
+              </p>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    return exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
+      <TableRow key={crypto.randomUUID()}>
+        <TableCell>{item.fileName || "--"}</TableCell>
+        <TableCell>{formatExportDate(item.createDate)}</TableCell>
+        <TableCell>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadSelectedFile(item.fileId);
+            }}
+            variant="ghost"
+            className="h-10 w-10 p-0"
+          >
+            <Download width={20} height={20} />
+          </Button>
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <PageBreadcrumb />
@@ -106,17 +160,19 @@ export const ExportHistory: React.FC = () => {
       </div>
 
       <Card>
-        {/* Filters */}
-        <ExportHistoryFilters
-          onChange={(next) => {
-            setFilters({
-              searchText: next.search ?? "",
-              startDate: next.startDate ?? "",
-              endDate: next.endDate ?? "",
-            });
-            setPageNumber(0);
-          }}
-        />
+        {/* Filters - only show when loading or when data exists */}
+        {(isLoadingExportHistory || totalCount > 0) && (
+          <ExportHistoryFilters
+            onChange={(next) => {
+              setFilters({
+                searchText: next.search ?? "",
+                startDate: next.startDate ?? "",
+                endDate: next.endDate ?? "",
+              });
+              setPageNumber(0);
+            }}
+          />
+        )}
 
         {/* Table */}
         <ScrollArea className="h-[calc(100vh-370px)] pr-2">
@@ -131,58 +187,7 @@ export const ExportHistory: React.FC = () => {
                 </TableRow>
               </TableHeader>
             )}
-
-            <TableBody>
-              {isLoadingExportHistory ? (
-                Array.from({ length: pageSize }).map((_, rowIdx) => (
-                  <TableRow key={rowIdx}>
-                    {columns.map((_, colIdx) => (
-                      <TableCell key={colIdx}>
-                        <Skeleton className="h-6 w-full rounded" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : totalCount === 0 ? (
-                // Empty
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No Data Found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                // Data
-                exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
-                  <TableRow key={item.fileId}>
-                    <TableCell>{item.fileName || "--"}</TableCell>
-                    <TableCell>
-                      {item.createDate
-                        ? new Date(item.createDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "--"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadSelectedFile(item.fileId);
-                        }}
-                        variant="ghost"
-                        className="h-10 w-10 p-0"
-                      >
-                        <Download width={20} height={20} />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
+            <TableBody>{renderTableContent()}</TableBody>
           </Table>
         </ScrollArea>
 

@@ -16,6 +16,7 @@ vi.mock("@blocks-localization/services/language-manager.service", () => ({
     fetchBlocksLanguageModules: vi.fn(),
     fetchBlocksLanguages: vi.fn(),
     saveBlocksLanguageKey: vi.fn(),
+    saveBlocksLanguageKeys: vi.fn(),
     saveLanguageModule: vi.fn(),
     deleteLanguageModule: vi.fn(),
     tagGlossary: vi.fn(),
@@ -70,6 +71,32 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
       expect.objectContaining({ pageNumber: 0, pageSize: 25, searchKey: "search" }),
     );
+  });
+
+  it("useGetBlocksLanguageKey should keep the current rows during a search refetch", async () => {
+    const firstPage = { totalCount: 1, keys: [{ itemId: "key-1", keyName: "Greeting" }] };
+    let resolveFiltered!: (value: typeof firstPage) => void;
+    const filteredPage = new Promise<typeof firstPage>((resolve) => {
+      resolveFiltered = resolve;
+    });
+    svc.fetchBlocksLanguageKey.mockImplementation(({ searchKey }) =>
+      searchKey === "first" ? Promise.resolve(firstPage as never) : (filteredPage as never),
+    );
+    const { wrapper } = createQueryWrapper();
+    const { result, rerender } = renderHook(
+      ({ search }) => hooks.useGetBlocksLanguageKey(0, 10, search, [], false),
+      { initialProps: { search: "first" }, wrapper },
+    );
+
+    await waitFor(() => expect(result.current.data).toEqual(firstPage));
+    rerender({ search: "filtered" });
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
+
+    expect(result.current.data).toEqual(firstPage);
+    expect(result.current.isLoading).toBe(false);
+
+    resolveFiltered({ totalCount: 0, keys: [] });
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
   });
 
   it("useGetBlocksLanguageKeyById should be disabled without an itemId", async () => {
@@ -215,6 +242,13 @@ describe("localization/hooks/use-language-manager", () => {
     const { result } = renderQ(() => hooks.useSaveBlocksLanguageKey());
     await result.current.mutateAsync({ keyName: "k" } as never);
     expect(svc.saveBlocksLanguageKey).toHaveBeenCalled();
+  });
+
+  it("useSaveBlocksLanguageKeys should invoke the bulk service", async () => {
+    svc.saveBlocksLanguageKeys.mockResolvedValue({ success: true } as never);
+    const { result } = renderQ(() => hooks.useSaveBlocksLanguageKeys());
+    await result.current.mutateAsync([{ keyName: "k" }] as never);
+    expect(svc.saveBlocksLanguageKeys).toHaveBeenCalled();
   });
 
   it("useSaveLanguageModule should invoke the service", async () => {

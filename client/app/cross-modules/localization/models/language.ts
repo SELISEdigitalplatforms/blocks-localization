@@ -33,6 +33,18 @@ export interface IResource {
   culture: string;
 }
 
+export interface ISaveBlocksLanguageKeyPayload {
+  itemId: string;
+  keyName: string;
+  moduleId: string;
+  resources: IResource[];
+  routes: string[];
+  glossaryIds?: string[];
+  isPartiallyTranslated: boolean;
+  isNewKey?: boolean;
+  context?: string;
+}
+
 export interface IValidationError {
   propertyName: string;
   errorMessage: string;

@@ -65,6 +65,10 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useTranslateKey: vi.fn(),
   useTranslateKeyWithPolling: vi.fn(),
   useTranslateLanguageKeys: vi.fn(),
+  useGetGlossaries: vi.fn(),
+  useGetModuleGlossaries: vi.fn(),
+  useSearchGlossaries: vi.fn(),
+  useSaveBlocksLanguageKeys: vi.fn(),
 }));
 
 const h = vi.mocked(hooks);
@@ -72,6 +76,7 @@ const h = vi.mocked(hooks);
 const mutationStub = { isPending: false, mutateAsync: vi.fn() };
 const bulkDeleteAsync = vi.fn();
 const bulkTranslateAsync = vi.fn();
+const bulkSaveAsync = vi.fn();
 
 const setBaseMocks = () => {
   h.useGetLanguageModules.mockReturnValue({
@@ -96,6 +101,13 @@ const setBaseMocks = () => {
     mutateAsync: bulkTranslateAsync,
   } as never);
   h.useTranslateKeyWithPolling.mockReturnValue(undefined as never);
+  h.useGetGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useGetModuleGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useSearchGlossaries.mockReturnValue({ data: { items: [] } } as never);
+  h.useSaveBlocksLanguageKeys.mockReturnValue({
+    isPending: false,
+    mutateAsync: bulkSaveAsync,
+  } as never);
 };
 
 describe("language-module/language-table", () => {
@@ -155,7 +167,39 @@ describe("language-module/language-table", () => {
       data: oneKey,
     } as never);
     const { container } = renderWithProviders(<LanguageTable />);
-    expect(within(container).getByText("greeting")).toBeTruthy();
+    const keyName = within(container).getByText("greeting");
+    expect(keyName).toBeTruthy();
+    expect(keyName.className).toContain("w-full");
+    expect(keyName.className).not.toContain("w-[150px]");
+    expect(keyName.className).not.toContain("md:w-[200px]");
+  });
+
+  it("should preserve the rendered table dimensions when filter loading starts", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    const { container, rerender } = renderWithProviders(<LanguageTable />);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+    expect(container.querySelector("table")?.className).toContain("table-fixed");
+    expect(container.querySelectorAll("colgroup col").length).toBeGreaterThan(0);
+    const tableViewport = container.querySelector("table")?.parentElement?.parentElement;
+    expect(tableViewport?.style.minHeight).toBe("520px");
+
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: true,
+      data: undefined,
+    } as never);
+    rerender(<LanguageTable />);
+
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+    const skeletons = Array.from(container.querySelectorAll("tbody .animate-pulse"));
+    expect(skeletons.some((skeleton) => skeleton.className.includes("w-[150px]"))).toBe(true);
+    expect(skeletons.every((skeleton) => !skeleton.className.includes("w-full"))).toBe(true);
+    expect(tableViewport?.style.minHeight).toBe("520px");
+    expect(
+      container.querySelector('[aria-hidden="true"].invisible.pointer-events-none')?.textContent,
+    ).toContain("Page 1 of 1");
   });
 
   it("should navigate to the new-key page", () => {
@@ -198,6 +242,18 @@ describe("language-module/language-table", () => {
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByLabelText("Select row"));
     expect(screen.getByText("1 key selected")).toBeTruthy();
+  });
+
+  it("should open bulk edit for selected keys", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByLabelText("Select row"));
+    fireEvent.click(screen.getByRole("button", { name: "Bulk edit" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("Bulk edit 1 key")).toBeTruthy();
   });
 
   it("should open the auto-translate dialog", () => {
@@ -251,7 +307,7 @@ describe("language-module/language-table", () => {
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByLabelText("Select row"));
     expect(screen.getByText("1 key selected")).toBeTruthy();
-    fireEvent.click(screen.getByText("Clear"));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(screen.queryByText("1 key selected")).toBeNull();
   });
 });

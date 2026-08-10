@@ -44,7 +44,7 @@ describe("language-module/export-history", () => {
     renderWithProviders(<ExportHistory />, {
       route: "/app/abc/services/language/export-history",
     });
-    expect(screen.getByText("No Data Found")).toBeTruthy();
+    expect(screen.getByText("No export history found")).toBeTruthy();
   });
 
   it("should render exported file rows and trigger download", async () => {

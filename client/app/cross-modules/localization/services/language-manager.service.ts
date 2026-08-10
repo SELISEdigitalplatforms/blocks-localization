@@ -25,6 +25,7 @@ import {
   IDeleteModuleRequest,
   IModuleGets,
   IRollbackResponse,
+  ISaveBlocksLanguageKeyPayload,
   ITagGlossaryRequest,
   IValidationError,
   IWebhookConfig,
@@ -85,20 +86,9 @@ export class LanguageManagerService {
     return this.httpClient.get<ILanguageConfig[]>(url);
   };
 
-  saveBlocksLanguageKey = (payload: {
-    itemId: string;
-    keyName: string;
-    moduleId: string;
-    resources: {
-      value: string;
-      culture: string;
-    }[];
-    routes: string[];
-    glossaryIds?: string[];
-    isPartiallyTranslated: boolean;
-    isNewKey?: boolean;
-    context?: string;
-  }): Promise<{
+  saveBlocksLanguageKey = (
+    payload: ISaveBlocksLanguageKeyPayload,
+  ): Promise<{
     success: boolean;
     errorMessage: string;
     validationErrors: IValidationError[];
@@ -106,6 +96,16 @@ export class LanguageManagerService {
     const url = LANGUAGE_KEY_ENDPOINTS.SAVE;
     const updatedPayload = { ...payload, isNewKey: payload.isNewKey ?? false };
     return this.httpClient.post(url, updatedPayload);
+  };
+
+  saveBlocksLanguageKeys = (
+    payload: ISaveBlocksLanguageKeyPayload[],
+  ): Promise<{
+    success: boolean;
+    errorMessage: string;
+    validationErrors: IValidationError[];
+  }> => {
+    return this.httpClient.post(LANGUAGE_KEY_ENDPOINTS.SAVE_KEYS, payload);
   };
 
   saveLanguageModule = (payload: {

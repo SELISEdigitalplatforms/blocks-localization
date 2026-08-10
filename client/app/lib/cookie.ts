@@ -32,11 +32,11 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
   if (!normalizedDomain) return undefined;
 
   // An explicitly supplied domain remains supported for callers and tests.
-  if (domain !== undefined || typeof window === "undefined") {
+  if (domain !== undefined || globalThis.window === undefined) {
     return normalizedDomain;
   }
 
-  const hostname = window.location.hostname.toLowerCase();
+  const hostname = globalThis.window.location.hostname.toLowerCase();
   return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`)
     ? normalizedDomain
     : undefined;
@@ -46,17 +46,17 @@ const resolveCookieDomain = (domain?: string): string | undefined => {
  * Gets a cookie value by name
  */
 export function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
+  if (globalThis.document === undefined) return null;
 
   const nameEQ = `${name}=`;
   const cookies = document.cookie.split(";");
-  for (let i = 0; i < cookies.length; i++) {
-    let cookie = cookies[i];
-    while (cookie.charAt(0) === " ") {
-      cookie = cookie.substring(1);
+  for (const cookie of cookies) {
+    let trimmed = cookie;
+    while (trimmed.startsWith(" ")) {
+      trimmed = trimmed.substring(1);
     }
-    if (cookie.indexOf(nameEQ) === 0) {
-      return decodeURIComponent(cookie.substring(nameEQ.length));
+    if (trimmed.startsWith(nameEQ)) {
+      return decodeURIComponent(trimmed.substring(nameEQ.length));
     }
   }
   return null;
@@ -70,7 +70,7 @@ export function getCookie(name: string): string | null {
  * @param domain - Optional domain override. When omitted, uses BLOCKS_BASE_DOMAIN.
  */
 export function setCookie(name: string, value: string, days: number = 365, domain?: string): void {
-  if (typeof document === "undefined") return;
+  if (globalThis.document === undefined) return;
 
   // Check size limit
   const encodedValue = encodeURIComponent(value);
@@ -85,7 +85,7 @@ export function setCookie(name: string, value: string, days: number = 365, domai
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
 
   // Determine if Secure flag should be used (based on protocol)
-  const isSecure = window.location.protocol === "https:";
+  const isSecure = globalThis.window.location.protocol === "https:";
   const cookieDomain = resolveCookieDomain(domain);
 
   document.cookie = [
@@ -106,7 +106,7 @@ export function setCookie(name: string, value: string, days: number = 365, domai
  * @param domain - Optional domain override. Defaults to BLOCKS_BASE_DOMAIN.
  */
 export function removeCookie(name: string, domain?: string): void {
-  if (typeof document === "undefined") return;
+  if (globalThis.document === undefined) return;
   const cookieDomain = resolveCookieDomain(domain);
   // Set expiration to past date to remove
   document.cookie = [

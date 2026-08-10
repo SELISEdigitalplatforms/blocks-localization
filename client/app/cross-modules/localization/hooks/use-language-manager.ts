@@ -8,7 +8,7 @@ import {
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetBlocksLanguageKey = (
   pageNumber: number,
@@ -55,6 +55,7 @@ export const useGetBlocksLanguageKey = (
         resourceSearchFilters: resourceSearchFilters,
         missingLanguages: missingLanguages,
       }),
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnMount: true,
   });
@@ -104,6 +105,28 @@ export const useSaveBlocksLanguageKey = () => {
   return useMutation({
     mutationKey: ["add-blocksLanguageKey"],
     mutationFn: languageManagerService.saveBlocksLanguageKey,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+      });
+    },
+  });
+};
+
+export const useSaveBlocksLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["save-blocks-language-keys", "bulk"],
+    mutationFn: languageManagerService.saveBlocksLanguageKeys,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,

@@ -334,6 +334,27 @@ describe("LanguageManagerService", () => {
     });
   });
 
+  describe("saveBlocksLanguageKeys", () => {
+    it("should POST all keys to the bulk-save endpoint", async () => {
+      const response = { success: true, errorMessage: "", validationErrors: [] };
+      const payload = [
+        {
+          itemId: "key-1",
+          keyName: "greeting",
+          moduleId: "module-1",
+          resources: [{ culture: "en-US", value: "Hello" }],
+          routes: [],
+          glossaryIds: ["glossary-1"],
+          isPartiallyTranslated: false,
+        },
+      ];
+      vi.mocked(http.post).mockResolvedValue(response);
+
+      await expect(service.saveBlocksLanguageKeys(payload)).resolves.toBe(response);
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.SAVE_KEYS, payload);
+    });
+  });
+
   // ─── saveLanguageModule ──────────────────────────────────────────────────
   describe("saveLanguageModule", () => {
     it("should POST to the module SAVE endpoint", async () => {

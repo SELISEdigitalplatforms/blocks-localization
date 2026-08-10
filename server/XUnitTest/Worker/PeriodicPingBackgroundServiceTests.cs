@@ -43,7 +43,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(100);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Information), "the disabled notice");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -72,7 +72,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(100);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Warning), "the empty-url warning");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -100,7 +100,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(100);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Warning), "the empty-url warning");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -131,7 +131,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(200); // Wait for immediate ping
+            await WaitForAsync(() => mockHttpHandler.Invocations.Count > 0, "the ping");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -164,7 +164,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(200);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Debug), "the ping-success log");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -199,7 +199,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(200);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Warning), "the client-error warning");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -277,7 +277,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(200);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Warning), "the timeout warning");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -311,7 +311,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(200);
+            await WaitForAsync(() => HasLog(mockLogger, LogLevel.Error), "the request-failed error");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -352,7 +352,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(1500); // Wait for multiple pings
+            await WaitForAsync(() => callCount > 1, "more than one ping");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -384,7 +384,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(100);
+            await WaitForAsync(() => mockHttpHandler.Invocations.Count > 0, "the ping");
             await service.StopAsync(cts.Token);
 
             // Assert - Should stop without errors
@@ -408,7 +408,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(300); // Only immediate ping should happen
+            await WaitForAsync(() => mockHttpHandler.Invocations.Count > 0, "the ping");
             await service.StopAsync(cts.Token);
 
             // Assert - Should only do immediate ping, no periodic pings
@@ -432,7 +432,7 @@ namespace XUnitTest.Worker
 
             // Act
             await service.StartAsync(cts.Token);
-            await Task.Delay(300);
+            await WaitForAsync(() => mockHttpHandler.Invocations.Count > 0, "the ping");
             await service.StopAsync(cts.Token);
 
             // Assert
@@ -446,6 +446,48 @@ namespace XUnitTest.Worker
         #endregion
 
         #region Helper Methods
+
+        /// <summary>
+        /// Polls until <paramref name="condition"/> holds instead of sleeping for a
+        /// fixed period. The previous `await Task.Delay(n)` waits assumed the timer
+        /// had already fired after n milliseconds, which does not hold on a loaded CI
+        /// runner - it produced intermittent failures such as "Expected callCount to be
+        /// greater than 1 ... but found 1" and "Expected invocation on the mock once,
+        /// but was 0 times". Waiting on the observable effect is reliable and faster.
+        /// </summary>
+        private static async Task WaitForAsync(Func<bool> condition, string because, int timeoutMs = 10_000)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            while (!condition())
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException($"Timed out after {timeoutMs}ms waiting for {because}.");
+                }
+
+                await Task.Delay(25);
+            }
+        }
+
+        /// <summary>
+        /// True once the logger has recorded an entry at <paramref name="level"/>.
+        /// The level matters: the service emits other entries first, so waiting for
+        /// "any log" can return before the one under test has been written.
+        /// </summary>
+        private static bool HasLog<T>(Mock<ILogger<T>> logger, LogLevel level)
+        {
+            foreach (var invocation in logger.Invocations)
+            {
+                if (invocation.Arguments.Count > 0
+                    && invocation.Arguments[0] is LogLevel actual
+                    && actual == level)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private static IConfiguration CreateConfiguration(bool enabled, string url, int interval)
         {

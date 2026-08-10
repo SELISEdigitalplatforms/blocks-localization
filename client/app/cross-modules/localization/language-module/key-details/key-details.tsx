@@ -174,7 +174,7 @@ const KeyDetails = () => {
         toast({
           variant: "success",
           title: "Processing Translation",
-          description: "Key translation in progress.",
+          description: "Key translation is in progress.",
         });
         setAutoTranslateModalOpen(false);
       } else {
