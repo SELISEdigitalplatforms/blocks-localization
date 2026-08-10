@@ -92,6 +92,12 @@ const DEFAULT_TIMELINE_EXCLUDES = [
   "Rollback",
 ] as const;
 
+const createSkeletonKeys = (count: number) =>
+  Array.from({ length: count }, () => crypto.randomUUID());
+
+const OPERATION_DETAIL_SKELETON_KEYS = createSkeletonKeys(3);
+const TIMELINE_SKELETON_KEYS = createSkeletonKeys(5);
+
 // Cultures from both sides for diff table
 const asArray = <T,>(x?: T | T[]): T[] => {
   if (Array.isArray(x)) return x;
@@ -117,7 +123,7 @@ const getResourceValue = (
 
 type OperationDetailEntry = IGetTimelineByOperationIdResponse["timelines"][number];
 
-function CultureChanges({ timeline }: { timeline: OperationDetailEntry }) {
+function CultureChanges({ timeline }: Readonly<{ timeline: OperationDetailEntry }>) {
   const cultures = getCultures(timeline.previousData, timeline.currentData);
 
   if (cultures.length === 0) {
@@ -145,7 +151,7 @@ function CultureChanges({ timeline }: { timeline: OperationDetailEntry }) {
   );
 }
 
-function OperationDetailRow({ timeline }: { timeline: OperationDetailEntry }) {
+function OperationDetailRow({ timeline }: Readonly<{ timeline: OperationDetailEntry }>) {
   const { date, time } = formatDate(timeline.createDate);
   const keyName = timeline.currentData?.keyName ?? timeline.previousData?.keyName ?? "-";
 
@@ -176,12 +182,12 @@ function OperationDetailsContent({
   page,
   pageSize,
   onPageChange,
-}: OperationDetailsContentProps) {
+}: Readonly<OperationDetailsContentProps>) {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
+        {OPERATION_DETAIL_SKELETON_KEYS.map((skeletonKey) => (
+          <Skeleton key={skeletonKey} className="h-12 w-full" />
         ))}
       </div>
     );
@@ -294,24 +300,22 @@ type TimelineEntryProps = {
   onSelect: (operationId: string) => void;
 };
 
-function TimelineEntry({ entry, index, entryCount, isMobile, onSelect }: TimelineEntryProps) {
+function TimelineEntry({
+  entry,
+  index,
+  entryCount,
+  isMobile,
+  onSelect,
+}: Readonly<TimelineEntryProps>) {
   const { date, time } = formatDate(entry.createDate);
   const description = getOperationDescription(entry.logFrom, entry.userName);
   const selectEntry = () => onSelect(entry.operationId);
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      selectEntry();
-    }
-  };
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="flex min-h-[66px] w-full cursor-pointer rounded-md hover:bg-muted/50"
+    <button
+      type="button"
+      className="flex min-h-[66px] w-full cursor-pointer appearance-none rounded-md border-0 bg-transparent p-0 text-left hover:bg-muted/50"
       onClick={selectEntry}
-      onKeyDown={handleKeyDown}
     >
       {/* Left: time/date */}
       <div
@@ -348,7 +352,7 @@ function TimelineEntry({ entry, index, entryCount, isMobile, onSelect }: Timelin
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -359,12 +363,12 @@ type TimelineContentProps = {
   onSelect: (operationId: string) => void;
 };
 
-function TimelineContent({ data, isLoading, isMobile, onSelect }: TimelineContentProps) {
+function TimelineContent({ data, isLoading, isMobile, onSelect }: Readonly<TimelineContentProps>) {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={index} className="h-16 w-full" />
+        {TIMELINE_SKELETON_KEYS.map((skeletonKey) => (
+          <Skeleton key={skeletonKey} className="h-16 w-full" />
         ))}
       </div>
     );
@@ -384,7 +388,7 @@ function TimelineContent({ data, isLoading, isMobile, onSelect }: TimelineConten
     <div className="mt-4 flex flex-col items-start">
       {data.operations.map((entry, index) => (
         <TimelineEntry
-          key={entry.operationId + index}
+          key={entry.operationId}
           entry={entry}
           index={index}
           entryCount={data.operations.length}
