@@ -171,7 +171,7 @@ describe("key-details (extra coverage)", () => {
     await user.click(await screen.findByRole("button", { name: "Yes" }));
     await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Key translation in progress." }),
+      expect.objectContaining({ description: "Key translation is in progress." }),
     );
   });
 

@@ -754,7 +754,7 @@ export default function ImportCommunicationsModal({
   projectKey,
   open,
   onClose,
-}: IImportFilesModalProps) {
+}: Readonly<IImportFilesModalProps>) {
   const [files, setFiles] = useState<File[] | null>(null);
 
   // Reset files state when modal is closed

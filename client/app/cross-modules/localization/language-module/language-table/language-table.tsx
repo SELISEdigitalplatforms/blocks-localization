@@ -958,8 +958,8 @@ export function LanguageTable() {
                     </TableHeader>
                     <TableBody>
                       {isLoading
-                        ? Array.from({ length: skeletonRowCount }).map((_, index) => (
-                            <TableRow key={index} className="h-9 md:h-11">
+                        ? Array.from({ length: skeletonRowCount }).map(() => (
+                            <TableRow key={crypto.randomUUID()} className="h-9 md:h-11">
                               {table.getVisibleLeafColumns().map((column) => (
                                 <TableCell key={column.id}>
                                   <Skeleton className={getTableSkeletonClassName(column.id)} />

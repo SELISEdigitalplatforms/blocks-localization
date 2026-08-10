@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Download, FileX } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
@@ -21,34 +21,30 @@ import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { flushSync } from "react-dom";
 
-export const ExportHistory: React.FC = () => {
+export const ExportHistory = () => {
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
-
-  // Filters
   const [filters, setFilters] = useState<{
     searchText?: string;
     startDate?: string;
     endDate?: string;
   }>({ searchText: "", startDate: "", endDate: "" });
-
-  // Pagination
   const [pageNumber, setPageNumber] = useState<number>(0);
   const [pageSize] = useState<number>(10);
-
-  // Format dates properly for API
   const formattedStartDate = filters.startDate ? filters.startDate : "";
 
-  const formattedEndDate = filters.endDate
-    ? (() => {
-        const dateStr = filters.endDate.split("T")[0];
-        return `${dateStr}T23:59:59.999Z`;
-      })()
-    : filters.startDate
-      ? (() => {
-          const dateStr = filters.startDate.split("T")[0];
-          return `${dateStr}T23:59:59.999Z`;
-        })()
-      : "";
+  const getFormattedEndDate = (): string => {
+    if (filters.endDate) {
+      const dateStr = filters.endDate.split("T")[0];
+      return `${dateStr}T23:59:59.999Z`;
+    }
+    if (filters.startDate) {
+      const dateStr = filters.startDate.split("T")[0];
+      return `${dateStr}T23:59:59.999Z`;
+    }
+    return "";
+  };
+
+  const formattedEndDate = getFormattedEndDate();
 
   const { data: exportHistoryData, isLoading: isLoadingExportHistory } = useGetExportHistory(
     pageNumber,
@@ -93,6 +89,15 @@ export const ExportHistory: React.FC = () => {
 
   const columns = ["File Name", "Date", "Download"];
   const totalCount = exportHistoryData?.totalCount ?? 0;
+
+  const formatExportDate = (dateStr: string | undefined | null): string => {
+    if (!dateStr) return "--";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -166,13 +171,7 @@ export const ExportHistory: React.FC = () => {
                   <TableRow key={item.fileId}>
                     <TableCell>{item.fileName || "--"}</TableCell>
                     <TableCell>
-                      {item.createDate
-                        ? new Date(item.createDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "--"}
+                      {formatExportDate(item.createDate)}
                     </TableCell>
                     <TableCell>
                       <Button

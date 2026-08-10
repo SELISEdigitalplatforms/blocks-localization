@@ -119,14 +119,22 @@ function OperationDetailModal({
     detailPageSize,
   );
 
+  const dialogTitle = data && data.timelines.length > 0
+    ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName)
+    : "Operation Details";
+
+  const isEmptyData = !data || data.timelines.length === 0;
+
+  const isPublishedWithNoChanges = data?.timelines[0]?.logFrom === "Published" &&
+    !data.timelines[0]?.currentData &&
+    !data.timelines[0]?.previousData;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {data && data.timelines.length > 0
-              ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName)
-              : "Operation Details"}
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
@@ -136,15 +144,13 @@ function OperationDetailModal({
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : !data || data.timelines.length === 0 ? (
+        ) : isEmptyData ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <FileX className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
             <p className="text-sm font-medium text-medium-emphasis">No details found</p>
             <p className="text-xs">No details available for this operation.</p>
           </div>
-        ) : data.timelines[0]?.logFrom === "Published" &&
-          !data.timelines[0]?.currentData &&
-          !data.timelines[0]?.previousData ? (
+        ) : isPublishedWithNoChanges ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Clock className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
             <p className="text-sm font-medium text-medium-emphasis">No changes published</p>

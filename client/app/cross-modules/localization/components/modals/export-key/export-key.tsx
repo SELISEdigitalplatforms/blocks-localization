@@ -58,14 +58,14 @@ const FormSchema = z.object({
   items: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one item.",
   }),
-  });
+});
 
 interface ExportKeyProps {
   open?: boolean;
   onClose?: () => void;
 }
 
-export default function ExportKey({ open, onClose }: ExportKeyProps) {
+export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
   const [currentStep, setCurrentStep] = useState(1);
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const { data: languageModules } = useGetLanguageModule(projectKey);
@@ -94,6 +94,38 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
 
   const handleBack = () => {
     setCurrentStep(1);
+  };
+
+  const handleModuleToggle = (fieldValue: string[], fieldOnChange: (value: string[]) => void, itemId: string, checked: boolean) => {
+    if (checked) {
+      fieldOnChange([...fieldValue, itemId]);
+    } else {
+      fieldOnChange(fieldValue.filter((value) => value !== itemId));
+    }
+  };
+
+  const handleSelectAllModules = (fieldOnChange: (value: string[]) => void, checked: boolean, modules: { itemId: string }[]) => {
+    if (checked) {
+      fieldOnChange(modules.map((item) => item.itemId));
+    } else {
+      fieldOnChange([]);
+    }
+  };
+
+  const handleLanguageToggle = (code: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLanguages([...selectedLanguages, code]);
+    } else {
+      setSelectedLanguages(selectedLanguages.filter((c) => c !== code));
+    }
+  };
+
+  const handleSelectAllLanguages = (checked: boolean) => {
+    if (checked) {
+      setSelectedLanguages(availableLanguages?.map((lang) => lang.languageCode) || []);
+    } else {
+      setSelectedLanguages([]);
+    }
   };
 
   const handleXlfFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,7 +253,6 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
     onSubmit();
   };
 
-
   const parseJson = (value: unknown): Record<string, unknown> | null => {
     if (!value) return null;
     if (typeof value === "object") return value as Record<string, unknown>;
@@ -305,64 +336,66 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
     }
   }, [open, form]);
 
+  const downloadFile = async (fileIdToUse: string) => {
+    const result = await queryClient.fetchQuery({
+      queryKey: ["getFilesDownload", fileIdToUse, projectKey],
+      queryFn: () =>
+        storageService.file.getFilesDownloadUrl({
+          fileId: fileIdToUse,
+          projectKey,
+        }),
+    });
+
+    if (result?.url) {
+      const link = document.createElement("a");
+      link.href = result.url;
+      link.download = result.name || "";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      pendingExportCorrelationIdRef.current = null;
+      showSuccessToast();
+    } else {
+      console.error("No download URL found after all retries");
+      showErrorToast();
+    }
+  };
+
+  const handleExportNotification = async (notificationData: IUilmExportNotificationData) => {
+    const { correlationId, fileId, isSuccess } = extractExportNotification(notificationData);
+    const pendingCorrelationId = pendingExportCorrelationIdRef.current;
+
+    if (!pendingCorrelationId || (correlationId && correlationId !== pendingCorrelationId)) {
+      return;
+    }
+
+    if (isSuccess === false) {
+      pendingExportCorrelationIdRef.current = null;
+      showErrorToast();
+      return;
+    }
+
+    if (!fileId) {
+      console.error("No fileId found in notification message");
+      showErrorToast();
+      return;
+    }
+
+    try {
+      await downloadFile(fileId);
+    } catch (error) {
+      console.error(error);
+      showErrorToast();
+    }
+  };
+
   const handleNotificationData = useCallback(
     async (notificationData: IUilmExportNotificationData) => {
-      const { correlationId, fileId, isSuccess } = extractExportNotification(notificationData);
-      const pendingCorrelationId = pendingExportCorrelationIdRef.current;
-
-      if (!pendingCorrelationId) {
-        return;
-      }
-
-      if (correlationId && correlationId !== pendingCorrelationId) {
-        return;
-      }
-
       try {
-        if (isSuccess === false) {
-          pendingExportCorrelationIdRef.current = null;
-          showErrorToast();
-          return;
-        }
-
-        if (fileId) {
-          try {
-            // Fetch the download URL directly using queryClient
-            const fileIdToUse = fileId;
-            const result = await queryClient.fetchQuery({
-              queryKey: ["getFilesDownload", fileIdToUse, projectKey],
-              queryFn: () =>
-                storageService.file.getFilesDownloadUrl({
-                  fileId: fileIdToUse,
-                  projectKey,
-                }),
-            });
-
-            if (result?.url) {
-              const link = document.createElement("a");
-              link.href = result.url;
-              link.download = result.name || "";
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              pendingExportCorrelationIdRef.current = null;
-              showSuccessToast();
-            } else {
-              console.error("No download URL found after all retries");
-              showErrorToast();
-            }
-          } catch (error) {
-            console.error(error);
-            showErrorToast();
-          }
-        } else {
-          console.error("No fileId found in notification message");
-          showErrorToast();
-        }
+        await handleExportNotification(notificationData);
       } catch (error) {
         console.error("Error handling notification data:", error);
         showErrorToast();
-        return;
       }
     },
 
@@ -473,11 +506,7 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
                                   languageModules.length > 0
                                 }
                                 onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    field.onChange(languageModules.map((item) => item.itemId));
-                                  } else {
-                                    field.onChange([]);
-                                  }
+                                  handleSelectAllModules(field.onChange, !!checked, languageModules);
                                 }}
                               />
                             </FormControl>
@@ -491,33 +520,20 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                           {languageModules &&
                             languageModules.map((item) => (
-                              <FormField
+                              <FormItem
                                 key={item.itemId}
-                                control={form.control}
-                                name="items"
-                                render={({ field }) => (
-                                  <FormItem
-                                    key={item.itemId}
-                                    className="ml-3 flex flex-row items-start space-x-3 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(item.itemId)}
-                                        onCheckedChange={(checked) => {
-                                          if (checked) {
-                                            field.onChange([...field.value, item.itemId]);
-                                          } else {
-                                            field.onChange(
-                                              field.value?.filter((value) => value !== item.itemId),
-                                            );
-                                          }
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">{item.moduleName}</FormLabel>
-                                  </FormItem>
-                                )}
-                              />
+                                className="ml-3 flex flex-row items-start space-x-3 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.itemId)}
+                                    onCheckedChange={(checked) => {
+                                      handleModuleToggle(field.value, field.onChange, item.itemId, !!checked);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal">{item.moduleName}</FormLabel>
+                              </FormItem>
                             ))}
                         </div>
                       </div>
@@ -605,13 +621,7 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
                                 availableLanguages.length > 0
                               }
                               onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedLanguages(
-                                    availableLanguages.map((lang) => lang.languageCode),
-                                  );
-                                } else {
-                                  setSelectedLanguages([]);
-                                }
+                                handleSelectAllLanguages(!!checked);
                               }}
                             />
                             <Label htmlFor="select-all-languages" className="font-normal">
@@ -627,18 +637,7 @@ export default function ExportKey({ open, onClose }: ExportKeyProps) {
                                   id={`lang-${lang.languageCode}`}
                                   checked={selectedLanguages.includes(lang.languageCode)}
                                   onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedLanguages([
-                                        ...selectedLanguages,
-                                        lang.languageCode,
-                                      ]);
-                                    } else {
-                                      setSelectedLanguages(
-                                        selectedLanguages.filter(
-                                          (code) => code !== lang.languageCode,
-                                        ),
-                                      );
-                                    }
+                                    handleLanguageToggle(lang.languageCode, !!checked);
                                   }}
                                 />
                                 <Label
