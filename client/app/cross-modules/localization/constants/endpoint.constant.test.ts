@@ -41,6 +41,7 @@ describe("localization/constants/endpoint.constant", () => {
       GETS: `${UILM_BASE}/Key/Gets`,
       GET: `${UILM_BASE}/Key/Get`,
       SAVE: `${UILM_BASE}/Key/Save`,
+      SAVE_KEYS: `${UILM_BASE}/Key/SaveKeys`,
       DELETE: `${UILM_BASE}/Key/Delete`,
       DELETE_KEYS: `${UILM_BASE}/Key/DeleteKeys`,
       TRANSLATE_KEYS: `${UILM_BASE}/Key/TranslateKeys`,
@@ -56,8 +57,8 @@ describe("localization/constants/endpoint.constant", () => {
       GET_TIMELINE_BY_OPERATION_ID: `${UILM_BASE}/Key/GetTimelineByOperationId`,
     } as const;
 
-    it("should expose exactly 16 key endpoints", () => {
-      expect(Object.keys(LANGUAGE_KEY_ENDPOINTS)).toHaveLength(16);
+    it("should expose exactly 17 key endpoints", () => {
+      expect(Object.keys(LANGUAGE_KEY_ENDPOINTS)).toHaveLength(17);
     });
 
     it.each(Object.entries(expected))("should expose %s = %s", (key, value) => {

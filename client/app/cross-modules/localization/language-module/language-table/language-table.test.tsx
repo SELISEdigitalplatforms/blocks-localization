@@ -65,6 +65,10 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useTranslateKey: vi.fn(),
   useTranslateKeyWithPolling: vi.fn(),
   useTranslateLanguageKeys: vi.fn(),
+  useGetGlossaries: vi.fn(),
+  useGetModuleGlossaries: vi.fn(),
+  useSearchGlossaries: vi.fn(),
+  useSaveBlocksLanguageKeys: vi.fn(),
 }));
 
 const h = vi.mocked(hooks);
@@ -72,6 +76,7 @@ const h = vi.mocked(hooks);
 const mutationStub = { isPending: false, mutateAsync: vi.fn() };
 const bulkDeleteAsync = vi.fn();
 const bulkTranslateAsync = vi.fn();
+const bulkSaveAsync = vi.fn();
 
 const setBaseMocks = () => {
   h.useGetLanguageModules.mockReturnValue({
@@ -96,6 +101,13 @@ const setBaseMocks = () => {
     mutateAsync: bulkTranslateAsync,
   } as never);
   h.useTranslateKeyWithPolling.mockReturnValue(undefined as never);
+  h.useGetGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useGetModuleGlossaries.mockReturnValue({ data: { items: [] }, isLoading: false } as never);
+  h.useSearchGlossaries.mockReturnValue({ data: { items: [] } } as never);
+  h.useSaveBlocksLanguageKeys.mockReturnValue({
+    isPending: false,
+    mutateAsync: bulkSaveAsync,
+  } as never);
 };
 
 describe("language-module/language-table", () => {
@@ -200,6 +212,18 @@ describe("language-module/language-table", () => {
     expect(screen.getByText("1 key selected")).toBeTruthy();
   });
 
+  it("should open bulk edit for selected keys", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByLabelText("Select row"));
+    fireEvent.click(screen.getByRole("button", { name: "Bulk edit" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("Bulk edit 1 key")).toBeTruthy();
+  });
+
   it("should open the auto-translate dialog", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,
@@ -251,7 +275,7 @@ describe("language-module/language-table", () => {
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByLabelText("Select row"));
     expect(screen.getByText("1 key selected")).toBeTruthy();
-    fireEvent.click(screen.getByText("Clear"));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(screen.queryByText("1 key selected")).toBeNull();
   });
 });

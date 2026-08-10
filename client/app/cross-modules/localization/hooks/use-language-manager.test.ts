@@ -16,6 +16,7 @@ vi.mock("@blocks-localization/services/language-manager.service", () => ({
     fetchBlocksLanguageModules: vi.fn(),
     fetchBlocksLanguages: vi.fn(),
     saveBlocksLanguageKey: vi.fn(),
+    saveBlocksLanguageKeys: vi.fn(),
     saveLanguageModule: vi.fn(),
     deleteLanguageModule: vi.fn(),
     tagGlossary: vi.fn(),
@@ -215,6 +216,13 @@ describe("localization/hooks/use-language-manager", () => {
     const { result } = renderQ(() => hooks.useSaveBlocksLanguageKey());
     await result.current.mutateAsync({ keyName: "k" } as never);
     expect(svc.saveBlocksLanguageKey).toHaveBeenCalled();
+  });
+
+  it("useSaveBlocksLanguageKeys should invoke the bulk service", async () => {
+    svc.saveBlocksLanguageKeys.mockResolvedValue({ success: true } as never);
+    const { result } = renderQ(() => hooks.useSaveBlocksLanguageKeys());
+    await result.current.mutateAsync([{ keyName: "k" }] as never);
+    expect(svc.saveBlocksLanguageKeys).toHaveBeenCalled();
   });
 
   it("useSaveLanguageModule should invoke the service", async () => {
