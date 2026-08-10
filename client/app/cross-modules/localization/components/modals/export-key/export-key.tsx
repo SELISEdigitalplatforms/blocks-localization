@@ -58,9 +58,14 @@ const FormSchema = z.object({
   items: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one item.",
   }),
-});
+  });
 
-export default function ExportKey() {
+interface ExportKeyProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export default function ExportKey({ open, onClose }: ExportKeyProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const { data: languageModules } = useGetLanguageModule(projectKey);
@@ -194,13 +199,14 @@ export default function ExportKey() {
         variant: "success",
       });
 
-      // Reset modal after export
+      // Reset modal after export and close
       setCurrentStep(1);
       form.reset();
       setSelectedModuleIds([]);
       setDownloadChecked(false);
       setXlfFile(null);
       setSelectedLanguages([]);
+      onClose?.();
     } catch (error) {
       pendingExportCorrelationIdRef.current = null;
       console.error("Error during export:", error);
@@ -284,6 +290,20 @@ export default function ExportKey() {
   useEffect(() => {
     setSelectedModuleIds(form.getValues("items") || []);
   }, [form.watch("items")]);
+
+  // Reset state when modal is closed
+  useEffect(() => {
+    if (!open) {
+      setCurrentStep(1);
+      setDate(null);
+      setSelectedModuleIds([]);
+      setSelectedOutputType(outputTypes[0].id);
+      setDownloadChecked(false);
+      setXlfFile(null);
+      setSelectedLanguages([]);
+      form.reset();
+    }
+  }, [open, form]);
 
   const handleNotificationData = useCallback(
     async (notificationData: IUilmExportNotificationData) => {
@@ -414,7 +434,7 @@ export default function ExportKey() {
                     defaultMonth={date?.from}
                     selected={date?.from ? { from: date.from, to: date.to } : undefined}
                     onSelect={handleDateSelect}
-                    numberOfMonths={2}
+                    numberOfMonths={1}
                   />
                   <div className="flex items-center gap-4 px-3 pb-4">
                     <Button

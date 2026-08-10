@@ -34,7 +34,7 @@ describe("language-module/localization-timeline", () => {
       data: { totalCount: 0, operations: [] },
     } as never);
     renderWithProviders(<LocalizationTimeline />);
-    expect(screen.getByText("No history found.")).toBeTruthy();
+    expect(screen.getByText("No history found")).toBeTruthy();
   });
 
   it("should map operation log types to descriptions", () => {

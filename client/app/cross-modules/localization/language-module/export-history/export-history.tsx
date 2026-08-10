@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, FileX } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
@@ -106,17 +106,19 @@ export const ExportHistory: React.FC = () => {
       </div>
 
       <Card>
-        {/* Filters */}
-        <ExportHistoryFilters
-          onChange={(next) => {
-            setFilters({
-              searchText: next.search ?? "",
-              startDate: next.startDate ?? "",
-              endDate: next.endDate ?? "",
-            });
-            setPageNumber(0);
-          }}
-        />
+        {/* Filters - only show when loading or when data exists */}
+        {(isLoadingExportHistory || totalCount > 0) && (
+          <ExportHistoryFilters
+            onChange={(next) => {
+              setFilters({
+                searchText: next.search ?? "",
+                startDate: next.startDate ?? "",
+                endDate: next.endDate ?? "",
+              });
+              setPageNumber(0);
+            }}
+          />
+        )}
 
         {/* Table */}
         <ScrollArea className="h-[calc(100vh-370px)] pr-2">
@@ -144,13 +146,18 @@ export const ExportHistory: React.FC = () => {
                   </TableRow>
                 ))
               ) : totalCount === 0 ? (
-                // Empty
+                // Empty State
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No Data Found
+                  <TableCell colSpan={columns.length}>
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <FileX className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
+                      <p className="mb-1 text-base font-medium text-medium-emphasis">
+                        No export history found
+                      </p>
+                      <p className="text-sm">
+                        Your exported files will appear here once you create an export.
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (

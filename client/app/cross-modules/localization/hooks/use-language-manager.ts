@@ -8,7 +8,7 @@ import {
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetBlocksLanguageKey = (
   pageNumber: number,
@@ -55,6 +55,7 @@ export const useGetBlocksLanguageKey = (
         resourceSearchFilters: resourceSearchFilters,
         missingLanguages: missingLanguages,
       }),
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnMount: true,
   });

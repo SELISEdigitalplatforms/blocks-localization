@@ -157,6 +157,7 @@ describe("components/modals/export-key", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Reset" })).toBeTruthy();
     });
+    expect(screen.getAllByRole("grid")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     fireEvent.click(screen.getByRole("button", { name: "Set date range" }));
     await waitFor(() => {

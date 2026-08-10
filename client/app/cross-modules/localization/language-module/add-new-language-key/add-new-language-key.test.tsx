@@ -86,6 +86,21 @@ describe("language-module/add-new-language-key", () => {
     expect(screen.queryAllByPlaceholderText("Enter route").length).toBe(before + 1);
   });
 
+  it("should not validate the new-key form when opening the new-module flow", () => {
+    renderWithProviders(<AddNewLanguageKey />, {
+      route: "/app/abc/services/language/translations/new-key",
+    });
+    const moduleCombobox = screen.getByRole("combobox");
+
+    expect(moduleCombobox.getAttribute("type")).toBe("button");
+    fireEvent.click(moduleCombobox);
+    fireEvent.click(screen.getByRole("button", { name: "New Module" }));
+
+    expect(screen.queryByText("Key name is required")).toBeNull();
+    expect(screen.queryByText("Module is required")).toBeNull();
+    expect(screen.queryByText("Default value is required")).toBeNull();
+  });
+
   it("should submit a valid new key", async () => {
     saveKeyAsync.mockResolvedValue({ success: true });
     renderWithProviders(<AddNewLanguageKey />, {

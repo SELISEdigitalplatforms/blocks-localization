@@ -32,6 +32,7 @@ import {
 } from "@blocks-localization/models/language";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { Badge } from "@/components/ui-kits/badge/badge";
+import { Clock, FileX, History } from "lucide-react";
 
 function getOperationDescription(logFrom: string, userName: string): string {
   switch (logFrom) {
@@ -136,11 +137,19 @@ function OperationDetailModal({
             ))}
           </div>
         ) : !data || data.timelines.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">No details found for this operation.</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <FileX className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-medium-emphasis">No details found</p>
+            <p className="text-xs">No details available for this operation.</p>
+          </div>
         ) : data.timelines[0]?.logFrom === "Published" &&
           !data.timelines[0]?.currentData &&
           !data.timelines[0]?.previousData ? (
-          <p className="py-4 text-sm text-muted-foreground">No changes published.</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Clock className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-medium-emphasis">No changes published</p>
+            <p className="text-xs">This publish operation had no changes.</p>
+          </div>
         ) : (
           <>
             <Table>
@@ -269,8 +278,12 @@ export default function LocalizationTimeline({
                 ))}
               </div>
             ) : !timelineData || timelineData.operations.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
-                No history found.
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <History className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
+                <p className="mb-1 text-base font-medium text-medium-emphasis">
+                  No history found
+                </p>
+                <p className="text-sm">Your localization activity will appear here.</p>
               </div>
             ) : (
               <div className="mt-4 flex flex-col items-start">

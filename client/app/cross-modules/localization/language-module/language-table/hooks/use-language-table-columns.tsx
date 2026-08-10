@@ -28,7 +28,7 @@ const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) =
     <TooltipProvider key={displayValue}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="ml-2 w-[150px] truncate sm:ml-0 md:w-[200px]">{displayValue}</div>
+          <div className="ml-2 min-w-0 w-full truncate sm:ml-0">{displayValue}</div>
         </TooltipTrigger>
         {shouldShowTooltip && (
           <TooltipContent side="top">
