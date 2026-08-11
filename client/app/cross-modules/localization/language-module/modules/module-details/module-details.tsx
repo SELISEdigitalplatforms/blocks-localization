@@ -154,6 +154,8 @@ function ModuleDetailsContent({
     };
   }, [glossariesData?.items]);
 
+  const hasGlossaries = glossariesData?.items && glossariesData.items.length > 0;
+
   // Helper function to get user display name
   const getUserDisplayNameById = (userId: string | null): string => {
     const user = userId ? userMap?.[userId] : currentUser;
@@ -229,7 +231,7 @@ function ModuleDetailsContent({
                     <Skeleton key={index} className="h-12 w-full rounded" />
                   ))}
                 </div>
-              ) : glossariesData?.items && glossariesData.items.length > 0 ? (
+              ) : hasGlossaries ? (
                 renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
               ) : (
                 <div className="flex h-24 items-center justify-center text-muted-foreground">
