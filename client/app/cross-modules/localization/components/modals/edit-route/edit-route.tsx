@@ -66,6 +66,20 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
     return routes?.some((route) => !route?.trim()) ?? false;
   }, [routes]);
 
+  const buildPayload = (routesToSave: string[]) => ({
+    itemId: keyDetails.itemId,
+    keyName: keyDetails.keyName,
+    moduleId: keyDetails.moduleId,
+    resources:
+      keyDetails?.resources?.length && keyDetails?.resources?.length > 0
+        ? keyDetails.resources
+        : [],
+    routes: routesToSave,
+    glossaryIds: keyDetails.glossaryIds,
+    isPartiallyTranslated: keyDetails.isPartiallyTranslated,
+    context: keyDetails.context,
+  });
+
   const addRoute = () => {
     if (hasEmptyRoute) return;
     append("");
@@ -77,21 +91,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
     const filteredRoutes = updatedRoutes.filter((route) => route.trim() !== "");
 
     try {
-      const payload = {
-        itemId: keyDetails.itemId,
-        keyName: keyDetails.keyName,
-        moduleId: keyDetails.moduleId,
-        resources:
-          keyDetails?.resources?.length && keyDetails?.resources?.length > 0
-            ? keyDetails.resources
-            : [],
-        routes: filteredRoutes,
-        glossaryIds: keyDetails.glossaryIds,
-        isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        context: keyDetails.context,
-      };
-
-      const res = await mutateAsync(payload);
+      const res = await mutateAsync(buildPayload(filteredRoutes));
       if (res?.success) {
         toast({
           variant: "success",
@@ -116,21 +116,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
     const filteredRoutes = form.getValues("routes").filter((route) => route.trim() !== "");
 
     try {
-      const payload = {
-        itemId: keyDetails.itemId,
-        keyName: keyDetails.keyName,
-        moduleId: keyDetails.moduleId,
-        resources:
-          keyDetails?.resources?.length && keyDetails?.resources?.length > 0
-            ? keyDetails.resources
-            : [],
-        routes: filteredRoutes,
-        glossaryIds: keyDetails.glossaryIds,
-        isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        context: keyDetails.context,
-      };
-
-      const res = await mutateAsync(payload);
+      const res = await mutateAsync(buildPayload(filteredRoutes));
       if (res?.success) {
         toast({
           variant: "success",
@@ -249,7 +235,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
           disabled={isPending || !hasValidRoute}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Update"}
+          {isPending ? "Updating..." : "Update"}
         </Button>
       </DialogFooter>
     </DialogContent>

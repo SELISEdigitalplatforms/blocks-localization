@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -19,9 +19,11 @@ import { Badge } from "@/components/ui-kits/badge/badge";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
-import { useSaveBlocksLanguageKey, useSearchGlossaries } from "../../../hooks/use-language-manager";
-import { IBlocksLanguageKey, IGlossary } from "../../../models/language";
+import { IBlocksLanguageKey, IGlossary } from "@blocks-localization/models/language";
+import {
+  useSaveBlocksLanguageKey,
+  useSearchGlossaries,
+} from "@blocks-localization/hooks/use-language-manager";
 
 interface EditKeyGlossaryProps {
   keyDetails: IBlocksLanguageKey;
@@ -29,9 +31,12 @@ interface EditKeyGlossaryProps {
   onClose: () => void;
 }
 
-function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlossaryProps) {
+function EditKeyGlossary({
+  keyDetails,
+  resolvedGlossaries,
+  onClose,
+}: Readonly<EditKeyGlossaryProps>) {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const [selectedIds, setSelectedIds] = useState<string[]>(keyDetails.glossaryIds ?? []);
   const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>(resolvedGlossaries);
@@ -39,11 +44,6 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const { data: searchResults } = useSearchGlossaries(searchText, popoverOpen);
-
-  useEffect(() => {
-    setSelectedIds(keyDetails.glossaryIds ?? []);
-    setSelectedGlossaries(resolvedGlossaries);
-  }, [keyDetails.glossaryIds, resolvedGlossaries]);
 
   const handleSelect = useCallback(
     (glossary: IGlossary) => {
@@ -82,7 +82,6 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
 
       const res = await mutateAsync(payload);
       if (res?.success) {
-        keyDetails.glossaryIds = selectedIds;
         toast({
           variant: "success",
           title: "Success",
@@ -191,7 +190,7 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
           disabled={isPending}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Update"}
+          {isPending ? "Updating..." : "Update"}
         </Button>
       </DialogFooter>
     </DialogContent>
