@@ -975,7 +975,8 @@ export function LanguageTable() {
                                 return (
                                   <Fragment key={row.id}>
                                     <TableRow
-                                      className="cursor-pointer font-normal text-medium-emphasis"
+                                      isHoverable
+                                      className="font-normal text-medium-emphasis"
                                       data-state={row.getIsSelected() && "selected"}
                                       onClick={() => handleRowClick(row.original.itemId)}
                                     >

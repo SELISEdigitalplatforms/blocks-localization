@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { ModuleTable } from "./module-table";
 
@@ -18,6 +19,9 @@ vi.mock("@seliseblocks/genesis-os/hooks", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
 }));
+vi.mock("@blocks-localization/hooks/use-user-lookup", () => ({
+  useCurrentUser: vi.fn(),
+}));
 vi.mock("@blocks-localization/services/user-lookup.service", () => ({
   userLookupService: { getUsersByIds: vi.fn().mockResolvedValue({}) },
 }));
@@ -32,9 +36,13 @@ vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-
 }));
 
 const mockModules = vi.mocked(useGetLanguageModules);
+const mockCurrentUser = vi.mocked(useCurrentUser);
 
 describe("language-module/module-table", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCurrentUser.mockReturnValue({ data: undefined } as never);
+  });
   afterEach(() => vi.useRealTimers());
 
   it("should render skeletons while loading", () => {

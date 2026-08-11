@@ -78,7 +78,7 @@ export class GlossaryListPage {
       .getByRole("dialog", { name: "Delete Glossary Item" })
       .getByRole("button", { name: "Delete" })
       .click();
-    await expectToast(this.page, "Glossary item deleted");
+    await expectToast(this.page, "Glossary item deleted successfully.");
     await waitForUiSettle(this.page);
   }
 }
@@ -140,7 +140,7 @@ export class GlossaryFormPage {
     }
 
     await dialog.getByRole("button", { name: "Add" }).click();
-    await expectToast(this.page, "Glossary item added");
+    await expectToast(this.page, "Glossary item added successfully.");
     await waitForUiSettle(this.page);
   }
 }

@@ -30,6 +30,7 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -88,6 +89,7 @@ export function ModuleTable() {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
+  const { data: currentUser } = useCurrentUser();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
@@ -107,7 +109,10 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
+    queryKey: [
+      "module-users",
+      [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
@@ -117,11 +122,12 @@ export function ModuleTable() {
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "—";
-    if (isUsersLoading || !userMap) {
-      return "—";
-    }
-    const user = userMap[userId];
+    const user = userId
+      ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
+      : currentUser;
+
+    if (!user && isUsersLoading) return "—";
+
     if (user) {
       const firstName =
         typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
@@ -223,7 +229,8 @@ export function ModuleTable() {
                     filteredModules.map((module) => (
                       <TableRow
                         key={module.itemId}
-                        className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
+                        isHoverable
+                        className="font-normal text-medium-emphasis"
                         onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
                       >
                         <TableCell className="truncate font-medium">{module.moduleName}</TableCell>

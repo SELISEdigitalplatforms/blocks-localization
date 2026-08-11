@@ -191,7 +191,7 @@ function EditKeyGlossary({ keyDetails, resolvedGlossaries, onClose }: EditKeyGlo
           disabled={isPending}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving..." : "Update"}
         </Button>
       </DialogFooter>
     </DialogContent>

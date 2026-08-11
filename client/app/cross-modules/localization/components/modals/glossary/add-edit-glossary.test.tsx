@@ -67,14 +67,28 @@ describe("modals/glossary/add-edit-glossary", () => {
     const onClose = vi.fn();
     render(withDialog(<AddEditGlossary onClose={onClose} isOpen />));
     fireEvent.change(screen.getByPlaceholderText("Enter glossary name"), {
-      target: { value: "Acme" },
+      target: { value: "  Acme  " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(saveGlossaryAsync).toHaveBeenCalledWith(expect.objectContaining({ name: "Acme" })),
+    );
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Glossary item added" }),
+      expect.objectContaining({ description: "Glossary item added successfully." }),
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should show an inline error and prevent submission for a whitespace-only name", async () => {
+    render(withDialog(<AddEditGlossary onClose={vi.fn()} isOpen />));
+    fireEvent.change(screen.getByPlaceholderText("Enter glossary name"), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByText("Name is required")).toBeTruthy();
+    expect(saveGlossaryAsync).not.toHaveBeenCalled();
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 
   it("should surface validation errors on failure", async () => {

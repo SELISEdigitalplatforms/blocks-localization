@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { Button } from "@/components/ui-kits/button/button";
-import { Input } from "@/components/ui-kits/input/input";
+import { FilterControls } from "@/components/filter-toolbar";
 import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 import {
   DropdownMenu,
@@ -30,6 +30,29 @@ import DeleteGlossary from "@blocks-localization/components/modals/glossary/dele
 import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
+
+function GlossaryEmptyState({ searchQuery }: { searchQuery: string }) {
+  if (searchQuery) {
+    return (
+      <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-4">
+        <p className="font-medium text-high-emphasis">No matching glossaries</p>
+        <p className="text-muted-foreground">
+          No glossaries match &ldquo;{searchQuery}&rdquo;. Try a different search.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-4">
+      <p className="font-medium text-high-emphasis">No glossaries yet</p>
+      <p className="text-muted-foreground">
+        Glossaries help keep terminology consistent across translations.
+      </p>
+    </div>
+  );
+}
 
 const GlossaryTable: React.FC = () => {
   const navigate = useNavigate();
@@ -37,27 +60,18 @@ const GlossaryTable: React.FC = () => {
   const [pageNumber, setPageNumber] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(undefined);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(undefined);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
   const handleSearchChange = useCallback((value: string) => {
-    setSearchText(value);
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPageNumber(0);
-    }, 400);
+    setSearchText(value.trim());
+    setPageNumber(0);
   }, []);
 
-  const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, debouncedSearch);
+  const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, searchText);
 
   const handleEditClick = useCallback((glossary: IGlossary) => {
     setEditGlossary(glossary);
@@ -120,11 +134,14 @@ const GlossaryTable: React.FC = () => {
             <span className="font-bold text-medium-emphasis">Context</span>
           </div>
         ),
-        cell: ({ row }) => (
-          <div className="max-w-[200px] truncate" title={row.original.context}>
-            {row.original.context ?? "-"}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const context = getOptionalCellText(row.original.context);
+          return (
+            <div className="max-w-[200px] truncate" title={context === "-" ? undefined : context}>
+              {context}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "additionalNote",
@@ -133,11 +150,17 @@ const GlossaryTable: React.FC = () => {
             <span className="font-bold text-medium-emphasis">Additional Note</span>
           </div>
         ),
-        cell: ({ row }) => (
-          <div className="max-w-[200px] truncate" title={row.original.additionalNote}>
-            {row.original.additionalNote ?? "-"}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const additionalNote = getOptionalCellText(row.original.additionalNote);
+          return (
+            <div
+              className="max-w-[200px] truncate"
+              title={additionalNote === "-" ? undefined : additionalNote}
+            >
+              {additionalNote}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "createDate",
@@ -159,6 +182,11 @@ const GlossaryTable: React.FC = () => {
       {
         id: "actions",
         enableHiding: false,
+        header: () => (
+          <div className="flex items-center">
+            <span className="font-bold text-medium-emphasis">Actions</span>
+          </div>
+        ),
         cell: ({ row }) => (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
@@ -207,6 +235,7 @@ const GlossaryTable: React.FC = () => {
     manualPagination: true,
     pageCount: Math.ceil((data?.totalCount ?? 0) / pageSize),
   });
+  const isUnfilteredEmpty = !isLoading && searchText.length === 0 && (data?.totalCount ?? 0) === 0;
 
   return (
     <div>
@@ -233,65 +262,74 @@ const GlossaryTable: React.FC = () => {
             Glossary
           </CardTitle>
         </CardHeader>
-        <div className="mb-4">
-          <Input
-            placeholder="Search glossary..."
-            value={searchText}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="h-9 w-[300px] text-sm"
-          />
-        </div>
-        <CardContent>
-          <div className="w-full overflow-x-auto">
-            <Table className="text-sm">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 10 }).map((_, index) => (
-                    <TableRow key={index}>
-                      {columns.map((_, colIndex) => (
-                        <TableCell key={colIndex}>
-                          <Skeleton className="h-6 w-full rounded" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="cursor-pointer font-normal text-medium-emphasis"
-                      onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+        {!isUnfilteredEmpty && (
+          <div className="mb-4 w-full sm:w-[300px]">
+            <FilterControls.SearchInput
+              placeholder="Search glossary..."
+              value={searchText}
+              onChange={handleSearchChange}
+              className="h-9 w-full"
+            />
           </div>
+        )}
+        <CardContent>
+          {isUnfilteredEmpty ? (
+            <div className="flex h-40 items-center justify-center text-center">
+              <GlossaryEmptyState searchQuery="" />
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <Table className="text-sm">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} className="font-bold text-medium-emphasis">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, index) => (
+                      <TableRow key={index}>
+                        {columns.map((_, colIndex) => (
+                          <TableCell key={colIndex}>
+                            <Skeleton className="h-6 w-full rounded" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        isHoverable
+                        className="font-normal text-medium-emphasis"
+                        onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-40 text-center">
+                        <GlossaryEmptyState searchQuery={searchText} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
         {!isLoading && (data?.totalCount ?? 0) > pageSize && (
           <div className="mt-5 flex items-center md:justify-end">

@@ -68,6 +68,7 @@ interface AddEditGlossaryProps {
 const schema = z.object({
   name: z
     .string()
+    .trim()
     .min(1, { message: "Name is required" })
     .max(200, { message: "Name must be less than 200 characters" }),
   language: z.string().optional(),
@@ -143,7 +144,9 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
         toast({
           variant: "success",
           title: "Success",
-          description: isEditMode ? "Glossary item updated" : "Glossary item added",
+          description: isEditMode
+            ? "Glossary item updated successfully."
+            : "Glossary item added successfully.",
         });
         onClose();
       } else {

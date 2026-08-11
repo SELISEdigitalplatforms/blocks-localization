@@ -208,7 +208,7 @@ describe("modals/edit-key-glossary", () => {
         />,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
   });

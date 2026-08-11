@@ -20,6 +20,10 @@ import {
   useGetLanguageModules,
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
+
+const hasDisplayValue = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
 
 function ModuleDetailsContent({
   module,
@@ -45,12 +49,24 @@ function ModuleDetailsContent({
 
   // Glossary tab - fetch glossaries for this module
   const { data: glossariesData, isLoading: isGlossariesLoading } = useGetModuleGlossaries(moduleId);
+  const { data: currentUser } = useCurrentUser();
+  const visibleGlossaryColumns = useMemo(() => {
+    const glossaries = glossariesData?.items ?? [];
+
+    return {
+      language: glossaries.some((glossary) => hasDisplayValue(glossary.language)),
+      type: glossaries.some((glossary) => hasDisplayValue(glossary.type)),
+      context: glossaries.some((glossary) => hasDisplayValue(glossary.context)),
+      createDate: glossaries.some((glossary) => hasDisplayValue(glossary.createDate)),
+    };
+  }, [glossariesData?.items]);
 
   // Helper function to get user display name
   const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "—";
-    if (!userMap) return "—";
-    const user = userMap[userId];
+    const user = userId
+      ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
+      : currentUser;
+
     if (user) {
       const firstName =
         typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
@@ -141,31 +157,51 @@ function ModuleDetailsContent({
                     <TableHeader>
                       <TableRow className="border-none hover:bg-transparent">
                         <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Created Date
-                        </TableHead>
+                        {visibleGlossaryColumns.language && (
+                          <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+                        )}
+                        {visibleGlossaryColumns.type && (
+                          <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+                        )}
+                        {visibleGlossaryColumns.context && (
+                          <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
+                        )}
+                        {visibleGlossaryColumns.createDate && (
+                          <TableHead className="font-bold text-medium-emphasis">
+                            Created Date
+                          </TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {glossariesData.items.map((glossary) => (
                         <TableRow
                           key={glossary.itemId}
-                          className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
+                          className="font-normal text-medium-emphasis"
                         >
                           <TableCell className="font-medium">{glossary.name}</TableCell>
-                          <TableCell>{glossary.language ?? "—"}</TableCell>
-                          <TableCell>{glossary.type ?? "—"}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {glossary.context ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            {glossary.createDate
-                              ? new Date(glossary.createDate).toLocaleDateString()
-                              : "—"}
-                          </TableCell>
+                          {visibleGlossaryColumns.language && (
+                            <TableCell>
+                              {hasDisplayValue(glossary.language) ? glossary.language : "—"}
+                            </TableCell>
+                          )}
+                          {visibleGlossaryColumns.type && (
+                            <TableCell>
+                              {hasDisplayValue(glossary.type) ? glossary.type : "—"}
+                            </TableCell>
+                          )}
+                          {visibleGlossaryColumns.context && (
+                            <TableCell className="max-w-[200px] truncate">
+                              {hasDisplayValue(glossary.context) ? glossary.context : "—"}
+                            </TableCell>
+                          )}
+                          {visibleGlossaryColumns.createDate && (
+                            <TableCell>
+                              {hasDisplayValue(glossary.createDate)
+                                ? new Date(glossary.createDate).toLocaleDateString()
+                                : "—"}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -196,11 +232,14 @@ export function ModuleDetails() {
     if (module?.createdBy) ids.add(module.createdBy);
     if (module?.lastUpdatedBy) ids.add(module.lastUpdatedBy);
     return Array.from(ids);
-  }, [module?.createdBy, module?.lastUpdatedBy]);
+  }, [module]);
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", [...uniqueUserIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
+    queryKey: [
+      "module-detail-users",
+      [...uniqueUserIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueUserIds);
     },
@@ -209,6 +248,7 @@ export function ModuleDetails() {
   });
 
   if (module?.moduleName) {
+    // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] = module.moduleName;
   }
 

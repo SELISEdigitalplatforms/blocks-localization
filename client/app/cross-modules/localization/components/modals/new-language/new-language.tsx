@@ -74,7 +74,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         toast({
           variant: "success",
           title: "Success",
-          description: "Language added",
+          description: "Language added successfully.",
         });
         form.reset();
         onClose(false);
