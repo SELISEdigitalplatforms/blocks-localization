@@ -20,6 +20,7 @@ import {
   useGetLanguageModules,
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
+import { IGlossary } from "@blocks-localization/models/language";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
 const hasDisplayValue = (value: unknown): value is string =>
@@ -51,6 +52,71 @@ const getUserDisplayName = (
 
   return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
 };
+
+type VisibleGlossaryColumns = {
+  language: boolean;
+  type: boolean;
+  context: boolean;
+  createDate: boolean;
+};
+
+function renderGlossaryTable(
+  items: IGlossary[],
+  visibleColumns: VisibleGlossaryColumns,
+) {
+  return (
+    <div className="w-full overflow-x-auto">
+      <Table className="text-sm">
+        <TableHeader>
+          <TableRow className="border-none hover:bg-transparent">
+            <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
+            {visibleColumns.language && (
+              <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+            )}
+            {visibleColumns.type && (
+              <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+            )}
+            {visibleColumns.context && (
+              <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
+            )}
+            {visibleColumns.createDate && (
+              <TableHead className="font-bold text-medium-emphasis">Created Date</TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((glossary) => (
+            <TableRow key={glossary.itemId} className="font-normal text-medium-emphasis">
+              <TableCell className="font-medium">{glossary.name}</TableCell>
+              {visibleColumns.language && (
+                <TableCell>
+                  {hasDisplayValue(glossary.language) ? glossary.language : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.type && (
+                <TableCell>
+                  {hasDisplayValue(glossary.type) ? glossary.type : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.context && (
+                <TableCell className="max-w-[200px] truncate">
+                  {hasDisplayValue(glossary.context) ? glossary.context : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.createDate && (
+                <TableCell>
+                  {hasDisplayValue(glossary.createDate)
+                    ? new Date(glossary.createDate).toLocaleDateString()
+                    : "—"}
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
 function ModuleDetailsContent({
   module,
@@ -90,10 +156,9 @@ function ModuleDetailsContent({
 
   // Helper function to get user display name
   const getUserDisplayNameById = (userId: string | null): string => {
-    const user = userId
-      ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
-      : currentUser;
-    return getUserDisplayName(user);
+    const user = userId ? userMap?.[userId] : currentUser;
+    const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
+    return getUserDisplayName(resolvedUser);
   };
 
   return (
@@ -165,61 +230,7 @@ function ModuleDetailsContent({
                   ))}
                 </div>
               ) : glossariesData?.items && glossariesData.items.length > 0 ? (
-                <div className="w-full overflow-x-auto">
-                  <Table className="text-sm">
-                    <TableHeader>
-                      <TableRow className="border-none hover:bg-transparent">
-                        <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
-                        {visibleGlossaryColumns.language && (
-                          <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
-                        )}
-                        {visibleGlossaryColumns.type && (
-                          <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
-                        )}
-                        {visibleGlossaryColumns.context && (
-                          <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
-                        )}
-                        {visibleGlossaryColumns.createDate && (
-                          <TableHead className="font-bold text-medium-emphasis">
-                            Created Date
-                          </TableHead>
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {glossariesData.items.map((glossary) => (
-                        <TableRow
-                          key={glossary.itemId}
-                          className="font-normal text-medium-emphasis"
-                        >
-                          <TableCell className="font-medium">{glossary.name}</TableCell>
-                          {visibleGlossaryColumns.language && (
-                            <TableCell>
-                              {hasDisplayValue(glossary.language) ? glossary.language : "—"}
-                            </TableCell>
-                          )}
-                          {visibleGlossaryColumns.type && (
-                            <TableCell>
-                              {hasDisplayValue(glossary.type) ? glossary.type : "—"}
-                            </TableCell>
-                          )}
-                          {visibleGlossaryColumns.context && (
-                            <TableCell className="max-w-[200px] truncate">
-                              {hasDisplayValue(glossary.context) ? glossary.context : "—"}
-                            </TableCell>
-                          )}
-                          {visibleGlossaryColumns.createDate && (
-                            <TableCell>
-                              {hasDisplayValue(glossary.createDate)
-                                ? new Date(glossary.createDate).toLocaleDateString()
-                                : "—"}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
               ) : (
                 <div className="flex h-24 items-center justify-center text-muted-foreground">
                   No glossaries tagged to this module

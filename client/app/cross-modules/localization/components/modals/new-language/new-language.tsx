@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -43,16 +43,19 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   const schema = z.object({
     languageCode: z.string().min(1, { message: "Language is required" }),
   });
-  const form = useForm({
+
+  type LanguageFormValues = z.infer<typeof schema>;
+
+  const form = useForm<LanguageFormValues>({
     defaultValues: { languageCode: "" },
     resolver: zodResolver(schema),
   });
 
   const { isPending, mutateAsync } = useSaveLanguage();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  const [open, setOpen] = React.useState(false);
-  const [selectedLanguage, setSelectedLanguage] = React.useState(form.getValues("languageCode"));
-  const formSubmitHandler = async (data: any) => {
+  const [open, setOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(form.getValues("languageCode"));
+  const formSubmitHandler = async (data: LanguageFormValues) => {
     try {
       const isDuplicate = existingLanguages.some((lang) => lang.languageCode === data.languageCode);
       if (isDuplicate) {
@@ -63,10 +66,20 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         });
         return;
       }
+      const languageName = langConfigureData.find(
+        (lang) => lang.languageCode === data.languageCode,
+      )?.languageName;
+      if (!languageName) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Language not found in configuration.",
+        });
+        return;
+      }
       const payload = {
         ...data,
-        languageName: langConfigureData.find((lang) => lang.languageCode === data.languageCode)
-          ?.languageName,
+        languageName,
       };
       const res = await mutateAsync(payload);
       onClose();

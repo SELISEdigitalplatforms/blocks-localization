@@ -59,6 +59,49 @@ const getUserDisplayNameFromUser = (
   return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
 };
 
+function renderModuleRows(
+  modules: IModuleGets[],
+  getUserDisplayNameById: (userId: string | null) => string,
+  scoped: (path: string) => string,
+  navigate: (path: string) => void,
+  searchText: string,
+  onEditModule: (module: IModuleGets) => void,
+  onTagGlossaryModule: (module: IModuleGets) => void,
+) {
+  if (modules.length === 0) {
+    return (
+      <TableRow>
+        <TableCell colSpan={4} className="h-24 text-center">
+          {searchText ? "No modules match your search." : "No modules found. Create your first module to get started."}
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return modules.map((module) => (
+    <TableRow
+      key={module.itemId}
+      isHoverable
+      className="font-normal text-medium-emphasis"
+      onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
+    >
+      <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
+      <TableCell className="truncate">
+        {getUserDisplayNameById(module.createdBy)}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
+      </TableCell>
+      <TableCell className="text-center">
+        <RowActionsCell
+          onEdit={() => onEditModule(module)}
+          onTagGlossary={() => onTagGlossaryModule(module)}
+        />
+      </TableCell>
+    </TableRow>
+  ));
+}
+
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
   onEdit,
@@ -150,10 +193,9 @@ export function ModuleTable() {
   // Helper function to get user display name
   const getUserDisplayNameById = (userId: string | null): string => {
     if (isUsersLoading) return "—";
-    const user = userId
-      ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
-      : currentUser;
-    return getUserDisplayNameFromUser(user);
+    const user = userId ? userMap?.[userId] : currentUser;
+    const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
+    return getUserDisplayNameFromUser(resolvedUser);
   };
 
   const [searchValue, setSearchValue] = useState("");
@@ -237,41 +279,16 @@ export function ModuleTable() {
                         ))}
                       </TableRow>
                     ))
-                  ) : filteredModules.length > 0 ? (
-                    filteredModules.map((module) => (
-                      <TableRow
-                        key={module.itemId}
-                        isHoverable
-                        className="font-normal text-medium-emphasis"
-                        onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
-                      >
-                        <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
-                        <TableCell className="truncate">
-                          {getUserDisplayNameById(module.createdBy)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {module.createDate
-                            ? new Date(module.createDate).toLocaleDateString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <RowActionsCell
-                            onEdit={() => setEditTarget(module)}
-                            onTagGlossary={() => setTagTarget(module)}
-                            // TODO: Enable delete module feature
-                            // onDelete={() => setDeleteTarget(module)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        {searchValue
-                          ? "No modules match your search."
-                          : "No modules found. Create your first module to get started."}
-                      </TableCell>
-                    </TableRow>
+                    renderModuleRows(
+                    filteredModules,
+                    getUserDisplayNameById,
+                    scoped,
+                    navigate,
+                    searchValue,
+                    setEditTarget,
+                    setTagTarget,
+                  )
                   )}
                 </TableBody>
               </Table>

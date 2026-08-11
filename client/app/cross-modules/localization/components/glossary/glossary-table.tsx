@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { ColumnDef, flexRender, getCoreRowModel, Row, useReactTable } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import {
   Table,
@@ -69,6 +69,39 @@ function renderAdditionalNoteCell(row: { original: IGlossary }) {
       {additionalNote}
     </div>
   );
+}
+
+function renderTableRows(
+  tableRows: Row<IGlossary>[],
+  columns: ColumnDef<IGlossary>[],
+  scoped: (path: string) => string,
+  navigate: (path: string) => void,
+  searchText: string,
+) {
+  if (tableRows.length === 0) {
+    return (
+      <TableRow>
+        <TableCell colSpan={columns.length} className="h-40 text-center">
+          <GlossaryEmptyState searchQuery={searchText} />
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return tableRows.map((row) => (
+    <TableRow
+      key={row.id}
+      isHoverable
+      className="font-normal text-medium-emphasis"
+      onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
+    >
+      {row.getVisibleCells().map((cell) => (
+        <TableCell key={cell.id}>
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </TableCell>
+      ))}
+    </TableRow>
+  ));
 }
 
 function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {
@@ -247,7 +280,6 @@ const GlossaryTable = () => {
   });
   const isUnfilteredEmpty = !isLoading && searchText.length === 0 && (data?.totalCount ?? 0) === 0;
   const tableRows = table.getRowModel().rows;
-  const hasTableRows = tableRows.length > 0;
 
   return (
     <div>
@@ -316,27 +348,8 @@ const GlossaryTable = () => {
                         ))}
                       </TableRow>
                     ))
-                  ) : hasTableRows ? (
-                    tableRows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        isHoverable
-                        className="font-normal text-medium-emphasis"
-                        onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-40 text-center">
-                        <GlossaryEmptyState searchQuery={searchText} />
-                      </TableCell>
-                    </TableRow>
+                    renderTableRows(tableRows, columns, scoped, navigate, searchText)
                   )}
                 </TableBody>
               </Table>
