@@ -32,29 +32,68 @@ import { langConfigureData } from "@blocks-localization/constants/language-dummy
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
-function GlossaryEmptyState({ searchQuery }: { searchQuery: string }) {
-  if (searchQuery) {
-    return (
-      <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-4">
-        <p className="font-medium text-high-emphasis">No matching glossaries</p>
-        <p className="text-muted-foreground">
-          No glossaries match &ldquo;{searchQuery}&rdquo;. Try a different search.
-        </p>
-      </div>
-    );
-  }
+const ContextHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Context</span>
+  </div>
+);
 
+const AdditionalNoteHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Additional Note</span>
+  </div>
+);
+
+const ActionsHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Actions</span>
+  </div>
+);
+
+function renderContextCell(row: { original: IGlossary }) {
+  const context = getOptionalCellText(row.original.context);
   return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-4">
-      <p className="font-medium text-high-emphasis">No glossaries yet</p>
-      <p className="text-muted-foreground">
-        Glossaries help keep terminology consistent across translations.
-      </p>
+    <div className="max-w-[200px] truncate" title={context === "-" ? undefined : context}>
+      {context}
     </div>
   );
 }
 
-const GlossaryTable: React.FC = () => {
+function renderAdditionalNoteCell(row: { original: IGlossary }) {
+  const additionalNote = getOptionalCellText(row.original.additionalNote);
+  return (
+    <div
+      className="max-w-[200px] truncate"
+      title={additionalNote === "-" ? undefined : additionalNote}
+    >
+      {additionalNote}
+    </div>
+  );
+}
+
+function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {
+  if (searchQuery) {
+    return (
+      <output className="flex flex-col items-center gap-2 py-4">
+        <p className="font-medium text-high-emphasis">No matching glossaries</p>
+        <p className="text-muted-foreground">
+          No glossaries match &ldquo;{searchQuery}&rdquo;. Try a different search.
+        </p>
+      </output>
+    );
+  }
+
+  return (
+    <output className="flex flex-col items-center gap-2 py-4">
+      <p className="font-medium text-high-emphasis">No glossaries yet</p>
+      <p className="text-muted-foreground">
+        Glossaries help keep terminology consistent across translations.
+      </p>
+    </output>
+  );
+}
+
+const GlossaryTable = () => {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [pageNumber, setPageNumber] = useState(0);
@@ -129,38 +168,13 @@ const GlossaryTable: React.FC = () => {
       },
       {
         accessorKey: "context",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Context</span>
-          </div>
-        ),
-        cell: ({ row }) => {
-          const context = getOptionalCellText(row.original.context);
-          return (
-            <div className="max-w-[200px] truncate" title={context === "-" ? undefined : context}>
-              {context}
-            </div>
-          );
-        },
+        header: ContextHeader,
+        cell: ({ row }) => renderContextCell(row),
       },
       {
         accessorKey: "additionalNote",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Additional Note</span>
-          </div>
-        ),
-        cell: ({ row }) => {
-          const additionalNote = getOptionalCellText(row.original.additionalNote);
-          return (
-            <div
-              className="max-w-[200px] truncate"
-              title={additionalNote === "-" ? undefined : additionalNote}
-            >
-              {additionalNote}
-            </div>
-          );
-        },
+        header: AdditionalNoteHeader,
+        cell: ({ row }) => renderAdditionalNoteCell(row),
       },
       {
         accessorKey: "createDate",
@@ -182,11 +196,7 @@ const GlossaryTable: React.FC = () => {
       {
         id: "actions",
         enableHiding: false,
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Actions</span>
-          </div>
-        ),
+        header: ActionsHeader,
         cell: ({ row }) => (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
@@ -236,6 +246,8 @@ const GlossaryTable: React.FC = () => {
     pageCount: Math.ceil((data?.totalCount ?? 0) / pageSize),
   });
   const isUnfilteredEmpty = !isLoading && searchText.length === 0 && (data?.totalCount ?? 0) === 0;
+  const tableRows = table.getRowModel().rows;
+  const hasTableRows = tableRows.length > 0;
 
   return (
     <div>
@@ -304,8 +316,8 @@ const GlossaryTable: React.FC = () => {
                         ))}
                       </TableRow>
                     ))
-                  ) : table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
+                  ) : hasTableRows ? (
+                    tableRows.map((row) => (
                       <TableRow
                         key={row.id}
                         isHoverable

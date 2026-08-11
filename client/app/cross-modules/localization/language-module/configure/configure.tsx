@@ -56,6 +56,24 @@ import ConfirmationModal from "@/components/confirmation-modal/confirmation-moda
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 
+const LanguageHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Language</span>
+  </div>
+);
+
+const LanguageCodeHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Language Code</span>
+  </div>
+);
+
+const ActionsHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Actions</span>
+  </div>
+);
+
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">
     {Array.from({ length: 10 }).map((_, index) => (
@@ -284,13 +302,7 @@ function Configure() {
   const columns: ColumnDef<ILanguageConfig>[] = [
     {
       accessorKey: "languageName",
-      header: () => {
-        return (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Language</span>
-          </div>
-        );
-      },
+      header: LanguageHeader,
       cell: ({ row }) => {
         return (
           <div className="flex w-[150px] items-center">
@@ -306,13 +318,7 @@ function Configure() {
     },
     {
       accessorKey: "languageCode",
-      header: () => {
-        return (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Language Code</span>
-          </div>
-        );
-      },
+      header: LanguageCodeHeader,
       cell: ({ row }) => {
         return (
           <div className="flex w-[180px] items-center">
@@ -324,11 +330,7 @@ function Configure() {
     {
       id: "actions",
       enableHiding: false,
-      header: () => (
-        <div className="flex items-center">
-          <span className="font-bold text-medium-emphasis">Actions</span>
-        </div>
-      ),
+      header: ActionsHeader,
       cell: ({ row }) => {
         return (
           <DropdownMenu modal={false}>
@@ -426,7 +428,6 @@ function Configure() {
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    isHoverable
                     data-state={row.getIsSelected() && "selected"}
                     className="font-normal text-medium-emphasis"
                   >

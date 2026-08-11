@@ -67,6 +67,9 @@ describe("language-module/configure", () => {
     expect(screen.getByText("Webhooks")).toBeTruthy();
     expect(screen.getByText("English")).toBeTruthy();
     expect(screen.getByText("German")).toBeTruthy();
+    const languageRow = screen.getByText("English").closest("tr");
+    expect(languageRow?.className).not.toContain("cursor-pointer");
+    expect(languageRow?.className).not.toContain("hover:bg-muted/50");
   });
 
   it("should disable Save Webhook until the form values change", async () => {

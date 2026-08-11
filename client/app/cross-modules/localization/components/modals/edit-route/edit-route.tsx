@@ -1,3 +1,8 @@
+import { useEffect, useMemo } from "react";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Info, Plus, Trash } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -5,17 +10,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Input } from "@/components/ui-kits/input/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Info, Plus, Trash } from "lucide-react";
-import { useEffect, useMemo } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { z } from "zod";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { useSaveBlocksLanguageKey } from "../../../hooks/use-language-manager";
-import { IBlocksLanguageKey } from "../../../models/language";
+import { IBlocksLanguageKey } from "@blocks-localization/models/language";
+import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 
 const schema = z.object({
   routes: z.array(z.string()).refine((routes) => routes.some((route) => route.trim() !== ""), {
@@ -31,7 +31,7 @@ interface EditRouteProps {
   onClose: () => void;
 }
 
-function EditRoute({ keyDetails, isOpen, onClose }: EditRouteProps) {
+function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
   const form = useForm<FormData>({

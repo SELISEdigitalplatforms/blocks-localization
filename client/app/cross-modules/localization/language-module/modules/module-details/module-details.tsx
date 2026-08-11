@@ -25,6 +25,33 @@ import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 const hasDisplayValue = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
+const compareStrings = (a: string, b: string): number => {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+};
+
+const getDisplayNamePart = (
+  value: string | null | undefined,
+): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return null;
+};
+
+const getUserDisplayName = (
+  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+): string => {
+  if (!user) return "—";
+
+  const firstName = getDisplayNamePart(user.firstName);
+  const lastName = getDisplayNamePart(user.lastName);
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
+
+  return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
+};
+
 function ModuleDetailsContent({
   module,
   moduleId,
@@ -62,25 +89,11 @@ function ModuleDetailsContent({
   }, [glossariesData?.items]);
 
   // Helper function to get user display name
-  const getUserDisplayName = (userId: string | null): string => {
+  const getUserDisplayNameById = (userId: string | null): string => {
     const user = userId
       ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
       : currentUser;
-
-    if (user) {
-      const firstName =
-        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
-      const lastName =
-        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
-      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
-      return (
-        fullName ||
-        (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
-        "—"
-      );
-    }
-    return "—";
+    return getUserDisplayName(user);
   };
 
   return (
@@ -124,13 +137,13 @@ function ModuleDetailsContent({
                 <div className="grid gap-1">
                   <h3 className="text-sm font-medium text-low-emphasis">Created By</h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {getUserDisplayName(module.createdBy)}
+                    {getUserDisplayNameById(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
                   <h3 className="text-sm font-medium text-low-emphasis">Last Updated By</h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {getUserDisplayName(module.lastUpdatedBy)}
+                    {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
                 </div>
               </div>
@@ -238,7 +251,7 @@ export function ModuleDetails() {
   const { data: userMap } = useQuery({
     queryKey: [
       "module-detail-users",
-      [...uniqueUserIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+      [...uniqueUserIds].sort(compareStrings),
     ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueUserIds);

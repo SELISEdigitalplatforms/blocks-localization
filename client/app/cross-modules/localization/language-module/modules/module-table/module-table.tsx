@@ -32,6 +32,33 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
+const compareStrings = (a: string, b: string): number => {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+};
+
+const getDisplayNamePart = (
+  value: string | null | undefined,
+): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return null;
+};
+
+const getUserDisplayNameFromUser = (
+  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+): string => {
+  if (!user) return "—";
+
+  const firstName = getDisplayNamePart(user.firstName);
+  const lastName = getDisplayNamePart(user.lastName);
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
+
+  return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
+};
+
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
   onEdit,
@@ -111,7 +138,7 @@ export function ModuleTable() {
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
     queryKey: [
       "module-users",
-      [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+      [...uniqueCreatedByIds].sort(compareStrings),
     ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
@@ -121,27 +148,12 @@ export function ModuleTable() {
   });
 
   // Helper function to get user display name
-  const getUserDisplayName = (userId: string | null): string => {
+  const getUserDisplayNameById = (userId: string | null): string => {
+    if (isUsersLoading) return "—";
     const user = userId
       ? (userMap?.[userId] ?? (currentUser?.itemId === userId ? currentUser : undefined))
       : currentUser;
-
-    if (!user && isUsersLoading) return "—";
-
-    if (user) {
-      const firstName =
-        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
-      const lastName =
-        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
-      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
-      return (
-        fullName ||
-        (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
-        "—"
-      );
-    }
-    return "—";
+    return getUserDisplayNameFromUser(user);
   };
 
   const [searchValue, setSearchValue] = useState("");
@@ -235,7 +247,7 @@ export function ModuleTable() {
                       >
                         <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
                         <TableCell className="truncate">
-                          {getUserDisplayName(module.createdBy)}
+                          {getUserDisplayNameById(module.createdBy)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {module.createDate
