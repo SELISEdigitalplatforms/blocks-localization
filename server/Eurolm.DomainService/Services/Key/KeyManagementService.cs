@@ -2,13 +2,14 @@ using Blocks.Genesis;
 using ClosedXML.Excel;
 using CsvHelper;
 using CsvHelper.Configuration;
+using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Shared.Utilities;
-using Eurolm.DomainService.Services.HelperService;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,9 +17,9 @@ using MongoDB.Driver;
 using Newtonsoft.Json;
 using StorageDriver;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Text;
 using System.Xml.Linq;
-using DomainService.Storage;
 
 namespace Eurolm.DomainService.Services
 {
@@ -2500,24 +2501,15 @@ namespace Eurolm.DomainService.Services
         }
 
 
-        private async Task<List<BlocksLanguageKey>> GetLanguageResourceKeys(List<string> appIds = null)
-        {
-            List<BlocksLanguageKey> resourceKeys = null;
-
-            if (appIds != null && appIds.Count > 0)
+        private async Task<List<BlocksLanguageKey>> GetLanguageResourceKeys ( List<string> appIds = null, DateTime? startDate = null, DateTime? endDate = null )
             {
-                resourceKeys = await _keyRepository.GetUilmResourceKeys(x =>
-                    appIds.Contains(x.ModuleId),
-                    _blocksBaseCommand?.ClientTenantId);
-            }
-            else
-            {
-                resourceKeys = await _keyRepository.GetUilmResourceKeys(x => true,
-                    _blocksBaseCommand?.ClientTenantId);
-            }
+            Expression<Func<BlocksLanguageKey, bool>> filter = x =>
+                ( appIds == null || appIds.Count == 0 || appIds.Contains(x.ModuleId) ) &&
+                ( !startDate.HasValue || x.CreateDate >= startDate.Value ) &&
+                ( !endDate.HasValue || x.CreateDate <= endDate.Value );
 
-            return resourceKeys;
-        }
+            return await _keyRepository.GetUilmResourceKeys(filter, _blocksBaseCommand?.ClientTenantId);
+            }
 
         public async Task PublishUilmExportNotification(bool response, string fileId, string? messageCoRelationId, string tenantId)
         {
