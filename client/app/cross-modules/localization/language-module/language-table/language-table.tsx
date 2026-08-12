@@ -116,6 +116,32 @@ const getTableColumnClassName = (columnId: string) => {
   return "w-36";
 };
 
+function LanguageTableEmptyState({
+  hasActiveFilters,
+}: {
+  hasActiveFilters: boolean;
+}) {
+  if (hasActiveFilters) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <p className="font-medium text-high-emphasis">No matching translation keys</p>
+        <p className="text-muted-foreground">
+          No keys match your current filters. Try adjusting your search criteria.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-12">
+      <p className="font-medium text-high-emphasis">No translation keys yet</p>
+      <p className="text-muted-foreground">
+        Create your first translation key to get started.
+      </p>
+    </div>
+  );
+}
+
 export function LanguageTable() {
   "use no memo";
 
@@ -167,6 +193,18 @@ export function LanguageTable() {
   );
 
   const keySearch = queryParams.search || "";
+
+  // Detect if there are active filters
+  const hasActiveFilters = Boolean(
+    queryParams.search ||
+      (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
+      (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
+      queryParams.createStartDate ||
+      queryParams.createEndDate ||
+      queryParams.lastUpdateStartDate ||
+      queryParams.lastUpdateEndDate ||
+      resourceSearchFilters.length > 0,
+  );
 
   const updateKeySearch = useCallback(
     (value: string) => {
@@ -1011,7 +1049,7 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  No results.
+                                  <LanguageTableEmptyState hasActiveFilters={hasActiveFilters} />
                                 </TableCell>
                               </TableRow>
                             );

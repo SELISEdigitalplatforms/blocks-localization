@@ -185,6 +185,7 @@ function Configure() {
     try {
       const payload: IWebhookConfig = {
         projectKey: tenantId,
+        itemId: webhookData?.itemId,
         url: values.url,
         contentType: values.contentType,
         blocksWebhookSecret: {

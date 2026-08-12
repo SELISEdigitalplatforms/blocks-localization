@@ -163,6 +163,14 @@ function ModuleDetailsContent({
     return getUserDisplayName(resolvedUser);
   };
 
+  const glossaryTabContent = hasGlossaries ? (
+    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
+  ) : (
+    <div className="flex h-24 items-center justify-center text-muted-foreground">
+      No glossaries tagged to this module
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="w-full">
@@ -231,12 +239,8 @@ function ModuleDetailsContent({
                     <Skeleton key={index} className="h-12 w-full rounded" />
                   ))}
                 </div>
-              ) : hasGlossaries ? (
-                renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
               ) : (
-                <div className="flex h-24 items-center justify-center text-muted-foreground">
-                  No glossaries tagged to this module
-                </div>
+                glossaryTabContent
               )}
             </CardContent>
           </Card>

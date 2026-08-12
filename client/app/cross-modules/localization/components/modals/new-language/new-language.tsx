@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -16,10 +20,6 @@ import {
   FormMessage,
 } from "@/components/ui-kits/form/form";
 import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import {
   CommandInput,
   CommandEmpty,
@@ -28,9 +28,7 @@ import {
   CommandList,
   CommandDialog,
 } from "@/components/ui-kits/command/command";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { toast } from "@/hooks/use-toast";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
@@ -52,7 +50,6 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   });
 
   const { isPending, mutateAsync } = useSaveLanguage();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [open, setOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(form.getValues("languageCode"));
   const formSubmitHandler = async (data: LanguageFormValues) => {
