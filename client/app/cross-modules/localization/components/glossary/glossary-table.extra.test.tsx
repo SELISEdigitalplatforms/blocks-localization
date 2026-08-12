@@ -62,22 +62,22 @@ describe("glossary-table (extra coverage)", () => {
     expect(screen.getByText("a note")).toBeTruthy();
   });
 
-  it("falls back to dashes for missing optional fields and unknown languages", () => {
+  it("falls back to dashes for null, empty, and whitespace-only optional fields", () => {
     setData([
       {
         itemId: "g2",
         name: "Bare",
         language: "zz-ZZ",
         type: null,
-        context: null,
-        additionalNote: null,
+        context: "",
+        additionalNote: "   ",
         createDate: null,
       },
     ]);
     renderWithProviders(<GlossaryTable />);
     expect(screen.getByText("Bare")).toBeTruthy();
-    // Unknown language + null fields all render an em/hyphen dash.
-    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(3);
+    // Unknown language, missing type/date, and blank text fields all render a dash.
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(5);
   });
 
   it("opens the edit dialog from the row menu", async () => {

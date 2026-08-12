@@ -131,7 +131,7 @@ describe("language-module/language-table", () => {
       data: { totalCount: 0, keys: [] },
     } as never);
     renderWithProviders(<LanguageTable />);
-    expect(screen.getByText("No results.")).toBeTruthy();
+    expect(screen.getByText("No translation keys yet")).toBeTruthy();
   });
 
   it("should render a New Key action", () => {

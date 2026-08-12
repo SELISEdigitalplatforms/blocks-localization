@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   reducer,
@@ -9,6 +9,7 @@ import {
   toast,
   useToast,
 } from "@/hooks/use-toast";
+import { FORBIDDEN_ERROR_MESSAGE } from "@/lib/error";
 
 const makeToast = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -119,6 +120,17 @@ describe("hooks/use-toast", () => {
         result.current.toasts[0].onOpenChange?.(false);
       });
       expect(result.current.toasts[0].open).toBe(false);
+    });
+
+    it("should replace a raw 403 payload with the permission fallback", () => {
+      const { result } = renderHook(() => useToast());
+      act(() => {
+        toast({
+          variant: "destructive",
+          description: '{"Status":403,"errors":{}}',
+        });
+      });
+      expect(result.current.toasts[0].description).toBe(FORBIDDEN_ERROR_MESSAGE);
     });
   });
 

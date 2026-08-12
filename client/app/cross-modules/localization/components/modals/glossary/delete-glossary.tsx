@@ -30,7 +30,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
         toast({
           variant: "success",
           title: "Success",
-          description: "Glossary item deleted",
+          description: "Glossary item deleted successfully.",
         });
         onClose();
       } else {

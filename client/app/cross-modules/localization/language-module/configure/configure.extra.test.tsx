@@ -83,7 +83,7 @@ describe("configure (extra coverage)", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(setDefaultAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Make default successful" }),
+      expect.objectContaining({ description: "Make default successfully." }),
     );
   });
 
@@ -120,7 +120,7 @@ describe("configure (extra coverage)", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(deleteAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Deleted successfully" }),
+      expect.objectContaining({ description: "Language deleted successfully." }),
     );
   });
 

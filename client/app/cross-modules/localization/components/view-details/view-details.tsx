@@ -203,7 +203,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <div className="col-span-2 mt-4 border-t pt-4">
               <h3 className="mb-2 text-sm font-medium text-low-emphasis">Context</h3>
               <p className="whitespace-pre-wrap text-base text-high-emphasis">
-                {keyDetails.context ?? "-"}
+                {keyDetails.context || "No context provided."}
               </p>
             </div>
           </CardContent>
@@ -225,6 +225,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   </DialogTrigger>
                   <EditRoute
                     keyDetails={keyDetails}
+                    isOpen={isEditRoutesDialogOpen}
                     onClose={() => setIsEditRoutesDialogOpen(false)}
                   />
                 </Dialog>
