@@ -20,6 +20,7 @@ namespace XUnitTest
 
         public GlossaryManagementServiceTests()
         {
+            XUnitTest.Shared.TestBlocksContext.Set();
             _loggerMock = new Mock<ILogger<GlossaryManagementService>>();
             _glossaryRepositoryMock = new Mock<IGlossaryRepository>();
             _validatorMock = new Mock<IValidator<GlossaryModel>>();
