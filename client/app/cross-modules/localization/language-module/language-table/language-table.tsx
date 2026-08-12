@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  Fragment,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -118,9 +111,9 @@ const getTableColumnClassName = (columnId: string) => {
 
 function LanguageTableEmptyState({
   hasActiveFilters,
-}: {
+}: Readonly<{
   hasActiveFilters: boolean;
-}) {
+}>) {
   if (hasActiveFilters) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
@@ -135,9 +128,7 @@ function LanguageTableEmptyState({
   return (
     <div className="flex flex-col items-center gap-3 py-12">
       <p className="font-medium text-high-emphasis">No translation keys yet</p>
-      <p className="text-muted-foreground">
-        Create your first translation key to get started.
-      </p>
+      <p className="text-muted-foreground">Create your first translation key to get started.</p>
     </div>
   );
 }
@@ -194,16 +185,15 @@ export function LanguageTable() {
 
   const keySearch = queryParams.search || "";
 
-  // Detect if there are active filters
   const hasActiveFilters = Boolean(
     queryParams.search ||
-      (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
-      (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
-      queryParams.createStartDate ||
-      queryParams.createEndDate ||
-      queryParams.lastUpdateStartDate ||
-      queryParams.lastUpdateEndDate ||
-      resourceSearchFilters.length > 0,
+    (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
+    (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
+    queryParams.createStartDate ||
+    queryParams.createEndDate ||
+    queryParams.lastUpdateStartDate ||
+    queryParams.lastUpdateEndDate ||
+    resourceSearchFilters.length > 0,
   );
 
   const updateKeySearch = useCallback(
@@ -486,10 +476,7 @@ export function LanguageTable() {
   const previousTotalCountRef = useRef(currentTotalCount);
   if (!isLoading) previousTotalCountRef.current = currentTotalCount;
   const stableTotalCount = isLoading ? previousTotalCountRef.current : currentTotalCount;
-  const pageSizeOptions = useMemo(
-    () => getPageSizeOptions(stableTotalCount),
-    [stableTotalCount],
-  );
+  const pageSizeOptions = useMemo(() => getPageSizeOptions(stableTotalCount), [stableTotalCount]);
 
   const handleToggleExpanded = useCallback((itemId: string) => {
     setExpandedRowId((current) => (current === itemId ? null : itemId));

@@ -467,14 +467,30 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start" portalled={false}>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
+                  align="start"
+                  portalled={false}
+                >
                   <Calendar
                     initialFocus
+                    className="w-full p-3"
+                    classNames={{
+                      months: "w-full",
+                      month: "w-full space-y-4",
+                      head_row: "grid grid-cols-7",
+                      head_cell:
+                        "w-auto rounded-md text-center text-[0.8rem] font-normal text-muted-foreground",
+                      row: "mt-2 grid w-full grid-cols-7",
+                      cell: "relative flex h-9 items-center justify-center p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
+                    }}
                     mode="range"
                     defaultMonth={date?.from}
                     selected={date?.from ? { from: date.from, to: date.to } : undefined}
                     onSelect={handleDateSelect}
                     numberOfMonths={1}
+                    disabled={{ after: new Date() }}
+                    toDate={new Date()}
                   />
                   <div className="flex items-center gap-4 px-3 pb-4">
                     <Button
