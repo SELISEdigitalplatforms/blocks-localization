@@ -2161,7 +2161,7 @@ namespace Eurolm.DomainService.Services
         {
             var languageSettings = await GetLanguageSetting();
             var languageApplications = await GetLanguageApplications(request.AppIds);
-            var languageResourceKeys = await GetLanguageResourceKeys(request.AppIds);
+            var languageResourceKeys = await GetLanguageResourceKeys(request.AppIds,request.StartDate,request.EndDate);
 
             switch (request.OutputType)
             {
