@@ -52,25 +52,38 @@ namespace BlocksTemplate.Api.Controllers
         /// </summary>
         /// <returns>A list of <see cref="Module"/> objects.</returns>
 
+        //[HttpGet]
+        //[Authorize]
+        //public async Task<List<BlocksLanguageModule>> GetModulesForCurrentTenant()
+        //{
+        //    return await _moduleManagementService.GetModulesAsync();
+        //}
+
+        /// <summary>
+        /// Retrieves a paginated, date-filtered, and sorted list of modules for the current tenant.
+        /// </summary>
+        /// <param name="request">Paging (PageNumber/PageSize), CreateDateRange/LastUpdateDateRange filters, and SortProperty/IsDescending sort options.</param>
+        /// <returns>A <see cref="GetModulesResponse"/> containing the matching modules and total count.</returns>
         [HttpGet]
         [Authorize]
-        public async Task<List<BlocksLanguageModule>> GetModulesForCurrentTenant()
+        public async Task<GetModulesResponse> GetModulesForCurrentTenant ( [FromQuery] GetModulesRequest request)
         {
-            return await _moduleManagementService.GetModulesAsync();
+            request ??= new GetModulesRequest();
+            return await _moduleManagementService.GetModulesAsync(request);
         }
 
         /// <summary>
         /// Retrieves all available modules for the current tenant.
         /// </summary>
         /// <remarks>"Clouds" was an unclear alias for the current tenant. Use GetModulesForCurrentTenant.</remarks>
-        [HttpGet]
-        [Authorize]
-        [ApiExplorerSettings(IgnoreApi = true)]
-        [Obsolete("Renamed to GetModulesForCurrentTenant.")]
-        public async Task<List<BlocksLanguageModule>> GetCloudsModules()
-        {
-            return await GetModulesForCurrentTenant();
-        }
+        //[HttpGet]
+        //[Authorize]
+        //[ApiExplorerSettings(IgnoreApi = true)]
+        //[Obsolete("Renamed to GetModulesForCurrentTenant.")]
+        //public async Task<List<BlocksLanguageModule>> GetCloudsModules()
+        //{
+        //    return await GetModulesForCurrentTenant();
+        //}
         [HttpGet]
         public async Task<List<BlocksLanguageModule>> Gets()
         {

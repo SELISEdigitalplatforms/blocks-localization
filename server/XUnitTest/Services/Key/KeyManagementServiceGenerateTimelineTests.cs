@@ -290,7 +290,7 @@ namespace XUnitTest
                 });
 
             // No ModuleId on command → GetModulesAsync(null)
-            _moduleManagementServiceMock.Setup(m => m.GetModulesAsync(null))
+            _moduleManagementServiceMock.Setup(m => m.GetModulesAsync((string?)null))
                 .ReturnsAsync(modules);
 
             _keyRepositoryMock.Setup(r => r.GetAllKeysByModuleAsync("mod-1"))

@@ -1029,7 +1029,7 @@ namespace XUnitTest
             };
 
             _languageManagementServiceMock.Setup(m => m.GetLanguagesAsync()).ReturnsAsync(languages);
-            _moduleManagementServiceMock.Setup(m => m.GetModulesAsync(null)).ReturnsAsync(modules);
+            _moduleManagementServiceMock.Setup(m => m.GetModulesAsync((string?)null)).ReturnsAsync(modules);
             _keyRepositoryMock.Setup(r => r.GetAllKeysByModuleAsync("mod-1")).ReturnsAsync(keys);
             _keyRepositoryMock.Setup(r => r.DeleteOldUilmFiles(It.IsAny<List<UilmFile>>())).ReturnsAsync(0L);
             _keyRepositoryMock.Setup(r => r.SaveNewUilmFiles(It.IsAny<List<UilmFile>>())).ReturnsAsync(true);
@@ -1043,7 +1043,7 @@ namespace XUnitTest
             var result = await _service.GenerateAsync(command);
 
             result.Should().BeTrue();
-            _moduleManagementServiceMock.Verify(m => m.GetModulesAsync(null), Times.Once);
+            _moduleManagementServiceMock.Verify(m => m.GetModulesAsync((string?)null), Times.Once);
             _languageFileGenerationHistoryRepositoryMock.Verify(r => r.SaveAsync(It.IsAny<LanguageFileGenerationHistory>()), Times.Once);
         }
 

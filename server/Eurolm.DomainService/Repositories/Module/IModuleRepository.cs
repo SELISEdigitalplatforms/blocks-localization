@@ -8,5 +8,6 @@ namespace Eurolm.DomainService.Repositories
         Task<BlocksLanguageModule> GetByIdAsync(string id);
         Task<BlocksLanguageModule> GetByIdAsync(string projectKey,string id);
         Task<List<BlocksLanguageModule>> GetAllAsync();
+        Task<GetModulesResponse> GetAllAsync(GetModulesRequest request);
     }
 }
