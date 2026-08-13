@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
+import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import EditModule from "@blocks-localization/components/modals/edit-module/edit-module";
 import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal";
@@ -31,6 +32,14 @@ import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
+
+const getPageSizeOptions = (totalCount: number) => {
+  const fixedOptions = [10, 30, 50, 100];
+  if (totalCount > 100) return [...fixedOptions, totalCount];
+  if (totalCount > 0)
+    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
+  return [10];
+};
 
 const compareStrings = (a: string, b: string): number => {
   if (a < b) return -1;
@@ -166,6 +175,19 @@ export function ModuleTable() {
   // TODO: Enable delete module feature — restore this state when backend is ready
   // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
 
+  // Pagination state
+  const [pageNumber, setPageNumber] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const onPageChangeHandler = (newPageNumber: number) => {
+    setPageNumber(newPageNumber);
+  };
+
+  const onPageSizeChangeHandler = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setPageNumber(0);
+  };
+
   // Extract unique createdBy user IDs from modules
   const uniqueCreatedByIds = useMemo(() => {
     if (!modulesData) return [];
@@ -200,6 +222,11 @@ export function ModuleTable() {
 
   const [searchValue, setSearchValue] = useState("");
 
+  const onSearchChangeHandler = (value: string) => {
+    setSearchValue(value);
+    setPageNumber(0);
+  };
+
   const filteredModules = useMemo(() => {
     if (!modulesData) return [];
     if (!searchValue.trim()) return modulesData;
@@ -210,6 +237,15 @@ export function ModuleTable() {
         module.name?.toLowerCase().includes(search),
     );
   }, [modulesData, searchValue]);
+
+  // Paginated modules based on current page and page size
+  const paginatedModules = useMemo(() => {
+    const startIndex = pageNumber * pageSize;
+    return filteredModules.slice(startIndex, startIndex + pageSize);
+  }, [filteredModules, pageNumber, pageSize]);
+
+  const totalCount = filteredModules.length;
+  const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
 
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
@@ -244,7 +280,7 @@ export function ModuleTable() {
               <div className="w-full sm:w-[300px]">
                 <FilterControls.SearchInput
                   value={searchValue}
-                  onChange={setSearchValue}
+                  onChange={onSearchChangeHandler}
                   placeholder="Search modules..."
                   className="h-9 w-full"
                 />
@@ -270,7 +306,7 @@ export function ModuleTable() {
                 </TableHeader>
                 <TableBody>
                   {isModulesLoading ? (
-                    Array.from({ length: 5 }).map((_, index) => (
+                    Array.from({ length: pageSize }).map((_, index) => (
                       <TableRow key={index}>
                         {[1, 2, 3, 4].map((_, colIndex) => (
                           <TableCell key={colIndex}>
@@ -281,7 +317,7 @@ export function ModuleTable() {
                     ))
                   ) : (
                     renderModuleRows(
-                    filteredModules,
+                    paginatedModules,
                     getUserDisplayNameById,
                     scoped,
                     navigate,
@@ -293,6 +329,21 @@ export function ModuleTable() {
                 </TableBody>
               </Table>
             </div>
+            {totalCount > 0 && (
+              <div
+                className={`mt-5 flex min-h-10 items-center md:justify-end ${isModulesLoading ? "invisible pointer-events-none" : ""}`}
+                aria-hidden={isModulesLoading || undefined}
+              >
+                <Pagination
+                  page={pageNumber}
+                  pageSize={pageSize}
+                  totalCount={totalCount}
+                  pageSizeOptions={pageSizeOptions}
+                  onChange={onPageChangeHandler}
+                  onPageSizeChange={onPageSizeChangeHandler}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
