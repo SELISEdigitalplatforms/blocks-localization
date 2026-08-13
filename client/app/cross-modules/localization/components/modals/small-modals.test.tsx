@@ -80,6 +80,12 @@ describe("modals/new-module", () => {
     } as never);
   });
 
+  it("should indicate that the module name is required", () => {
+    render(withDialog(<NewModule onClose={vi.fn()} />));
+
+    expect(screen.getByText("*")).toBeTruthy();
+  });
+
   it("should create a module on valid submit", async () => {
     saveModuleAsync.mockResolvedValue({ success: true });
     const onClose = vi.fn();

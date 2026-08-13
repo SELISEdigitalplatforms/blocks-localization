@@ -117,7 +117,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    Language
+                    Language <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Button
@@ -168,7 +168,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                   Cancel
                 </Button>
               </DialogTrigger>
-              <Button disabled={isPending}>Save</Button>
+              <Button disabled={isPending || !selectedLanguage}>Save</Button>
             </DialogFooter>
           </form>
         </Form>
