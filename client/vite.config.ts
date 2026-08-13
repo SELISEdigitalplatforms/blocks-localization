@@ -8,16 +8,12 @@ const resolveDevHttps = (): { cert: Buffer; key: Buffer } | undefined => {
   const keyPath = process.env.LOCALIZATION_SSL_KEY;
 
   if (!certPath || !keyPath) {
-    console.warn(
-      "[dev-https] LOCALIZATION_SSL_CERT / LOCALIZATION_SSL_KEY not set — serving HTTP.",
-    );
     return undefined;
   }
 
   if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
-    console.warn(
-      `[dev-https] cert/key file missing (cert=${certPath}, key=${keyPath}) — serving HTTP.`,
-    );
+    // eslint-disable-next-line no-console -- This is a vite config file where console warnings are appropriate for debugging
+    console.warn("[dev-https] SSL cert/key file missing — serving HTTP.");
     return undefined;
   }
 

@@ -67,6 +67,64 @@ describe("language-module/configure", () => {
     expect(screen.getByText("Webhooks")).toBeTruthy();
     expect(screen.getByText("English")).toBeTruthy();
     expect(screen.getByText("German")).toBeTruthy();
+    const languageRow = screen.getByText("English").closest("tr");
+    expect(languageRow?.className).not.toContain("cursor-pointer");
+    expect(languageRow?.className).not.toContain("hover:bg-muted/50");
+  });
+
+  it("should disable Save Webhook until the form values change", async () => {
+    h.useGetLanguages.mockReturnValue({ isLoading: false, data: [] } as never);
+    h.useGetWebhook.mockReturnValue({
+      data: {
+        url: "https://saved.example.com/webhook",
+        contentType: "application/json",
+        blocksWebhookSecret: { headerKey: "X-Saved", secret: "saved-secret" },
+        isDisabled: false,
+      },
+    } as never);
+    renderWithProviders(<Configure />);
+
+    const saveButton = screen.getByRole("button", { name: "Save Webhook" }) as HTMLButtonElement;
+    await waitFor(() => expect(saveButton.disabled).toBe(true));
+
+    const urlInput = screen.getByPlaceholderText("https://example.com/webhook");
+    fireEvent.change(urlInput, { target: { value: "https://changed.example.com/webhook" } });
+    expect(saveButton.disabled).toBe(false);
+
+    fireEvent.change(urlInput, { target: { value: "https://saved.example.com/webhook" } });
+    expect(saveButton.disabled).toBe(true);
+  });
+
+  it.each([
+    "h://",
+    "https://e",
+    "htp://example.com",
+    "https://example..com",
+    "https://example.com:",
+    "example.com/webhook",
+    "ftp://example.com/webhook",
+    "https:example.com/webhook",
+  ])("should reject the invalid webhook URL %s with an inline error", async (invalidUrl) => {
+    h.useGetLanguages.mockReturnValue({ isLoading: false, data: [] } as never);
+    h.useGetWebhook.mockReturnValue({
+      data: {
+        url: "https://saved.example.com/webhook",
+        contentType: "application/json",
+        blocksWebhookSecret: { headerKey: "X-Saved", secret: "saved-secret" },
+        isDisabled: false,
+      },
+    } as never);
+    renderWithProviders(<Configure />);
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com/webhook"), {
+      target: { value: invalidUrl },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Webhook" }));
+
+    expect(
+      await screen.findByText("Enter a valid URL starting with http:// or https://"),
+    ).toBeTruthy();
+    expect(saveWebhookAsync).not.toHaveBeenCalled();
   });
 
   it("should submit the webhook form", async () => {
@@ -77,7 +135,7 @@ describe("language-module/configure", () => {
     } as never);
     const { container } = renderWithProviders(<Configure />);
     fireEvent.change(screen.getByPlaceholderText("https://example.com/webhook"), {
-      target: { value: "https://hooks.example.com/x" },
+      target: { value: "  https://hooks.example.com/x  " },
     });
     fireEvent.change(screen.getByPlaceholderText("application/json"), {
       target: { value: "application/json" },
@@ -89,10 +147,17 @@ describe("language-module/configure", () => {
       target: { value: "s3cret" },
     });
     fireEvent.submit(container.querySelector("form")!);
-    await waitFor(() => expect(saveWebhookAsync).toHaveBeenCalled());
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Webhook saved successfully" }),
+    await waitFor(() =>
+      expect(saveWebhookAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "https://hooks.example.com/x" }),
+      ),
     );
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: "Webhook saved successfully." }),
+    );
+    expect(
+      (screen.getByRole("button", { name: "Save Webhook" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it("should toast an error when the webhook save fails", async () => {

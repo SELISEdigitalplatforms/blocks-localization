@@ -85,7 +85,7 @@ export class ConfigurePage {
     await this.openLanguageRowMenu(languageName);
     await this.page.getByRole("menuitem", { name: "Make default language" }).click();
     await this.confirmDialog("Make default language", "Save");
-    await expectToast(this.page, "Make default successful");
+    await expectToast(this.page, "Make default successfully");
     await waitForUiSettle(this.page);
   }
 
@@ -105,7 +105,7 @@ export class ConfigurePage {
     await dialog.getByRole("button", { name: "Language" }).click();
     await this.page.getByRole("option", { name: languageName, exact: true }).click();
     await dialog.getByRole("button", { name: "Save" }).click();
-    await expectToast(this.page, "Language added");
+    await expectToast(this.page, "Language added successfully.");
     await expect(dialog).toBeHidden({ timeout: 15_000 });
     await waitForUiSettle(this.page);
   }
@@ -150,7 +150,7 @@ export class ConfigurePage {
 
     await expect(this.saveWebhookButton).toBeEnabled({ timeout: 5_000 });
     await this.saveWebhookButton.click();
-    await expectToast(this.page, "Webhook saved successfully");
+    await expectToast(this.page, "Webhook saved successfully.");
     await waitForUiSettle(this.page);
   }
 }

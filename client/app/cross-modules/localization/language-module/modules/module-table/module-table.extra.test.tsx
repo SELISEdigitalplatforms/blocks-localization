@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { ModuleTable } from "./module-table";
 
@@ -18,6 +19,9 @@ vi.mock("@seliseblocks/genesis-os/hooks", () => ({
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
+}));
+vi.mock("@blocks-localization/hooks/use-user-lookup", () => ({
+  useCurrentUser: vi.fn(),
 }));
 vi.mock("@blocks-localization/services/user-lookup.service", () => ({
   userLookupService: { getUsersByIds: vi.fn().mockResolvedValue({}) },
@@ -38,6 +42,7 @@ vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-
 }));
 
 const mockModules = vi.mocked(useGetLanguageModules);
+const mockCurrentUser = vi.mocked(useCurrentUser);
 const getUsersByIds = vi.mocked(userLookupService.getUsersByIds);
 
 const rowModule = {
@@ -62,6 +67,7 @@ const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 describe("module-table (extra coverage)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentUser.mockReturnValue({ data: undefined } as never);
     getUsersByIds.mockResolvedValue({});
   });
 
@@ -117,6 +123,23 @@ describe("module-table (extra coverage)", () => {
     // The user query resolves without u1, so the cell renders an em dash.
     await waitFor(() => expect(getUsersByIds).toHaveBeenCalled());
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("shows the current user when a new module has no createdBy ID", async () => {
+    mockCurrentUser.mockReturnValue({
+      data: {
+        itemId: "current-user",
+        firstName: "Current",
+        lastName: "User",
+        email: "current@example.com",
+        userName: "current.user",
+      },
+    } as never);
+    setModules([{ ...rowModule, createdBy: null }]);
+
+    renderWithProviders(<ModuleTable />);
+
+    expect(await screen.findByText("Current User")).toBeTruthy();
   });
 
   it("shows a dash when a module has no creator", async () => {

@@ -49,8 +49,10 @@ export const SearchInput: React.FC<SearchInputProps> = ({
 
   const handleClear = (e: MouseEvent) => {
     e.stopPropagation();
+    debouncedRef.current.cancel();
     setState("");
     onChange("");
+    inputRef.current?.focus();
   };
 
   return (
@@ -68,10 +70,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
       />
 
       <Button
+        type="button"
         variant="ghost"
         size="xs"
-        className={cn("h-full p-1 pr-0 hover:bg-transparent", !value && "invisible")}
+        className={cn("h-full p-1 pr-0 hover:bg-transparent", !state && "invisible")}
         onClick={handleClear}
+        aria-label="Clear search"
       >
         <X className="h-4 w-4 text-muted-foreground" />
       </Button>

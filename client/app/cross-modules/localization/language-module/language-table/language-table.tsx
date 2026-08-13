@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  Fragment,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -116,6 +109,30 @@ const getTableColumnClassName = (columnId: string) => {
   return "w-36";
 };
 
+function LanguageTableEmptyState({
+  hasActiveFilters,
+}: Readonly<{
+  hasActiveFilters: boolean;
+}>) {
+  if (hasActiveFilters) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <p className="font-medium text-high-emphasis">No matching translation keys</p>
+        <p className="text-muted-foreground">
+          No keys match your current filters. Try adjusting your search criteria.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-12">
+      <p className="font-medium text-high-emphasis">No translation keys yet</p>
+      <p className="text-muted-foreground">Create your first translation key to get started.</p>
+    </div>
+  );
+}
+
 export function LanguageTable() {
   "use no memo";
 
@@ -167,6 +184,17 @@ export function LanguageTable() {
   );
 
   const keySearch = queryParams.search || "";
+
+  const hasActiveFilters = Boolean(
+    queryParams.search ||
+    (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
+    (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
+    queryParams.createStartDate ||
+    queryParams.createEndDate ||
+    queryParams.lastUpdateStartDate ||
+    queryParams.lastUpdateEndDate ||
+    resourceSearchFilters.length > 0,
+  );
 
   const updateKeySearch = useCallback(
     (value: string) => {
@@ -448,10 +476,7 @@ export function LanguageTable() {
   const previousTotalCountRef = useRef(currentTotalCount);
   if (!isLoading) previousTotalCountRef.current = currentTotalCount;
   const stableTotalCount = isLoading ? previousTotalCountRef.current : currentTotalCount;
-  const pageSizeOptions = useMemo(
-    () => getPageSizeOptions(stableTotalCount),
-    [stableTotalCount],
-  );
+  const pageSizeOptions = useMemo(() => getPageSizeOptions(stableTotalCount), [stableTotalCount]);
 
   const handleToggleExpanded = useCallback((itemId: string) => {
     setExpandedRowId((current) => (current === itemId ? null : itemId));
@@ -975,7 +1000,8 @@ export function LanguageTable() {
                                 return (
                                   <Fragment key={row.id}>
                                     <TableRow
-                                      className="cursor-pointer font-normal text-medium-emphasis"
+                                      isHoverable
+                                      className="font-normal text-medium-emphasis"
                                       data-state={row.getIsSelected() && "selected"}
                                       onClick={() => handleRowClick(row.original.itemId)}
                                     >
@@ -1010,7 +1036,7 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  No results.
+                                  <LanguageTableEmptyState hasActiveFilters={hasActiveFilters} />
                                 </TableCell>
                               </TableRow>
                             );

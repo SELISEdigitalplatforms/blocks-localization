@@ -1,8 +1,9 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { ModuleDetails } from "./module-details";
 
@@ -16,15 +17,22 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
   useGetModuleGlossaries: vi.fn(),
 }));
+vi.mock("@blocks-localization/hooks/use-user-lookup", () => ({
+  useCurrentUser: vi.fn(),
+}));
 vi.mock("@blocks-localization/services/user-lookup.service", () => ({
   userLookupService: { getUsersByIds: vi.fn().mockResolvedValue({}) },
 }));
 
 const h = vi.mocked(hooks);
+const getUsersByIds = vi.mocked(userLookupService.getUsersByIds);
+const mockCurrentUser = vi.mocked(useCurrentUser);
 
 describe("language-module/module-details", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getUsersByIds.mockResolvedValue({});
+    mockCurrentUser.mockReturnValue({ data: undefined } as never);
     params = { moduleId: "m1" };
     h.useGetModuleGlossaries.mockReturnValue({
       data: { items: [], totalCount: 0 },
@@ -106,6 +114,43 @@ describe("language-module/module-details", () => {
       searchParams: "?moduleTab=glossary",
     });
     expect(screen.getByText("Widget")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Created Date" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Language" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Type" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Context" })).toBeNull();
+  });
+
+  it("should display optional glossary columns when the response contains their data", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
+      isLoading: false,
+    } as never);
+    h.useGetModuleGlossaries.mockReturnValue({
+      data: {
+        items: [
+          {
+            itemId: "g1",
+            name: "Widget",
+            language: "en",
+            type: "Full form",
+            context: "Navigation",
+            createDate: "2026-01-01",
+          },
+        ],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+      searchParams: "?moduleTab=glossary",
+    });
+
+    expect(screen.getByRole("columnheader", { name: "Language" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Type" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Context" })).toBeTruthy();
   });
 
   it("uses the userLookupService for the users query key", () => {
@@ -117,5 +162,69 @@ describe("language-module/module-details", () => {
       route: "/app/abc/services/modules/m1",
     });
     expect(userLookupService.getUsersByIds).toBeTypeOf("function");
+  });
+
+  it("should display resolved names for Created By and Last Updated By", async () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [
+        {
+          itemId: "m1",
+          moduleName: "UILM",
+          createdBy: "current-user",
+          lastUpdatedBy: "u2",
+        },
+      ],
+      isLoading: false,
+    } as never);
+    getUsersByIds.mockResolvedValue({
+      "current-user": {
+        firstName: "Current",
+        lastName: "User",
+        email: "current@example.com",
+        userName: "current.user",
+      },
+      u2: {
+        firstName: "Update",
+        lastName: "Owner",
+        email: "owner@example.com",
+        userName: "update.owner",
+      },
+    });
+
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+    });
+
+    expect(await screen.findByText("Current User")).toBeTruthy();
+    expect(await screen.findByText("Update Owner")).toBeTruthy();
+  });
+
+  it("should use the current user when new-module audit IDs are null", async () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [
+        {
+          itemId: "m1",
+          moduleName: "New Module",
+          createdBy: null,
+          lastUpdatedBy: null,
+        },
+      ],
+      isLoading: false,
+    } as never);
+    mockCurrentUser.mockReturnValue({
+      data: {
+        itemId: "current-user",
+        firstName: "Current",
+        lastName: "User",
+        email: "current@example.com",
+        userName: "current.user",
+      },
+    } as never);
+
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+    });
+
+    expect(await screen.findAllByText("Current User")).toHaveLength(2);
   });
 });

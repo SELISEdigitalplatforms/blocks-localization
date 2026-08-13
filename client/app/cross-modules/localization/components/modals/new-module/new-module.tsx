@@ -96,8 +96,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    {" "}
-                    Module name
+                    Module name <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input

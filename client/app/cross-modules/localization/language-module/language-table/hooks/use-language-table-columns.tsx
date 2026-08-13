@@ -255,6 +255,9 @@ export const useLanguageTableColumns = ({
       {
         id: "actions",
         enableHiding: false,
+        header: () => (
+          <span className="font-bold text-medium-emphasis">Actions</span>
+        ),
         cell: ({ row }) => {
           const isExpanded = expandedRowId === row.original.itemId;
           return (

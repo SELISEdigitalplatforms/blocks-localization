@@ -1,8 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { getErrorMessage, handleErrorMessages, isErrorWithErrors } from "@/lib/error";
+import {
+  FORBIDDEN_ERROR_MESSAGE,
+  getErrorMessage,
+  getForbiddenErrorMessage,
+  handleErrorMessages,
+  isErrorWithErrors,
+} from "@/lib/error";
 
 describe("lib/error", () => {
+  describe("getForbiddenErrorMessage", () => {
+    it("should provide the frontend fallback for a 403 response without details", () => {
+      expect(getForbiddenErrorMessage({ Status: 403, errors: {} })).toBe(FORBIDDEN_ERROR_MESSAGE);
+    });
+
+    it("should recognize a JSON-stringified 403 response", () => {
+      expect(getForbiddenErrorMessage('{"Status":403,"errors":{}}')).toBe(FORBIDDEN_ERROR_MESSAGE);
+    });
+
+    it("should preserve a backend description from a nested 403 response", () => {
+      expect(
+        getForbiddenErrorMessage({
+          response: {
+            status: 403,
+            data: { errors: { description: "Your role cannot update this key." } },
+          },
+        }),
+      ).toBe("Your role cannot update this key.");
+    });
+
+    it("should not replace non-403 errors", () => {
+      expect(getForbiddenErrorMessage({ status: 500, errors: {} })).toBeNull();
+    });
+  });
+
   // ─── getErrorMessage ─────────────────────────────────────────────────────────
   describe("getErrorMessage", () => {
     it("should return fallback for null/empty error", () => {
@@ -77,6 +108,10 @@ describe("lib/error", () => {
     it("should return the unexpected fallback for null/number", () => {
       expect(handleErrorMessages(null)).toBe("An unexpected error occurred.");
       expect(handleErrorMessages(42)).toBe("An unexpected error occurred.");
+    });
+
+    it("should provide the forbidden fallback for a 403 without a backend description", () => {
+      expect(handleErrorMessages({ Status: 403, errors: {} })).toBe(FORBIDDEN_ERROR_MESSAGE);
     });
   });
 });

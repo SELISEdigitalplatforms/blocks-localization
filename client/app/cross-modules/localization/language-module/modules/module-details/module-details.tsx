@@ -20,6 +20,103 @@ import {
   useGetLanguageModules,
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
+import { IGlossary } from "@blocks-localization/models/language";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
+
+const hasDisplayValue = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+const compareStrings = (a: string, b: string): number => {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+};
+
+const getDisplayNamePart = (
+  value: string | null | undefined,
+): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return null;
+};
+
+const getUserDisplayName = (
+  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+): string => {
+  if (!user) return "—";
+
+  const firstName = getDisplayNamePart(user.firstName);
+  const lastName = getDisplayNamePart(user.lastName);
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
+
+  return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
+};
+
+type VisibleGlossaryColumns = {
+  language: boolean;
+  type: boolean;
+  context: boolean;
+  createDate: boolean;
+};
+
+function renderGlossaryTable(
+  items: IGlossary[],
+  visibleColumns: VisibleGlossaryColumns,
+) {
+  return (
+    <div className="w-full overflow-x-auto">
+      <Table className="text-sm">
+        <TableHeader>
+          <TableRow className="border-none hover:bg-transparent">
+            <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
+            {visibleColumns.language && (
+              <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+            )}
+            {visibleColumns.type && (
+              <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+            )}
+            {visibleColumns.context && (
+              <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
+            )}
+            {visibleColumns.createDate && (
+              <TableHead className="font-bold text-medium-emphasis">Created Date</TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((glossary) => (
+            <TableRow key={glossary.itemId} className="font-normal text-medium-emphasis">
+              <TableCell className="font-medium">{glossary.name}</TableCell>
+              {visibleColumns.language && (
+                <TableCell>
+                  {hasDisplayValue(glossary.language) ? glossary.language : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.type && (
+                <TableCell>
+                  {hasDisplayValue(glossary.type) ? glossary.type : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.context && (
+                <TableCell className="max-w-[200px] truncate">
+                  {hasDisplayValue(glossary.context) ? glossary.context : "—"}
+                </TableCell>
+              )}
+              {visibleColumns.createDate && (
+                <TableCell>
+                  {hasDisplayValue(glossary.createDate)
+                    ? new Date(glossary.createDate).toLocaleDateString()
+                    : "—"}
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
 function ModuleDetailsContent({
   module,
@@ -45,27 +142,34 @@ function ModuleDetailsContent({
 
   // Glossary tab - fetch glossaries for this module
   const { data: glossariesData, isLoading: isGlossariesLoading } = useGetModuleGlossaries(moduleId);
+  const { data: currentUser } = useCurrentUser();
+  const visibleGlossaryColumns = useMemo(() => {
+    const glossaries = glossariesData?.items ?? [];
+
+    return {
+      language: glossaries.some((glossary) => hasDisplayValue(glossary.language)),
+      type: glossaries.some((glossary) => hasDisplayValue(glossary.type)),
+      context: glossaries.some((glossary) => hasDisplayValue(glossary.context)),
+      createDate: glossaries.some((glossary) => hasDisplayValue(glossary.createDate)),
+    };
+  }, [glossariesData?.items]);
+
+  const hasGlossaries = glossariesData?.items && glossariesData.items.length > 0;
 
   // Helper function to get user display name
-  const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "—";
-    if (!userMap) return "—";
-    const user = userMap[userId];
-    if (user) {
-      const firstName =
-        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
-      const lastName =
-        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
-      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
-      return (
-        fullName ||
-        (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
-        "—"
-      );
-    }
-    return "—";
+  const getUserDisplayNameById = (userId: string | null): string => {
+    const user = userId ? userMap?.[userId] : currentUser;
+    const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
+    return getUserDisplayName(resolvedUser);
   };
+
+  const glossaryTabContent = hasGlossaries ? (
+    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
+  ) : (
+    <div className="flex h-24 items-center justify-center text-muted-foreground">
+      No glossaries tagged to this module
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -108,13 +212,13 @@ function ModuleDetailsContent({
                 <div className="grid gap-1">
                   <h3 className="text-sm font-medium text-low-emphasis">Created By</h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {getUserDisplayName(module.createdBy)}
+                    {getUserDisplayNameById(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
                   <h3 className="text-sm font-medium text-low-emphasis">Last Updated By</h3>
                   <p className="text-base font-normal text-high-emphasis">
-                    {getUserDisplayName(module.lastUpdatedBy)}
+                    {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
                 </div>
               </div>
@@ -135,46 +239,8 @@ function ModuleDetailsContent({
                     <Skeleton key={index} className="h-12 w-full rounded" />
                   ))}
                 </div>
-              ) : glossariesData?.items && glossariesData.items.length > 0 ? (
-                <div className="w-full overflow-x-auto">
-                  <Table className="text-sm">
-                    <TableHeader>
-                      <TableRow className="border-none hover:bg-transparent">
-                        <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
-                        <TableHead className="font-bold text-medium-emphasis">
-                          Created Date
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {glossariesData.items.map((glossary) => (
-                        <TableRow
-                          key={glossary.itemId}
-                          className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
-                        >
-                          <TableCell className="font-medium">{glossary.name}</TableCell>
-                          <TableCell>{glossary.language ?? "—"}</TableCell>
-                          <TableCell>{glossary.type ?? "—"}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {glossary.context ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            {glossary.createDate
-                              ? new Date(glossary.createDate).toLocaleDateString()
-                              : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
               ) : (
-                <div className="flex h-24 items-center justify-center text-muted-foreground">
-                  No glossaries tagged to this module
-                </div>
+                glossaryTabContent
               )}
             </CardContent>
           </Card>
@@ -196,11 +262,14 @@ export function ModuleDetails() {
     if (module?.createdBy) ids.add(module.createdBy);
     if (module?.lastUpdatedBy) ids.add(module.lastUpdatedBy);
     return Array.from(ids);
-  }, [module?.createdBy, module?.lastUpdatedBy]);
+  }, [module]);
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: ["module-detail-users", [...uniqueUserIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
+    queryKey: [
+      "module-detail-users",
+      [...uniqueUserIds].sort(compareStrings),
+    ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueUserIds);
     },
@@ -209,6 +278,7 @@ export function ModuleDetails() {
   });
 
   if (module?.moduleName) {
+    // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/modules/${module.itemId}`] = module.moduleName;
   }
 
