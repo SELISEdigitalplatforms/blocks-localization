@@ -50,11 +50,13 @@ export class AppShellPage {
     return match?.[1];
   }
 
+  /** Navigate to the console project list (/app/console). */
+  async gotoConsole() {
+    await this.page.goto("/app/console");
+  }
+
   /** Console: test project card → Development → overview. */
-  async openProjectWithDevelopment(
-    projectName = process.env.E2E_PROJECT_NAME ?? "test",
-    timeout = 45_000,
-  ) {
+  async openProjectWithDevelopment(projectName: string, timeout = 45_000) {
     await this.projectsHeading.waitFor({ state: "visible", timeout });
 
     // Use .last() so we pick the innermost card, not a parent that wraps
