@@ -18,15 +18,11 @@ test.describe("Authentication + project setup", () => {
       );
     }
     if (!osBaseUrl) {
-      throw new Error(
-        "E2E_OS_BASE_URL is not set. Set it in e2e/.env.e2e before running.",
-      );
+      throw new Error("E2E_OS_BASE_URL is not set. Set it in e2e/.env.e2e before running.");
     }
   });
 
-  test("logs in, creates the run's test project in OS, and persists state", async ({
-    page,
-  }) => {
+  test("logs in, creates the run's test project in OS, and persists state", async ({ page }) => {
     const holdMs = Number(process.env.E2E_HOLD_MS ?? 0);
     if (holdMs > 0) test.setTimeout(holdMs + 60_000);
 
@@ -56,13 +52,7 @@ test.describe("Authentication + project setup", () => {
     await osCreate.fillProjectName(projectName);
     await osCreate.checkConfirmationCheckboxes();
     await osCreate.clickContinue();
-    await osCreate.clickAddRepository();
-    // The repo the Localization project should attach to. Override via env if
-    // a different test repo is needed.
-    const repoOwner = process.env.E2E_OS_TEST_REPO_OWNER ?? "SELISEdigitalplatforms";
-    const repoName = process.env.E2E_OS_TEST_REPO_NAME ?? "blocks-localization-fixtures";
-    await osCreate.selectRepository(repoOwner, repoName);
-    await osCreate.clickAdd();
+
     await osCreate.clickContinue();
     await osCreate.checkEnvironment("Development");
     await osCreate.clickSubmit();
@@ -73,19 +63,15 @@ test.describe("Authentication + project setup", () => {
     ).toBeVisible({ timeout: 60_000 });
 
     // 5. Persist the project name so every spec + the teardown can reference it.
-    fs.writeFileSync(
-      PROJECT_NAME_FILE_PATH,
-      JSON.stringify({ projectName }, null, 2),
-      "utf8",
-    );
+    fs.writeFileSync(PROJECT_NAME_FILE_PATH, JSON.stringify({ projectName }, null, 2), "utf8");
 
     // 6. Return to the Localization console and confirm the new project card.
     const consolePage = new AppShellPage(page);
     await consolePage.gotoConsole();
     await page.reload();
-    await expect(
-      page.locator("div").filter({ hasText: projectName }).first(),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("div").filter({ hasText: projectName }).first()).toBeVisible({
+      timeout: 60_000,
+    });
 
     await page.context().storageState({ path: "fixtures/auth.json" });
 

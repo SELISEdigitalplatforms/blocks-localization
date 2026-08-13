@@ -12,7 +12,7 @@ export class OSCreateProjectPage {
     const osBaseUrl = process.env.E2E_OS_BASE_URL;
     if (!osBaseUrl) throw new Error("E2E_OS_BASE_URL is not set in .env.e2e");
     await this.page.goto(osBaseUrl);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("domcontentloaded");
     await this.page.goto(`${osBaseUrl}/app/create-project`);
     await this.page.waitForLoadState("networkidle");
     await this.page
@@ -21,44 +21,20 @@ export class OSCreateProjectPage {
   }
 
   async fillProjectName(name: string) {
-    await this.page
-      .getByRole("textbox", { name: "Enter your project name" })
-      .fill(name);
+    await this.page.getByRole("textbox", { name: "Enter your project name" }).fill(name);
   }
 
   async checkConfirmationCheckboxes() {
-    await this.page
-      .getByRole("checkbox", { name: "I confirm that I will use" })
-      .click();
-    await this.page
-      .getByRole("checkbox", { name: "I accept the Terms of services" })
-      .click();
+    await this.page.getByRole("checkbox", { name: "I confirm that I will use" }).click();
+    await this.page.getByRole("checkbox", { name: "I accept the Terms of services" }).click();
   }
 
   async clickContinue() {
     await this.page.getByRole("button", { name: "Continue" }).click();
   }
 
-  async clickAddRepository() {
-    await this.page.getByRole("button", { name: "Add repository" }).click();
-  }
-
-  async selectRepository(owner: string, name: string) {
-    await this.page.getByText("Select a repository").click();
-    await this.page
-      .getByRole("textbox", { name: "Search repositories..." })
-      .fill(name);
-    await this.page.getByText(`${owner}/${name}`).click();
-  }
-
-  async clickAdd() {
-    await this.page.getByRole("button", { name: "Add" }).click();
-  }
-
   async checkEnvironment(name: string) {
-    await this.page
-      .getByRole("checkbox", { name: new RegExp(`^${name}`) })
-      .click();
+    await this.page.getByRole("checkbox", { name: new RegExp(`^${name}`) }).click();
   }
 
   async clickSubmit() {
