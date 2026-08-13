@@ -25,20 +25,7 @@ const copyText = async (value: string): Promise<void> => {
     return;
   }
 
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  try {
-    if (!document.execCommand("copy")) {
-      throw new Error("Copy command failed");
-    }
-  } finally {
-    textarea.remove();
-  }
+  throw new Error("Clipboard API not available");
 };
 
 export function CopyableTableValue({
