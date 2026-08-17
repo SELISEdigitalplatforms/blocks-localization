@@ -278,7 +278,11 @@ const KeyDetails = () => {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                   <Dialog open={openGptPromt} onOpenChange={setGptPromt}>
-                    <GptPrompt defaultValue={keyDetails.context} keyDetails={keyDetails} />
+                    <GptPrompt
+                      defaultValue={keyDetails.context}
+                      keyDetails={keyDetails}
+                      onClose={setGptPromt}
+                    />
                   </Dialog>
                 </DropdownMenu>
                 <Dialog open={autoTranslateModalOpen} onOpenChange={setAutoTranslateModalOpen}>

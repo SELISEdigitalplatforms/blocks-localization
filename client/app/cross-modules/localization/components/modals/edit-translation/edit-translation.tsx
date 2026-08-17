@@ -24,6 +24,7 @@ interface EditTranslationProps {
   keyDetails: IBlocksLanguageKey;
   destinationLanguageCode: string;
   languageListData: ILanguageConfig[];
+  onClose: (value?: boolean) => void;
 }
 
 const EditTranslation: React.FC<EditTranslationProps> = ({
@@ -31,6 +32,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   keyDetails,
   destinationLanguageCode,
   languageListData,
+  onClose,
 }) => {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const { isPending: isAutoTranslateLoading, mutateAsync: autoTranslateAsync } =
@@ -136,6 +138,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           title: "Success",
           description: "Language key updated successfully",
         });
+        onClose(false);
       } else {
         toast({
           variant: "destructive",
@@ -219,11 +222,9 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             Cancel
           </Button>
         </DialogTrigger>
-        <DialogTrigger asChild>
-          <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
-            Save
-          </Button>
-        </DialogTrigger>
+        <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
+          Save
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

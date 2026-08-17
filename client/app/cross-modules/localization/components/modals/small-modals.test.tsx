@@ -196,7 +196,7 @@ describe("modals/gpt-prompt", () => {
   });
 
   it("should render the default prompt and support restore/clear", () => {
-    render(withDialog(<GptPrompt keyDetails={keyDetails} />));
+    render(withDialog(<GptPrompt keyDetails={keyDetails} onClose={vi.fn()} />));
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     expect(textarea.value).toContain("translate");
     fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
@@ -207,7 +207,7 @@ describe("modals/gpt-prompt", () => {
 
   it("should save the prompt as key context", async () => {
     saveKeyAsync.mockResolvedValue({ success: true });
-    render(withDialog(<GptPrompt keyDetails={keyDetails} defaultValue="Custom" />));
+    render(withDialog(<GptPrompt keyDetails={keyDetails} defaultValue="Custom" onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
@@ -215,10 +215,63 @@ describe("modals/gpt-prompt", () => {
 
   it("should toast an error when saving fails", async () => {
     saveKeyAsync.mockResolvedValue({ success: false, errorMessage: "no" });
-    render(withDialog(<GptPrompt keyDetails={keyDetails} />));
+    render(withDialog(<GptPrompt keyDetails={keyDetails} onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
+  });
+
+  describe("H2 — Success closes dialog", () => {
+    it("should close dialog and show toast when API returns success:true", async () => {
+      saveKeyAsync.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+      render(withDialog(<GptPrompt keyDetails={keyDetails} onClose={onClose} />));
+      fireEvent.change(screen.getByRole("textbox"), { target: { value: "Custom prompt" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "success" }),
+        ),
+      );
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("H4 — Failure keeps dialog open", () => {
+    it("should NOT call onClose and show error toast when API returns success:false", async () => {
+      saveKeyAsync.mockResolvedValue({ success: false, errorMessage: "Save failed" });
+      const onClose = vi.fn();
+      render(withDialog(<GptPrompt keyDetails={keyDetails} onClose={onClose} />));
+      fireEvent.change(screen.getByRole("textbox"), { target: { value: "Custom prompt" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      expect(onClose).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", title: "Error" }),
+        ),
+      );
+      // Dialog should still be visible
+      expect(screen.getByText("Auto translation prompt")).toBeTruthy();
+    });
+  });
+
+  describe("C4 — Exception keeps dialog open", () => {
+    it("should NOT call onClose and show error toast when mutateAsync throws", async () => {
+      saveKeyAsync.mockRejectedValue(new Error("Network error"));
+      const onClose = vi.fn();
+      render(withDialog(<GptPrompt keyDetails={keyDetails} onClose={onClose} />));
+      fireEvent.change(screen.getByRole("textbox"), { target: { value: "Custom prompt" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      expect(onClose).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", title: "Error" }),
+        ),
+      );
+    });
   });
 });

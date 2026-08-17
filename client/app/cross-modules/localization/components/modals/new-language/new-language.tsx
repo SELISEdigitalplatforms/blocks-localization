@@ -79,7 +79,6 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         languageName,
       };
       const res = await mutateAsync(payload);
-      onClose();
       if (res?.success) {
         toast({
           variant: "success",
@@ -92,14 +91,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: typeof res?.errorMessage === "string" ? res.errorMessage : "Unknown error",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: error instanceof Error ? error.message : JSON.stringify(error),
       });
     }
   };
