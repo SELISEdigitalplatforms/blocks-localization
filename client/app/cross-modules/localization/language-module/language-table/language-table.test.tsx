@@ -294,11 +294,12 @@ describe("language-module/language-table", () => {
   it("should open the auto-translate dialog", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,
-      data: { totalCount: 0, keys: [] },
+      data: oneKey,
     } as never);
     renderWithProviders(<LanguageTable />);
-    // Clicking Auto-translate all toggles dialog state without crashing.
-    fireEvent.click(screen.getByText("Auto-translate all"));
+    const autoTranslateButton = screen.getByRole("button", { name: "Auto-translate all" });
+    expect((autoTranslateButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(autoTranslateButton);
     expect(screen.getByText("Translations")).toBeTruthy();
   });
 

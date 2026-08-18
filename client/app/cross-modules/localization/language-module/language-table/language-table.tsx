@@ -111,7 +111,8 @@ const getTableColumnClassName = (columnId: string) => {
   if (columnId === "keyName") return "w-[332px] md:w-[232px]";
   if (columnId === "moduleId") return "w-32 sm:w-[182px]";
   if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
-  if (columnId === "createDate" || columnId === "lastUpdateDate") return "w-[182px]";
+  if (columnId === "createDate") return "w-[182px]";
+  if (columnId === "lastUpdateDate") return "w-[220px]";
   if (columnId === "actions") return "w-14";
   return "w-36";
 };
@@ -552,6 +553,8 @@ export function LanguageTable() {
   };
 
   const currentTotalCount = blocksLanguageKeyData?.totalCount ?? 0;
+  const areTableFiltersDisabled = !isLoading && !hasActiveFilters && currentTotalCount === 0;
+  const areLanguageKeyActionsDisabled = isLoading || areTableFiltersDisabled;
   const previousTotalCountRef = useRef(currentTotalCount);
   if (!isLoading) previousTotalCountRef.current = currentTotalCount;
   const stableTotalCount = isLoading ? previousTotalCountRef.current : currentTotalCount;
@@ -851,6 +854,7 @@ export function LanguageTable() {
                   size="default"
                   variant="outline"
                   className="w-full shadow-none sm:w-auto"
+                  disabled={areLanguageKeyActionsDisabled}
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
                   <span className="sr-only lg:not-sr-only">Publish Changes</span>
@@ -874,7 +878,12 @@ export function LanguageTable() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button size="default" variant="default" onClick={handleAutoTranslateClick}>
+                  <Button
+                    size="default"
+                    variant="default"
+                    onClick={handleAutoTranslateClick}
+                    disabled={areLanguageKeyActionsDisabled}
+                  >
                     <Wand className="h-5 w-5 lg:mr-2" />
                     <span className="sr-only lg:not-sr-only">Auto-translate all</span>
                   </Button>
@@ -991,13 +1000,15 @@ export function LanguageTable() {
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}
                     languagesData={languageListData || []}
+                    disabled={areTableFiltersDisabled}
                   />
                 )}
               </div>
               <CardContent>
                 <div
-                  className="w-full overflow-x-auto"
+                  className="language-table-scrollbar w-full overflow-x-auto [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}
+                  data-testid="language-table-viewport"
                 >
                   <Table className="table-fixed text-sm">
                     <colgroup>
@@ -1035,6 +1046,7 @@ export function LanguageTable() {
                                     onChange={updateKeySearch}
                                     placeholder="Search..."
                                     className="h-7 w-full text-xs"
+                                    disabled={areTableFiltersDisabled}
                                   />
                                 </div>
                               </TableHead>
@@ -1054,6 +1066,7 @@ export function LanguageTable() {
                                     onChange={(value) => updateResourceSearch(lang, value)}
                                     placeholder="Search..."
                                     className="h-7 w-full text-xs"
+                                    disabled={areTableFiltersDisabled}
                                   />
                                 </div>
                               </TableHead>

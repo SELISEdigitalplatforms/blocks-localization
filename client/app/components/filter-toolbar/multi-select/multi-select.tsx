@@ -22,9 +22,16 @@ interface MultiSelectProps {
   options: { label: string; value: string }[];
   value: string[];
   onChange: (selected: string[]) => void;
+  disabled?: boolean;
 }
 
-export function MultiSelect({ label, options, onChange, value: selectedValues }: MultiSelectProps) {
+export function MultiSelect({
+  label,
+  options,
+  onChange,
+  value: selectedValues,
+  disabled = false,
+}: MultiSelectProps) {
   const [buttonRef, popoverWidth] = usePopoverWidth();
 
   const onSelectHandler = (value: string) => {
@@ -40,7 +47,13 @@ export function MultiSelect({ label, options, onChange, value: selectedValues }:
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button ref={buttonRef} variant="outline" size="sm" className="h-8 border-dashed">
+        <Button
+          ref={buttonRef}
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed"
+          disabled={disabled}
+        >
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center">
               <PlusCircledIcon className="mr-2 h-4 w-4" />

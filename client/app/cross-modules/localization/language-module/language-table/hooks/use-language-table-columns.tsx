@@ -117,7 +117,8 @@ const buildLanguageColumns = (
 
       return (
         <CopyableTableValue
-          value={resource?.value}
+          value={hasValue ? resource?.value : null}
+          displayValue={hasValue ? undefined : "_"}
           label={`${language?.languageName ?? languageCode} value`}
           className="ml-2 sm:ml-0"
           valueClassName="line-clamp-4"
@@ -246,7 +247,7 @@ export const useLanguageTableColumns = ({
             {
               accessorKey: "lastUpdateDate",
               header: () => (
-                <div className="w-[150px]">
+                <div className="w-[190px] whitespace-nowrap">
                   <FilterControls.SortHeader
                     label="Last Updated Date"
                     id="LastUpdateDate"

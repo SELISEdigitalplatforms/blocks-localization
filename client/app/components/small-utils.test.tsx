@@ -87,6 +87,10 @@ describe("providers/query-provider", () => {
     expect(getQueryClient()).toBe(getQueryClient());
   });
 
+  it("should disable window-focus refetching by default", () => {
+    expect(getQueryClient().getDefaultOptions().queries?.refetchOnWindowFocus).toBe(false);
+  });
+
   it("should render children inside the provider", () => {
     render(
       <QueryProvider>

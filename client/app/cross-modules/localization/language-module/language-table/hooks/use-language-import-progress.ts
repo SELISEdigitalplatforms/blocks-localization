@@ -155,12 +155,11 @@ export const useLanguageImportProgress = ({
       if (!matchingId) return;
 
       const pendingCorrelationIds = current.pendingCorrelationIds.filter((id) => id !== matchingId);
-      const nextStatus: LanguageImportProgress["status"] =
-        isSuccess === false
-          ? "failed"
-          : pendingCorrelationIds.length === 0
-            ? "finalizing"
-            : "processing";
+      const nextStatus: LanguageImportProgress["status"] = (() => {
+        if (isSuccess === false) return "failed";
+        if (pendingCorrelationIds.length === 0) return "finalizing";
+        return "processing";
+      })();
       const next: LanguageImportProgress =
         isSuccess === false
           ? { ...current, status: "failed", pendingCorrelationIds: [] }
