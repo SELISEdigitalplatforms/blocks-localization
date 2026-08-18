@@ -151,13 +151,13 @@ export const FilterToolbar = <T extends Record<string, unknown>>({
         Components={controllers}
         showReset={showReset}
         disabled={disabled}
-        onReset={() => onReset && onReset(initialValues)}
+        onReset={() => onReset?.(initialValues)}
       />
       <FilterToolBarMobileView
         Components={controllers}
         showReset={showReset}
         disabled={disabled}
-        onReset={() => onReset && onReset(initialValues)}
+        onReset={() => onReset?.(initialValues)}
       />
     </>
   );

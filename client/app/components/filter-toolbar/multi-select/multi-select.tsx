@@ -31,7 +31,7 @@ export function MultiSelect({
   onChange,
   value: selectedValues,
   disabled = false,
-}: MultiSelectProps) {
+}: Readonly<MultiSelectProps>) {
   const [buttonRef, popoverWidth] = usePopoverWidth();
 
   const onSelectHandler = (value: string) => {
