@@ -19,7 +19,8 @@ import { useProjectStore } from "@seliseblocks/genesis-os";
 const GptPrompt: React.FC<{
   defaultValue?: string;
   keyDetails: IBlocksLanguageKey;
-}> = ({ defaultValue: propDefaultValue, keyDetails }) => {
+  onClose: (value: boolean) => void;
+}> = ({ defaultValue: propDefaultValue, keyDetails, onClose }) => {
   const defaultValue =
     propDefaultValue ||
     "The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
@@ -64,6 +65,7 @@ const GptPrompt: React.FC<{
           title: "Success",
           description: "Auto translation prompt updated successfully",
         });
+        onClose(false);
       } else {
         toast({
           variant: "destructive",
@@ -124,11 +126,9 @@ const GptPrompt: React.FC<{
         <DialogTrigger asChild>
           <Button variant="secondary">Cancel</Button>
         </DialogTrigger>
-        <DialogTrigger asChild>
-          <Button disabled={isPending} onClick={handleSave}>
-            Save
-          </Button>
-        </DialogTrigger>
+        <Button disabled={isPending} onClick={handleSave}>
+          Save
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

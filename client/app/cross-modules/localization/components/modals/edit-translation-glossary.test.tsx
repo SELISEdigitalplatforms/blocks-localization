@@ -66,6 +66,7 @@ describe("modals/edit-translation", () => {
           keyDetails={keyDetails}
           destinationLanguageCode="de-DE"
           languageListData={languages}
+          onClose={vi.fn()}
         />,
       ),
     );
@@ -81,6 +82,7 @@ describe("modals/edit-translation", () => {
           keyDetails={keyDetails}
           destinationLanguageCode="de-DE"
           languageListData={languages}
+          onClose={vi.fn()}
         />,
       ),
     );
@@ -103,6 +105,7 @@ describe("modals/edit-translation", () => {
           keyDetails={keyDetails}
           destinationLanguageCode="de-DE"
           languageListData={languages}
+          onClose={vi.fn()}
         />,
       ),
     );
@@ -125,6 +128,7 @@ describe("modals/edit-translation", () => {
             ...languages,
             { itemId: "fr", languageName: "French", languageCode: "fr-FR", isDefault: false },
           ]}
+          onClose={vi.fn()}
         />,
       ),
     );
@@ -133,6 +137,95 @@ describe("modals/edit-translation", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Save/ }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+  });
+
+  describe("H1 — Success closes dialog", () => {
+    it("should close dialog and show toast when API returns success:true", async () => {
+      saveKeyAsync.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+      render(
+        withDialog(
+          <EditTranslation
+            dialogTitle="Edit translation"
+            keyDetails={keyDetails}
+            destinationLanguageCode="de-DE"
+            languageListData={languages}
+            onClose={onClose}
+          />,
+        ),
+      );
+      fireEvent.change(screen.getByPlaceholderText("Enter translation"), {
+        target: { value: "Guten Tag" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "success", description: "Language key updated successfully" }),
+        ),
+      );
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("H3 — Failure keeps dialog open", () => {
+    it("should NOT call onClose and show error toast when API returns success:false", async () => {
+      saveKeyAsync.mockResolvedValue({ success: false, errorMessage: "Validation failed" });
+      const onClose = vi.fn();
+      render(
+        withDialog(
+          <EditTranslation
+            dialogTitle="Edit translation"
+            keyDetails={keyDetails}
+            destinationLanguageCode="de-DE"
+            languageListData={languages}
+            onClose={onClose}
+          />,
+        ),
+      );
+      fireEvent.change(screen.getByPlaceholderText("Enter translation"), {
+        target: { value: "Guten Tag" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      expect(onClose).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", title: "Error" }),
+        ),
+      );
+      // Dialog should still be visible
+      expect(screen.getByText("Edit translation")).toBeTruthy();
+    });
+  });
+
+  describe("C3 — Exception keeps dialog open", () => {
+    it("should NOT call onClose and show error toast when mutateAsync throws", async () => {
+      saveKeyAsync.mockRejectedValue(new Error("Network error"));
+      const onClose = vi.fn();
+      render(
+        withDialog(
+          <EditTranslation
+            dialogTitle="Edit translation"
+            keyDetails={keyDetails}
+            destinationLanguageCode="de-DE"
+            languageListData={languages}
+            onClose={onClose}
+          />,
+        ),
+      );
+      fireEvent.change(screen.getByPlaceholderText("Enter translation"), {
+        target: { value: "Guten Tag" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+      await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+      expect(onClose).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", title: "Error" }),
+        ),
+      );
+    });
   });
 });
 

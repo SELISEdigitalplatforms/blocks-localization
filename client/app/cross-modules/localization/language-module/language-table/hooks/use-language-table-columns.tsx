@@ -3,12 +3,7 @@ import type { ColumnDef, Row } from "@tanstack/react-table";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui-kits/tooltip/tooltip";
+import { CopyableTableValue } from "@/components/copyable-table-value/copyable-table-value";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import type {
   IBlocksLanguageKey,
@@ -21,22 +16,18 @@ const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) =
   const horizontalPadding = 8;
   const containerWidth = 150;
   const displayValue = keyName ?? "(Unnamed Key)";
-  const shouldShowTooltip =
+  const shouldShowFullValue =
     displayValue.length * characterWidth + horizontalPadding > containerWidth;
 
   return (
-    <TooltipProvider key={displayValue}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="ml-2 min-w-0 w-full truncate sm:ml-0">{displayValue}</div>
-        </TooltipTrigger>
-        {shouldShowTooltip && (
-          <TooltipContent side="top">
-            <p>{displayValue}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
+    <CopyableTableValue
+      value={keyName}
+      displayValue={displayValue}
+      label="key"
+      className="ml-2 w-full sm:ml-0"
+      valueClassName="w-full truncate"
+      valueTooltip={shouldShowFullValue ? displayValue : undefined}
+    />
   );
 });
 KeyNameCell.displayName = "KeyNameCell";
@@ -113,7 +104,14 @@ const buildLanguageColumns = (
         return <span className="text-blue-600 font-medium">Translating...</span>;
       }
 
-      return <div className="ml-2 line-clamp-4 sm:ml-0">{resource?.value ?? ""}</div>;
+      return (
+        <CopyableTableValue
+          value={resource?.value}
+          label={`${language?.languageName ?? languageCode} value`}
+          className="ml-2 sm:ml-0"
+          valueClassName="line-clamp-4"
+        />
+      );
     };
 
     return {
@@ -186,9 +184,12 @@ export const useLanguageTableColumns = ({
           if (!keyModule) return null;
 
           return (
-            <div className="ml-2 truncate sm:ml-0 sm:w-[150px]">
-              <span>{keyModule.moduleName}</span>
-            </div>
+            <CopyableTableValue
+              value={keyModule.moduleName}
+              label="module name"
+              className="ml-2 sm:ml-0 sm:w-[150px]"
+              valueClassName="truncate"
+            />
           );
         },
         filterFn: (row, id, filterValue: { text?: string; types?: string[] }) =>

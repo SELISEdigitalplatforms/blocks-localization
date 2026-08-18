@@ -179,24 +179,45 @@ config section. The key this suite cares about is
 | `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
 | `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
 | `E2E_SLOWMO`                    | Milliseconds of delay per action, to watch the steps themselves.                                   |
-| `E2E_PROJECT_NAME`              | Project card to open via Development (default: `test`).                                            |
 
 ## Layout
 
 ```
 e2e/
-  tests/auth/login.spec.ts              # login → Translations
-  tests/modules/translations/translations.spec.ts     # full Translations workflow
-  tests/modules/modules-glossary/modules-glossary.spec.ts  # Modules + Glossary workflow
+  tests/
+    auth/login.spec.ts                  # setup project: login + create run's project in OS
+    modules/
+      translations/translations.spec.ts          # Translation Keys + History tabs
+      translations/new-key.spec.ts               # New Key + Key Details
+      configuration/configuration.spec.ts        # Languages + Webhook
+      glossary/glossary.spec.ts                  # Glossary list + details
+      modules/modules.spec.ts                    # Modules list + details
+      extension-guides/extension-guides.spec.ts  # Extension Guides
   support/
-    auth.ts                             # login() + loginToTranslations(); call from beforeEach
+    auth.ts                             # login() (setup project only)
+    project-name.ts                     # reads fixtures/project.json
     test-base.ts                        # shared test/expect with headed pause + helpers
-    pages/                              # page objects for module flows
+    pages/
+      app/                              # console + project shell (AppShellPage)
+      login/                            # Localization login + dev-iam OIDC
+      os/                               # shared OS app: create-project + project-delete
+      translations/ configuration/ glossary/ modules/ extension-guides/
     fixtures/e2e-key.ts                 # key name shared between add/delete specs
-  fixtures/                             # runtime json (gitignored)
+  fixtures/                             # runtime json, gitignored (auth.json + project.json)
   global-setup.ts                       # local-build only: patch served index.html
-  playwright.config.ts                  # baseURL + creds from .env.e2e
+  global-teardown.ts                    # best-effort: delete the run's project via OS
+  playwright.config.ts                  # baseURL + creds from .env.e2e; setup + chromium projects
 ```
 
-Each spec calls `login()` or `loginToTranslations()` in `test.beforeEach`: no separate
-setup project or saved storage state (same pattern as Blocks Data e2e).
+The Playwright config runs **two projects**:
+
+- **`setup`** — only matches `tests/auth/login.spec.ts`. Logs in, creates a
+  timestamped project in the OS app (`E2E_OS_BASE_URL`), writes
+  `fixtures/auth.json` (storageState) + `fixtures/project.json` (project name).
+- **`chromium`** — every other spec. Depends on `setup`, starts authenticated
+  via `storageState`, opens the project via `AppShellPage.openProjectWithDevelopment(getProjectName())`,
+  then navigates to its feature sidebar link. No inline login.
+
+The global teardown deletes the project the setup created via the OS app's
+console; if anything fails it logs and continues so the real test result
+stays visible.
