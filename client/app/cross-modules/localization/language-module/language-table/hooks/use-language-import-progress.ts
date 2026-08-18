@@ -90,7 +90,7 @@ export const getImportFileLabel = (fileNames: string[]) => {
 export const useLanguageImportProgress = ({
   totalCount,
   refetch,
-}: UseLanguageImportProgressOptions) => {
+}: Readonly<UseLanguageImportProgressOptions>) => {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<LanguageImportProgress | null>(null);
   const progressRef = useRef<LanguageImportProgress | null>(null);
@@ -140,22 +140,31 @@ export const useLanguageImportProgress = ({
       if (!current || current.pendingCorrelationIds.length === 0) return;
 
       const { correlationId, isSuccess } = extractImportNotification(notificationData);
-      const matchingId = correlationId
-        ? current.pendingCorrelationIds.find((id) => id === correlationId)
-        : current.pendingCorrelationIds.length === 1
-          ? current.pendingCorrelationIds[0]
-          : undefined;
+
+      const findMatchingCorrelationId = () => {
+        if (correlationId) {
+          return current.pendingCorrelationIds.find((id) => id === correlationId);
+        }
+        if (current.pendingCorrelationIds.length === 1) {
+          return current.pendingCorrelationIds[0];
+        }
+        return undefined;
+      };
+
+      const matchingId = findMatchingCorrelationId();
       if (!matchingId) return;
 
       const pendingCorrelationIds = current.pendingCorrelationIds.filter((id) => id !== matchingId);
+      const nextStatus: LanguageImportProgress["status"] =
+        isSuccess === false
+          ? "failed"
+          : pendingCorrelationIds.length === 0
+            ? "finalizing"
+            : "processing";
       const next: LanguageImportProgress =
         isSuccess === false
           ? { ...current, status: "failed", pendingCorrelationIds: [] }
-          : {
-              ...current,
-              status: pendingCorrelationIds.length === 0 ? "finalizing" : "processing",
-              pendingCorrelationIds,
-            };
+          : { ...current, status: nextStatus, pendingCorrelationIds };
 
       progressRef.current = next;
       setProgress(next);

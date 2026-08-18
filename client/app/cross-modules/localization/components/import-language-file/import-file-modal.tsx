@@ -820,7 +820,8 @@ export default function ImportCommunicationsModal({
 
       // Cleanup
       window.URL.revokeObjectURL(blobUrl);
-    } catch (_err) {
+    } catch (err) {
+      console.error("Failed to download template:", err);
       showErrorToast({ errors: "Failed to download template" });
     }
   };

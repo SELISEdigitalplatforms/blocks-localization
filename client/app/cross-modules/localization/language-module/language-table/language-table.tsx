@@ -135,48 +135,7 @@ function LanguageTableEmptyState({
   }
 
   if (importProgress) {
-    const isFailed = importProgress.status === "failed";
-    const isDelayed = importProgress.status === "delayed";
-    const title = isFailed
-      ? "Import couldn’t be completed"
-      : isDelayed
-        ? "This import is taking longer than expected"
-        : importProgress.status === "finalizing"
-          ? "Finalizing your import"
-          : "Importing translation keys";
-    const description = isFailed
-      ? "The uploaded file could not be processed. Please try importing it again."
-      : isDelayed
-        ? "Your keys are still being processed. You can leave this page and return later."
-        : importProgress.status === "finalizing"
-          ? "The import completed successfully. We’re loading the new translation keys now."
-          : "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they’re ready.";
-
-    return (
-      <div
-        className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12"
-        aria-live="polite"
-        aria-busy={!isFailed && !isDelayed}
-      >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blocks-primary-shades-300 text-primary">
-          {isFailed ? (
-            <CircleAlert className="h-5 w-5 text-error" aria-hidden="true" />
-          ) : (
-            <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
-          )}
-        </div>
-        <div className="max-w-xl space-y-1 text-center">
-          <p className="font-medium text-high-emphasis">{title}</p>
-          <p className="text-sm text-medium-emphasis">{description}</p>
-        </div>
-        <p
-          className="max-w-xs truncate text-xs text-low-emphasis"
-          title={getImportFileLabel(importProgress.fileNames)}
-        >
-          {getImportFileLabel(importProgress.fileNames)}
-        </p>
-      </div>
-    );
+    return <ImportProgressState importProgress={importProgress} />;
   }
 
   return (
@@ -187,6 +146,59 @@ function LanguageTableEmptyState({
   );
 }
 
+function ImportProgressState({
+  importProgress,
+}: Readonly<{
+  importProgress: LanguageImportProgress;
+}>) {
+  const isFailed = importProgress.status === "failed";
+  const isDelayed = importProgress.status === "delayed";
+  const isFinalizing = importProgress.status === "finalizing";
+  const isProcessing = !isFailed && !isDelayed;
+
+  const getImportTitle = () => {
+    if (isFailed) return "Import couldn't be completed";
+    if (isDelayed) return "This import is taking longer than expected";
+    if (isFinalizing) return "Finalizing your import";
+    return "Importing translation keys";
+  };
+
+  const getImportDescription = () => {
+    if (isFailed) return "The uploaded file could not be processed. Please try importing it again.";
+    if (isDelayed) return "Your keys are still being processed. You can leave this page and return later.";
+    if (isFinalizing) return "The import completed successfully. We're loading the new translation keys now.";
+    return "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they're ready.";
+  };
+
+  const title = getImportTitle();
+  const description = getImportDescription();
+
+  return (
+    <div
+      className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12"
+      aria-live="polite"
+      aria-busy={isProcessing}
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blocks-primary-shades-300 text-primary">
+        {isFailed ? (
+          <CircleAlert className="h-5 w-5 text-error" aria-hidden="true" />
+        ) : (
+          <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+        )}
+      </div>
+      <div className="max-w-xl space-y-1 text-center">
+        <p className="font-medium text-high-emphasis">{title}</p>
+        <p className="text-sm text-medium-emphasis">{description}</p>
+      </div>
+      <p
+        className="max-w-xs truncate text-xs text-low-emphasis"
+        title={getImportFileLabel(importProgress.fileNames)}
+      >
+        {getImportFileLabel(importProgress.fileNames)}
+      </p>
+    </div>
+  );
+}
 export function LanguageTable() {
   "use no memo";
 
