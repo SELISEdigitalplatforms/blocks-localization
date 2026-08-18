@@ -25,7 +25,7 @@ const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) =
       displayValue={displayValue}
       label="key"
       className="ml-2 w-full sm:ml-0"
-      valueClassName="w-full truncate"
+      valueClassName="max-w-full truncate"
       valueTooltip={shouldShowFullValue ? displayValue : undefined}
     />
   );
@@ -38,10 +38,10 @@ const DateCell = ({ value }: { value: string | null | undefined }) => (
   </div>
 );
 
-const hasNonEmptyValue = (resource: IBlocksLanguageKey["resources"][number] | undefined): boolean =>
+export const hasNonEmptyValue = (resource: IBlocksLanguageKey["resources"][number] | undefined): boolean =>
   resource?.value !== null && resource?.value !== undefined && resource.value.trim() !== "";
 
-const isKeyComplete = (
+export const isKeyComplete = (
   resources: IBlocksLanguageKey["resources"],
   languageCodes: string[],
 ): boolean =>
@@ -50,13 +50,24 @@ const isKeyComplete = (
     return hasNonEmptyValue(resource);
   });
 
-const getCompletenessCellValue = (
+export const getCompletenessCellValue = (
   resources: IBlocksLanguageKey["resources"],
   languageListData?: ILanguageConfig[],
 ): string => {
+  if (!languageListData || languageListData.length === 0) return "No translation";
   if (!resources || resources.length === 0) return "No translation";
 
-  const languageCodes = languageListData?.map((language) => language.languageCode) || [];
+  const languageCodes = languageListData.map((language) => language.languageCode);
+
+  // Check if any resource belongs to an active language and has a non-empty value
+  const hasAnyActiveLanguageWithValue = resources.some(
+    (resource) =>
+      languageCodes.includes(resource.culture) && hasNonEmptyValue(resource),
+  );
+
+  // If no active language has a resource with a non-empty value, return "No translation"
+  if (!hasAnyActiveLanguageWithValue) return "No translation";
+
   return isKeyComplete(resources, languageCodes) ? "Complete" : "Partial";
 };
 

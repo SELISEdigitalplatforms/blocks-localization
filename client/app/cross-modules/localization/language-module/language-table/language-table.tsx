@@ -18,6 +18,8 @@ import {
   Wand,
   Languages,
   X,
+  CircleAlert,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -77,6 +79,11 @@ import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
 import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
+  getImportFileLabel,
+  useLanguageImportProgress,
+  type LanguageImportProgress,
+} from "./hooks/use-language-import-progress";
+import {
   getDeleteKeysErrorMessage,
   getInclusiveDateRange,
   getPageSizeOptions,
@@ -111,10 +118,12 @@ const getTableColumnClassName = (columnId: string) => {
 
 function LanguageTableEmptyState({
   hasActiveFilters,
+  importProgress,
 }: Readonly<{
   hasActiveFilters: boolean;
+  importProgress: LanguageImportProgress | null;
 }>) {
-  if (hasActiveFilters) {
+  if (hasActiveFilters && !importProgress) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
         <p className="font-medium text-high-emphasis">No matching translation keys</p>
@@ -125,8 +134,53 @@ function LanguageTableEmptyState({
     );
   }
 
+  if (importProgress) {
+    const isFailed = importProgress.status === "failed";
+    const isDelayed = importProgress.status === "delayed";
+    const title = isFailed
+      ? "Import couldn’t be completed"
+      : isDelayed
+        ? "This import is taking longer than expected"
+        : importProgress.status === "finalizing"
+          ? "Finalizing your import"
+          : "Importing translation keys";
+    const description = isFailed
+      ? "The uploaded file could not be processed. Please try importing it again."
+      : isDelayed
+        ? "Your keys are still being processed. You can leave this page and return later."
+        : importProgress.status === "finalizing"
+          ? "The import completed successfully. We’re loading the new translation keys now."
+          : "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they’re ready.";
+
+    return (
+      <div
+        className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12"
+        aria-live="polite"
+        aria-busy={!isFailed && !isDelayed}
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blocks-primary-shades-300 text-primary">
+          {isFailed ? (
+            <CircleAlert className="h-5 w-5 text-error" aria-hidden="true" />
+          ) : (
+            <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+          )}
+        </div>
+        <div className="max-w-xl space-y-1 text-center">
+          <p className="font-medium text-high-emphasis">{title}</p>
+          <p className="text-sm text-medium-emphasis">{description}</p>
+        </div>
+        <p
+          className="max-w-xs truncate text-xs text-low-emphasis"
+          title={getImportFileLabel(importProgress.fileNames)}
+        >
+          {getImportFileLabel(importProgress.fileNames)}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center gap-3 py-12">
+    <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
       <p className="font-medium text-high-emphasis">No translation keys yet</p>
       <p className="text-muted-foreground">Create your first translation key to get started.</p>
     </div>
@@ -207,7 +261,11 @@ export function LanguageTable() {
     [setQueryParams],
   );
 
-  const { isLoading, data: blocksLanguageKeyData } = useGetBlocksLanguageKey(
+  const {
+    isLoading,
+    data: blocksLanguageKeyData,
+    refetch: refetchLanguageKeys,
+  } = useGetBlocksLanguageKey(
     queryParams.pageNumber ?? 0,
     queryParams.pageSize ?? 10,
     queryParams.search ?? "",
@@ -220,6 +278,15 @@ export function LanguageTable() {
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
     queryParams.missingLanguages ?? [],
   );
+
+  const {
+    progress: importProgress,
+    onImportStarted,
+    onImportRequestFailed,
+  } = useLanguageImportProgress({
+    totalCount: blocksLanguageKeyData?.totalCount ?? 0,
+    refetch: refetchLanguageKeys,
+  });
 
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
@@ -750,13 +817,16 @@ export function LanguageTable() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                  <ImportFileModal
-                    dialogTitle="Import Keys"
-                    data={[]}
-                    projectKey={tenantId}
-                    open={isImportDialogOpen}
-                    onClose={() => setIsImportDialogOpen(false)}
-                  />
+                  {isImportDialogOpen && (
+                    <ImportFileModal
+                      dialogTitle="Import Keys"
+                      data={[]}
+                      projectKey={tenantId}
+                      onClose={() => setIsImportDialogOpen(false)}
+                      onImportStarted={onImportStarted}
+                      onImportRequestFailed={onImportRequestFailed}
+                    />
+                  )}
                 </Dialog>
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey
@@ -1036,7 +1106,10 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  <LanguageTableEmptyState hasActiveFilters={hasActiveFilters} />
+                                  <LanguageTableEmptyState
+                                    hasActiveFilters={hasActiveFilters}
+                                    importProgress={importProgress}
+                                  />
                                 </TableCell>
                               </TableRow>
                             );

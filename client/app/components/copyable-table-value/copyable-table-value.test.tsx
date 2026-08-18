@@ -48,4 +48,12 @@ describe("CopyableTableValue", () => {
     expect(screen.getByText("No translation")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("keeps the copy button adjacent to the value", () => {
+    renderWithProviders(<CopyableTableValue value="welcome.title" label="key" />);
+
+    const value = screen.getByText("welcome.title");
+    expect(value.className).toContain("max-w-full");
+    expect(value.className).not.toContain("flex-1");
+  });
 });

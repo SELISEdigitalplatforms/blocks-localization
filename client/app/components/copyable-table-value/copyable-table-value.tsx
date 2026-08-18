@@ -40,7 +40,9 @@ export function CopyableTableValue({
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyValue = value ?? "";
   const renderedValue = (
-    <span className={cn("min-w-0 flex-1", valueClassName)}>{displayValue ?? copyValue}</span>
+    <span className={cn("min-w-0 max-w-full", valueClassName)}>
+      {displayValue ?? copyValue}
+    </span>
   );
 
   useEffect(

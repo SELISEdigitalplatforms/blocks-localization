@@ -23,9 +23,9 @@ import {
 import { showErrorToast, showSuccessToast, toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
-import { IImportFile } from "@blocks-localization/models/language";
+import { IImportFile, ILanguageImportRequest } from "@blocks-localization/models/language";
 import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
@@ -737,8 +737,9 @@ interface IImportFilesModalProps {
   dialogTitle: string;
   data: [];
   projectKey: string;
-  open?: boolean;
   onClose?: () => void;
+  onImportStarted?: (request: ILanguageImportRequest) => void;
+  onImportRequestFailed?: (correlationId: string) => void;
 }
 
 type TemplateFormat = "xlsx" | "csv" | "json";
@@ -752,17 +753,11 @@ const TEMPLATE_URLS: Record<TemplateFormat, string> = {
 export default function ImportCommunicationsModal({
   dialogTitle,
   projectKey,
-  open,
   onClose,
+  onImportStarted,
+  onImportRequestFailed,
 }: Readonly<IImportFilesModalProps>) {
   const [files, setFiles] = useState<File[] | null>(null);
-
-  // Reset files state when modal is closed
-  useEffect(() => {
-    if (open === false && files !== null) {
-      setFiles(null);
-    }
-  }, [open, files]);
   const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
 
   const { mutateAsync: getPresignedUrl, isPending: isGettingPresignedUrl } =
@@ -825,7 +820,7 @@ export default function ImportCommunicationsModal({
 
       // Cleanup
       window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
+    } catch (_err) {
       showErrorToast({ errors: "Failed to download template" });
     }
   };
@@ -843,6 +838,8 @@ export default function ImportCommunicationsModal({
   };
 
   const uploadFile = async (file: File) => {
+    let correlationId: string | null = null;
+
     try {
       const res = await getPresignedUrl({
         itemId: "",
@@ -863,12 +860,14 @@ export default function ImportCommunicationsModal({
       const fileId = res.fileId;
       await uploadFileMutate({ url: res.uploadUrl, file });
 
+      correlationId = uuidv4();
       const payload: IImportFile = {
-        messageCoRelationId: uuidv4(),
+        messageCoRelationId: correlationId,
         fileId,
         projectKey,
       };
 
+      onImportStarted?.({ correlationId, fileName: file.name });
       await uploadUilmFile(payload);
 
       try {
@@ -890,6 +889,7 @@ export default function ImportCommunicationsModal({
         };
       }
     } catch (error) {
+      if (correlationId) onImportRequestFailed?.(correlationId);
       throw error;
     }
   };
@@ -927,7 +927,9 @@ export default function ImportCommunicationsModal({
       // reset after successful upload
       setFiles(null);
 
-      showSuccessToast({ description: "Files uploaded successfully" });
+      showSuccessToast({
+        description: "Upload complete. Your translation keys are being processed.",
+      });
       onClose?.();
     } catch (error) {
       showErrorToast({ errors: getUploadToastErrors(error) });
