@@ -1,7 +1,7 @@
 import fs from "fs";
 import { chromium, expect } from "@playwright/test";
-import { OSProjectPage } from "@/pages/os/project.page";
-import { PROJECT_NAME_FILE_PATH } from "@/support/project-name";
+
+const PROJECT_NAME_FILE_PATH = "fixtures/project-name.json";
 
 const AUTH_FILE = "fixtures/auth.json";
 
@@ -58,19 +58,38 @@ export default async function globalTeardown() {
       ignoreHTTPSErrors: true,
     });
     const page = await context.newPage();
-    const osProject = new OSProjectPage(page);
 
-    await osProject.gotoConsole();
+    await page.goto(`${osBaseUrl}/app/console`);
 
     await expect(
       page.locator("div").filter({ hasText: projectName }).first(),
     ).toBeVisible({ timeout: 60_000 });
 
-    await osProject.clickProjectSettings(projectName);
-    await osProject.clickEnvironment("Development");
-    await osProject.clickDeleteButton();
-    await osProject.confirmDelete();
-    await osProject.expectSuccessfullyDeletedToast();
+    const projectContainer = page
+      .locator("div")
+      .filter({ has: page.getByText(projectName, { exact: false }) })
+      .filter({ has: page.locator("svg.lucide-settings2") })
+      .last();
+    await projectContainer
+      .locator("button")
+      .filter({ has: page.locator("svg.lucide-settings2") })
+      .click();
+
+    await page
+      .locator("div")
+      .filter({ hasText: /^Development$/ })
+      .first()
+      .click();
+
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Delete", exact: true })
+      .filter({ hasNot: page.getByTitle("Delete domain") })
+      .click();
+
+    await expect(
+      page.locator("div.text-sm.opacity-90").filter({ hasText: "Successfully deleted" }),
+    ).toBeVisible();
 
     console.log(`[e2e teardown] Deleted project "${projectName}".`);
     await context.close();

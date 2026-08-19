@@ -1,80 +1,71 @@
-import fs from "fs";
-import { test, expect } from "@/support/test-base";
-import { AppShellPage } from "@/pages/app/app-shell.page";
-import { OSCreateProjectPage } from "@/pages/os/create-project.page";
-import { LoginPage } from "@/pages/login/login.page";
-import { OidcLoginPage } from "@/pages/login/oidc-login.page";
-import { PROJECT_NAME_FILE_PATH } from "@/support/project-name";
+import { createProject } from "@/support/create-and-delete-project";
+import { test, expect } from "../../support/test-base";
 
 const username = process.env.E2E_USERNAME;
 const password = process.env.E2E_PASSWORD;
-const osBaseUrl = process.env.E2E_OS_BASE_URL;
 
-test.describe("Authentication + project setup", () => {
+test.describe("Authentication", () => {
   test.beforeAll(() => {
     if (!username || !password) {
       throw new Error(
         "E2E_USERNAME / E2E_PASSWORD are not set. Fill them in e2e/.env.e2e before running.",
       );
     }
-    if (!osBaseUrl) {
-      throw new Error("E2E_OS_BASE_URL is not set. Set it in e2e/.env.e2e before running.");
-    }
   });
 
-  test("logs in, creates the run's test project in OS, and persists state", async ({ page }) => {
+  test("logs in through dev-iam and lands on the console", async ({ page }) => {
+    // Extend the test timeout to cover an optional inspection hold at the end.
     const holdMs = Number(process.env.E2E_HOLD_MS ?? 0);
     if (holdMs > 0) test.setTimeout(holdMs + 60_000);
 
-    // 1. Login page of the Localization app.
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.startOidcLogin();
+    // 1. Blocks Utilities login page — a single CTA that starts the OIDC flow.
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Log in to your account" }).click();
 
-    // 2. dev-iam OIDC login page (cross-origin).
-    const oidc = new OidcLoginPage(page);
-    await oidc.waitForReady();
-    await oidc.login(username!, password!);
+    // 2. Redirected to the dev-iam OIDC login page (/oidc/login, cross-origin).
+    //    Selectors come from blocks-idp oidc-login-form.tsx (stable field ids).
+    const emailField = page.locator("#oidc-email");
+    await emailField.waitFor({ timeout: 30_000 });
+    await emailField.fill(username!);
+    await page.locator("#oidc-password").fill(password!);
+    await page.getByRole("button", { name: "Login", exact: true }).click();
 
-    // 3. Back on the Localization app, authenticated → console.
+    // 3. Optional one-time OIDC consent/permission screen.
+    //    The OIDC path can route through /oidc/permission before returning.
+    //    Confirm the real button label via `npm run codegen` on the first live
+    //    run, then enable this block if the screen appears.
+    // const consentBtn = page.getByRole("button", {
+    //   name: /allow|authorize|continue|grant/i,
+    // });
+    // if (await consentBtn.isVisible().catch(() => false)) {
+    //   await consentBtn.click();
+    // }
+
+    // 4. Back on Blocks Utilities, authenticated → console.
     await page.waitForURL("**/app/console", { timeout: 45_000 });
     await expect(page).toHaveURL(/\/app\/console/);
-    const shell = new AppShellPage(page);
-    await shell.waitForAuthenticated();
 
-    await page.context().storageState({ path: "fixtures/auth.json" });
-
-    // 4. Create the run's project in the OS app.
-    const projectName = `Localization Test ${Date.now()}`;
-    const osCreate = new OSCreateProjectPage(page);
-
-    await osCreate.goto();
-    await osCreate.fillProjectName(projectName);
-    await osCreate.checkConfirmationCheckboxes();
-    await osCreate.clickContinue();
-
-    await osCreate.clickContinue();
-    await osCreate.checkEnvironment("Development");
-    await osCreate.clickSubmit();
-
-    // Wait for the OS success toast before moving on.
-    await expect(
-      page.locator("div").filter({ hasText: "Your project has been created." }),
-    ).toBeVisible({ timeout: 60_000 });
-
-    // 5. Persist the project name so every spec + the teardown can reference it.
-    fs.writeFileSync(PROJECT_NAME_FILE_PATH, JSON.stringify({ projectName }, null, 2), "utf8");
-
-    // 6. Return to the Localization console and confirm the new project card.
-    const consolePage = new AppShellPage(page);
-    await consolePage.gotoConsole();
-    await page.reload();
-    await expect(page.locator("div").filter({ hasText: projectName }).first()).toBeVisible({
-      timeout: 60_000,
+    // Assert the console actually rendered — not just that the route changed.
+    // This repo renders <ConsolePage /> without `canCreateProject`, and the kit
+    // defaults it to false, so the "Welcome to SELISE Blocks" empty state is
+    // unreachable here. Only "Your Blocks Projects" can appear.
+    await expect(page.getByRole("heading", { name: "Your Blocks Projects" })).toBeVisible({
+      timeout: 30_000,
     });
 
+    await createProject(page);
+
+    await page.getByRole("button", { name: "Open user menu" }).click();
+    await page.getByText("Log out").click();
+    await expect(page.getByRole("heading", { name: "blocks Localization" })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Persist the authenticated session for future specs to reuse.
     await page.context().storageState({ path: "fixtures/auth.json" });
 
+    // Optionally keep the browser open to inspect the result before it closes.
+    // e.g. E2E_HOLD_MS=120000 npm run test:headed
     if (holdMs > 0) {
       await page.waitForTimeout(holdMs);
     }
