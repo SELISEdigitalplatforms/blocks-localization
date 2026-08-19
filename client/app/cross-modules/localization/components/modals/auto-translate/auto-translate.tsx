@@ -26,6 +26,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
       if (entries.length > 0) {
         return entries.map(([, value]) => String(value)).join("; ");
       }
+      return "Unknown error";
     }
     return String(errors);
   };

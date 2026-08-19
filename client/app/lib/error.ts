@@ -155,6 +155,22 @@ const joinStringValues = (value: unknown): string => {
  * Formats an unknown error value (string, Error, or API error shape) into a
  * single human-readable message, so raw JSON is never shown in a toast.
  */
+const formatRecordError = (error: Record<string, unknown>): string => {
+  if (typeof error.errorMessage === "string" && error.errorMessage.trim()) {
+    return error.errorMessage.trim();
+  }
+
+  if ("errors" in error) {
+    const joined = joinStringValues(error.errors);
+    if (joined) return joined;
+  }
+
+  const joined = joinStringValues(error);
+  if (joined) return joined;
+
+  return UNEXPECTED_ERROR_MESSAGE;
+};
+
 export const formatErrorMessage = (error: unknown): string => {
   if (typeof error === "string") return error.trim() || UNEXPECTED_ERROR_MESSAGE;
 
@@ -166,17 +182,7 @@ export const formatErrorMessage = (error: unknown): string => {
   }
 
   if (isRecord(error)) {
-    if (typeof error.errorMessage === "string" && error.errorMessage.trim()) {
-      return error.errorMessage.trim();
-    }
-
-    if ("errors" in error) {
-      const joined = joinStringValues(error.errors);
-      if (joined) return joined;
-    }
-
-    const joined = joinStringValues(error);
-    if (joined) return joined;
+    return formatRecordError(error);
   }
 
   return UNEXPECTED_ERROR_MESSAGE;
