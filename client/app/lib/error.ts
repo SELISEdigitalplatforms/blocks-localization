@@ -128,3 +128,56 @@ export const handleErrorMessages = (
 
   return "An unexpected error occurred.";
 };
+
+const UNEXPECTED_ERROR_MESSAGE = "An unexpected error occurred. Please try again.";
+
+const joinStringValues = (value: unknown): string => {
+  if (typeof value === "string") return value.trim();
+
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+      .join("; ");
+  }
+
+  if (isRecord(value)) {
+    return Object.values(value)
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+      .join("; ");
+  }
+
+  return "";
+};
+
+/**
+ * Formats an unknown error value (string, Error, or API error shape) into a
+ * single human-readable message, so raw JSON is never shown in a toast.
+ */
+export const formatErrorMessage = (error: unknown): string => {
+  if (typeof error === "string") return error.trim() || UNEXPECTED_ERROR_MESSAGE;
+
+  if (error instanceof Error) return error.message.trim() || UNEXPECTED_ERROR_MESSAGE;
+
+  if (Array.isArray(error)) {
+    const joined = joinStringValues(error);
+    if (joined) return joined;
+  }
+
+  if (isRecord(error)) {
+    if (typeof error.errorMessage === "string" && error.errorMessage.trim()) {
+      return error.errorMessage.trim();
+    }
+
+    if ("errors" in error) {
+      const joined = joinStringValues(error.errors);
+      if (joined) return joined;
+    }
+
+    const joined = joinStringValues(error);
+    if (joined) return joined;
+  }
+
+  return UNEXPECTED_ERROR_MESSAGE;
+};

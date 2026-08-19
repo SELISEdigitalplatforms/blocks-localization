@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui-kits/badge/badge";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { IBlocksLanguageKey, IGlossary } from "@blocks-localization/models/language";
 import {
   useSaveBlocksLanguageKey,
@@ -92,14 +93,14 @@ function EditKeyGlossary({
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }

@@ -22,6 +22,7 @@ import {
   useTagGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { IGlossary, IModuleGets } from "@blocks-localization/models/language";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 
@@ -35,7 +36,7 @@ const getTagGlossaryErrorMessage = (error: unknown) => {
   if (typeof error === "string" && error) return error;
   if (Array.isArray(error) && error.length > 0) return error.join(", ");
   if (error && typeof error === "object" && Object.keys(error).length > 0) {
-    return JSON.stringify(error);
+    return formatErrorMessage(error);
   }
   return "Failed to update glossaries. Please try again.";
 };

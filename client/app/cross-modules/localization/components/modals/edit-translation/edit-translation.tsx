@@ -18,6 +18,7 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { formatErrorMessage } from "@/lib/error";
 
 interface EditTranslationProps {
   dialogTitle: string;
@@ -75,14 +76,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: formatErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }
@@ -143,14 +144,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }

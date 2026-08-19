@@ -50,6 +50,7 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 import { showErrorToast, toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -162,7 +163,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };

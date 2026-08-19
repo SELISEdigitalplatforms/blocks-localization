@@ -11,6 +11,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useDeleteGlossary } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 
 interface DeleteGlossaryProps {
   itemId: string;
@@ -37,7 +38,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: formatErrorMessage(res?.errors),
         });
       }
     } catch (_error) {

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui-kits/command/command";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
 interface NewLanguageProps {
@@ -91,14 +92,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         toast({
           variant: "destructive",
           title: "Error",
-          description: typeof res?.errorMessage === "string" ? res.errorMessage : "Unknown error",
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };
