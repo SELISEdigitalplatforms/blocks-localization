@@ -28,7 +28,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
       }
       return "Unknown error";
     }
-    return String(errors);
+    return "Unknown error";
   };
 
   const handleTranslate = async () => {
