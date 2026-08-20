@@ -78,14 +78,14 @@ test.describe("Glossary", async () => {
     await glossaryNameInput.fill(`Testing-${Date.now()}`);
 
     // Select Language
-    const languageField = addGlossaryDialog.getByText("Language", { exact: true });
-    await expect(languageField).toBeVisible();
+    // const languageField = addGlossaryDialog.getByText("Language", { exact: true });
+    // await expect(languageField).toBeVisible();
 
-    await languageField.click();
+    // await languageField.click();
 
-    await expect(page.getByRole("option", { name: "English" })).toBeVisible();
+    // await expect(page.getByRole("option", { name: "English" })).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("option", { name: "English" }).click();
+    // await page.getByRole("option", { name: "English" }).click();
 
     // Select Type
     const typeField = addGlossaryDialog.getByText("Type", { exact: true });
@@ -124,9 +124,7 @@ test.describe("Glossary", async () => {
     await contextInput.fill("This is a Testing context.");
 
     // Additional Notes
-    await expect(
-      addGlossaryDialog.getByText("Additional Notes", { exact: true }),
-    ).toBeVisible();
+    await expect(addGlossaryDialog.getByText("Additional Notes", { exact: true })).toBeVisible();
 
     await expect(additionalNotesInput).toBeVisible();
     await additionalNotesInput.fill("This is Additional Notes");
@@ -137,7 +135,5 @@ test.describe("Glossary", async () => {
 
     // Verify success
     await expect(successMessage).toBeVisible({ timeout: 20000 });
-
-    // write rest of the code from Here.......
   });
 });

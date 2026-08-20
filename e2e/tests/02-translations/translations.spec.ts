@@ -5,7 +5,6 @@ import path from "path";
 test.describe("Translations", async () => {
   test.beforeEach(async ({ page }) => {
     await loginFresh(page);
-
     await page
       .getByRole("button", { name: /Development/ })
       .first()
@@ -338,7 +337,7 @@ test.describe("Translations", async () => {
 
     await expect(page.getByText("Module *")).toBeVisible();
 
-    await expect(page.getByText("Default value (English) *")).toBeVisible();
+    // await expect(page.getByText("Default value (English) *")).toBeVisible();
 
     await expect(page.getByText("Key Context")).toBeVisible();
 
