@@ -102,8 +102,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    // Confirm the download checkbox to enable Export.
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Export Started" }));
@@ -116,7 +115,7 @@ describe("components/modals/export-key", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
     // Choose the Xlsx output type (second radio: Json, Xlsx, Csv).
     fireEvent.click(screen.getAllByRole("radio")[1]);
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
     const [payload] = exportAsync.mock.calls[0];
@@ -128,7 +127,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" })),
@@ -198,7 +197,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
   };

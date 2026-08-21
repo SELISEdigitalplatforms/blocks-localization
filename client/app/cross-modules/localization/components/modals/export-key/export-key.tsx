@@ -74,7 +74,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [selectedOutputType, setSelectedOutputType] = useState<number>(outputTypes[0].id);
-  const [downloadChecked, setDownloadChecked] = useState(false);
+  const [downloadChecked, setDownloadChecked] = useState(true);
   const [referenceFileId, setReferenceFileId] = useState(uuidv4());
   const [xlfFile, setXlfFile] = useState<File | null>(null);
   const [isUploadingXlf, setIsUploadingXlf] = useState(false);
@@ -242,7 +242,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       setCurrentStep(1);
       form.reset();
       setSelectedModuleIds([]);
-      setDownloadChecked(false);
+      setDownloadChecked(true);
       setXlfFile(null);
       setSelectedLanguages([]);
       onClose?.();
@@ -336,7 +336,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       setDate(null);
       setSelectedModuleIds([]);
       setSelectedOutputType(outputTypes[0].id);
-      setDownloadChecked(false);
+      setDownloadChecked(true);
       setXlfFile(null);
       setSelectedLanguages([]);
       form.reset();
