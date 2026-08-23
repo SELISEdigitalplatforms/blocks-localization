@@ -19,10 +19,11 @@ if (!baseURL) {
 // host, when you already have the app running yourself, or on a machine
 // without Git Bash's `bash` on PATH).
 const autoStartServer = process.env.E2E_NO_WEBSERVER !== "1";
+const flowSessionPath = path.resolve(__dirname, "fixtures/flow-session.json");
 
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // Serial: these tests exercise shared backend state on a live dev host, so
@@ -76,22 +77,31 @@ export default defineConfig({
       }
     : {}),
   projects: [
-    // Setup: performs the real login once and saves the session to
-    // fixtures/auth.json (see login.spec.ts).
+    // Login/logout smoke test. Saves fixtures/auth.json but then logs out --
+    // that file is proof the OIDC round trip works, not a reusable session.
     {
       name: "setup",
       testMatch: /auth[\\/]login\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], headless: false },
+    },
+    // Real session source for the flow specs: logs in fresh and saves
+    // fixtures/flow-session.json without ever logging out (mirrors
+    // blocks-logic's workflow-setup / workflow-session.json split).
+    {
+      name: "flow-setup",
+      testMatch: /flows[\\/]flow\.setup\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], headless: false },
     },
     // All other tests run authenticated by reusing that saved session, and
-    // only after "setup" (login) has succeeded.
+    // only after "flow-setup" (login) has succeeded.
     {
       name: "chromium",
-      testIgnore: /auth[\\/]login\.spec\.ts/,
-      dependencies: ["setup"],
+      testIgnore: /auth[\\/]login\.spec\.ts|flows[\\/]flow\.setup\.spec\.ts/,
+      dependencies: ["flow-setup"],
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "fixtures/auth.json",
+        headless: false,
+        storageState: flowSessionPath,
       },
     },
   ],

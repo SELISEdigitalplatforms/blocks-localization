@@ -1,12 +1,21 @@
 import fs from "fs";
-import { chromium, expect } from "@playwright/test";
-import { OSProjectPage } from "@/pages/os/project.page";
-import { PROJECT_NAME_FILE_PATH } from "@/support/project-name";
+import path from "path";
+import { chromium } from "@playwright/test";
+import { deleteCreatedProject } from "./support/create-and-delete-project";
+import { e2eOsBaseUrl } from "./support/env";
 
-const AUTH_FILE = "fixtures/auth.json";
+// fixtures/auth.json is the login/logout smoke test's session -- it's
+// revoked by the logout login.spec.ts performs right after saving it.
+// fixtures/flow-session.json (from flow.setup.spec.ts) is the live session.
+const AUTH_FILE = "fixtures/flow-session.json";
+const PROJECT_NAME_FILE_PATH = path.resolve(__dirname, "fixtures/project-name.json");
 
 interface ProjectNameFile {
   projectName: string;
+  // false (or absent, for older fixtures) means this project was reused, not
+  // created by this run -- e.g. E2E_REUSE_PROJECT_NAME points at a real,
+  // deliberately named project. Never auto-delete one of those.
+  wasCreated?: boolean;
 }
 
 export default async function globalTeardown() {
@@ -28,11 +37,13 @@ export default async function globalTeardown() {
   }
 
   let projectName: string;
+  let wasCreated: boolean;
   try {
     const raw = fs.readFileSync(PROJECT_NAME_FILE_PATH, "utf8");
     const parsed = JSON.parse(raw) as ProjectNameFile;
     projectName = parsed.projectName;
     if (!projectName) throw new Error("missing projectName field");
+    wasCreated = parsed.wasCreated === true;
   } catch (err) {
     console.warn(
       `[e2e teardown] Failed to read project name from ${PROJECT_NAME_FILE_PATH}: ${err}. Skipping cleanup.`,
@@ -40,15 +51,27 @@ export default async function globalTeardown() {
     return;
   }
 
-  const osBaseUrl = process.env.E2E_OS_BASE_URL;
-  if (!osBaseUrl) {
-    console.warn(
-      `[e2e teardown] E2E_OS_BASE_URL is not set — skipping project deletion.`,
+  if (!wasCreated) {
+    console.log(
+      `[e2e teardown] "${projectName}" was reused, not created by this run — leaving it in place.`,
     );
+    try {
+      fs.unlinkSync(PROJECT_NAME_FILE_PATH);
+    } catch {
+      // already gone — fine.
+    }
     return;
   }
 
-  console.log(`[e2e teardown] Deleting project "${projectName}" via OSProjectPage...`);
+  let osBaseUrl: string;
+  try {
+    osBaseUrl = e2eOsBaseUrl();
+  } catch (err) {
+    console.warn(`[e2e teardown] ${err} — skipping project deletion.`);
+    return;
+  }
+
+  console.log(`[e2e teardown] Deleting project "${projectName}"...`);
 
   const browser = await chromium.launch();
   try {
@@ -58,21 +81,11 @@ export default async function globalTeardown() {
       ignoreHTTPSErrors: true,
     });
     const page = await context.newPage();
-    const osProject = new OSProjectPage(page);
 
-    await osProject.gotoConsole();
-
-    await expect(
-      page.locator("div").filter({ hasText: projectName }).first(),
-    ).toBeVisible({ timeout: 60_000 });
-
-    await osProject.clickProjectSettings(projectName);
-    await osProject.clickEnvironment("Development");
-    await osProject.clickDeleteButton();
-    await osProject.confirmDelete();
-    await osProject.expectSuccessfullyDeletedToast();
-
-    console.log(`[e2e teardown] Deleted project "${projectName}".`);
+    const deleted = await deleteCreatedProject(page, projectName);
+    if (deleted) {
+      console.log(`[e2e teardown] Deleted project "${projectName}".`);
+    }
     await context.close();
   } catch (err) {
     console.error(
