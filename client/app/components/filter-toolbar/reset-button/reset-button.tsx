@@ -4,11 +4,18 @@ import { MouseEventHandler } from "react";
 
 type ResetButtonProps = {
   onClick: MouseEventHandler<HTMLButtonElement>;
+  disabled?: boolean;
 };
 
-export const ResetButton = ({ onClick }: ResetButtonProps) => {
+export const ResetButton = ({ onClick, disabled = false }: ResetButtonProps) => {
   return (
-    <Button type="button" variant="outline" onClick={onClick} className="h-8 px-2 lg:px-3">
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      className="h-8 px-2 lg:px-3"
+      disabled={disabled}
+    >
       Reset
       <X className="ml-2 h-4 w-4" />
     </Button>

@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui-kits/input/input";
 import { useSaveLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { showErrorToast, toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -66,17 +67,17 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
       } else {
         if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
           res?.validationErrors?.forEach((error) => {
-            showErrorToast({ errors: error.errorMessage });
+            showErrorToast({ errors: formatErrorMessage(error.errorMessage) });
           });
         } else {
-          showErrorToast({ errors: res?.errorMessage });
+          showErrorToast({ errors: formatErrorMessage(res?.errorMessage) });
         }
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };
@@ -96,8 +97,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    {" "}
-                    Module name
+                    Module name <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input

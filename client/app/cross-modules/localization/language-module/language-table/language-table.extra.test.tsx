@@ -31,7 +31,11 @@ vi.mock("@blocks-utilities/notification", () => ({
   useNotificationListener: vi.fn(),
 }));
 vi.mock("@blocks-localization/components/language-table-toolbar/language-table-toolbar", () => ({
-  LanguageTableToolbar: () => null,
+  LanguageTableToolbar: ({ disabled }: { disabled?: boolean }) => (
+    <button type="button" aria-label="Table filters" disabled={disabled}>
+      Filters
+    </button>
+  ),
   useKeysFilterQueryParams: () => ({
     queryParams: queryParamsState,
     setQueryParams,
@@ -203,6 +207,57 @@ describe("language-table (extra coverage)", () => {
     primeStore([], []);
   });
 
+  describe("empty table filters", () => {
+    it("disables toolbar filters and column searches for a truly empty table", () => {
+      setKeys({ totalCount: 0, keys: [] });
+
+      renderWithProviders(<LanguageTable />);
+
+      const tableViewport = screen.getByTestId("language-table-viewport");
+      expect(tableViewport.className).toContain("overflow-x-auto");
+      expect(tableViewport.className).toContain("[&>div]:overflow-visible");
+      expect(tableViewport.className).toContain("language-table-scrollbar");
+      expect(
+        (screen.getByRole("button", { name: "Table filters" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+      expect(
+        screen
+          .getAllByPlaceholderText("Search...")
+          .every((input) => (input as HTMLInputElement).disabled),
+      ).toBe(true);
+      expect(
+        (screen.getByRole("button", { name: "Publish Changes" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+      expect(
+        (screen.getByRole("button", { name: "Auto-translate all" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it("keeps filters enabled when an active filter has no matches", () => {
+      queryParamsState.search = "missing-key";
+      setKeys({ totalCount: 0, keys: [] });
+
+      renderWithProviders(<LanguageTable />);
+
+      expect(screen.getByTestId("language-table-viewport").className).toContain("overflow-x-auto");
+      expect(
+        (screen.getByRole("button", { name: "Table filters" }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+      expect(
+        screen
+          .getAllByPlaceholderText("Search...")
+          .every((input) => !(input as HTMLInputElement).disabled),
+      ).toBe(true);
+      expect(
+        (screen.getByRole("button", { name: "Publish Changes" }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+      expect(
+        (screen.getByRole("button", { name: "Auto-translate all" }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+      expect(screen.getByText("No matching translation keys")).toBeTruthy();
+    });
+  });
+
   describe("optional & language column renderers", () => {
     it("edits and saves a translation directly in the expanded row", async () => {
       const user = userEvent.setup();
@@ -326,12 +381,20 @@ describe("language-table (extra coverage)", () => {
           },
         ],
       });
-      renderWithProviders(<LanguageTable />);
+      const { container } = renderWithProviders(<LanguageTable />);
       // The null-date rows render em dashes.
       expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
       // Column headers for the optional date columns are present.
       expect(screen.getByText("Created Date")).toBeTruthy();
-      expect(screen.getByText("Last Updated Date")).toBeTruthy();
+      const lastUpdatedLabel = screen.getByText("Last Updated Date");
+      expect(lastUpdatedLabel.parentElement?.parentElement?.className).toContain(
+        "whitespace-nowrap",
+      );
+      expect(
+        Array.from(container.querySelectorAll("col")).some((column) =>
+          column.className.includes("w-[220px]"),
+        ),
+      ).toBe(true);
     });
 
     it("sorts date columns newest first using backend field names and resets pagination", () => {
@@ -369,6 +432,28 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       expect(screen.getByText("Hallo Welt")).toBeTruthy();
       expect(screen.getByText("German")).toBeTruthy();
+    });
+
+    it("renders an underscore without a copy action for missing language values", () => {
+      primeStore(["de-DE"], []);
+      const key = oneKey().keys[0];
+      setKeys({
+        totalCount: 2,
+        keys: [
+          { ...key, resources: [] },
+          {
+            ...key,
+            itemId: "k2",
+            keyName: "farewell",
+            resources: [{ culture: "de-DE", value: "   " }],
+          },
+        ],
+      });
+
+      renderWithProviders(<LanguageTable />);
+
+      expect(screen.getAllByText("_")).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: "Copy German value" })).toBeNull();
     });
 
     it("does not render a module cell for an unknown module id", () => {

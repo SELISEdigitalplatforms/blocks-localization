@@ -11,8 +11,25 @@ import { Label } from "@/components/ui-kits/label/label";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 
-const AutoTranslate: React.FC = () => {
+interface AutoTranslateProps {
+  onClose?: (value?: boolean) => void;
+}
+
+const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   const { isPending, mutateAsync } = useTranslateAll();
+
+  const formatErrorMessage = (errors: unknown): string => {
+    if (errors === null || errors === undefined) return "Unknown error";
+    if (typeof errors === "string") return errors;
+    if (typeof errors === "object") {
+      const entries = Object.entries(errors);
+      if (entries.length > 0) {
+        return entries.map(([, value]) => String(value)).join("; ");
+      }
+      return "Unknown error";
+    }
+    return "Unknown error";
+  };
 
   const handleTranslate = async () => {
     const payload = {
@@ -29,18 +46,19 @@ const AutoTranslate: React.FC = () => {
           title: "Processing Translation",
           description: "Keys translation in progress.",
         });
+        onClose?.(false);
       } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: formatErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: error instanceof Error ? error.message : String(error),
       });
     }
   };

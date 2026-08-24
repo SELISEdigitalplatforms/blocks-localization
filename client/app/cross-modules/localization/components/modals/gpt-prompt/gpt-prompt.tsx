@@ -15,11 +15,13 @@ import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { formatErrorMessage } from "@/lib/error";
 
 const GptPrompt: React.FC<{
   defaultValue?: string;
   keyDetails: IBlocksLanguageKey;
-}> = ({ defaultValue: propDefaultValue, keyDetails }) => {
+  onClose: (value: boolean) => void;
+}> = ({ defaultValue: propDefaultValue, keyDetails, onClose }) => {
   const defaultValue =
     propDefaultValue ||
     "The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
@@ -64,18 +66,19 @@ const GptPrompt: React.FC<{
           title: "Success",
           description: "Auto translation prompt updated successfully",
         });
+        onClose(false);
       } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }
@@ -124,11 +127,9 @@ const GptPrompt: React.FC<{
         <DialogTrigger asChild>
           <Button variant="secondary">Cancel</Button>
         </DialogTrigger>
-        <DialogTrigger asChild>
-          <Button disabled={isPending} onClick={handleSave}>
-            Save
-          </Button>
-        </DialogTrigger>
+        <Button disabled={isPending} onClick={handleSave}>
+          Save
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

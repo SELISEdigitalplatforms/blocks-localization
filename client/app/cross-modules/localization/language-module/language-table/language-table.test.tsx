@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { useLanguageViewStore } from "@blocks-localization/store/use-language-view-store";
+import { useLanguageImportProgress } from "./hooks/use-language-import-progress";
 import { LanguageTable } from "./language-table";
 
 const navigate = vi.fn();
@@ -23,6 +24,10 @@ vi.mock("@seliseblocks/genesis-os/hooks", () => ({
 }));
 vi.mock("@blocks-utilities/notification", () => ({
   useNotificationListener: vi.fn(),
+}));
+vi.mock("./hooks/use-language-import-progress", () => ({
+  getImportFileLabel: (fileNames: string[]) => fileNames[0] ?? "Your file",
+  useLanguageImportProgress: vi.fn(),
 }));
 vi.mock("@blocks-localization/components/language-table-toolbar/language-table-toolbar", () => ({
   LanguageTableToolbar: () => null,
@@ -79,6 +84,11 @@ const bulkTranslateAsync = vi.fn();
 const bulkSaveAsync = vi.fn();
 
 const setBaseMocks = () => {
+  vi.mocked(useLanguageImportProgress).mockReturnValue({
+    progress: null,
+    onImportStarted: vi.fn(),
+    onImportRequestFailed: vi.fn(),
+  });
   h.useGetLanguageModules.mockReturnValue({
     data: [{ itemId: "m1", moduleName: "UILM" }],
     isLoading: false,
@@ -131,7 +141,31 @@ describe("language-module/language-table", () => {
       data: { totalCount: 0, keys: [] },
     } as never);
     renderWithProviders(<LanguageTable />);
-    expect(screen.getByText("No results.")).toBeTruthy();
+    expect(screen.getByText("No translation keys yet")).toBeTruthy();
+  });
+
+  it("should show processing content after a large import starts", () => {
+    vi.mocked(useLanguageImportProgress).mockReturnValue({
+      progress: {
+        status: "processing",
+        pendingCorrelationIds: ["correlation-1"],
+        fileNames: ["large-import.csv"],
+        baselineTotalCount: 0,
+      },
+      onImportStarted: vi.fn(),
+      onImportRequestFailed: vi.fn(),
+    });
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: { totalCount: 0, keys: [] },
+    } as never);
+
+    renderWithProviders(<LanguageTable />);
+
+    expect(screen.getByText("Importing translation keys")).toBeTruthy();
+    expect(screen.getByText(/Your file has been uploaded and is being processed/)).toBeTruthy();
+    expect(screen.getByText("large-import.csv")).toBeTruthy();
+    expect(screen.queryByText("No translation keys yet")).toBeNull();
   });
 
   it("should render a New Key action", () => {
@@ -169,7 +203,8 @@ describe("language-module/language-table", () => {
     const { container } = renderWithProviders(<LanguageTable />);
     const keyName = within(container).getByText("greeting");
     expect(keyName).toBeTruthy();
-    expect(keyName.className).toContain("w-full");
+    expect(keyName.className).toContain("max-w-full");
+    expect(keyName.className.split(" ")).not.toContain("w-full");
     expect(keyName.className).not.toContain("w-[150px]");
     expect(keyName.className).not.toContain("md:w-[200px]");
   });
@@ -259,11 +294,12 @@ describe("language-module/language-table", () => {
   it("should open the auto-translate dialog", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,
-      data: { totalCount: 0, keys: [] },
+      data: oneKey,
     } as never);
     renderWithProviders(<LanguageTable />);
-    // Clicking Auto-translate all toggles dialog state without crashing.
-    fireEvent.click(screen.getByText("Auto-translate all"));
+    const autoTranslateButton = screen.getByRole("button", { name: "Auto-translate all" });
+    expect((autoTranslateButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(autoTranslateButton);
     expect(screen.getByText("Translations")).toBeTruthy();
   });
 

@@ -60,4 +60,14 @@ describe("components/language-table-toolbar", () => {
     // Reset appears once a filter differs from defaults.
     expect(screen.getAllByText("Reset").length).toBeGreaterThan(0);
   });
+
+  it("should disable its filter controls when the table has no keys", () => {
+    const { container } = renderWithProviders(
+      <LanguageTableToolbar languageModulesData={[]} languagesData={[]} disabled />,
+    );
+
+    expect((container.querySelector("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
+    fireEvent.click(screen.getAllByText("Modules")[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });

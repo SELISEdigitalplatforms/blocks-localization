@@ -32,6 +32,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   } = useGetLanguages();
   const [isEditRoutesDialogOpen, setIsEditRoutesDialogOpen] = useState(false);
   const [isEditGlossaryDialogOpen, setIsEditGlossaryDialogOpen] = useState(false);
+  const [editTranslationLangCode, setEditTranslationLangCode] = useState<string | null>(null);
 
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
 
@@ -86,7 +87,12 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">{languageListData[0].languageName}</CardTitle>
-              <Dialog>
+              <Dialog
+                open={editTranslationLangCode === languageListData[0].languageCode}
+                onOpenChange={(open) =>
+                  setEditTranslationLangCode(open ? languageListData[0].languageCode : null)
+                }
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
                     <Pencil className="h-3.5 w-3.5" />
@@ -98,6 +104,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   keyDetails={keyDetails}
                   destinationLanguageCode={languageListData[0].languageCode}
                   languageListData={languageListData}
+                  onClose={() => setEditTranslationLangCode(null)}
                 />
               </Dialog>
             </div>
@@ -120,7 +127,12 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{language.languageName}</span>
-                  <Dialog>
+                  <Dialog
+                    open={editTranslationLangCode === language.languageCode}
+                    onOpenChange={(open) =>
+                      setEditTranslationLangCode(open ? language.languageCode : null)
+                    }
+                  >
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
                         <Pencil className="h-3.5 w-3.5" />
@@ -132,6 +144,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       keyDetails={keyDetails}
                       destinationLanguageCode={language.languageCode}
                       languageListData={languageListData}
+                      onClose={() => setEditTranslationLangCode(null)}
                     />
                   </Dialog>
                 </div>
@@ -203,7 +216,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <div className="col-span-2 mt-4 border-t pt-4">
               <h3 className="mb-2 text-sm font-medium text-low-emphasis">Context</h3>
               <p className="whitespace-pre-wrap text-base text-high-emphasis">
-                {keyDetails.context ?? "-"}
+                {keyDetails.context || "No context provided."}
               </p>
             </div>
           </CardContent>
@@ -225,6 +238,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   </DialogTrigger>
                   <EditRoute
                     keyDetails={keyDetails}
+                    isOpen={isEditRoutesDialogOpen}
                     onClose={() => setIsEditRoutesDialogOpen(false)}
                   />
                 </Dialog>

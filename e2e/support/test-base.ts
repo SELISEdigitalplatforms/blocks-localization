@@ -1,8 +1,8 @@
-import { test as base, expect, type Page } from "@playwright/test";
-import { randomInt } from "node:crypto";
+import { test as base, expect } from "@playwright/test"
+import { markWorkflowTestFailed } from "./run-outcome"
 
 // Shared `test` for the whole suite. Specs import from here instead of
-// "@playwright/test" so the pause below applies everywhere automatically.
+// "@playwright/test" so the headed-mode pause applies everywhere.
 //
 // Headed runs hold the browser open for a moment after each test finishes, so
 // the end state is actually watchable instead of vanishing the instant the
@@ -13,62 +13,38 @@ import { randomInt } from "node:crypto";
 //   E2E_PAUSE_MS=3000 npm test   force it on in headless too
 
 function pauseMs(isHeaded: boolean): number {
-  const configured = process.env.E2E_PAUSE_MS;
+  const configured = process.env.E2E_PAUSE_MS
 
   if (configured !== undefined && configured !== "") {
-    const parsed = Number(configured);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    const parsed = Number(configured)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
   }
 
-  return isHeaded ? 10_000 : 0;
+  return isHeaded ? 10_000 : 0
 }
 
 export const test = base.extend<{ pauseAfterEachTest: void }>({
   pauseAfterEachTest: [
     async ({ page }, use, testInfo) => {
-      // `--headed` flips headless to false on the resolved project config.
-      const isHeaded = testInfo.project.use.headless === false;
-      const ms = pauseMs(isHeaded);
+      const isHeaded = testInfo.project.use.headless === false
+      const ms = pauseMs(isHeaded)
 
-      // The pause runs inside the test's time budget, so give it back.
-      if (ms > 0) testInfo.setTimeout(testInfo.timeout + ms);
+      if (ms > 0) testInfo.setTimeout(testInfo.timeout + ms)
 
-      await use();
+      await use()
 
-      // Teardown: runs after the test body, before `page` is disposed.
+      if (testInfo.project.name === "workflow") {
+        if (testInfo.status !== "passed" && testInfo.status !== "skipped") {
+          markWorkflowTestFailed()
+        }
+      }
+
       if (ms > 0 && !page.isClosed()) {
-        await page.waitForTimeout(ms);
+        await page.waitForTimeout(ms)
       }
     },
     { auto: true },
   ],
-});
+})
 
-export { expect };
-
-/**
- * Toast helper: the project's use-toast hook renders the same description
- * twice — once in the visible card and once in a hidden aria-live
- * `<span role="status">` for screen readers. Plain `getByText(...)` blows
- * up under strict mode because both elements match.
- */
-export const TOAST_VISIBLE = "div.text-sm.opacity-90";
-
-export async function expectToast(
-  page: Page,
-  description: string,
-  timeout = 20_000,
-): Promise<void> {
-  await expect(page.locator(TOAST_VISIBLE, { hasText: description }).first()).toBeVisible({
-    timeout,
-  });
-}
-
-/**
- * Build a session-unique identifier for records created during a test.
- */
-export function uniqueName(prefix: string): string {
-  const ts = Date.now();
-  const rand = randomInt(1e9);
-  return `${prefix}_${ts}_${rand}`;
-}
+export { expect }

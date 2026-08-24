@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
-import { toast } from "@/hooks/use-toast";
+import { showErrorToast, toast } from "@/hooks/use-toast";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import EditRoute from "./edit-route/edit-route";
 import AutoTranslate from "./auto-translate/auto-translate";
@@ -15,7 +15,7 @@ const tagGlossaryAsync = vi.fn();
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
-vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({ showErrorToast: vi.fn(), toast: vi.fn() }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useTranslateAll: vi.fn(),
@@ -61,13 +61,46 @@ describe("modals/edit-route", () => {
     expect(screen.getAllByPlaceholderText("e.g., dashboard/settings").length).toBe(2);
   });
 
+  it("should disable Add Route until every route has a non-whitespace value", () => {
+    render(withDialog(<EditRoute keyDetails={keyDetails} onClose={vi.fn()} />));
+
+    const addRouteButton = screen.getByRole("button", {
+      name: /Add Route/,
+    }) as HTMLButtonElement;
+    fireEvent.click(addRouteButton);
+
+    expect(addRouteButton.disabled).toBe(true);
+
+    const routeInputs = screen.getAllByPlaceholderText("e.g., dashboard/settings");
+    fireEvent.change(routeInputs[1], { target: { value: "   " } });
+    expect(addRouteButton.disabled).toBe(true);
+
+    fireEvent.change(routeInputs[1], { target: { value: "/settings" } });
+    expect(addRouteButton.disabled).toBe(false);
+  });
+
   it("should save routes", async () => {
     saveKeyAsync.mockResolvedValue({ success: true });
     const onClose = vi.fn();
     render(withDialog(<EditRoute keyDetails={keyDetails} onClose={onClose} />));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should send a 403 save response through the shared error toast", async () => {
+    const errorMessage = { Status: 403, errors: {} };
+    saveKeyAsync.mockResolvedValue({ success: false, errorMessage });
+    render(withDialog(<EditRoute keyDetails={keyDetails} onClose={vi.fn()} />));
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith({
+        title: "Error",
+        errors: errorMessage,
+      }),
+    );
   });
 
   it("should delete a route and persist the change", async () => {

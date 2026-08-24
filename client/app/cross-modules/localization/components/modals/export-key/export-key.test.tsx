@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { makeTestQueryClient } from "@/test-utils/render";
@@ -45,6 +45,8 @@ const renderExport = () =>
       </Dialog>
     </QueryClientProvider>,
   );
+
+afterEach(() => vi.useRealTimers());
 
 describe("components/modals/export-key", () => {
   beforeEach(() => {
@@ -100,8 +102,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    // Confirm the download checkbox to enable Export.
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Export Started" }));
@@ -114,7 +115,7 @@ describe("components/modals/export-key", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
     // Choose the Xlsx output type (second radio: Json, Xlsx, Csv).
     fireEvent.click(screen.getAllByRole("radio")[1]);
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
     const [payload] = exportAsync.mock.calls[0];
@@ -126,7 +127,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Download Failed" })),
@@ -167,6 +168,23 @@ describe("components/modals/export-key", () => {
     expect(screen.getByRole("button", { name: "Set date range" })).toBeTruthy();
   });
 
+  it("should match the date input width and disable future dates", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 12, 12));
+    renderExport();
+
+    fireEvent.click(screen.getByRole("button", { name: "Set date range" }));
+
+    const resetButton = await screen.findByRole("button", { name: "Reset" });
+    const popoverContent = resetButton.parentElement?.parentElement;
+    expect(popoverContent?.className).toContain("w-[var(--radix-popover-trigger-width)]");
+    expect(popoverContent?.className).toContain("min-w-0");
+
+    const futureDate = screen.getByRole("gridcell", { name: "13" });
+    expect((futureDate as HTMLButtonElement).disabled).toBe(true);
+    vi.useRealTimers();
+  });
+
   // The export component registers a notification listener; grab the latest
   // callback so the download-notification flow can be exercised directly.
   const latestNotificationHandler = () => {
@@ -179,7 +197,7 @@ describe("components/modals/export-key", () => {
     renderExport();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Select file type" }));
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    // Download checkbox is already checked by default
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(exportAsync).toHaveBeenCalled());
   };

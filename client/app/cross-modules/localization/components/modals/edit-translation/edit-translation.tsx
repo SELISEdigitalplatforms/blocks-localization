@@ -18,12 +18,14 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { formatErrorMessage } from "@/lib/error";
 
 interface EditTranslationProps {
   dialogTitle: string;
   keyDetails: IBlocksLanguageKey;
   destinationLanguageCode: string;
   languageListData: ILanguageConfig[];
+  onClose: (value?: boolean) => void;
 }
 
 const EditTranslation: React.FC<EditTranslationProps> = ({
@@ -31,6 +33,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   keyDetails,
   destinationLanguageCode,
   languageListData,
+  onClose,
 }) => {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const { isPending: isAutoTranslateLoading, mutateAsync: autoTranslateAsync } =
@@ -73,14 +76,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errors),
+          description: formatErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }
@@ -136,18 +139,19 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           title: "Success",
           description: "Language key updated successfully",
         });
+        onClose(false);
       } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   }
@@ -219,11 +223,9 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             Cancel
           </Button>
         </DialogTrigger>
-        <DialogTrigger asChild>
-          <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
-            Save
-          </Button>
-        </DialogTrigger>
+        <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
+          Save
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui-kits/form/form";
 import { useSaveLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { showErrorToast, toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { z } from "zod";
@@ -78,7 +79,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };

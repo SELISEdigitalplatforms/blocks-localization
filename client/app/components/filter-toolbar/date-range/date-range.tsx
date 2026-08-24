@@ -5,7 +5,7 @@ import { CalendarIcon } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { Separator } from "@/components/ui-kits/separator/separator";
-import { MouseEvent, useEffect, useState } from "react";
+import { MouseEvent, useState } from "react";
 
 type DateRangeType = { from?: Date; to?: Date } | null;
 
@@ -14,6 +14,7 @@ interface DateRangeFilterProps {
   value: DateRangeType;
   onChange: (date: DateRangeType) => void;
   disableFutureDates?: boolean;
+  disabled?: boolean;
 }
 
 export function DateRange({
@@ -21,16 +22,19 @@ export function DateRange({
   value,
   onChange,
   disableFutureDates = false,
+  disabled = false,
 }: DateRangeFilterProps) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateRangeType>(value);
+  const [previousValue, setPreviousValue] = useState<DateRangeType>(value);
 
-  useEffect(() => {
+  if (previousValue !== value) {
+    setPreviousValue(value);
     if (!open) {
       setDate(value);
     }
-  }, [open, value]);
+  }
 
   const handleDateSelect = (selectedDateRange: DateRangeType | undefined) => {
     if (!selectedDateRange) return setDate(null);
@@ -58,7 +62,7 @@ export function DateRange({
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className="h-8 border-dashed" disabled={disabled}>
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center">
               <CalendarIcon className="mr-2 h-4 w-4" />

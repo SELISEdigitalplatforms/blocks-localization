@@ -127,6 +127,11 @@ export interface IImportFile {
   projectKey?: string;
 }
 
+export interface ILanguageImportRequest {
+  correlationId: string;
+  fileName: string;
+}
+
 export interface IModuleGets {
   moduleName: string;
   name: string | null;

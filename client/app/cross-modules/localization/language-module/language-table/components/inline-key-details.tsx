@@ -112,9 +112,9 @@ export const InlineKeyDetails = memo(
             <p className="text-xs font-medium text-low-emphasis">Context</p>
             <p
               className="mt-1 truncate text-sm text-high-emphasis"
-              title={keyDetails.context || "-"}
+              title={keyDetails.context || "No context provided."}
             >
-              {keyDetails.context || "-"}
+              {keyDetails.context || "No context provided."}
             </p>
           </div>
           <div className="col-start-2 row-start-1 flex items-center justify-end self-start lg:col-start-3 lg:self-end">

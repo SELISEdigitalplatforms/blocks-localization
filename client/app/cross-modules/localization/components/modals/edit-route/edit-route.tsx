@@ -1,3 +1,8 @@
+import { useEffect, useMemo } from "react";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Info, Plus, Trash } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -5,18 +10,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Input } from "@/components/ui-kits/input/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Info, Plus, Trash } from "lucide-react";
-import { useMemo } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { z } from "zod";
-import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
-import { useSaveBlocksLanguageKey } from "../../../hooks/use-language-manager";
-import { IBlocksLanguageKey } from "../../../models/language";
+import { showErrorToast, toast } from "@/hooks/use-toast";
+import { IBlocksLanguageKey } from "@blocks-localization/models/language";
+import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 
 const schema = z.object({
   routes: z.array(z.string()).refine((routes) => routes.some((route) => route.trim() !== ""), {
@@ -28,12 +27,12 @@ type FormData = z.infer<typeof schema>;
 
 interface EditRouteProps {
   keyDetails: IBlocksLanguageKey;
+  isOpen: boolean;
   onClose: () => void;
 }
 
-function EditRoute({ keyDetails, onClose }: EditRouteProps) {
+function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -42,13 +41,18 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({ routes: keyDetails.routes || [""] });
+    }
+  }, [isOpen, keyDetails.routes, form]);
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     // @ts-expect-error - react-hook-form + zod type inference issue
     name: "routes",
   });
 
-  // Watch routes changes and check if at least one is valid
   const routes = useWatch({
     control: form.control,
     name: "routes",
@@ -58,77 +62,61 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
     return routes && routes.some((route) => route?.trim() !== "");
   }, [routes]);
 
+  const hasEmptyRoute = useMemo(() => {
+    return routes?.some((route) => !route?.trim()) ?? false;
+  }, [routes]);
+
+  const buildPayload = (routesToSave: string[]) => ({
+    itemId: keyDetails.itemId,
+    keyName: keyDetails.keyName,
+    moduleId: keyDetails.moduleId,
+    resources:
+      keyDetails?.resources?.length && keyDetails?.resources?.length > 0
+        ? keyDetails.resources
+        : [],
+    routes: routesToSave,
+    glossaryIds: keyDetails.glossaryIds,
+    isPartiallyTranslated: keyDetails.isPartiallyTranslated,
+    context: keyDetails.context,
+  });
+
   const addRoute = () => {
+    if (hasEmptyRoute) return;
     append("");
   };
 
   const deleteRoute = async (index: number) => {
     remove(index);
-
-    // Get updated routes after removal
     const updatedRoutes = form.getValues("routes").filter((_, i) => i !== index);
     const filteredRoutes = updatedRoutes.filter((route) => route.trim() !== "");
 
     try {
-      const payload = {
-        itemId: keyDetails.itemId,
-        keyName: keyDetails.keyName,
-        moduleId: keyDetails.moduleId,
-        resources:
-          keyDetails?.resources?.length && keyDetails?.resources?.length > 0
-            ? keyDetails.resources
-            : [],
-        routes: filteredRoutes,
-        glossaryIds: keyDetails.glossaryIds,
-        isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        context: keyDetails.context,
-      };
-
-      const res = await mutateAsync(payload);
+      const res = await mutateAsync(buildPayload(filteredRoutes));
       if (res?.success) {
-        keyDetails.routes = filteredRoutes;
         toast({
           variant: "success",
           title: "Success",
           description: "Route deleted successfully",
         });
       } else {
-        toast({
-          variant: "destructive",
+        showErrorToast({
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          errors: res?.errorMessage,
         });
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
+      showErrorToast({
         title: "Error",
-        description: JSON.stringify(error),
+        errors: error,
       });
     }
   };
 
   async function handleSave() {
-    // Filter out empty routes before saving
     const filteredRoutes = form.getValues("routes").filter((route) => route.trim() !== "");
-    keyDetails.routes = filteredRoutes;
 
     try {
-      const payload = {
-        itemId: keyDetails.itemId,
-        keyName: keyDetails.keyName,
-        moduleId: keyDetails.moduleId,
-        resources:
-          keyDetails?.resources?.length && keyDetails?.resources?.length > 0
-            ? keyDetails.resources
-            : [],
-        routes: keyDetails.routes,
-        glossaryIds: keyDetails.glossaryIds,
-        isPartiallyTranslated: keyDetails.isPartiallyTranslated,
-        context: keyDetails.context,
-      };
-
-      const res = await mutateAsync(payload);
+      const res = await mutateAsync(buildPayload(filteredRoutes));
       if (res?.success) {
         toast({
           variant: "success",
@@ -137,17 +125,15 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
         });
         onClose();
       } else {
-        toast({
-          variant: "destructive",
+        showErrorToast({
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          errors: res?.errorMessage,
         });
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
+      showErrorToast({
         title: "Error",
-        description: JSON.stringify(error),
+        errors: error,
       });
     }
   }
@@ -203,7 +189,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
                         id={`route-${index}`}
                         placeholder="e.g., dashboard/settings"
                         className="h-9 border-input bg-background shadow-none focus-visible:border-primary"
-                        value={form.watch(`routes.${index}`)}
+                        value={routes?.[index] ?? ""}
                         onChange={(e) => form.setValue(`routes.${index}`, e.target.value)}
                         disabled={isPending}
                       />
@@ -229,7 +215,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
             variant="outline"
             className="w-full gap-2 border-dashed"
             onClick={addRoute}
-            disabled={isPending}
+            disabled={isPending || hasEmptyRoute}
           >
             <Plus className="h-4 w-4" />
             <span>Add Route</span>
@@ -249,7 +235,7 @@ function EditRoute({ keyDetails, onClose }: EditRouteProps) {
           disabled={isPending || !hasValidRoute}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Updating..." : "Update"}
         </Button>
       </DialogFooter>
     </DialogContent>
