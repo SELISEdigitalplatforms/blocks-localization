@@ -82,6 +82,9 @@ E2E_BASE_URL=https://dev-localization.blocksdevelopers.com
 E2E_NO_WEBSERVER=1
 ```
 
+OS is derived automatically (`dev-os.blocksdevelopers.com`). Override with
+`E2E_OS_BASE_URL` if needed.
+
 Nothing is built or started locally. You will see this on every remote run,
 and it is correct:
 
@@ -105,6 +108,17 @@ E2E_BASE_URL=https://dev-localization.blocksdevelopers.com:5000
 ```
 
 With `E2E_NO_WEBSERVER` unset, Playwright starts `run.sh -b` itself.
+
+### Remote prod
+
+```
+E2E_BASE_URL=https://localization.seliseblocks.com
+E2E_NO_WEBSERVER=1
+PROJECT_NAME=LOCALIZATION-TEST   # optional
+```
+
+OS is derived automatically (`os.seliseblocks.com`). Use credentials valid for
+prod IAM; captcha is not automated.
 
 ## Playwright MCP (Cursor)
 
@@ -174,11 +188,15 @@ config section. The key this suite cares about is
 
 | Variable                        | Effect                                                                                             |
 | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `E2E_BASE_URL`                  | Host under test. No default; a missing value fails loudly.                                        |
-| `E2E_USERNAME` / `E2E_PASSWORD` | Dev-IAM test account (captcha is disabled on dev).                                                 |
+| `E2E_BASE_URL`                  | Blocks **Localization** host. Dev: `https://dev-localization.blocksdevelopers.com`. Prod: `https://localization.seliseblocks.com`. |
+| `E2E_OS_BASE_URL`               | Blocks **OS** host (optional). Derived when omitted: `dev-localization`→`dev-os`, `localization.`→`os.`. |
+| `PROJECT_NAME`                  | Optional prefix for created projects (`${PROJECT_NAME} ${Date.now()}`; default `Test Project`).    |
+| `E2E_USERNAME` / `E2E_PASSWORD` | IAM test account (captcha is disabled on dev).                                                     |
 | `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
 | `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
 | `E2E_SLOWMO`                    | Milliseconds of delay per action, to watch the steps themselves.                                   |
+
+See `SPEC-multi-env.md` for Dev/Prod derivation rules and create-project flow notes.
 
 ## Layout
 
@@ -203,21 +221,16 @@ e2e/
       os/                               # shared OS app: create-project + project-delete
       translations/ configuration/ glossary/ modules/ extension-guides/
     fixtures/e2e-key.ts                 # key name shared between add/delete specs
-  fixtures/                             # runtime json, gitignored (auth.json + project.json)
+  fixtures/                             # runtime json, gitignored (auth.json + project-name.json + flow-session.json)
   global-setup.ts                       # local-build only: patch served index.html
-  global-teardown.ts                    # best-effort: delete the run's project via OS
-  playwright.config.ts                  # baseURL + creds from .env.e2e; setup + chromium projects
+  playwright.config.ts                  # baseURL + creds from .env.e2e; setup + chromium + teardown projects
 ```
 
-The Playwright config runs **two projects**:
+The Playwright config runs **four projects**:
 
-- **`setup`** — only matches `tests/auth/login.spec.ts`. Logs in, creates a
-  timestamped project in the OS app (`E2E_OS_BASE_URL`), writes
-  `fixtures/auth.json` (storageState) + `fixtures/project.json` (project name).
-- **`chromium`** — every other spec. Depends on `setup`, starts authenticated
-  via `storageState`, opens the project via `AppShellPage.openProjectWithDevelopment(getProjectName())`,
-  then navigates to its feature sidebar link. No inline login.
+- **`setup`** — `tests/auth/login.spec.ts` login/logout smoke.
+- **`flow-setup`** — login, save `fixtures/flow-session.json`, then reuse or create one shared project (`flow.setup.spec.ts`).
+- **`chromium`** — feature specs; depends on `flow-setup`; reuses saved storageState.
+- **`flow-teardown`** — deletes the shared project when the suite passed (`flow.teardown.spec.ts`); keeps it on failure or `E2E_KEEP_PROJECT=1`.
 
-The global teardown deletes the project the setup created via the OS app's
-console; if anything fails it logs and continues so the real test result
-stays visible.
+Same pattern as `e2e-data` (`data-setup` → `data` → `data-teardown`).

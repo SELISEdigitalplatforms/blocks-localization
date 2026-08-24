@@ -1,15 +1,14 @@
 import { test, expect } from "../../../support/test-base";
-import { ensureAuthenticated } from "../../../support/login-helper";
+import { e2eBaseUrl } from "../../../support/env";
 import { openProjectDashboard } from "../../../support/flow-helpers";
 
-// Dummy/example flow: this project's "chromium" test project already reuses
-// the session saved by flow.setup.spec.ts (fixtures/flow-session.json), so
-// no credentials are entered here. ensureAuthenticated() is a no-op re-check
-// and only falls back to a real OIDC login (via E2E_USERNAME/E2E_PASSWORD in
-// .env.e2e) if that session turns out to be missing or expired.
+// The chromium project reuses the authenticated session saved by
+// flow.setup.spec.ts (fixtures/flow-session.json). Navigate straight to the
+// console instead of calling ensureAuthenticated(), which can re-enter the
+// OIDC flow and hit net::ERR_ABORTED when a navigation is already in progress.
 test.describe("flow: Overview menu", () => {
   test("Overview — full flow", async ({ page }) => {
-    await ensureAuthenticated(page);
+    await page.goto(`${e2eBaseUrl()}/app/console`, { waitUntil: "domcontentloaded" });
 
     await test.step("Console shows the project list with at least one environment to enter", async () => {
       await expect(page.getByRole("heading", { name: "Your Blocks Projects" })).toBeVisible({

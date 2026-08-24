@@ -1,64 +1,84 @@
-export function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is not set. Fill it in e2e/.env.e2e.`);
-  }
-  return value;
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/$/, "")
 }
 
+export function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`${name} is not set. Fill it in e2e/.env.e2e.`)
+  }
+  return value
+}
+
+/** Blocks Localization app under test (`E2E_BASE_URL`). */
 export function e2eBaseUrl(): string {
-  return requireEnv("E2E_BASE_URL");
+  return stripTrailingSlash(requireEnv("E2E_BASE_URL"))
 }
 
 export function e2eProjectId(): string | undefined {
-  const value = process.env.E2E_PROJECT_ID?.trim();
-  return value || undefined;
+  const value = process.env.E2E_PROJECT_ID?.trim()
+  return value || undefined
 }
 
 /**
- * Shared project to reuse for the flow specs, instead of creating a fresh
- * one each run.
+ * Derive Blocks OS origin from the Localization base URL.
  *
- * A freshly-created project's Development environment isn't reliably
- * enterable for several minutes after creation on this tenant (confirmed:
- * the same project failed to open for 3+ minutes across 5 retries right
- * after creation, then opened in under a minute once it had sat for a
- * while) -- a genuine backend provisioning delay, not a test bug. Until
- * that's resolved, default to reusing "Testing" rather than a
- * create-then-immediately-use cycle that can't reliably fit in a sane test
- * timeout. E2E_REUSE_PROJECT_NAME still overrides this if set.
+ * | Localization (`E2E_BASE_URL`)                          | OS (derived)                               |
+ * |--------------------------------------------------------|--------------------------------------------|
+ * | https://dev-localization.blocksdevelopers.com[:port]   | https://dev-os.blocksdevelopers.com[:port] |
+ * | https://localization.seliseblocks.com                  | https://os.seliseblocks.com                |
+ *
+ * Override anytime with `E2E_OS_BASE_URL`.
  */
-export function e2eReuseProjectName(): string {
-  return process.env.E2E_REUSE_PROJECT_NAME?.trim() || "Testing";
+export function deriveOsBaseUrlFromLocalization(localizationBaseUrl: string): string | undefined {
+  let url: URL
+  try {
+    url = new URL(localizationBaseUrl)
+  } catch {
+    return undefined
+  }
+
+  if (/^dev-localization\./i.test(url.hostname)) {
+    url.hostname = url.hostname.replace(/^dev-localization\./i, "dev-os.")
+    return stripTrailingSlash(url.origin)
+  }
+
+  if (/^localization\./i.test(url.hostname)) {
+    url.hostname = url.hostname.replace(/^localization\./i, "os.")
+    return stripTrailingSlash(url.origin)
+  }
+
+  return undefined
 }
 
-/** Blocks OS — project delete only (Logic has no project Delete UI). */
+/** Blocks OS — create-project wizard + project delete (Localization has no Delete UI). */
 export function e2eOsBaseUrl(): string {
-  const explicit = process.env.E2E_OS_BASE_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
+  const explicit = process.env.E2E_OS_BASE_URL?.trim()
+  if (explicit) return stripTrailingSlash(explicit)
 
-  const logic = e2eBaseUrl();
-  if (/dev-localization/i.test(logic)) {
-    return logic.replace(/dev-localization/i, "dev-os");
-  }
+  const derived = deriveOsBaseUrlFromLocalization(e2eBaseUrl())
+  if (derived) return derived
 
   throw new Error(
     "E2E_OS_BASE_URL is not set and could not be derived from E2E_BASE_URL. " +
-      "Set E2E_OS_BASE_URL in e2e/.env.e2e (e.g. https://dev-os.blocksdevelopers.com).",
-  );
+      "Examples:\n" +
+      "  Dev:  E2E_BASE_URL=https://dev-localization.blocksdevelopers.com  → OS https://dev-os.blocksdevelopers.com\n" +
+      "  Prod: E2E_BASE_URL=https://localization.seliseblocks.com          → OS https://os.seliseblocks.com\n" +
+      "Or set E2E_OS_BASE_URL explicitly in e2e/.env.e2e.",
+  )
 }
 
 export function e2eCredentials(): { email: string; password: string } {
   return {
     email: requireEnv("E2E_USERNAME"),
     password: requireEnv("E2E_PASSWORD"),
-  };
+  }
 }
 
 export function e2eTestEmailDomain(): string {
-  return process.env.E2E_TEST_EMAIL_DOMAIN ?? "example.com";
+  return process.env.E2E_TEST_EMAIL_DOMAIN ?? "example.com"
 }
 
 export function uniqueTestEmail(localPart = "e2e"): string {
-  return `${localPart}.${Date.now()}@${e2eTestEmailDomain()}`;
+  return `${localPart}.${Date.now()}@${e2eTestEmailDomain()}`
 }

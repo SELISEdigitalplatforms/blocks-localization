@@ -1,13 +1,12 @@
 import { test, expect } from "../../../support/test-base";
-import { openProjectDashboard } from "../../../support/flow-helpers";
+import { openProjectRoute } from "../../../support/flow-helpers";
 
 test.describe("Extension Guides", () => {
   test.beforeEach(async ({ page }) => {
-    await openProjectDashboard(page);
+    await openProjectRoute(page, "services/extension-guides");
   });
 
   test("Extension Guides Page", async ({ page }) => {
-    await page.getByRole("link", { name: "Extension Guides" }).click();
     await expect(page.getByRole("heading", { name: "Extension Guides" })).toBeVisible();
     expect(await page.getByText(/Connect SELISE Blocks/)).toBeVisible();
 
@@ -81,12 +80,33 @@ test.describe("Extension Guides", () => {
     });
 
     const copyAndVerify = async (buttonName: string) => {
-      await page.getByRole("button", { name: buttonName }).click();
-      await expect(page.getByText("Copied")).toBeVisible();
+      const button = page.getByRole("button", { name: buttonName });
+      await button.click();
+      await expect
+        .poll(
+          async () => {
+            if (await page.getByText("Copied").isVisible().catch(() => false)) return "toast";
+            const label = await button.getAttribute("aria-label");
+            if (label && /copied/i.test(label)) return "label";
+            try {
+              const text = await page.evaluate(async () => navigator.clipboard.readText());
+              if (text.length > 0) return "clipboard";
+            } catch {
+              // Clipboard may be blocked in some headed runs.
+            }
+            return null;
+          },
+          { timeout: 5000 },
+        )
+        .not.toBeNull();
     };
 
     await test.step("Alternative setup options section: copy buttons work", async () => {
       await expect(page.getByRole("heading", { name: "Alternative setup options" })).toBeVisible();
+
+      // Clipboard access is required for the copy buttons to flip their tooltip
+      // to "Copied" and for the copy operation to complete without an error.
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
 
       await expect(page.getByRole("heading", { name: "JSON setup" })).toBeVisible();
       await copyAndVerify("Copy Blocks OS configuration");

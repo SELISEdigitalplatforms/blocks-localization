@@ -2,48 +2,48 @@
  * TypeScript mirror of features.mjs — keep both files in sync when adding features.
  * The runner reads features.mjs; this file is for IDE autocomplete in specs if needed.
  */
-export type WorkflowFeature = {
+export type FlowFeature = {
   id: string
   name: string
   enabled: boolean
   spec: string
 }
 
-export const WORKFLOW_FEATURES: WorkflowFeature[] = [
+export const FLOW_FEATURES: FlowFeature[] = [
   {
-    id: "list",
-    name: "Workflow – list",
+    id: "overview",
+    name: "Overview — full flow",
     enabled: true,
-    spec: "tests/workflow/workflow-list.spec.ts",
+    spec: "tests/flows/overview/overview-flow.spec.ts",
   },
   {
-    id: "create",
-    name: "Workflow – create",
+    id: "translations",
+    name: "Translations page",
     enabled: true,
-    spec: "tests/workflow/create-workflow.spec.ts",
+    spec: "tests/flows/translations/translations.spec.ts",
   },
   {
-    id: "rename",
-    name: "Workflow – rename",
+    id: "modules",
+    name: "Module page",
     enabled: true,
-    spec: "tests/workflow/rename-workflow.spec.ts",
+    spec: "tests/flows/modules/module.spec.ts",
   },
   {
-    id: "duplicate",
-    name: "Workflow – duplicate",
+    id: "glossary",
+    name: "Glossary page",
     enabled: true,
-    spec: "tests/workflow/duplicate-workflow.spec.ts",
+    spec: "tests/flows/glossary/glossary.spec.ts",
   },
   {
-    id: "delete",
-    name: "Workflow – delete",
+    id: "configuration",
+    name: "Configuration page",
     enabled: true,
-    spec: "tests/workflow/delete-workflow.spec.ts",
+    spec: "tests/flows/configuration/configuration.spec.ts",
   },
   {
-    id: "editor",
-    name: "Workflow – editor",
+    id: "extension-guides",
+    name: "Extension Guides page",
     enabled: true,
-    spec: "tests/workflow/workflow-editor.spec.ts",
+    spec: "tests/flows/extension-guides/extension-guides.spec.ts",
   },
 ]

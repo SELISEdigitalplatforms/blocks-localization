@@ -1,17 +1,15 @@
 import { test, expect } from "../../../support/test-base";
-import { openProjectDashboard } from "../../../support/flow-helpers";
+import { openProjectRoute } from "../../../support/flow-helpers";
 
 test.describe("Modules", () => {
   test.beforeEach(async ({ page }) => {
-    await openProjectDashboard(page);
+    await openProjectRoute(page, "services/modules");
   });
 
   test("Module Page", async ({ page }) => {
     await test.step("Language Modules page loads", async () => {
-      await page.getByRole("link", { name: "Modules" }).click();
-      await page.getByRole("heading", { name: "Modules", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Language Modules" })).toBeVisible({
-        timeout: 15000,
+        timeout: 15_000,
       });
 
       await expect(page.getByRole("button", { name: "New Module" })).toBeVisible();

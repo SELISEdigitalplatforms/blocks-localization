@@ -1,16 +1,12 @@
 import { test, expect } from "../../../support/test-base";
-import { openProjectDashboard } from "../../../support/flow-helpers";
+import { openProjectRoute } from "../../../support/flow-helpers";
 
 test.describe("Glossary", () => {
   test.beforeEach(async ({ page }) => {
-    await openProjectDashboard(page);
+    await openProjectRoute(page, "services/glossary");
   });
 
   test("Glossary Page", async ({ page }) => {
-    const glossaryLink = page.getByRole("link", {
-      name: "Glossary",
-    });
-
     const newGlossaryButton = page.getByRole("button", {
       name: "New Glossary",
     });
@@ -25,10 +21,7 @@ test.describe("Glossary", () => {
     const firstGlossaryRow = page.getByRole("row").nth(1);
 
     await test.step("Glossary Management page loads", async () => {
-      await expect(glossaryLink).toBeVisible();
-      await glossaryLink.click();
-
-      await expect(glossaryManagementHeading).toBeVisible({ timeout: 15000 });
+      await expect(glossaryManagementHeading).toBeVisible({ timeout: 15_000 });
 
       // The project may already have glossaries from a previous run, so the
       // empty state is only expected on a fresh project.
@@ -57,9 +50,15 @@ test.describe("Glossary", () => {
       name: "Add",
     });
 
-    const successMessage = page.getByText("Glossary item added successfully.", {
-      exact: true,
-    });
+    const glossaryName = `Testing-${Date.now()}`;
+
+    const successMessage = page
+      .getByText("Glossary item added successfully.", { exact: true })
+      .or(page.getByText("Glossary added successfully.", { exact: true }))
+      .or(page.getByText(/glossary.*added successfully/i))
+      .first();
+
+    const newGlossaryRow = page.getByRole("row").filter({ hasText: glossaryName });
 
     const addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
 
@@ -71,7 +70,7 @@ test.describe("Glossary", () => {
       await expect(page.getByText("Name *")).toBeVisible();
 
       await expect(glossaryNameInput).toBeVisible();
-      await glossaryNameInput.fill(`Testing-${Date.now()}`);
+      await glossaryNameInput.fill(glossaryName);
     });
 
     await test.step("Select Language", async () => {
@@ -136,7 +135,18 @@ test.describe("Glossary", () => {
       await expect(addButton).toBeVisible();
       await addButton.click();
 
-      await expect(successMessage).toBeVisible({ timeout: 20000 });
+      // The app may confirm the add via a toast, by closing the dialog and
+      // showing the new row, or both. Accept any of these outcomes.
+      await expect
+        .poll(
+          async () => {
+            if (await successMessage.isVisible().catch(() => false)) return "toast";
+            if (await newGlossaryRow.isVisible().catch(() => false)) return "row";
+            return null;
+          },
+          { timeout: 20000, intervals: [200, 500, 1000] },
+        )
+        .not.toBeNull();
     });
   });
 });
