@@ -198,39 +198,60 @@ config section. The key this suite cares about is
 
 See `SPEC-multi-env.md` for Dev/Prod derivation rules and create-project flow notes.
 
+## Lifecycle
+
+Playwright projects: **`localization-setup` → `localization` → `localization-teardown`**
+
+1. **Suite setup** (`tests/suite/suite.setup.spec.ts`) — OIDC login, reuse or create one shared project, write `localization-project.json`, then save `localization-session.json` **after** the dashboard is open (so localStorage keeps project/env).
+2. **Features** (`tests/01-overview` … `06-extension-guides`) — use session; open pages with a direct `goto` to `/app/{itemId}/dashboard` or `/app/{itemId}/services/...`.
+3. **Session / context recovery** — login gate or console bounce → re-auth if needed, one env-chip open to reseed localStorage, persist session (never create a new project).
+4. **Suite teardown** (`tests/suite/suite.teardown.spec.ts`) — delete on **Blocks OS** only when every `localization` test passed (unless `E2E_KEEP_PROJECT=1`).
+
 ## Layout
 
 ```
 e2e/
   tests/
-    auth/login.spec.ts                  # setup project: login + create run's project in OS
-    modules/
-      translations/translations.spec.ts          # Translation Keys + History tabs
-      translations/new-key.spec.ts               # New Key + Key Details
-      configuration/configuration.spec.ts        # Languages + Webhook
-      glossary/glossary.spec.ts                  # Glossary list + details
-      modules/modules.spec.ts                    # Modules list + details
-      extension-guides/extension-guides.spec.ts  # Extension Guides
+    auth/login.spec.ts
+    suite/
+      suite.setup.spec.ts             # login → project → session (after dashboard open)
+      suite.teardown.spec.ts          # OS delete when suite passed
+    01-overview/overview.spec.ts
+    02-translations/translations.spec.ts
+    03-modules/modules.spec.ts
+    04-glossary/glossary.spec.ts
+    05-configuration/configuration.spec.ts
+    06-extension-guides/extension-guides.spec.ts
   support/
-    auth.ts                             # login() (setup project only)
-    project-name.ts                     # reads fixtures/project.json
-    test-base.ts                        # shared test/expect with headed pause + helpers
-    pages/
-      app/                              # console + project shell (AppShellPage)
-      login/                            # Localization login + dev-iam OIDC
-      os/                               # shared OS app: create-project + project-delete
-      translations/ configuration/ glossary/ modules/ extension-guides/
-    fixtures/e2e-key.ts                 # key name shared between add/delete specs
-  fixtures/                             # runtime json, gitignored (auth.json + project-name.json + flow-session.json)
-  global-setup.ts                       # local-build only: patch served index.html
-  playwright.config.ts                  # baseURL + creds from .env.e2e; setup + chromium + teardown projects
+    env.ts
+    login-helper.ts
+    create-and-delete-project.ts
+    localization-project.ts           # localization-session / localization-project fixtures
+    suite-helpers.ts                  # openSharedProjectDashboard
+    localization-helpers.ts           # direct /app/{id}/dashboard + /services/... routes
+    run-outcome.ts
+    test-base.ts
+  fixtures/                           # gitignored (localization-session.json + localization-project.json)
+  SPEC-multi-env.md
+  playwright.config.ts
 ```
 
-The Playwright config runs **four projects**:
+Playwright projects:
 
-- **`setup`** — `tests/auth/login.spec.ts` login/logout smoke.
-- **`flow-setup`** — login, save `fixtures/flow-session.json`, then reuse or create one shared project (`flow.setup.spec.ts`).
-- **`chromium`** — feature specs; depends on `flow-setup`; reuses saved storageState.
-- **`flow-teardown`** — deletes the shared project when the suite passed (`flow.teardown.spec.ts`); keeps it on failure or `E2E_KEEP_PROJECT=1`.
+- **`setup`** — `tests/auth/login.spec.ts` login smoke
+- **`localization-setup`** — reuse/create shared project, save session **after** dashboard open
+- **`localization`** — feature specs; `storageState` from `localization-session.json`
+- **`localization-teardown`** — OS delete when suite passed (`E2E_KEEP_PROJECT=1` keeps it)
 
-Same pattern as `e2e-data` (`data-setup` → `data` → `data-teardown`).
+Feature routes (direct URL):
+
+| Area | Path |
+|---|---|
+| Overview | `/app/{itemId}/dashboard` |
+| Translations | `/app/{itemId}/services/language` |
+| Modules | `/app/{itemId}/services/modules` |
+| Glossary | `/app/{itemId}/services/glossary` |
+| Configuration | `/app/{itemId}/services/configure` |
+| Extension Guides | `/app/{itemId}/services/extension-guides` |
+
+Same suite shape as `blocks-utilities/e2e` (`utilities-setup` → `utilities` → `utilities-teardown`).

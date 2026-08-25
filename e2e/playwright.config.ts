@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test"
 import dotenv from "dotenv"
+import fs from "fs"
 import path from "path"
 
 dotenv.config({ path: path.resolve(__dirname, ".env.e2e") })
@@ -13,6 +14,7 @@ if (!baseURL) {
 }
 
 const autoStartServer = process.env.E2E_NO_WEBSERVER !== "1"
+const localizationSessionPath = path.resolve(__dirname, "fixtures/localization-session.json")
 
 export default defineConfig({
   testDir: "./tests",
@@ -52,8 +54,13 @@ export default defineConfig({
     : {}),
   projects: [
     {
+      name: "setup",
+      testMatch: /auth[\\/]login\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
       name: "localization-setup",
-      testMatch: /flows[\\/]flow\.setup\.spec\.ts/,
+      testMatch: /suite\.setup\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
@@ -61,23 +68,25 @@ export default defineConfig({
       testMatch: /.*\.spec\.ts/,
       testIgnore: [
         /auth[\\/]login\.spec\.ts/,
-        /flows[\\/]flow\.(setup|teardown)\.spec\.ts/,
+        /suite\.(setup|teardown)\.spec\.ts/,
       ],
       dependencies: ["localization-setup"],
       use: {
         ...devices["Desktop Chrome"],
-        // Always reference the path — setup writes this file before dependent
-        // tests start. Do not gate on fs.existsSync at config load time.
-        storageState: "fixtures/flow-session.json",
+        ...(fs.existsSync(localizationSessionPath)
+          ? { storageState: "fixtures/localization-session.json" }
+          : {}),
       },
     },
     {
       name: "localization-teardown",
-      testMatch: /flows[\\/]flow\.teardown\.spec\.ts/,
+      testMatch: /suite\.teardown\.spec\.ts/,
       dependencies: ["localization"],
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "fixtures/flow-session.json",
+        ...(fs.existsSync(localizationSessionPath)
+          ? { storageState: "fixtures/localization-session.json" }
+          : {}),
       },
     },
   ],

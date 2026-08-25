@@ -3,10 +3,13 @@ import fs from "fs"
 import path from "path"
 import { reuseOrCreateSharedProject } from "../../support/create-and-delete-project"
 import { loginThroughOidc } from "../../support/login-helper"
-import { FLOW_SESSION_PATH, writeFlowProject } from "../../support/flow-project"
+import {
+  LOCALIZATION_SESSION_PATH,
+  writeLocalizationProject,
+} from "../../support/localization-project"
 import { resetRunOutcome } from "../../support/run-outcome"
 
-test.describe("localization setup", () => {
+test.describe("localization suite setup", () => {
   test("login, reuse or create one shared project", async ({ page }) => {
     test.setTimeout(300_000)
     resetRunOutcome()
@@ -16,18 +19,21 @@ test.describe("localization setup", () => {
       page.getByRole("heading", { name: /Your Blocks Projects|Welcome to SELISE Blocks/ }),
     ).toBeVisible({ timeout: 30_000 })
 
-    fs.mkdirSync(path.dirname(FLOW_SESSION_PATH), { recursive: true })
-    await page.context().storageState({ path: FLOW_SESSION_PATH })
-
     const { projectName, dashboardUrl, itemId } = await reuseOrCreateSharedProject(page)
     if (!itemId) {
       throw new Error(`Could not resolve itemId from dashboard URL: ${dashboardUrl}`)
     }
 
-    writeFlowProject({
+    writeLocalizationProject({
       projectName,
       itemId,
       dashboardUrl: dashboardUrl.replace(/\?.*$/, ""),
     })
+
+    // Persist AFTER the shared project is open so localStorage keeps the selected
+    // project/environment. Saving only post-login makes /app/{id}/dashboard bounce
+    // back to /app/console in feature tests.
+    fs.mkdirSync(path.dirname(LOCALIZATION_SESSION_PATH), { recursive: true })
+    await page.context().storageState({ path: LOCALIZATION_SESSION_PATH })
   })
 })

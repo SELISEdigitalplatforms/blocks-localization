@@ -1,11 +1,11 @@
-import { test, expect } from "../../../support/test-base";
-import { openProjectRoute } from "../../../support/flow-helpers";
+import { test, expect } from "../../support/test-base";
+import { openTranslations } from "../../support/localization-helpers";
 import path from "path";
 
 test.describe("Translations", () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(180_000);
-    await openProjectRoute(page, "services/language");
+    await openTranslations(page);
   });
 
   test("Translations page", async ({ page }) => {
@@ -123,7 +123,7 @@ test.describe("Translations", () => {
     const chooseFileButton = page.getByRole("button", {
       name: "Choose File",
     });
-    const jsonFile = path.resolve(__dirname, "../../../fixtures/Uilm_template.json");
+    const jsonFile = path.resolve(__dirname, "../../fixtures/Uilm_template.json");
 
     await test.step("Upload a JSON file, remove it, then re-upload it", async () => {
       await expect(chooseFileButton).toBeVisible({ timeout: 10000 });

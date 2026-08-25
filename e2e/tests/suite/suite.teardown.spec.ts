@@ -2,17 +2,17 @@ import { test } from "@playwright/test"
 import { deleteCreatedProject } from "../../support/create-and-delete-project"
 import { ensureAuthenticated } from "../../support/login-helper"
 import {
-  clearFlowProject,
-  clearFlowSession,
-  readFlowProject,
-} from "../../support/flow-project"
+  clearLocalizationProject,
+  clearLocalizationSession,
+  readLocalizationProject,
+} from "../../support/localization-project"
 import { shouldDeleteSharedProject } from "../../support/run-outcome"
 
-test.describe("localization teardown", () => {
+test.describe("localization suite teardown", () => {
   test("delete shared project when all suite tests passed", async ({ page }) => {
     test.setTimeout(120_000)
 
-    const fixture = readFlowProject()
+    const fixture = readLocalizationProject()
     if (!fixture) return
 
     if (!shouldDeleteSharedProject()) {
@@ -28,8 +28,8 @@ test.describe("localization teardown", () => {
       itemId: fixture.itemId,
     })
 
-    clearFlowProject()
-    clearFlowSession()
+    clearLocalizationProject()
+    clearLocalizationSession()
 
     if (!deleted) {
       console.log(

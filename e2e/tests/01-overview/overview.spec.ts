@@ -1,14 +1,13 @@
-import { test, expect } from "../../../support/test-base";
-import { e2eBaseUrl } from "../../../support/env";
-import { openProjectDashboard } from "../../../support/flow-helpers";
+import { test, expect } from "../../support/test-base";
+import {
+  openLocalizationConsole,
+  openProjectDashboard,
+} from "../../support/localization-helpers";
 
-// The chromium project reuses the authenticated session saved by
-// flow.setup.spec.ts (fixtures/flow-session.json). Navigate straight to the
-// console instead of calling ensureAuthenticated(), which can re-enter the
-// OIDC flow and hit net::ERR_ABORTED when a navigation is already in progress.
-test.describe("flow: Overview menu", () => {
+// Uses localization-session.json from suite.setup (persisted after project open).
+test.describe("Overview", () => {
   test("Overview — full flow", async ({ page }) => {
-    await page.goto(`${e2eBaseUrl()}/app/console`, { waitUntil: "domcontentloaded" });
+    await openLocalizationConsole(page);
 
     await test.step("Console shows the project list with at least one environment to enter", async () => {
       await expect(page.getByRole("heading", { name: "Your Blocks Projects" })).toBeVisible({
@@ -27,9 +26,10 @@ test.describe("flow: Overview menu", () => {
       }
     });
 
-    await test.step("Opening the Development environment reaches Project Details", async () => {
+    await test.step("Direct open /app/{id}/dashboard reaches Project Details", async () => {
       await openProjectDashboard(page);
       await expect(page.getByText("X-Blocks-Key", { exact: true })).toBeVisible();
+      await expect(page).toHaveURL(/\/app\/[^/]+\/dashboard/);
     });
 
     await test.step("Project/Environment switcher buttons reflect the current context", async () => {

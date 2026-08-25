@@ -1,9 +1,9 @@
-import { test, expect } from "../../../support/test-base";
-import { openProjectRoute } from "../../../support/flow-helpers";
+import { test, expect } from "../../support/test-base";
+import { openGlossary } from "../../support/localization-helpers";
 
 test.describe("Glossary", () => {
   test.beforeEach(async ({ page }) => {
-    await openProjectRoute(page, "services/glossary");
+    await openGlossary(page);
   });
 
   test("Glossary Page", async ({ page }) => {

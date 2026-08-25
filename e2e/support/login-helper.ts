@@ -14,6 +14,30 @@ const consoleHeading = (page: Page) =>
     name: /Your Blocks Projects|Welcome to SELISE Blocks/,
   })
 
+/** True when the page is the product login gate or OIDC credential form. */
+export async function isLoginSurface(page: Page): Promise<boolean> {
+  if (
+    await page
+      .getByRole("button", { name: "Log in to your account" })
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
+    return true
+  }
+
+  if (await oidcEmailField(page).isVisible({ timeout: 500 }).catch(() => false)) {
+    return true
+  }
+
+  try {
+    if (/\/login\/?$/i.test(new URL(page.url()).pathname)) return true
+  } catch {
+    // ignore invalid URL
+  }
+
+  return false
+}
+
 async function fillCredentialsAndSubmit(page: Page) {
   const { email, password } = e2eCredentials()
   const emailField = oidcEmailField(page)

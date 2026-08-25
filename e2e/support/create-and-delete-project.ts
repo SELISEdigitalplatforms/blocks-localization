@@ -127,18 +127,52 @@ async function waitForProjectCard(
   throw new Error(`Project "${projectName}" did not appear on the ${host} console`)
 }
 
-/** Localization project dashboard — Project Details / X-Blocks-Key. */
-async function waitForLocalizationDashboardReady(page: Page) {
-  await expect(async () => {
-    await ensureLoggedIn(page)
-    await expect(page).toHaveURL(/\/app\/(?!project\/)[^/]+\/dashboard/, { timeout: 5_000 })
-    await expect(
-      page
-        .getByRole("heading", { name: "Project Details" })
-        .or(page.getByText(/X-Blocks-Key/))
-        .first(),
-    ).toBeVisible({ timeout: 5_000 })
-  }).toPass({ timeout: 30_000 })
+const consoleProjectsHeading = (page: Page) =>
+  page.getByRole("heading", { name: /Your Blocks Projects|Welcome to SELISE Blocks/ })
+
+/** Localization project dashboard — Project Details / X-Blocks-Key (fails fast if bounced to console). */
+export async function waitForLocalizationDashboardReady(page: Page, projectName?: string) {
+  const ready = page
+    .getByRole("heading", { name: "Project Details" })
+    .or(page.getByText(/X-Blocks-Key/))
+    .first()
+
+  const bouncedToConsole = async () => {
+    if (/\/app\/console\/?$/i.test(new URL(page.url()).pathname)) return true
+    return consoleProjectsHeading(page).isVisible({ timeout: 500 }).catch(() => false)
+  }
+
+  const label = projectName ?? "shared project"
+  const outcome = await Promise.race([
+    ready.waitFor({ state: "visible", timeout: 30_000 }).then(() => "ready" as const),
+    page
+      .waitForURL(/\/app\/console\/?$/i, { timeout: 30_000 })
+      .then(() => "console" as const)
+      .catch(() => null),
+    consoleProjectsHeading(page)
+      .waitFor({ state: "visible", timeout: 30_000 })
+      .then(() => "console" as const)
+      .catch(() => null),
+  ])
+
+  if (outcome === "console" || (await bouncedToConsole())) {
+    throw new Error(
+      `Expected project dashboard for "${label}" but landed on the console. ` +
+        "Suite setup must persist storageState after opening the shared project " +
+        "(project/environment localStorage). Re-run localization-setup.",
+    )
+  }
+
+  if (outcome !== "ready") {
+    await expect(ready).toBeVisible({ timeout: 1_000 })
+  }
+
+  await expect(page).toHaveURL(/\/app\/(?!project\/)[^/]+\/dashboard/, { timeout: 10_000 })
+  if (projectName) {
+    await expect(page.getByText(projectName, { exact: true }).first()).toBeVisible({
+      timeout: 30_000,
+    })
+  }
 }
 
 /** OS project dashboard — project name heading + Delete button. */

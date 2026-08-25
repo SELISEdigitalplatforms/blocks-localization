@@ -1,9 +1,9 @@
-import { test, expect } from "../../../support/test-base";
-import { openProjectRoute } from "../../../support/flow-helpers";
+import { test, expect } from "../../support/test-base";
+import { openExtensionGuides } from "../../support/localization-helpers";
 
 test.describe("Extension Guides", () => {
   test.beforeEach(async ({ page }) => {
-    await openProjectRoute(page, "services/extension-guides");
+    await openExtensionGuides(page);
   });
 
   test("Extension Guides Page", async ({ page }) => {
