@@ -1,4 +1,5 @@
 import { test, expect } from "../../support/test-base";
+import { ModulesPage } from "../../support/pages/modules.page";
 import { openModules } from "../../support/localization-helpers";
 
 test.describe("Modules", () => {
@@ -7,126 +8,62 @@ test.describe("Modules", () => {
   });
 
   test("Module Page", async ({ page }) => {
+    const modules = new ModulesPage(page);
+
     await test.step("Language Modules page loads", async () => {
-      await expect(page.getByRole("heading", { name: "Language Modules" })).toBeVisible({
-        timeout: 15_000,
-      });
-
-      await expect(page.getByRole("button", { name: "New Module" })).toBeVisible();
-
-      await expect(page.getByRole("textbox", { name: "Search modules..." })).toBeVisible();
-
-      await expect(page.getByRole("columnheader", { name: "Module Name" })).toBeVisible();
-
-      await expect(page.getByRole("columnheader", { name: "Created By" })).toBeVisible();
-
-      await expect(page.getByRole("columnheader", { name: "Created Date" })).toBeVisible();
-
-      await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+      await modules.expectPageLoaded();
+      await modules.expectSearchVisible();
+      await modules.expectTableHeadersVisible();
     });
 
-    const newModuleButton = page.getByRole("button", {
-      name: "New Module",
-    });
-
-    const moduleNameInput = page.getByRole("textbox", {
-      name: "Enter Module name",
-    });
-
-    const createButton = page.getByRole("button", {
-      name: "Create",
-    });
-
-    const moduleNameError = page.getByText("Module name is required", {
-      exact: true,
-    });
+    const newModuleButton = page.getByRole("button", { name: "New Module" });
 
     await test.step("Create Module: blank/whitespace name is rejected", async () => {
       await expect(newModuleButton).toBeVisible();
-      await newModuleButton.click();
-
-      await expect(moduleNameInput).toBeVisible();
-
-      await moduleNameInput.fill("   ");
-
-      await expect(moduleNameError).toBeVisible({ timeout: 10000 });
-      // await expect(createButton).toBeDisabled();
-      await page.getByRole("button", { name: "Close" }).click();
-    });
-
-    const newModuleHeading = page.getByRole("heading", {
-      name: "New module",
-    });
-
-    const moduleAddedMessage = page.getByText("New module added", {
-      exact: true,
+      await modules.openNewModuleDialog();
+      await modules.expectModuleNameInputVisible();
+      await modules.fillModuleName("   ");
+      await modules.expectModuleNameErrorVisible();
+      await modules.closeNewModuleDialog();
     });
 
     await test.step("Create Module: valid name succeeds", async () => {
       await expect(newModuleButton).toBeVisible();
-      await newModuleButton.click();
-
-      await expect(newModuleHeading).toBeVisible();
-
-      await expect(moduleNameInput).toBeVisible();
-      await moduleNameInput.fill(`Testing-${Date.now()}`);
-
-      await expect(createButton).toBeVisible();
-      await createButton.click();
-      await expect(moduleAddedMessage).toBeVisible({ timeout: 20000 });
+      await modules.openNewModuleDialog();
+      await modules.expectModuleNameInputVisible();
+      await modules.fillModuleName(`Testing-${Date.now()}`);
+      await modules.clickCreateButton();
+      await modules.expectModuleAddedSuccess();
     });
 
     await test.step("Module Details page: Details tab", async () => {
-      await page.getByRole("cell", { name: "5/5/" }).first().click();
-
-      await expect(page.getByRole("tab", { name: "Details" })).toBeVisible({ timeout: 15000 });
-
-      // About Section
-      await expect(page.getByRole("heading", { name: "About" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Module Name" })).toBeVisible();
-
-      await expect(page.getByRole("heading", { name: "Created By" })).toBeVisible();
-
-      await expect(page.getByRole("heading", { name: "Created Date" })).toBeVisible();
-
-      await expect(page.getByRole("heading", { name: "Last Update Date" })).toBeVisible();
-
-      await expect(page.getByRole("heading", { name: "Last Updated By" })).toBeVisible();
+      await modules.openModuleDetails("5/5/");
+      await modules.expectDetailsTabLoaded();
     });
 
     await test.step("Module Details page: Glossary tab", async () => {
-      await page.getByRole("tab", { name: "Glossary" }).click();
-      await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: /Tagged Glossaries/ })).toBeVisible({
-        timeout: 15000,
-      });
-
-      // A freshly created module has no tagged glossaries, but the shared dev
-      // project may already carry some from a previous run, so accept either state.
-      const noGlossariesTagged = page.getByText(/No glossaries tagged to this/);
-      const taggedGlossariesTable = page.getByRole("table");
-      await expect(noGlossariesTagged.or(taggedGlossariesTable).first()).toBeVisible({
-        timeout: 15000,
-      });
+      await modules.switchToGlossaryTab();
+      await modules.expectGlossaryTabLoaded();
+      await modules.expectNoGlossariesTaggedOrTableVisible();
     });
 
-    // const actionsMenu = page.locator("#radix-_r_2cn_");
+    await test.step("Module row actions: Edit and Tag glossary", async () => {
+      const moduleName = `Testing-${Date.now()}`;
+      await openModules(page);
+      await expect(newModuleButton).toBeVisible();
+      await modules.openNewModuleDialog();
+      await modules.expectModuleNameInputVisible();
+      await modules.fillModuleName(moduleName);
+      await modules.clickCreateButton();
+      await modules.expectModuleAddedSuccess();
+      await modules.closeNewModuleDialog();
 
-    // const editMenuItem = page.getByRole("menuitem", {
-    //   name: "Edit",
-    // });
+      await modules.searchModules(moduleName);
+      await modules.openEditModuleDialog(moduleName);
+      await modules.closeNewModuleDialog();
 
-    // const tagGlossaryText = page.getByText("Tag glossary");
-
-    // // Open actions menu
-    // await expect(actionsMenu).toBeVisible();
-    // await actionsMenu.click();
-
-    // // Edit
-    // await expect(editMenuItem).toBeVisible();
-    // await editMenuItem.click();
-
-    // // Tag glossary
-    // await expect(tagGlossaryText).toBeVisible();
+      await modules.openTagGlossaryDialog(moduleName);
+      await modules.closeNewModuleDialog();
+    });
   });
 });
