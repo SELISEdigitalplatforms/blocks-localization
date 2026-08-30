@@ -131,6 +131,7 @@ export async function openProjectRoute(page: Page, route: LocalizationRoute | st
     await expect(ready).toBeVisible({ timeout: 30_000 })
   }
 
+  await persistSuiteSession(page)
   return { projectName: fixture.projectName }
 }
 
@@ -167,4 +168,12 @@ export async function openConfiguration(page: Page) {
 
 export async function openExtensionGuides(page: Page) {
   return openProjectRoute(page, "services/extension-guides")
+}
+
+export async function openNewKey(page: Page) {
+  return openProjectRoute(page, "services/language/translations/new-key")
+}
+
+export async function openLogs(page: Page) {
+  return openProjectRoute(page, "services/language/logs")
 }

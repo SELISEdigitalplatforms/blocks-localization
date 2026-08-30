@@ -1,152 +1,77 @@
 import { test, expect } from "../../support/test-base";
+import { GlossaryPage } from "../../support/pages/glossary.page";
 import { openGlossary } from "../../support/localization-helpers";
 
 test.describe("Glossary", () => {
-  test.beforeEach(async ({ page }) => {
+  test("Glossary — full flow", async ({ page }) => {
+    test.setTimeout(180_000);
     await openGlossary(page);
-  });
 
-  test("Glossary Page", async ({ page }) => {
-    const newGlossaryButton = page.getByRole("button", {
-      name: "New Glossary",
-    });
-
-    const glossaryManagementHeading = page.getByRole("heading", {
-      name: "Glossary Management",
-    });
-
-    const noGlossariesMessage = page.getByText("No glossaries yet");
-
-    const glossaryDescription = page.getByText("Glossaries help keep");
-    const firstGlossaryRow = page.getByRole("row").nth(1);
+    const glossary = new GlossaryPage(page);
 
     await test.step("Glossary Management page loads", async () => {
-      await expect(glossaryManagementHeading).toBeVisible({ timeout: 15_000 });
-
-      // The project may already have glossaries from a previous run, so the
-      // empty state is only expected on a fresh project.
-      if (await noGlossariesMessage.isVisible().catch(() => false)) {
-        await expect(glossaryDescription).toBeVisible({ timeout: 10000 });
-      } else {
-        await expect(firstGlossaryRow).toBeVisible({ timeout: 10000 });
-        await expect(firstGlossaryRow).toBeVisible({ timeout: 10000 });
-      }
-      await expect(newGlossaryButton).toBeVisible();
-    });
-
-    const glossaryNameInput = page.getByRole("textbox", {
-      name: "Name *",
-    });
-
-    const contextInput = page.getByRole("textbox", {
-      name: "Context",
-    });
-
-    const additionalNotesInput = page.getByRole("textbox", {
-      name: "Additional Notes",
-    });
-
-    const addButton = page.getByRole("button", {
-      name: "Add",
+      await glossary.expectPageLoaded();
     });
 
     const glossaryName = `Testing-${Date.now()}`;
 
-    const successMessage = page
-      .getByText("Glossary item added successfully.", { exact: true })
-      .or(page.getByText("Glossary added successfully.", { exact: true }))
-      .or(page.getByText(/glossary.*added successfully/i))
-      .first();
-
-    const newGlossaryRow = page.getByRole("row").filter({ hasText: glossaryName });
-
-    const addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
-
     await test.step("Open Add Glossary and fill in the name", async () => {
-      await newGlossaryButton.click();
-
-      await expect(page.getByRole("heading", { name: "Add Glossary" })).toBeVisible();
-
-      await expect(page.getByText("Name *")).toBeVisible();
-
-      await expect(glossaryNameInput).toBeVisible();
-      await glossaryNameInput.fill(glossaryName);
+      await glossary.openNewGlossaryDialog();
+      await glossary.expectAddGlossaryDialogLoaded();
+      await glossary.fillGlossaryName(glossaryName);
     });
 
     await test.step("Select Language", async () => {
-      // Required for submission; the Add click otherwise silently fails to
-      // submit and the dialog just stays open with no error.
-      const languageField = addGlossaryDialog.getByRole("button", { name: "Language" });
-      await expect(languageField).toBeVisible();
-
-      await languageField.click();
-
-      await expect(page.getByRole("option", { name: "English" })).toBeVisible({ timeout: 10000 });
-
-      await page.getByRole("option", { name: "English" }).click();
+      await glossary.selectLanguage("English");
     });
 
     await test.step("Select Type", async () => {
-      const typeField = addGlossaryDialog.getByText("Type", { exact: true });
-      await expect(typeField).toBeVisible();
-
-      await typeField.click();
-
-      await expect(page.getByRole("option", { name: "Full form" })).toBeVisible();
-
-      await page.getByRole("option", { name: "Full form" }).click();
+      await glossary.selectType("Full form");
     });
 
     await test.step("Add to global context", async () => {
-      const globalContextCheckbox = page.getByRole("checkbox", {
-        name: "Add to global context",
-      });
-
-      await expect(globalContextCheckbox).toBeVisible();
-      await globalContextCheckbox.click();
+      await glossary.toggleGlobalContext();
     });
 
     await test.step("Select module", async () => {
-      const tagModules = page.getByText("Tag modules...", {
-        exact: true,
-      });
-
-      await expect(tagModules).toBeVisible();
-      await tagModules.click();
-
-      await expect(page.getByRole("option", { name: "common" })).toBeVisible();
-
-      await page.getByRole("option", { name: "common" }).click();
+      await glossary.selectTagModule("common");
     });
 
     await test.step("Fill Context and Additional Notes", async () => {
-      await expect(addGlossaryDialog.getByText("Context", { exact: true })).toBeVisible();
-
-      await expect(contextInput).toBeVisible();
-      await contextInput.fill("This is a Testing context.");
-
-      await expect(addGlossaryDialog.getByText("Additional Notes", { exact: true })).toBeVisible();
-
-      await expect(additionalNotesInput).toBeVisible();
-      await additionalNotesInput.fill("This is Additional Notes");
+      await glossary.fillContext("This is a Testing context.");
+      await glossary.fillAdditionalNotes("This is Additional Notes");
     });
 
     await test.step("Add glossary and verify success", async () => {
-      await expect(addButton).toBeVisible();
-      await addButton.click();
+      await glossary.clickAddButton();
+      await glossary.expectAddSuccess(glossaryName);
+    });
 
-      // The app may confirm the add via a toast, by closing the dialog and
-      // showing the new row, or both. Accept any of these outcomes.
-      await expect
-        .poll(
-          async () => {
-            if (await successMessage.isVisible().catch(() => false)) return "toast";
-            if (await newGlossaryRow.isVisible().catch(() => false)) return "row";
-            return null;
-          },
-          { timeout: 20000, intervals: [200, 500, 1000] },
-        )
-        .not.toBeNull();
+    await test.step("Open glossary detail and verify sections", async () => {
+      await glossary.openGlossaryDetail(glossaryName);
+      await glossary.expectDetailSections();
+    });
+
+    const updatedName = `Testing-${Date.now()} updated`;
+
+    await test.step("Edit the glossary name", async () => {
+      await glossary.clickEditButton();
+      await glossary.expectEditDialogLoaded();
+      await glossary.fillEditName(updatedName);
+      await glossary.clickUpdateButton();
+      await glossary.expectEditSuccess(updatedName);
+    });
+
+    await test.step("Delete the glossary", async () => {
+      await glossary.goBackToList();
+      await glossary.openDeleteGlossaryDialog(updatedName);
+      await glossary.confirmDeleteGlossary();
+      await expect(
+        page.getByText("Glossary item deleted successfully.", { exact: true }),
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("heading", { name: "Glossary Management" })).toBeVisible({
+        timeout: 15_000,
+      });
     });
   });
 });
