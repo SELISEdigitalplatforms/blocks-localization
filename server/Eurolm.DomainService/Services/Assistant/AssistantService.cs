@@ -371,6 +371,6 @@ namespace Eurolm.DomainService.Services
         }
 
         private static string? FirstNonEmpty(params string?[] values) =>
-            values.Where(value => !string.IsNullOrWhiteSpace(value)).FirstOrDefault();
+            values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     }
 }
