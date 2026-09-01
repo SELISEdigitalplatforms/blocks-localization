@@ -4,9 +4,23 @@ using System.Reflection;
 
 namespace Eurolm.DomainService.Shared.Utilities
 {
+    /// <summary>
+    /// Holds <see cref="AzureOpenAIEncryptedSecret"/>,
+    /// <see cref="AzureAIEndpoint"/>, and <see cref="AzureAIEncryptionKey"/>
+    /// loaded from the Genesis cloud vault.
+    /// Configuration / Mongo <c>blocks-secret-localization</c> can supply the
+    /// same keys when vault values are empty.
+    /// Decrypt uses <see cref="AzureAIEncryptionKey"/> plus the existing
+    /// localization <c>Salt</c> from that Mongo document.
+    /// <see cref="ChatGptEncryptedSecret"/> and <see cref="ChatGptEncryptionKey"/>
+    /// remain for vault compatibility and are unused after the Azure OpenAI hard switch.
+    /// </summary>
     public sealed class LocalizationSecret : ILocalizationSecret
     {
-        public string ChatGptEncryptedSecret{ get; set; }
+        public string? AzureOpenAIEncryptedSecret { get; set; }
+        public string? AzureAIEndpoint { get; set; }
+        public string? AzureAIEncryptionKey { get; set; }
+        public string ChatGptEncryptedSecret { get; set; }
         public string ChatGptEncryptionKey { get; set; }
 
 

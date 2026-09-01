@@ -22,7 +22,8 @@ IHostBuilder CreateHostBuilder(string[] args) =>
 
             // Merge the DB-backed "Secrets" document into configuration (same
             // SecretKey as the Api) so KeyPairs values such as RootTenantId,
-            // NotificationServiceUrl and Salt are read from the DB.
+            // NotificationServiceUrl, Salt, AzureAIEndpoint,
+            // AzureOpenAIEncryptedSecret, and AzureAIEncryptionKey are read from the DB.
             builder.AddMongoDbConfiguration(options =>
             {
                 options.ConnectionString = secret.DatabaseConnectionString;
