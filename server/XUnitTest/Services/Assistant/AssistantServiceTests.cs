@@ -34,9 +34,13 @@ namespace XUnitTest
             _configurationMock.SetupGet(x => x["ChatGptTemperature"]).Returns("0.7");
             _configurationMock.SetupGet(x => x["Salt"]).Returns("[\"01\",\"02\",\"03\",\"04\",\"05\",\"06\",\"07\",\"08\"]");
 
-            _localizationSecretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns("dummy-encryption-key");
-            _localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret)
+            _localizationSecretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns("dummy-encryption-key");
+            _localizationSecretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret)
                 .Returns("dummy-encrypted-secret");
+            _localizationSecretMock.SetupGet(x => x.AzureAIEndpoint)
+                .Returns("https://test.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21");
+            _localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret)
+                .Returns("unused-chatgpt-secret");
 
             // Use a stubbed HttpMessageHandler so no real HTTP is performed.
             _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -348,12 +352,225 @@ namespace XUnitTest
         public void GetSalt_WhenConfigured_ReturnsByteArray()
         {
             var configSectionMock = new Mock<IConfigurationSection>();
+            _configurationMock.SetupGet(x => x["Salt"]).Returns((string)null!);
             _configurationMock.Setup(x => x.GetSection("Salt")).Returns(configSectionMock.Object);
 
             var result = _assistantService.GetSalt();
 
             // Result depends on configuration setup; verify method executes without exception
             result.Should().BeNull(); // Mock returns null when Get<byte[]>() is not explicitly set
+        }
+
+        [Fact]
+        public void GetSalt_DecodesMongoBase64String()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Salt"] = "AQIDBAUGBwg=",
+                })
+                .Build();
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetSalt().Should().Equal(1, 2, 3, 4, 5, 6, 7, 8);
+        }
+
+        [Fact]
+        public void GetSalt_PrefersMongoBase64OverAppsettingsHexArray()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Salt:0"] = "0x09",
+                    ["Salt:1"] = "0x0A",
+                    ["Salt:2"] = "0x0B",
+                    ["Salt:3"] = "0x0C",
+                    ["Salt:4"] = "0x0D",
+                    ["Salt:5"] = "0x0E",
+                    ["Salt:6"] = "0x0F",
+                    ["Salt:7"] = "0x10",
+                    ["Salt"] = "AQIDBAUGBwg=",
+                })
+                .Build();
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                _localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetSalt().Should().Equal(1, 2, 3, 4, 5, 6, 7, 8);
+        }
+
+        [Fact]
+        public void Decrypt_WithMongoBase64Salt_RoundTrips()
+        {
+            var salt = Convert.FromBase64String("AQIDBAUGBwg=");
+            const string key = "O5faaMqQiF65uF4B+rkZL1//Rky6Pv+3bl3jzH6uDkg=";
+            var encrypted = Encrypt("sk-roundtrip", key, salt);
+
+            AssistantService.Decrypt(encrypted, key, salt).Should().Be("sk-roundtrip");
+        }
+
+        #endregion
+
+        #region Azure endpoint and secret resolution
+
+        [Fact]
+        public void ResolveAzureEndpoint_PrefersMongoConfigurationOverVaultAndFallback()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AzureAIEndpoint"] = "https://mongo.example/openai/chat/completions",
+                    ["AiCompletionUrl"] = "http://appsettings-fallback.example/v1/chat/completions",
+                })
+                .Build();
+
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.AzureAIEndpoint).Returns("https://vault.example/openai/chat/completions");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                secretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.ResolveAzureEndpoint().Should().Be("https://mongo.example/openai/chat/completions");
+        }
+
+        [Fact]
+        public void ResolveAzureEndpoint_FallsBackToVaultThenAiCompletionUrl()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AiCompletionUrl"] = "http://appsettings-fallback.example/v1/chat/completions",
+                })
+                .Build();
+
+            var vaultSecret = new Mock<ILocalizationSecret>();
+            vaultSecret.SetupGet(x => x.AzureAIEndpoint).Returns("https://vault.example/openai/chat/completions");
+
+            var withVault = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                vaultSecret.Object,
+                new Mock<IGlossaryRepository>().Object);
+            withVault.ResolveAzureEndpoint().Should().Be("https://vault.example/openai/chat/completions");
+
+            var emptyVault = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                new Mock<ILocalizationSecret>().Object,
+                new Mock<IGlossaryRepository>().Object);
+            emptyVault.ResolveAzureEndpoint().Should().Be("http://appsettings-fallback.example/v1/chat/completions");
+        }
+
+        [Fact]
+        public void GetEncryptedSecret_PrefersMongoConfigurationOverVault()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AzureOpenAIEncryptedSecret"] = "mongo-blob",
+                })
+                .Build();
+
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns("vault-blob");
+            secretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("legacy-blob");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                secretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetEncryptedSecret().Should().Be("mongo-blob");
+        }
+
+        [Fact]
+        public void GetEncryptedSecret_FallsBackToVault_AndIgnoresChatGptEncryptedSecret()
+        {
+            var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns("vault-blob");
+            secretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("legacy-blob");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                secretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetEncryptedSecret().Should().Be("vault-blob");
+        }
+
+        [Fact]
+        public void GetEncryptionKey_PrefersMongoConfigurationOverVault()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AzureAIEncryptionKey"] = "mongo-wrap-key",
+                })
+                .Build();
+
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns("vault-wrap-key");
+            secretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns("legacy-chatgpt-key");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                secretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetEncryptionKey().Should().Be("mongo-wrap-key");
+        }
+
+        [Fact]
+        public void GetEncryptionKey_FallsBackToVault_AndIgnoresChatGptEncryptionKey()
+        {
+            var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+            var secretMock = new Mock<ILocalizationSecret>();
+            secretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns("vault-wrap-key");
+            secretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns("legacy-chatgpt-key");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                config,
+                _httpClient,
+                secretMock.Object,
+                new Mock<IGlossaryRepository>().Object);
+
+            service.GetEncryptionKey().Should().Be("vault-wrap-key");
+        }
+
+        [Fact]
+        public void ApplyApiKeyHeader_SetsApiKeyAndClearsBearer()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://example.com");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "old");
+
+            AssistantService.ApplyApiKeyHeader(request, "azure-key");
+
+            request.Headers.GetValues("api-key").Should().ContainSingle().Which.Should().Be("azure-key");
+            request.Headers.Authorization.Should().BeNull();
         }
 
         #endregion
@@ -471,7 +688,8 @@ namespace XUnitTest
         public async Task AiCompletion_WithNullEncryptedSecret_ReturnsNull()
         {
             var localizationSecretMock = new Mock<ILocalizationSecret>();
-            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns((string)null!);
+            localizationSecretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns((string)null!);
+            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("unused-chatgpt-secret");
 
             var service = new AssistantService(
                 _loggerMock.Object,
@@ -491,7 +709,8 @@ namespace XUnitTest
         public async Task AiCompletion_WithEmptyEncryptedSecret_ReturnsNull()
         {
             var localizationSecretMock = new Mock<ILocalizationSecret>();
-            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns(string.Empty);
+            localizationSecretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns(string.Empty);
+            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("unused-chatgpt-secret");
 
             var service = new AssistantService(
                 _loggerMock.Object,
@@ -507,6 +726,28 @@ namespace XUnitTest
             result.Should().BeNull();
         }
 
+        [Fact]
+        public async Task AiCompletion_IgnoresChatGptEncryptedSecret()
+        {
+            var localizationSecretMock = new Mock<ILocalizationSecret>();
+            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("legacy-blob");
+            localizationSecretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns((string)null!);
+            localizationSecretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns("dummy-encryption-key");
+
+            var service = new AssistantService(
+                _loggerMock.Object,
+                _configurationMock.Object,
+                _httpClient,
+                localizationSecretMock.Object,
+                new Mock<IGlossaryRepository>().Object
+            );
+
+            var result = await service.AiCompletion(new AiCompletionRequest("Test message", 0.5));
+
+            result.Should().BeNull();
+            service.GetEncryptedSecret().Should().BeNull();
+        }
+
         #endregion
 
         #region SuggestTranslation Integration Tests
@@ -520,10 +761,13 @@ namespace XUnitTest
             const string encryptionKey = "dummy-encryption-key";
             var encryptedSecret = Encrypt("sk-test-secret", encryptionKey, salt);
 
+            const string azureEndpoint =
+                "https://test.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21";
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["AiCompletionUrl"] = "http://test-url.com",
+                    ["AiCompletionUrl"] = "http://openai-fallback.example/v1/chat/completions",
+                    ["AzureAIEndpoint"] = azureEndpoint,
                     ["ChatGptTemperature"] = "0.7",
                     ["Salt:0"] = "1", ["Salt:1"] = "2", ["Salt:2"] = "3", ["Salt:3"] = "4",
                     ["Salt:4"] = "5", ["Salt:5"] = "6", ["Salt:6"] = "7", ["Salt:7"] = "8",
@@ -531,8 +775,9 @@ namespace XUnitTest
                 .Build();
 
             var secretMock = new Mock<ILocalizationSecret>();
-            secretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns(encryptionKey);
-            secretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns(encryptedSecret);
+            secretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns(encryptionKey);
+            secretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns(encryptedSecret);
+            secretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("unused-chatgpt-secret");
 
             var glossaryMock = new Mock<IGlossaryRepository>();
             glossaryMock.Setup(g => g.GetGlobalAsync(It.IsAny<string>())).ReturnsAsync(new List<Glossary>());
@@ -540,12 +785,14 @@ namespace XUnitTest
             glossaryMock.Setup(g => g.GetByIdsAsync(It.IsAny<List<string>>())).ReturnsAsync(new List<Glossary>());
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            HttpRequestMessage? capturedRequest = null;
             handlerMock
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
                 .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
@@ -572,6 +819,11 @@ namespace XUnitTest
 
             result.Should().Be("Hola");
             glossaryMock.Verify(g => g.GetGlobalAsync(It.IsAny<string>()), Times.Once);
+            capturedRequest.Should().NotBeNull();
+            capturedRequest!.RequestUri.Should().Be(new Uri(azureEndpoint));
+            capturedRequest.Headers.Contains("api-key").Should().BeTrue();
+            capturedRequest.Headers.GetValues("api-key").Should().ContainSingle().Which.Should().Be("sk-test-secret");
+            capturedRequest.Headers.Authorization.Should().BeNull();
         }
 
         // AES-CBC/PKCS7 encryption that mirrors AssistantService.Decrypt so the test can produce
@@ -648,7 +900,7 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task MakeRequestAsync_SetsAuthorizationHeader()
+        public async Task MakeRequestAsync_SetsApiKeyHeader()
         {
             HttpRequestMessage? capturedRequest = null;
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -676,10 +928,11 @@ namespace XUnitTest
             var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com/api");
             await service.MakeRequestAsync(request, "my-secret");
 
-            // The HttpClient should have had the Authorization header set
-            httpClient.DefaultRequestHeaders.Authorization.Should().NotBeNull();
-            httpClient.DefaultRequestHeaders.Authorization!.Scheme.Should().Be("Bearer");
-            httpClient.DefaultRequestHeaders.Authorization!.Parameter.Should().Be("my-secret");
+            capturedRequest.Should().NotBeNull();
+            capturedRequest!.Headers.Contains("api-key").Should().BeTrue();
+            capturedRequest.Headers.GetValues("api-key").Should().ContainSingle().Which.Should().Be("my-secret");
+            capturedRequest.Headers.Authorization.Should().BeNull();
+            httpClient.DefaultRequestHeaders.Authorization.Should().BeNull();
         }
 
         #endregion
@@ -695,8 +948,8 @@ namespace XUnitTest
             configMock.SetupGet(x => x["AiCompletionUrl"]).Returns("http://test-url.com");
 
             var localizationSecretMock = new Mock<ILocalizationSecret>();
-            localizationSecretMock.SetupGet(x => x.ChatGptEncryptedSecret).Returns("dummySecret");
-            localizationSecretMock.SetupGet(x => x.ChatGptEncryptionKey).Returns("dummyKey");
+            localizationSecretMock.SetupGet(x => x.AzureOpenAIEncryptedSecret).Returns("dummySecret");
+            localizationSecretMock.SetupGet(x => x.AzureAIEncryptionKey).Returns("dummyKey");
 
             var saltSection = new Mock<IConfigurationSection>();
             configMock.Setup(x => x.GetSection("Salt")).Returns(saltSection.Object);

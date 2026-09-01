@@ -18,7 +18,8 @@ ApplicationConfigurations.ConfigureApiEnv(builder, args);
 
 // Load frontend runtime settings (and other config) from the DB. The Mongo
 // "Secrets" document keyed by "blocks-secret-localization" is merged into
-// IConfiguration, exposing the "FrontendRuntime" section consumed below.
+// IConfiguration, exposing the "FrontendRuntime" section consumed below
+// plus AzureAIEndpoint / AzureOpenAIEncryptedSecret / AzureAIEncryptionKey for translation.
 builder.Configuration.AddMongoDbConfiguration(options =>
 {
     options.ConnectionString = secret.DatabaseConnectionString;

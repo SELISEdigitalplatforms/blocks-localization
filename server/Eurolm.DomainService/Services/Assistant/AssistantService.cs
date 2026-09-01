@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly.CircuitBreaker;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -16,7 +15,6 @@ namespace Eurolm.DomainService.Services
     {
         private readonly ILogger<AssistantService> _logger;
         private readonly IConfiguration _configuration;
-        private readonly string _aiCompletionUrl;
         private readonly string _chatGptTemperature;
         private readonly HttpClient _httpClient;
         private readonly ILocalizationSecret _localizationSecret;
@@ -32,7 +30,6 @@ namespace Eurolm.DomainService.Services
             _localizationSecret = localizationSecret;
             _logger = logger;
             _configuration = configuration;
-            _aiCompletionUrl = _configuration["AiCompletionUrl"];
             _chatGptTemperature = _configuration["ChatGptTemperature"];
             _httpClient = httpClient;
             _glossaryRepository = glossaryRepository;
@@ -158,18 +155,28 @@ namespace Eurolm.DomainService.Services
                 double.TryParse(_chatGptTemperature, out var temperature);
                 TemperatureValidator(temperature);
 
-                var encryptedSecret = await GetEncryptedSecret();
+                var encryptedSecret = GetEncryptedSecret();
                 if (string.IsNullOrEmpty(encryptedSecret))
                 {
-                    throw new ArgumentException("Get null value from MicroserviceConfig");
+                    throw new ArgumentException(
+                        "AzureOpenAIEncryptedSecret is not set. " +
+                        "Add it to Azure vault or to the blocks-secret-localization Mongo Secrets document.");
                 }
 
                 var secret = GetDecryptedSecret(encryptedSecret);
+                var endpoint = ResolveAzureEndpoint();
+                if (string.IsNullOrWhiteSpace(endpoint))
+                {
+                    throw new ArgumentException(
+                        "AzureAIEndpoint is not configured. " +
+                        "Add AzureAIEndpoint to the blocks-secret-localization Mongo Secrets document, " +
+                        "or set AiCompletionUrl for local override.");
+                }
 
                 var model = new AiCompletionModel();
                 var payload = model.ConstructCommand(request.Message, request.Temperature);
 
-                var httpRequest = PrepareHttpRequest(_aiCompletionUrl, HttpMethod.Post, JsonConvert.SerializeObject(payload));
+                var httpRequest = PrepareHttpRequest(endpoint, HttpMethod.Post, JsonConvert.SerializeObject(payload));
                 var httpResponse = await MakeRequestAsync(httpRequest, secret);
 
                 if (httpResponse != null && httpResponse.HttpStatusCode == HttpStatusCode.OK)
@@ -188,14 +195,44 @@ namespace Eurolm.DomainService.Services
             return null;
         }
 
-        private async Task<string> GetEncryptedSecret()
-        {
-            return _localizationSecret.ChatGptEncryptedSecret;
-        }
+        /// <summary>
+        /// Azure Chat Completions URL from Mongo <c>blocks-secret-localization</c>
+        /// / vault, with optional <c>AiCompletionUrl</c> local fallback.
+        /// </summary>
+        public string? ResolveAzureEndpoint() =>
+            FirstNonEmpty(
+                _configuration["AzureAIEndpoint"],
+                _localizationSecret.AzureAIEndpoint,
+                _configuration["AiCompletionUrl"]);
+
+        /// <summary>
+        /// Encrypted Azure API key from Mongo / configuration first, then vault.
+        /// Does not read <c>ChatGptEncryptedSecret</c>.
+        /// </summary>
+        public string? GetEncryptedSecret() =>
+            FirstNonEmpty(
+                _configuration["AzureOpenAIEncryptedSecret"],
+                _localizationSecret.AzureOpenAIEncryptedSecret);
  
+        /// <summary>
+        /// AES unwrap key from Mongo / configuration first, then vault.
+        /// Does not read <c>ChatGptEncryptionKey</c>.
+        /// </summary>
+        public string? GetEncryptionKey() =>
+            FirstNonEmpty(
+                _configuration["AzureAIEncryptionKey"],
+                _localizationSecret.AzureAIEncryptionKey);
+
         private string GetDecryptedSecret(string encryptedText)
         {
-            var key = _localizationSecret.ChatGptEncryptionKey;
+            var key = GetEncryptionKey();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException(
+                    "AzureAIEncryptionKey is not set. " +
+                    "Add it to Azure vault or to the blocks-secret-localization Mongo Secrets document.");
+            }
+
             var salt = GetSalt();
             
             if (salt is null)
@@ -207,8 +244,39 @@ namespace Eurolm.DomainService.Services
             return decryptedValue;
         }
 
-        public byte[] GetSalt() =>
-            _configuration.GetSection("Salt").Get<byte[]>();
+        /// <summary>
+        /// Localization <c>Salt</c> from Mongo KeyPairs (base64 string, e.g.
+        /// <c>AQIDBAUGBwg=</c>) or from an appsettings byte array. Mongo's
+        /// scalar value wins over leftover <c>Salt:0</c> children from
+        /// appsettings — ConfigurationBinder would otherwise bind the hex-string
+        /// array and ignore the base64.
+        /// </summary>
+        public byte[] GetSalt()
+        {
+            var saltText = _configuration["Salt"];
+            if (!string.IsNullOrWhiteSpace(saltText))
+            {
+                var decoded = TryDecodeBase64Salt(saltText);
+                if (decoded is { Length: > 0 })
+                {
+                    return decoded;
+                }
+            }
+
+            return _configuration.GetSection("Salt").Get<byte[]>();
+        }
+
+        internal static byte[]? TryDecodeBase64Salt(string saltText)
+        {
+            try
+            {
+                return Convert.FromBase64String(saltText.Trim());
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
 
         private static void TemperatureValidator(double temperature)
         {
@@ -271,27 +339,38 @@ namespace Eurolm.DomainService.Services
 
             try
             {
-                _logger.LogInformation("Started processing the API request. MethodType: {MethodType}, BaseUrl: {BaseUrl}, ApiName: {ApiName}",
-                    httpRequestMessage.Method, _httpClient.BaseAddress, httpRequestMessage.RequestUri);
+                var endpointHost = httpRequestMessage.RequestUri?.Host;
+                _logger.LogInformation("Started processing the API request. MethodType: {MethodType}, EndpointHost: {EndpointHost}",
+                    httpRequestMessage.Method, endpointHost);
 
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secret);
+                ApplyApiKeyHeader(httpRequestMessage, secret);
 
                 requestResponse = await _httpClient.SendAsync(httpRequestMessage);
 
                 response.HttpStatusCode = requestResponse.StatusCode;
                 response.ResponseData = await requestResponse.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("Completed processing the API request. MethodType: {MethodType}, BaseUrl: {BaseUrl}, ApiName: {ApiName}, SerializedResponse: {SerializedResponse}",
-                    httpRequestMessage.Method, _httpClient.BaseAddress, httpRequestMessage.RequestUri, JsonConvert.SerializeObject(response));
+                _logger.LogInformation("Completed processing the API request. MethodType: {MethodType}, EndpointHost: {EndpointHost}, HttpStatusCode: {HttpStatusCode}",
+                    httpRequestMessage.Method, endpointHost, response.HttpStatusCode);
             }
             catch (BrokenCircuitException ex)
             {
-                _logger.LogError(ex, "Circuit breaker Exception occurred while processing the API request. MethodType: {MethodType}, BaseUrl: {BaseUrl}, ApiName: {ApiName}, Reason: {Reason}",
-                    httpRequestMessage.Method, _httpClient.BaseAddress, httpRequestMessage.RequestUri, ex.Message);
-                throw;
+                throw new InvalidOperationException(
+                    $"Circuit breaker is open for Azure OpenAI request. Method={httpRequestMessage.Method}, EndpointHost={httpRequestMessage.RequestUri?.Host}",
+                    ex);
             }
 
             return response;
         }
+
+        public static void ApplyApiKeyHeader(HttpRequestMessage httpRequestMessage, string secret)
+        {
+            httpRequestMessage.Headers.Remove("Authorization");
+            httpRequestMessage.Headers.Remove("api-key");
+            httpRequestMessage.Headers.TryAddWithoutValidation("api-key", secret);
+        }
+
+        private static string? FirstNonEmpty(params string?[] values) =>
+            values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     }
 }
