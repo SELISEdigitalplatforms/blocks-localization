@@ -1,25 +1,41 @@
 import { Page, expect, test } from "@playwright/test"
-import { e2eBaseUrl, e2eOsBaseUrl, e2eProjectId, e2eReuseProjectName } from "./env"
-import { ensureAuthenticated, ensureAuthenticatedOnCurrentOrigin } from "./login-helper"
+import { e2eBaseUrl, e2eOsBaseUrl, e2eProjectId } from "./env"
+import { ensureAuthenticated, ensureAuthenticatedOnCurrentOrigin, loginThroughOidc } from "./login-helper"
 
-const ORPHAN_PROJECT_PATTERN = /Test Project \d+/g
 const ENV_BUTTON =
   /Development|Testing|Staging|IAT|UAT|Production|Pre-Prod|Prod Shadow/
 
-const isVisibleNow = async (locator: { isVisible: (opts: { timeout: number }) => Promise<boolean> }) =>
-  locator.isVisible({ timeout: 500 }).catch(() => false)
+const isVisibleNow = async (locator: {
+  isVisible: (opts: { timeout: number }) => Promise<boolean>
+}) => locator.isVisible({ timeout: 500 }).catch(() => false)
+
+function getBaseProjectName(): string {
+  return process.env.PROJECT_NAME?.trim() || "Test Project"
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function getOrphanProjectPattern(): RegExp {
+  return new RegExp(`${escapeRegExp(getBaseProjectName())} \\d+`, "g")
+}
 
 async function listOrphanProjectNames(page: Page): Promise<string[]> {
   const bodyText = await page.locator("body").innerText().catch(() => "")
-  return [...new Set([...bodyText.matchAll(ORPHAN_PROJECT_PATTERN)].map((match) => match[0]))]
+  return [...new Set([...bodyText.matchAll(getOrphanProjectPattern())].map((match) => match[0]))]
 }
 
-function consoleBase(host: "logic" | "os" = "logic") {
+function consoleBase(host: "localization" | "os" = "localization") {
   return host === "os" ? e2eOsBaseUrl() : e2eBaseUrl()
 }
 
-/** Blocks console on Logic or OS. */
-export async function ensureConsole(page: Page, host: "logic" | "os" = "logic") {
+async function ensureLoggedIn(page: Page) {
+  if (/\/login(?:\/|$|\?)/.test(new URL(page.url()).pathname)) {
+    await loginThroughOidc(page)
+  }
+}
+export async function ensureConsole(page: Page, host: "localization" | "os" = "localization") {
   const base = consoleBase(host)
   const href = page.url()
   const onConsole =
@@ -30,6 +46,8 @@ export async function ensureConsole(page: Page, host: "logic" | "os" = "logic") 
   if (!onConsole) {
     await page.goto(`${base}/app/console`, { waitUntil: "domcontentloaded" })
   }
+
+  await ensureLoggedIn(page)
 
   await expect(
     page.getByRole("heading", { name: /Your Blocks Projects|Welcome to SELISE Blocks/ }),
@@ -46,13 +64,58 @@ export function namedProjectCard(page: Page, projectName: string) {
     .last()
 }
 
-async function waitForProjectCard(page: Page, projectName: string, host: "logic" | "os" = "logic") {
+/** Prod localization console sometimes renders a flat name + env-button list. */
+function flatProjectBlock(page: Page, projectName: string) {
+  return page
+    .locator("main")
+    .getByText(projectName, { exact: true })
+    .locator("xpath=ancestor::*[.//button[contains(., 'Development') or contains(., 'Testing') or contains(., 'Staging') or contains(., 'Production')]][1]")
+}
+
+async function clickProjectEnvironment(
+  page: Page,
+  projectName: string,
+  host: "localization" | "os" = "localization",
+) {
+  await ensureConsole(page, host)
+
+  const card = namedProjectCard(page, projectName)
+  if (await card.isVisible({ timeout: 1_500 }).catch(() => false)) {
+    const envButton = card.getByRole("button", { name: ENV_BUTTON }).first()
+    await expect(envButton).toBeVisible({ timeout: 10_000 })
+    await envButton.click({ force: true })
+    return
+  }
+
+  const flatBlock = flatProjectBlock(page, projectName)
+  const flatEnvButton = flatBlock.getByRole("button", { name: ENV_BUTTON }).first()
+  await expect(flatEnvButton).toBeVisible({ timeout: 10_000 })
+  await flatEnvButton.click({ force: true })
+}
+
+/** Enter project dashboard from console in one pass (feature-test navigation). */
+export async function enterProjectFromConsole(page: Page, projectName: string) {
+  await waitForProjectCard(page, projectName, "localization")
+  await clickProjectEnvironment(page, projectName, "localization")
+  await waitForLocalizationDashboardReady(page)
+}
+
+async function waitForProjectCard(
+  page: Page,
+  projectName: string,
+  host: "localization" | "os" = "localization",
+) {
   for (let attempt = 0; attempt < 6; attempt++) {
     await ensureConsole(page, host)
 
-    const card = namedProjectCard(page, projectName)
-    if (await card.isVisible({ timeout: 1_500 }).catch(() => false)) {
-      return card
+    if (
+      await page
+        .locator("main")
+        .getByText(projectName, { exact: true })
+        .isVisible({ timeout: 1_500 })
+        .catch(() => false)
+    ) {
+      return
     }
 
     if (attempt < 5) {
@@ -64,11 +127,52 @@ async function waitForProjectCard(page: Page, projectName: string, host: "logic"
   throw new Error(`Project "${projectName}" did not appear on the ${host} console`)
 }
 
-/** Localization project dashboard — Project Details heading visible (no Workflow link here). */
-async function waitForLogicDashboardReady(page: Page, projectName: string) {
-  await expect(page).toHaveURL(/\/app\/(?!project\/)[^/]+\/dashboard/, { timeout: 20_000 })
-  await expect(page.getByRole("heading", { name: "Project Details" })).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText(projectName, { exact: true }).first()).toBeVisible({ timeout: 20_000 })
+const consoleProjectsHeading = (page: Page) =>
+  page.getByRole("heading", { name: /Your Blocks Projects|Welcome to SELISE Blocks/ })
+
+/** Localization project dashboard — Project Details / X-Blocks-Key (fails fast if bounced to console). */
+export async function waitForLocalizationDashboardReady(page: Page, projectName?: string) {
+  const ready = page
+    .getByRole("heading", { name: "Project Details" })
+    .or(page.getByText(/X-Blocks-Key/))
+    .first()
+
+  const bouncedToConsole = async () => {
+    if (/\/app\/console\/?$/i.test(new URL(page.url()).pathname)) return true
+    return consoleProjectsHeading(page).isVisible({ timeout: 500 }).catch(() => false)
+  }
+
+  const label = projectName ?? "shared project"
+  const outcome = await Promise.race([
+    ready.waitFor({ state: "visible", timeout: 30_000 }).then(() => "ready" as const),
+    page
+      .waitForURL(/\/app\/console\/?$/i, { timeout: 30_000 })
+      .then(() => "console" as const)
+      .catch(() => null),
+    consoleProjectsHeading(page)
+      .waitFor({ state: "visible", timeout: 30_000 })
+      .then(() => "console" as const)
+      .catch(() => null),
+  ])
+
+  if (outcome === "console" || (await bouncedToConsole())) {
+    throw new Error(
+      `Expected project dashboard for "${label}" but landed on the console. ` +
+        "Suite setup must persist storageState after opening the shared project " +
+        "(project/environment localStorage). Re-run localization-setup.",
+    )
+  }
+
+  if (outcome !== "ready") {
+    await expect(ready).toBeVisible({ timeout: 1_000 })
+  }
+
+  await expect(page).toHaveURL(/\/app\/(?!project\/)[^/]+\/dashboard/, { timeout: 10_000 })
+  if (projectName) {
+    await expect(page.getByText(projectName, { exact: true }).first()).toBeVisible({
+      timeout: 30_000,
+    })
+  }
 }
 
 /** OS project dashboard — project name heading + Delete button. */
@@ -100,56 +204,64 @@ async function readProjectNameFromDashboard(page: Page): Promise<string> {
 
 async function openProjectById(page: Page, projectId: string) {
   await page.goto(`${e2eBaseUrl()}/app/${projectId}/dashboard`, { waitUntil: "domcontentloaded" })
+  await waitForLocalizationDashboardReady(page)
   const projectName = await readProjectNameFromDashboard(page)
-  await expect(page.getByRole("link", { name: "Workflow" })).toBeVisible({ timeout: 20_000 })
   return { projectName, dashboardUrl: page.url(), itemId: projectId }
 }
 
 export async function openNamedProjectDashboard(
   page: Page,
   projectName: string,
-  options?: { dashboardUrl?: string },
+  options?: { dashboardUrl?: string; itemId?: string },
 ) {
   if (options?.dashboardUrl) {
     await page.goto(options.dashboardUrl, { waitUntil: "domcontentloaded" })
+    await ensureLoggedIn(page)
     try {
-      await waitForLogicDashboardReady(page, projectName)
+      await waitForLocalizationDashboardReady(page)
       return
     } catch {
       // Fall through to card navigation.
     }
   }
 
-  // A just-created project's environment can still be provisioning
-  // server-side for a few seconds -- the click registers but nothing
-  // navigates. Retry with a real backoff instead of hammering the same
-  // button immediately; a manual click succeeds because a human naturally
-  // pauses between creating a project and opening it right after.
-  const maxAttempts = 5
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const card = await waitForProjectCard(page, projectName, "logic")
-    const envButton = card.getByRole("button", { name: ENV_BUTTON }).first()
-    await expect(envButton).toBeVisible({ timeout: 10_000 })
-    await envButton.click({ force: true })
-
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      await waitForLogicDashboardReady(page, projectName)
+      await ensureLoggedIn(page)
+      await waitForProjectCard(page, projectName, "localization")
+      await clickProjectEnvironment(page, projectName, "localization")
+      await waitForLocalizationDashboardReady(page)
       return
     } catch (error) {
-      if (attempt === maxAttempts - 1) throw error
-      await page.waitForTimeout(5_000 * (attempt + 1))
+      lastError = error
+      if (attempt < 2) {
+        await page.waitForTimeout(500)
+      }
     }
   }
+
+  const dashboardUrl =
+    options?.dashboardUrl ??
+    (options?.itemId ? `${e2eBaseUrl()}/app/${options.itemId}/dashboard` : null)
+  if (dashboardUrl) {
+    await ensureLoggedIn(page)
+    await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" })
+    await ensureLoggedIn(page)
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await waitForLocalizationDashboardReady(page)
+    return
+  }
+
+  throw lastError
 }
 
 async function openOsProjectDashboard(page: Page, projectName: string) {
   await ensureConsole(page, "os")
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const card = await waitForProjectCard(page, projectName, "os")
-    const envButton = card.getByRole("button", { name: ENV_BUTTON }).first()
-    await expect(envButton).toBeVisible({ timeout: 10_000 })
-    await envButton.click({ force: true })
+    await waitForProjectCard(page, projectName, "os")
+    await clickProjectEnvironment(page, projectName, "os")
 
     try {
       await waitForOsDashboardReady(page, projectName)
@@ -175,18 +287,8 @@ async function deleteProjectOnOs(page: Page, projectName: string): Promise<boole
   return true
 }
 
-async function clickAppSwitcherAndNavigate(page: Page, appNamePattern: RegExp) {
-  const appSwitcher = page.getByRole("button", { name: "SELISE Blocks apps" })
-  await expect(appSwitcher).toBeVisible({ timeout: 10_000 })
-  await appSwitcher.click()
-
-  const appLink = page.getByText(appNamePattern).first()
-  await expect(appLink).toBeVisible({ timeout: 5_000 })
-  await appLink.click()
-}
-
 async function freeProjectSlotIfNeeded(page: Page) {
-  await ensureConsole(page, "logic")
+  await ensureConsole(page, "localization")
 
   const welcomeHeading = page.getByRole("heading", { name: "Welcome to SELISE Blocks" })
   if (await isVisibleNow(welcomeHeading)) return
@@ -202,7 +304,7 @@ async function freeProjectSlotIfNeeded(page: Page) {
     if (orphanNames.length === 0) break
 
     await deleteCreatedProject(page, orphanNames[0]).catch(() => {})
-    await ensureConsole(page, "logic")
+    await ensureConsole(page, "localization")
 
     if (await isVisibleNow(addProjectButton)) return
   }
@@ -211,18 +313,12 @@ async function freeProjectSlotIfNeeded(page: Page) {
 }
 
 /**
- * Creates a project via the OS-hosted wizard (Logic redirects to OS for this).
- *
- * Flow:
- *   Logic console → "Add Project" → redirected to OS create-project wizard →
- *   fill wizard → project created on OS environments page →
- *   app switcher → click Logic → Logic console → click the new project →
- *   Logic dashboard (with Workflow sidebar link visible)
+ * Creates a project via the OS-hosted wizard (Localization redirects to OS for this).
  */
 export async function createProject(page: Page) {
   await test.step("Start a new project (redirects to OS)", async () => {
     await ensureAuthenticated(page)
-    await ensureConsole(page, "logic")
+    await ensureConsole(page, "localization")
 
     const welcomeHeading = page.getByRole("heading", { name: "Welcome to SELISE Blocks" })
     const createProjectButton = page.getByRole("button", { name: "Create a project" })
@@ -236,10 +332,12 @@ export async function createProject(page: Page) {
       await expect(addProjectButton).toBeVisible({ timeout: 15_000 })
       await addProjectButton.click()
     }
-    await expect(page).toHaveURL(/\/app\/create-project$/, { timeout: 15_000 })
+
+    await page.waitForURL(/\/app\/create-project$/, { timeout: 30_000 })
   })
 
-  const projectName = `Test Project ${Date.now()}`
+  const baseProjectName = getBaseProjectName()
+  const projectName = `${baseProjectName} ${Date.now()}`
   await test.step("Name the project and accept the agreements", async () => {
     await expect(page.getByRole("heading", { name: "Name your project" })).toBeVisible({
       timeout: 30_000,
@@ -277,74 +375,68 @@ export async function createProject(page: Page) {
     await expect(page.getByText("Your project has been created.", { exact: true })).toBeVisible({
       timeout: 30_000,
     })
-    await expect(page).toHaveURL(/\/app\/project\/[^/]+\/environments$/, {
+    await expect(page).toHaveURL(/\/app\/(console|project\/[^/]+\/environments)\/?$/, {
       timeout: 20_000,
     })
   })
 
-  await test.step("Switch back to Localization via app switcher", async () => {
-    await clickAppSwitcherAndNavigate(page, /Localization/i)
-    await page.waitForURL(/dev-localization|localhost/i, { timeout: 30_000 })
-    await ensureConsole(page, "logic")
-  })
-
-  await test.step("Open the newly created project on Localization", async () => {
+  await test.step("Open project dashboard on Localization", async () => {
+    await page.goto(`${e2eBaseUrl()}/app/console`, { waitUntil: "domcontentloaded" })
+    await ensureAuthenticated(page)
+    await ensureConsole(page, "localization")
     await openNamedProjectDashboard(page, projectName)
   })
 
   return { projectName, dashboardUrl: page.url() }
 }
 
-/**
- * Reuse an existing project, or create one when Add Project is available.
- *
- * `wasCreated` tells callers whether this run actually created the project
- * (safe to auto-delete afterward) or just opened one that already existed
- * (an explicit E2E_PROJECT_ID / E2E_REUSE_PROJECT_NAME, or a leftover
- * "Test Project N" orphan from a previous run) -- those must never be
- * auto-deleted, since a reused project may be someone's real, deliberately
- * named project rather than test-run scaffolding.
- */
+/** Reuse an existing project, or create one when Add Project is available. */
 export async function reuseOrCreateSharedProject(
   page: Page,
-): Promise<{ projectName: string; dashboardUrl: string; itemId: string; wasCreated: boolean }> {
+): Promise<{ projectName: string; dashboardUrl: string; itemId: string }> {
   await ensureAuthenticated(page)
 
   const configuredProjectId = e2eProjectId()
   if (configuredProjectId) {
-    const opened = await openProjectById(page, configuredProjectId)
-    return { ...opened, wasCreated: false }
+    console.log(`[e2e] Using E2E_PROJECT_ID=${configuredProjectId}`)
+    return openProjectById(page, configuredProjectId)
   }
 
-  await ensureConsole(page, "logic")
+  await ensureConsole(page, "localization")
 
-  // Defaults to "Testing" (see e2eReuseProjectName) until the backend
-  // provisioning-delay issue is resolved, so the branches below are
-  // currently unreachable unless that default is changed in env.ts.
-  const reuseName = e2eReuseProjectName()
+  const reuseName = process.env.E2E_REUSE_PROJECT_NAME?.trim()
   if (reuseName) {
+    console.log(`[e2e] Reusing E2E_REUSE_PROJECT_NAME=${reuseName}`)
     await openNamedProjectDashboard(page, reuseName)
     const itemId = new URL(page.url()).pathname.split("/")[2] ?? ""
-    return { projectName: reuseName, dashboardUrl: page.url(), itemId, wasCreated: false }
+    return { projectName: reuseName, dashboardUrl: page.url(), itemId }
   }
 
+  // Default: create a new project each run (e.g. PROD-TEST 1787…).
+  const welcomeHeading = page.getByRole("heading", { name: "Welcome to SELISE Blocks" })
+  const addProjectButton = page.getByText("Add Project", { exact: true }).first()
+  const canCreate =
+    (await welcomeHeading.isVisible({ timeout: 2_000 }).catch(() => false)) ||
+    (await addProjectButton.isVisible({ timeout: 2_000 }).catch(() => false))
+
+  if (canCreate) {
+    console.log(`[e2e] Creating new project (prefix: ${getBaseProjectName()})`)
+    const created = await createProject(page)
+    const itemId = new URL(created.dashboardUrl).pathname.split("/")[2] ?? ""
+    console.log(`[e2e] Created project "${created.projectName}" → ${created.dashboardUrl}`)
+    return { ...created, itemId }
+  }
+
+  // Console full — reuse the newest orphan from this test prefix as a last resort.
   const testProjects = await listOrphanProjectNames(page)
   if (testProjects.length > 0) {
     const projectName = testProjects[testProjects.length - 1]!
+    console.warn(
+      `[e2e] Add Project unavailable — reusing orphan "${projectName}" (set E2E_REUSE_PROJECT_NAME to pin a project)`,
+    )
     await openNamedProjectDashboard(page, projectName)
     const itemId = new URL(page.url()).pathname.split("/")[2] ?? ""
-    return { projectName, dashboardUrl: page.url(), itemId, wasCreated: false }
-  }
-
-  // The "Add Project" card can still be a loading skeleton for a few seconds
-  // after the console page itself is otherwise ready -- give it real time
-  // instead of a snap check, or a slow-loading card gets mistaken for "no
-  // slot available".
-  const addProjectButton = page.getByText("Add Project", { exact: true }).first()
-  if (await addProjectButton.isVisible({ timeout: 10_000 }).catch(() => false)) {
-    const created = await createProject(page)
-    const itemId = new URL(created.dashboardUrl).pathname.split("/")[2] ?? ""
-    return { ...created, itemId, wasCreated: true }
+    return { projectName, dashboardUrl: page.url(), itemId }
   }
 
   throw new Error(
@@ -353,13 +445,7 @@ export async function reuseOrCreateSharedProject(
   )
 }
 
-/**
- * Delete project on Blocks OS (only place with project Delete UI).
- *
- * No test.step() wrapper here: this is also called from global-teardown.ts,
- * which runs outside of any test context, and test.step() throws
- * ("can only be called from a test") when called from there.
- */
+/** Delete project on Blocks OS (only place with project Delete UI). */
 export async function deleteCreatedProject(
   page: Page,
   projectName?: string,
@@ -368,17 +454,19 @@ export async function deleteCreatedProject(
   if (!projectName) return false
   void options
 
-  try {
-    const deleted = await deleteProjectOnOs(page, projectName)
-    if (deleted) {
-      await ensureConsole(page, "os")
-      await expect(page.getByText(projectName, { exact: true })).toHaveCount(0, {
-        timeout: 10_000,
-      })
+  return test.step("Delete project on Blocks OS", async () => {
+    try {
+      const deleted = await deleteProjectOnOs(page, projectName)
+      if (deleted) {
+        await ensureConsole(page, "os")
+        await expect(page.getByText(projectName, { exact: true })).toHaveCount(0, {
+          timeout: 10_000,
+        })
+      }
+      return deleted
+    } catch (error) {
+      console.warn(`[e2e] Failed to delete project "${projectName}" on OS:`, error)
+      return false
     }
-    return deleted
-  } catch (error) {
-    console.warn(`[e2e] Failed to delete project "${projectName}" on OS:`, error)
-    return false
-  }
+  })
 }

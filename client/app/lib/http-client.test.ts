@@ -27,10 +27,12 @@ describe("lib/http-client", () => {
     expect((serviceInstances.localizationService as unknown as { config: unknown }).config).toEqual({
       baseURL: "env:BLOCKS_LOCALIZATION_BASE_URL",
       blocksKey: "env:BLOCKS_X_BLOCKS_KEY",
+      onError: expect.any(Function),
     });
     expect((serviceInstances.logicService as unknown as { config: unknown }).config).toEqual({
       baseURL: "env:BLOCKS_LOGIC_BASE_URL",
       blocksKey: "env:BLOCKS_X_BLOCKS_KEY",
+      onError: expect.any(Function),
     });
   });
 
