@@ -355,9 +355,9 @@ namespace Eurolm.DomainService.Services
             }
             catch (BrokenCircuitException ex)
             {
-                _logger.LogError(ex, "Circuit breaker Exception occurred while processing the API request. MethodType: {MethodType}, EndpointHost: {EndpointHost}, Reason: {Reason}",
-                    httpRequestMessage.Method, httpRequestMessage.RequestUri?.Host, ex.Message);
-                throw;
+                throw new InvalidOperationException(
+                    $"Circuit breaker is open for Azure OpenAI request. Method={httpRequestMessage.Method}, EndpointHost={httpRequestMessage.RequestUri?.Host}",
+                    ex);
             }
 
             return response;
@@ -370,17 +370,7 @@ namespace Eurolm.DomainService.Services
             httpRequestMessage.Headers.TryAddWithoutValidation("api-key", secret);
         }
 
-        private static string? FirstNonEmpty(params string?[] values)
-        {
-            foreach (var value in values)
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value;
-                }
-            }
-
-            return null;
-        }
+        private static string? FirstNonEmpty(params string?[] values) =>
+            values.Where(value => !string.IsNullOrWhiteSpace(value)).FirstOrDefault();
     }
 }
