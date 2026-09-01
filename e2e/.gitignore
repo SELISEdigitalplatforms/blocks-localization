@@ -3,11 +3,11 @@ node_modules/
 /playwright-report/
 /blob-report/
 /.playwright/
-/fixtures/*.json
+/fixtures/*
+!/fixtures/.gitkeep
+/docs/
+/test-results.json
 
 # Local secrets — never commit real credentials
 .env.e2e
 !.env.e2e.example
-.cursor/
-.understand-anything/
-.docs/

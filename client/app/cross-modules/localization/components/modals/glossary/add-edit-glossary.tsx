@@ -50,6 +50,7 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 import { showErrorToast, toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -68,6 +69,7 @@ interface AddEditGlossaryProps {
 const schema = z.object({
   name: z
     .string()
+    .trim()
     .min(1, { message: "Name is required" })
     .max(200, { message: "Name must be less than 200 characters" }),
   language: z.string().optional(),
@@ -143,7 +145,9 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
         toast({
           variant: "success",
           title: "Success",
-          description: isEditMode ? "Glossary item updated" : "Glossary item added",
+          description: isEditMode
+            ? "Glossary item updated successfully."
+            : "Glossary item added successfully.",
         });
         onClose();
       } else {
@@ -159,7 +163,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };

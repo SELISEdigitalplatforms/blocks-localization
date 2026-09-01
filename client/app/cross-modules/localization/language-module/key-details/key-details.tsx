@@ -242,29 +242,28 @@ const KeyDetails = () => {
               History
             </TabsTrigger>
           </TabsList>
-          {
-            tabId === "details" ? (
-              <div className="flex gap-2">
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="default" variant="outline" className="px-2">
-                      <EllipsisVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value="options">
-                      <DropdownMenuRadioItem
-                        value="autoTranslate"
-                        className="gap-2 py-2 pl-2 text-high-emphasis"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setAutoTranslateModalOpen(true);
-                        }}
-                      >
-                        <Wand className="h-3.5 w-3.5" />
-                        <p className="hover gap-2 border-none pl-0">Auto-translate</p>
-                      </DropdownMenuRadioItem>
-                      {/* <DropdownMenuRadioItem
+          {tabId === "details" ? (
+            <div className="flex gap-2">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button size="default" variant="outline" className="px-2">
+                    <EllipsisVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuRadioGroup value="options">
+                    <DropdownMenuRadioItem
+                      value="autoTranslate"
+                      className="gap-2 py-2 pl-2 text-high-emphasis"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setAutoTranslateModalOpen(true);
+                      }}
+                    >
+                      <Wand className="h-3.5 w-3.5" />
+                      <p className="hover gap-2 border-none pl-0">Auto-translate</p>
+                    </DropdownMenuRadioItem>
+                    {/* <DropdownMenuRadioItem
                         value="autoTranslate"
                         className="gap-2 py-2 pl-2 text-high-emphasis"
                         onClick={(e) => {
@@ -275,43 +274,43 @@ const KeyDetails = () => {
                         <Bolt className="h-3.5 w-3.5" />
                         <p className="hover gap-2 border-none pl-0">Configure auto-translation</p>
                       </DropdownMenuRadioItem> */}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                  <Dialog open={openGptPromt} onOpenChange={setGptPromt}>
-                    <GptPrompt defaultValue={keyDetails.context} keyDetails={keyDetails} />
-                  </Dialog>
-                </DropdownMenu>
-                <Dialog open={autoTranslateModalOpen} onOpenChange={setAutoTranslateModalOpen}>
-                  <DialogContent>
-                    <DialogHeader className="mb-4">
-                      <DialogTitle>Auto-translate this key</DialogTitle>
-                      <Label className="!mt-[12px] font-normal text-medium-emphasis">
-                        Are you sure you want to automatically translate this key?
-                      </Label>
-                    </DialogHeader>
-                    <DialogFooter className="mt-6">
-                      <DialogTrigger asChild>
-                        <Button
-                          disabled={isTranslating}
-                          variant="secondary"
-                          className="min-w-[80px]"
-                        >
-                          Cancel
-                        </Button>
-                      </DialogTrigger>
-                      <DialogTrigger asChild>
-                        <Button
-                          disabled={isTranslating}
-                          className="min-w-[80px]"
-                          onClick={handleTranslate}
-                        >
-                          Yes
-                        </Button>
-                      </DialogTrigger>
-                    </DialogFooter>
-                  </DialogContent>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+                <Dialog open={openGptPromt} onOpenChange={setGptPromt}>
+                  <GptPrompt
+                    defaultValue={keyDetails.context}
+                    keyDetails={keyDetails}
+                    onClose={setGptPromt}
+                  />
                 </Dialog>
-                {/* <Dialog>
+              </DropdownMenu>
+              <Dialog open={autoTranslateModalOpen} onOpenChange={setAutoTranslateModalOpen}>
+                <DialogContent>
+                  <DialogHeader className="mb-4">
+                    <DialogTitle>Auto-translate this key?</DialogTitle>
+                    <Label className="!mt-[12px] font-normal text-medium-emphasis">
+                      Are you sure you want to automatically translate this key?
+                    </Label>
+                  </DialogHeader>
+                  <DialogFooter className="mt-6">
+                    <DialogTrigger asChild>
+                      <Button disabled={isTranslating} variant="secondary" className="min-w-[80px]">
+                        Cancel
+                      </Button>
+                    </DialogTrigger>
+                    <DialogTrigger asChild>
+                      <Button
+                        disabled={isTranslating}
+                        className="min-w-[80px]"
+                        onClick={handleTranslate}
+                      >
+                        Yes
+                      </Button>
+                    </DialogTrigger>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              {/* <Dialog>
                 <DialogTrigger asChild>
                   <Button size="default" variant="outline" className="gap-2">
                     <Trash className="h-4 w-4 text-error" />
@@ -321,21 +320,21 @@ const KeyDetails = () => {
                   </Button>
                 </DialogTrigger>
               </Dialog> */}
-                <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="default" variant="outline" className="gap-2">
-                      <Trash className="h-4 w-4 text-error" />
-                      <span className="sr-only text-error sm:not-sr-only sm:whitespace-nowrap">
-                        Delete
-                      </span>
-                    </Button>
-                  </DialogTrigger>
-                  <DeleteLanguageKey
-                    itemId={keyDetails.itemId}
-                    onClose={() => setDeleteModalOpen(false)}
-                  />
-                </Dialog>
-                {/* <Button
+              <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+                <DialogTrigger asChild>
+                  <Button size="default" variant="outline" className="gap-2">
+                    <Trash className="h-4 w-4 text-error" />
+                    <span className="sr-only text-error sm:not-sr-only sm:whitespace-nowrap">
+                      Delete
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DeleteLanguageKey
+                  itemId={keyDetails.itemId}
+                  onClose={() => setDeleteModalOpen(false)}
+                />
+              </Dialog>
+              {/* <Button
                 size="default"
                 className="gap-2"
                 disabled
@@ -346,9 +345,8 @@ const KeyDetails = () => {
                 <Pencil className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
               </Button> */}
-              </div>
-            ) : null
-          }
+            </div>
+          ) : null}
         </div>
         <TabsContent value="details">
           <ViewDetails keyDetails={keyDetails} />

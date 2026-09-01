@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared;
 using FluentValidation;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 
 namespace Eurolm.DomainService.Services
@@ -123,7 +124,8 @@ namespace Eurolm.DomainService.Services
             repoGlossary.AdditionalNote = glossary.AdditionalNote;
             repoGlossary.IsGlobal = glossary.IsGlobal;
             repoGlossary.ModuleIds = glossary.ModuleIds;
-
+            repoGlossary.CreatedBy = BlocksContext.GetContext().UserId;
+            repoGlossary.LastUpdatedBy = BlocksContext.GetContext().UserId;
             return repoGlossary;
         }
     }

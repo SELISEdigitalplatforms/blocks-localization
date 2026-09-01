@@ -1,4 +1,8 @@
-import React from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -16,10 +20,6 @@ import {
   FormMessage,
 } from "@/components/ui-kits/form/form";
 import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import {
   CommandInput,
   CommandEmpty,
@@ -28,10 +28,9 @@ import {
   CommandList,
   CommandDialog,
 } from "@/components/ui-kits/command/command";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { useSaveLanguage } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
 interface NewLanguageProps {
@@ -43,16 +42,18 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   const schema = z.object({
     languageCode: z.string().min(1, { message: "Language is required" }),
   });
-  const form = useForm({
+
+  type LanguageFormValues = z.infer<typeof schema>;
+
+  const form = useForm<LanguageFormValues>({
     defaultValues: { languageCode: "" },
     resolver: zodResolver(schema),
   });
 
   const { isPending, mutateAsync } = useSaveLanguage();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  const [open, setOpen] = React.useState(false);
-  const [selectedLanguage, setSelectedLanguage] = React.useState(form.getValues("languageCode"));
-  const formSubmitHandler = async (data: any) => {
+  const [open, setOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(form.getValues("languageCode"));
+  const formSubmitHandler = async (data: LanguageFormValues) => {
     try {
       const isDuplicate = existingLanguages.some((lang) => lang.languageCode === data.languageCode);
       if (isDuplicate) {
@@ -63,18 +64,27 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         });
         return;
       }
+      const languageName = langConfigureData.find(
+        (lang) => lang.languageCode === data.languageCode,
+      )?.languageName;
+      if (!languageName) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Language not found in configuration.",
+        });
+        return;
+      }
       const payload = {
         ...data,
-        languageName: langConfigureData.find((lang) => lang.languageCode === data.languageCode)
-          ?.languageName,
+        languageName,
       };
       const res = await mutateAsync(payload);
-      onClose();
       if (res?.success) {
         toast({
           variant: "success",
           title: "Success",
-          description: "Language added",
+          description: "Language added successfully.",
         });
         form.reset();
         onClose(false);
@@ -82,14 +92,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(res?.errorMessage),
+          description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: formatErrorMessage(error),
       });
     }
   };
@@ -107,7 +117,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    Language
+                    Language <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Button
@@ -158,7 +168,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                   Cancel
                 </Button>
               </DialogTrigger>
-              <Button disabled={isPending}>Save</Button>
+              <Button disabled={isPending || !selectedLanguage}>Save</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -46,8 +46,20 @@ describe("filter-toolbar/search-input", () => {
   it("should clear immediately", () => {
     const onChange = vi.fn();
     render(<SearchInput value="preset" onChange={onChange} />);
-    const clearBtn = screen.getAllByRole("button").at(-1)!;
+    const clearBtn = screen.getByRole("button", { name: "Clear search" });
     fireEvent.click(clearBtn);
+    expect(onChange).toHaveBeenCalledWith("");
+  });
+
+  it("should cancel a pending search when cleared", () => {
+    const onChange = vi.fn();
+    render(<SearchInput value="" onChange={onChange} placeholder="Find" />);
+
+    fireEvent.change(screen.getByPlaceholderText("Find"), { target: { value: "pending" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("");
   });
 });

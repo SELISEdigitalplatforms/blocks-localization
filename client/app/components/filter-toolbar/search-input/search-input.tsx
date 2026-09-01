@@ -9,6 +9,7 @@ interface SearchInputProps {
   placeholder?: string;
   value: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export const SearchInput: React.FC<SearchInputProps> = ({
@@ -16,6 +17,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   placeholder = "Search...",
   value,
   className = "",
+  disabled = false,
 }) => {
   const [state, setState] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
@@ -49,18 +51,26 @@ export const SearchInput: React.FC<SearchInputProps> = ({
 
   const handleClear = (e: MouseEvent) => {
     e.stopPropagation();
+    debouncedRef.current.cancel();
     setState("");
     onChange("");
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="flex items-center rounded-sm border px-2">
+    <div
+      className={cn(
+        "flex items-center rounded-sm border px-2",
+        disabled && "cursor-not-allowed opacity-50",
+      )}
+    >
       <Search className="mr-2 h-4 w-4 text-muted-foreground" />
       <Input
         ref={inputRef}
         placeholder={placeholder}
         value={state}
         onChange={handleChange}
+        disabled={disabled}
         className={cn(
           "h-8 w-52 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0",
           className,
@@ -68,10 +78,13 @@ export const SearchInput: React.FC<SearchInputProps> = ({
       />
 
       <Button
+        type="button"
         variant="ghost"
         size="xs"
-        className={cn("h-full p-1 pr-0 hover:bg-transparent", !value && "invisible")}
+        className={cn("h-full p-1 pr-0 hover:bg-transparent", !state && "invisible")}
         onClick={handleClear}
+        aria-label="Clear search"
+        disabled={disabled}
       >
         <X className="h-4 w-4 text-muted-foreground" />
       </Button>

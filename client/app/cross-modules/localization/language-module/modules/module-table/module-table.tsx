@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
+import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import EditModule from "@blocks-localization/components/modals/edit-module/edit-module";
 import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal";
@@ -30,6 +31,85 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
+import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
+
+const getPageSizeOptions = (totalCount: number) => {
+  const fixedOptions = [10, 30, 50, 100];
+  if (totalCount > 100) return [...fixedOptions, totalCount];
+  if (totalCount > 0)
+    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
+  return [10];
+};
+
+const compareStrings = (a: string, b: string): number => {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+};
+
+const getDisplayNamePart = (
+  value: string | null | undefined,
+): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return null;
+};
+
+const getUserDisplayNameFromUser = (
+  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+): string => {
+  if (!user) return "—";
+
+  const firstName = getDisplayNamePart(user.firstName);
+  const lastName = getDisplayNamePart(user.lastName);
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
+
+  return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
+};
+
+function renderModuleRows(
+  modules: IModuleGets[],
+  getUserDisplayNameById: (userId: string | null) => string,
+  scoped: (path: string) => string,
+  navigate: (path: string) => void,
+  searchText: string,
+  onEditModule: (module: IModuleGets) => void,
+  onTagGlossaryModule: (module: IModuleGets) => void,
+) {
+  if (modules.length === 0) {
+    return (
+      <TableRow>
+        <TableCell colSpan={4} className="h-24 text-center">
+          {searchText ? "No modules match your search." : "No modules found. Create your first module to get started."}
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return modules.map((module) => (
+    <TableRow
+      key={module.itemId}
+      isHoverable
+      className="font-normal text-medium-emphasis"
+      onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
+    >
+      <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
+      <TableCell className="truncate">
+        {getUserDisplayNameById(module.createdBy)}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
+      </TableCell>
+      <TableCell className="text-center">
+        <RowActionsCell
+          onEdit={() => onEditModule(module)}
+          onTagGlossary={() => onTagGlossaryModule(module)}
+        />
+      </TableCell>
+    </TableRow>
+  ));
+}
 
 // Memoized RowActionsCell component to avoid unnecessary re-renders
 const RowActionsCell = ({
@@ -88,11 +168,25 @@ export function ModuleTable() {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
+  const { data: currentUser } = useCurrentUser();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
   // TODO: Enable delete module feature — restore this state when backend is ready
   // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
+
+  // Pagination state
+  const [pageNumber, setPageNumber] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const onPageChangeHandler = (newPageNumber: number) => {
+    setPageNumber(newPageNumber);
+  };
+
+  const onPageSizeChangeHandler = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setPageNumber(0);
+  };
 
   // Extract unique createdBy user IDs from modules
   const uniqueCreatedByIds = useMemo(() => {
@@ -107,7 +201,10 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: ["module-users", [...uniqueCreatedByIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))],
+    queryKey: [
+      "module-users",
+      [...uniqueCreatedByIds].sort(compareStrings),
+    ],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
@@ -116,29 +213,19 @@ export function ModuleTable() {
   });
 
   // Helper function to get user display name
-  const getUserDisplayName = (userId: string | null): string => {
-    if (!userId) return "—";
-    if (isUsersLoading || !userMap) {
-      return "—";
-    }
-    const user = userMap[userId];
-    if (user) {
-      const firstName =
-        typeof user.firstName === "string" && user.firstName.trim() ? user.firstName : null;
-      const lastName =
-        typeof user.lastName === "string" && user.lastName.trim() ? user.lastName : null;
-      const fullName = firstName && lastName ? `${firstName} ${lastName}`.trim() : null;
-      return (
-        fullName ||
-        (typeof user.email === "string" && user.email ? user.email : null) ||
-        (typeof user.userName === "string" && user.userName ? user.userName : null) ||
-        "—"
-      );
-    }
-    return "—";
+  const getUserDisplayNameById = (userId: string | null): string => {
+    if (isUsersLoading) return "—";
+    const user = userId ? userMap?.[userId] : currentUser;
+    const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
+    return getUserDisplayNameFromUser(resolvedUser);
   };
 
   const [searchValue, setSearchValue] = useState("");
+
+  const onSearchChangeHandler = (value: string) => {
+    setSearchValue(value);
+    setPageNumber(0);
+  };
 
   const filteredModules = useMemo(() => {
     if (!modulesData) return [];
@@ -150,6 +237,15 @@ export function ModuleTable() {
         module.name?.toLowerCase().includes(search),
     );
   }, [modulesData, searchValue]);
+
+  // Paginated modules based on current page and page size
+  const paginatedModules = useMemo(() => {
+    const startIndex = pageNumber * pageSize;
+    return filteredModules.slice(startIndex, startIndex + pageSize);
+  }, [filteredModules, pageNumber, pageSize]);
+
+  const totalCount = filteredModules.length;
+  const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
 
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
@@ -184,7 +280,7 @@ export function ModuleTable() {
               <div className="w-full sm:w-[300px]">
                 <FilterControls.SearchInput
                   value={searchValue}
-                  onChange={setSearchValue}
+                  onChange={onSearchChangeHandler}
                   placeholder="Search modules..."
                   className="h-9 w-full"
                 />
@@ -210,7 +306,7 @@ export function ModuleTable() {
                 </TableHeader>
                 <TableBody>
                   {isModulesLoading ? (
-                    Array.from({ length: 5 }).map((_, index) => (
+                    Array.from({ length: pageSize }).map((_, index) => (
                       <TableRow key={index}>
                         {[1, 2, 3, 4].map((_, colIndex) => (
                           <TableCell key={colIndex}>
@@ -219,44 +315,35 @@ export function ModuleTable() {
                         ))}
                       </TableRow>
                     ))
-                  ) : filteredModules.length > 0 ? (
-                    filteredModules.map((module) => (
-                      <TableRow
-                        key={module.itemId}
-                        className="cursor-pointer font-normal text-medium-emphasis hover:bg-muted/50"
-                        onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
-                      >
-                        <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
-                        <TableCell className="truncate">
-                          {getUserDisplayName(module.createdBy)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {module.createDate
-                            ? new Date(module.createDate).toLocaleDateString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <RowActionsCell
-                            onEdit={() => setEditTarget(module)}
-                            onTagGlossary={() => setTagTarget(module)}
-                            // TODO: Enable delete module feature
-                            // onDelete={() => setDeleteTarget(module)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        {searchValue
-                          ? "No modules match your search."
-                          : "No modules found. Create your first module to get started."}
-                      </TableCell>
-                    </TableRow>
+                    renderModuleRows(
+                    paginatedModules,
+                    getUserDisplayNameById,
+                    scoped,
+                    navigate,
+                    searchValue,
+                    setEditTarget,
+                    setTagTarget,
+                  )
                   )}
                 </TableBody>
               </Table>
             </div>
+            {totalCount > 0 && (
+              <div
+                className={`mt-5 flex min-h-10 items-center md:justify-end ${isModulesLoading ? "invisible pointer-events-none" : ""}`}
+                aria-hidden={isModulesLoading || undefined}
+              >
+                <Pagination
+                  page={pageNumber}
+                  pageSize={pageSize}
+                  totalCount={totalCount}
+                  pageSizeOptions={pageSizeOptions}
+                  onChange={onPageChangeHandler}
+                  onPageSizeChange={onPageSizeChangeHandler}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 

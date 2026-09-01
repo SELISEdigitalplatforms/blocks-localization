@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  Fragment,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -25,6 +18,8 @@ import {
   Wand,
   Languages,
   X,
+  CircleAlert,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -84,6 +79,11 @@ import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
 import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
+  getImportFileLabel,
+  useLanguageImportProgress,
+  type LanguageImportProgress,
+} from "./hooks/use-language-import-progress";
+import {
   getDeleteKeysErrorMessage,
   getInclusiveDateRange,
   getPageSizeOptions,
@@ -111,11 +111,95 @@ const getTableColumnClassName = (columnId: string) => {
   if (columnId === "keyName") return "w-[332px] md:w-[232px]";
   if (columnId === "moduleId") return "w-32 sm:w-[182px]";
   if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
-  if (columnId === "createDate" || columnId === "lastUpdateDate") return "w-[182px]";
+  if (columnId === "createDate") return "w-[182px]";
+  if (columnId === "lastUpdateDate") return "w-[220px]";
   if (columnId === "actions") return "w-14";
   return "w-36";
 };
 
+function LanguageTableEmptyState({
+  hasActiveFilters,
+  importProgress,
+}: Readonly<{
+  hasActiveFilters: boolean;
+  importProgress: LanguageImportProgress | null;
+}>) {
+  if (hasActiveFilters && !importProgress) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <p className="font-medium text-high-emphasis">No matching translation keys</p>
+        <p className="text-muted-foreground">
+          No keys match your current filters. Try adjusting your search criteria.
+        </p>
+      </div>
+    );
+  }
+
+  if (importProgress) {
+    return <ImportProgressState importProgress={importProgress} />;
+  }
+
+  return (
+    <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
+      <p className="font-medium text-high-emphasis">No translation keys yet</p>
+      <p className="text-muted-foreground">Create your first translation key to get started.</p>
+    </div>
+  );
+}
+
+function ImportProgressState({
+  importProgress,
+}: Readonly<{
+  importProgress: LanguageImportProgress;
+}>) {
+  const isFailed = importProgress.status === "failed";
+  const isDelayed = importProgress.status === "delayed";
+  const isFinalizing = importProgress.status === "finalizing";
+  const isProcessing = !isFailed && !isDelayed;
+
+  const getImportTitle = () => {
+    if (isFailed) return "Import couldn't be completed";
+    if (isDelayed) return "This import is taking longer than expected";
+    if (isFinalizing) return "Finalizing your import";
+    return "Importing translation keys";
+  };
+
+  const getImportDescription = () => {
+    if (isFailed) return "The uploaded file could not be processed. Please try importing it again.";
+    if (isDelayed) return "Your keys are still being processed. You can leave this page and return later.";
+    if (isFinalizing) return "The import completed successfully. We're loading the new translation keys now.";
+    return "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they're ready.";
+  };
+
+  const title = getImportTitle();
+  const description = getImportDescription();
+
+  return (
+    <div
+      className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12"
+      aria-live="polite"
+      aria-busy={isProcessing}
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blocks-primary-shades-300 text-primary">
+        {isFailed ? (
+          <CircleAlert className="h-5 w-5 text-error" aria-hidden="true" />
+        ) : (
+          <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+        )}
+      </div>
+      <div className="max-w-xl space-y-1 text-center">
+        <p className="font-medium text-high-emphasis">{title}</p>
+        <p className="text-sm text-medium-emphasis">{description}</p>
+      </div>
+      <p
+        className="max-w-xs truncate text-xs text-low-emphasis"
+        title={getImportFileLabel(importProgress.fileNames)}
+      >
+        {getImportFileLabel(importProgress.fileNames)}
+      </p>
+    </div>
+  );
+}
 export function LanguageTable() {
   "use no memo";
 
@@ -168,6 +252,17 @@ export function LanguageTable() {
 
   const keySearch = queryParams.search || "";
 
+  const hasActiveFilters = Boolean(
+    queryParams.search ||
+    (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
+    (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
+    queryParams.createStartDate ||
+    queryParams.createEndDate ||
+    queryParams.lastUpdateStartDate ||
+    queryParams.lastUpdateEndDate ||
+    resourceSearchFilters.length > 0,
+  );
+
   const updateKeySearch = useCallback(
     (value: string) => {
       setQueryParams((prev) => ({
@@ -179,7 +274,11 @@ export function LanguageTable() {
     [setQueryParams],
   );
 
-  const { isLoading, data: blocksLanguageKeyData } = useGetBlocksLanguageKey(
+  const {
+    isLoading,
+    data: blocksLanguageKeyData,
+    refetch: refetchLanguageKeys,
+  } = useGetBlocksLanguageKey(
     queryParams.pageNumber ?? 0,
     queryParams.pageSize ?? 10,
     queryParams.search ?? "",
@@ -192,6 +291,15 @@ export function LanguageTable() {
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
     queryParams.missingLanguages ?? [],
   );
+
+  const {
+    progress: importProgress,
+    onImportStarted,
+    onImportRequestFailed,
+  } = useLanguageImportProgress({
+    totalCount: blocksLanguageKeyData?.totalCount ?? 0,
+    refetch: refetchLanguageKeys,
+  });
 
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
@@ -445,13 +553,12 @@ export function LanguageTable() {
   };
 
   const currentTotalCount = blocksLanguageKeyData?.totalCount ?? 0;
+  const areTableFiltersDisabled = !isLoading && !hasActiveFilters && currentTotalCount === 0;
+  const areLanguageKeyActionsDisabled = isLoading || areTableFiltersDisabled;
   const previousTotalCountRef = useRef(currentTotalCount);
   if (!isLoading) previousTotalCountRef.current = currentTotalCount;
   const stableTotalCount = isLoading ? previousTotalCountRef.current : currentTotalCount;
-  const pageSizeOptions = useMemo(
-    () => getPageSizeOptions(stableTotalCount),
-    [stableTotalCount],
-  );
+  const pageSizeOptions = useMemo(() => getPageSizeOptions(stableTotalCount), [stableTotalCount]);
 
   const handleToggleExpanded = useCallback((itemId: string) => {
     setExpandedRowId((current) => (current === itemId ? null : itemId));
@@ -725,13 +832,16 @@ export function LanguageTable() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                  <ImportFileModal
-                    dialogTitle="Import Keys"
-                    data={[]}
-                    projectKey={tenantId}
-                    open={isImportDialogOpen}
-                    onClose={() => setIsImportDialogOpen(false)}
-                  />
+                  {isImportDialogOpen && (
+                    <ImportFileModal
+                      dialogTitle="Import Keys"
+                      data={[]}
+                      projectKey={tenantId}
+                      onClose={() => setIsImportDialogOpen(false)}
+                      onImportStarted={onImportStarted}
+                      onImportRequestFailed={onImportRequestFailed}
+                    />
+                  )}
                 </Dialog>
                 <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                   <ExportKey
@@ -744,6 +854,7 @@ export function LanguageTable() {
                   size="default"
                   variant="outline"
                   className="w-full shadow-none sm:w-auto"
+                  disabled={areLanguageKeyActionsDisabled}
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
                   <span className="sr-only lg:not-sr-only">Publish Changes</span>
@@ -767,7 +878,12 @@ export function LanguageTable() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button size="default" variant="default" onClick={handleAutoTranslateClick}>
+                  <Button
+                    size="default"
+                    variant="default"
+                    onClick={handleAutoTranslateClick}
+                    disabled={areLanguageKeyActionsDisabled}
+                  >
                     <Wand className="h-5 w-5 lg:mr-2" />
                     <span className="sr-only lg:not-sr-only">Auto-translate all</span>
                   </Button>
@@ -884,13 +1000,15 @@ export function LanguageTable() {
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}
                     languagesData={languageListData || []}
+                    disabled={areTableFiltersDisabled}
                   />
                 )}
               </div>
               <CardContent>
                 <div
-                  className="w-full overflow-x-auto"
+                  className="language-table-scrollbar w-full overflow-x-auto [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}
+                  data-testid="language-table-viewport"
                 >
                   <Table className="table-fixed text-sm">
                     <colgroup>
@@ -928,6 +1046,7 @@ export function LanguageTable() {
                                     onChange={updateKeySearch}
                                     placeholder="Search..."
                                     className="h-7 w-full text-xs"
+                                    disabled={areTableFiltersDisabled}
                                   />
                                 </div>
                               </TableHead>
@@ -947,6 +1066,7 @@ export function LanguageTable() {
                                     onChange={(value) => updateResourceSearch(lang, value)}
                                     placeholder="Search..."
                                     className="h-7 w-full text-xs"
+                                    disabled={areTableFiltersDisabled}
                                   />
                                 </div>
                               </TableHead>
@@ -975,7 +1095,8 @@ export function LanguageTable() {
                                 return (
                                   <Fragment key={row.id}>
                                     <TableRow
-                                      className="cursor-pointer font-normal text-medium-emphasis"
+                                      isHoverable
+                                      className="font-normal text-medium-emphasis"
                                       data-state={row.getIsSelected() && "selected"}
                                       onClick={() => handleRowClick(row.original.itemId)}
                                     >
@@ -1010,7 +1131,10 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  No results.
+                                  <LanguageTableEmptyState
+                                    hasActiveFilters={hasActiveFilters}
+                                    importProgress={importProgress}
+                                  />
                                 </TableCell>
                               </TableRow>
                             );

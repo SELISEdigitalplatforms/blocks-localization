@@ -1,4 +1,9 @@
-import StepperWithoutIndicator from "../../../../../components/stepper/stepper-without-indicator";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
+import { Upload, X, CalendarIcon } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import {
@@ -27,21 +32,14 @@ import {
   useSaveLanguageKeyUilmExport,
 } from "@blocks-localization/hooks/use-language-manager";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { ModuleName } from "@/constants/modules.constants";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
 import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { Calendar } from "@/components/ui-kits/calendar/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Upload, X, CalendarIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { v4 as uuidv4 } from "uuid";
-import { z } from "zod";
 import { useNotificationListener } from "@blocks-utilities/notification";
+import StepperWithoutIndicator from "@/components/stepper/stepper-without-indicator";
 
 const outputTypes = [
   { id: 0, label: "Json" },
@@ -76,7 +74,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [selectedOutputType, setSelectedOutputType] = useState<number>(outputTypes[0].id);
-  const [downloadChecked, setDownloadChecked] = useState(false);
+  const [downloadChecked, setDownloadChecked] = useState(true);
   const [referenceFileId, setReferenceFileId] = useState(uuidv4());
   const [xlfFile, setXlfFile] = useState<File | null>(null);
   const [isUploadingXlf, setIsUploadingXlf] = useState(false);
@@ -244,7 +242,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       setCurrentStep(1);
       form.reset();
       setSelectedModuleIds([]);
-      setDownloadChecked(false);
+      setDownloadChecked(true);
       setXlfFile(null);
       setSelectedLanguages([]);
       onClose?.();
@@ -338,7 +336,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       setDate(null);
       setSelectedModuleIds([]);
       setSelectedOutputType(outputTypes[0].id);
-      setDownloadChecked(false);
+      setDownloadChecked(true);
       setXlfFile(null);
       setSelectedLanguages([]);
       form.reset();
@@ -469,14 +467,30 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start" portalled={false}>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
+                  align="start"
+                  portalled={false}
+                >
                   <Calendar
                     initialFocus
+                    className="w-full p-3"
+                    classNames={{
+                      months: "w-full",
+                      month: "w-full space-y-4",
+                      head_row: "grid grid-cols-7",
+                      head_cell:
+                        "w-auto rounded-md text-center text-[0.8rem] font-normal text-muted-foreground",
+                      row: "mt-2 grid w-full grid-cols-7",
+                      cell: "relative flex h-9 items-center justify-center p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
+                    }}
                     mode="range"
                     defaultMonth={date?.from}
                     selected={date?.from ? { from: date.from, to: date.to } : undefined}
                     onSelect={handleDateSelect}
                     numberOfMonths={1}
+                    disabled={{ after: new Date() }}
+                    toDate={new Date()}
                   />
                   <div className="flex items-center gap-4 px-3 pb-4">
                     <Button

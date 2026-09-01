@@ -56,6 +56,24 @@ import ConfirmationModal from "@/components/confirmation-modal/confirmation-moda
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 
+const LanguageHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Language</span>
+  </div>
+);
+
+const LanguageCodeHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Language Code</span>
+  </div>
+);
+
+const ActionsHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Actions</span>
+  </div>
+);
+
 const LoadingSkelton = () => (
   <div className="grid w-full gap-2">
     {Array.from({ length: 10 }).map((_, index) => (
@@ -78,8 +96,42 @@ const getDeleteLanguageErrorMessage = (error: unknown) => {
   return "Failed to delete language. Please try again.";
 };
 
+const isValidWebhookHostname = (hostname: string) => {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    return hostname.includes(":");
+  }
+
+  const labels = hostname.split(".");
+  return (
+    labels.length >= 2 &&
+    labels.every(
+      (label) =>
+        label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label),
+    )
+  );
+};
+
+const isValidWebhookUrl = (value: string) => {
+  if (!/^https?:\/\/\S+$/i.test(value)) return false;
+
+  const authority = value.slice(value.indexOf("://") + 3).split(/[/?#]/, 1)[0];
+  if (!authority || authority.endsWith(":")) return false;
+
+  try {
+    const url = new URL(value);
+    return (
+      isValidWebhookHostname(url.hostname) &&
+      (url.protocol === "http:" || url.protocol === "https:")
+    );
+  } catch {
+    return false;
+  }
+};
+
 const webhookSchema = z.object({
-  url: z.string().url({ message: "Must be a valid URL" }),
+  url: z.string().trim().min(1, { message: "URL is required" }).refine(isValidWebhookUrl, {
+    message: "Enter a valid URL starting with http:// or https://",
+  }),
   contentType: z.string().min(1, { message: "Content type is required" }),
   headerKey: z.string().min(1, { message: "Header key is required" }),
   secret: z.string().min(1, { message: "Secret is required" }),
@@ -133,6 +185,7 @@ function Configure() {
     try {
       const payload: IWebhookConfig = {
         projectKey: tenantId,
+        itemId: webhookData?.itemId,
         url: values.url,
         contentType: values.contentType,
         blocksWebhookSecret: {
@@ -143,10 +196,11 @@ function Configure() {
       };
       const res = await saveWebhookAsync(payload);
       if (res?.success) {
+        webhookForm.reset(values);
         toast({
           variant: "success",
           title: "Success",
-          description: "Webhook saved successfully",
+          description: "Webhook saved successfully.",
         });
       } else {
         toast({
@@ -198,7 +252,7 @@ function Configure() {
         toast({
           variant: "success",
           title: "Success",
-          description: "Deleted successfully",
+          description: "Language deleted successfully.",
         });
         setIsDeleteDialogOpen(false);
       } else {
@@ -227,7 +281,7 @@ function Configure() {
         toast({
           variant: "success",
           title: "Success",
-          description: "Make default successful",
+          description: "Make default successfully.",
         });
         setIsMakeDefaultDialogOpen(false);
       } else {
@@ -249,13 +303,7 @@ function Configure() {
   const columns: ColumnDef<ILanguageConfig>[] = [
     {
       accessorKey: "languageName",
-      header: () => {
-        return (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Language</span>
-          </div>
-        );
-      },
+      header: LanguageHeader,
       cell: ({ row }) => {
         return (
           <div className="flex w-[150px] items-center">
@@ -271,13 +319,7 @@ function Configure() {
     },
     {
       accessorKey: "languageCode",
-      header: () => {
-        return (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Language Code</span>
-          </div>
-        );
-      },
+      header: LanguageCodeHeader,
       cell: ({ row }) => {
         return (
           <div className="flex w-[180px] items-center">
@@ -289,6 +331,7 @@ function Configure() {
     {
       id: "actions",
       enableHiding: false,
+      header: ActionsHeader,
       cell: ({ row }) => {
         return (
           <DropdownMenu modal={false}>
@@ -354,10 +397,12 @@ function Configure() {
               <span className="sr-only sm:not-sr-only">New Language</span>
             </Button>
           </DialogTrigger>
-          <NewLanguage
-            onClose={(val) => setIsNewLanguageDialogOpen(val ?? false)}
-            existingLanguages={languageListData || []}
-          />
+          {isNewLanguageDialogOpen && (
+            <NewLanguage
+              onClose={(val) => setIsNewLanguageDialogOpen(val ?? false)}
+              existingLanguages={languageListData || []}
+            />
+          )}
         </Dialog>
       </div>
       <Card className="mt-6 rounded-sm border border-border shadow-none">
@@ -387,7 +432,7 @@ function Configure() {
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="cursor-pointer font-normal text-medium-emphasis"
+                    className="font-normal text-medium-emphasis"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
@@ -421,7 +466,9 @@ function Configure() {
                   name="url"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>URL</FormLabel>
+                      <FormLabel>
+                        URL <span className="text-error">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input placeholder="https://example.com/webhook" {...field} />
                       </FormControl>
@@ -434,7 +481,9 @@ function Configure() {
                   name="contentType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Content Type</FormLabel>
+                      <FormLabel>
+                        Content Type <span className="text-error">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input placeholder="application/json" {...field} />
                       </FormControl>
@@ -447,7 +496,9 @@ function Configure() {
                   name="headerKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Secret Header Key</FormLabel>
+                      <FormLabel>
+                        Secret Header Key <span className="text-error">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input placeholder="X-Webhook-Secret" {...field} autoComplete="off" />
                       </FormControl>
@@ -460,7 +511,9 @@ function Configure() {
                   name="secret"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>Secret</FormLabel>
+                      <FormLabel>
+                        Secret <span className="text-error">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="password"

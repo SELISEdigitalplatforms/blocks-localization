@@ -145,11 +145,12 @@ namespace Eurolm.DomainService.Services
             if (repoModule == null)
             {
                 var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
-                repoModule = new BlocksLanguageModule { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = tenantId };
+                repoModule = new BlocksLanguageModule { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = tenantId, CreatedBy = BlocksContext.GetContext().UserId };
             }
 
             repoModule.ModuleName = module.ModuleName;
             repoModule.LastUpdateDate = DateTime.UtcNow;
+            repoModule.LastUpdatedBy = BlocksContext.GetContext().UserId;
 
             return repoModule;
         }

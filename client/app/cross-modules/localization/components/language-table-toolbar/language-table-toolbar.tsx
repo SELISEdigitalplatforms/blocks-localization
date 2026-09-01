@@ -27,9 +27,11 @@ export const useKeysSortQueryParams = () =>
 export function LanguageTableToolbar({
   languageModulesData,
   languagesData,
+  disabled = false,
 }: {
   languageModulesData: Array<{ itemId: string; moduleName: string }>;
   languagesData: Array<{ languageCode: string; languageName: string }>;
+  disabled?: boolean;
 }) {
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
@@ -75,74 +77,77 @@ export function LanguageTableToolbar({
     setQueryParams(null);
   };
   return (
-    <FilterToolbar
-      filters={[
-        // { key: "search", type: "SearchInput", label: "label" },
-        {
-          key: "moduleIds",
-          type: "MultiSelect",
-          label: "Modules",
-          props: {
-            options: languageModulesData?.map((module) => ({
-              label: module.moduleName,
-              value: module.itemId,
-            })),
+    <fieldset disabled={disabled} className="m-0 min-w-0 border-0 p-0">
+      <FilterToolbar
+        filters={[
+          // { key: "search", type: "SearchInput", label: "label" },
+          {
+            key: "moduleIds",
+            type: "MultiSelect",
+            label: "Modules",
+            props: {
+              options: languageModulesData?.map((module) => ({
+                label: module.moduleName,
+                value: module.itemId,
+              })),
+            },
           },
-        },
-        {
-          key: "missingLanguages",
-          type: "MultiSelect",
-          label: "Missing Translations",
-          props: {
-            options: languagesData?.map((lang) => ({
-              label: lang.languageName,
-              value: lang.languageCode,
-            })),
+          {
+            key: "missingLanguages",
+            type: "MultiSelect",
+            label: "Missing Translations",
+            props: {
+              options: languagesData?.map((lang) => ({
+                label: lang.languageName,
+                value: lang.languageCode,
+              })),
+            },
           },
-        },
-        {
-          key: "createDate",
-          type: "DateRange",
-          label: "Create Date",
-          props: {
-            disableFutureDates: true,
+          {
+            key: "createDate",
+            type: "DateRange",
+            label: "Create Date",
+            props: {
+              disableFutureDates: true,
+            },
           },
-        },
-        {
-          key: "lastUpdateDate",
-          type: "DateRange",
-          label: "Last Update Date",
-          props: {
-            disableFutureDates: true,
+          {
+            key: "lastUpdateDate",
+            type: "DateRange",
+            label: "Last Update Date",
+            props: {
+              disableFutureDates: true,
+            },
           },
-        },
-      ]}
-      values={{
-        search: queryParams.search,
-        moduleIds: queryParams.moduleIds,
-        missingLanguages: queryParams.missingLanguages,
-        createDate: {
-          from: queryParams.createStartDate ? new Date(queryParams.createStartDate) : undefined,
-          to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
-        },
-        lastUpdateDate: {
-          from: queryParams.lastUpdateStartDate
-            ? new Date(queryParams.lastUpdateStartDate)
-            : undefined,
-          to: queryParams.lastUpdateEndDate ? new Date(queryParams.lastUpdateEndDate) : undefined,
-        },
-        resourceSearch: queryParams.resourceSearch,
-      }}
-      defaultValues={{
-        search: "",
-        moduleIds: [],
-        missingLanguages: [],
-        createDate: { from: undefined, to: undefined },
-        lastUpdateDate: { from: undefined, to: undefined },
-        resourceSearch: "",
-      }}
-      onChange={onChange}
-      onReset={onReset}
-    />
+        ]}
+        values={{
+          search: queryParams.search,
+          moduleIds: queryParams.moduleIds,
+          missingLanguages: queryParams.missingLanguages,
+          createDate: {
+            from: queryParams.createStartDate ? new Date(queryParams.createStartDate) : undefined,
+            to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
+          },
+          lastUpdateDate: {
+            from: queryParams.lastUpdateStartDate
+              ? new Date(queryParams.lastUpdateStartDate)
+              : undefined,
+            to: queryParams.lastUpdateEndDate ? new Date(queryParams.lastUpdateEndDate) : undefined,
+          },
+          resourceSearch: queryParams.resourceSearch,
+        }}
+        defaultValues={{
+          search: "",
+          moduleIds: [],
+          missingLanguages: [],
+          createDate: { from: undefined, to: undefined },
+          lastUpdateDate: { from: undefined, to: undefined },
+          resourceSearch: "",
+        }}
+        onChange={onChange}
+        onReset={onReset}
+        disabled={disabled}
+      />
+    </fieldset>
   );
 }

@@ -226,6 +226,7 @@ describe("components/import-file-modal", () => {
       url: "https://file",
     } as never);
     const onClose = vi.fn();
+    const onImportStarted = vi.fn();
     render(
       <Dialog open onOpenChange={() => {}}>
         <ImportCommunicationsModal
@@ -233,6 +234,7 @@ describe("components/import-file-modal", () => {
           data={[]}
           projectKey="pk"
           onClose={onClose}
+          onImportStarted={onImportStarted}
         />
       </Dialog>,
     );
@@ -240,9 +242,17 @@ describe("components/import-file-modal", () => {
     dropFile(makeFile("data.json", json, "application/json"));
     await screen.findByText("data.json");
     fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-    await waitFor(() => expect(showSuccessToast).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(showSuccessToast).toHaveBeenCalledWith({
+        description: "Upload complete. Your translation keys are being processed.",
+      }),
+    );
     expect(presign).toHaveBeenCalled();
     expect(importMut).toHaveBeenCalled();
+    expect(onImportStarted).toHaveBeenCalledWith({
+      correlationId: expect.any(String),
+      fileName: "data.json",
+    });
     expect(onClose).toHaveBeenCalled();
   });
 

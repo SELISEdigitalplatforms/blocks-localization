@@ -201,4 +201,29 @@
   .blocks-gradient {
     background: linear-gradient(135deg, #0066b2 0%, #00b2ff 100%);
   }
+
+  .language-table-scrollbar {
+    scrollbar-color: hsl(var(--border-medium-emphasis)) hsl(var(--blocks-primary-shades-300));
+    scrollbar-width: thin;
+  }
+
+  .language-table-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .language-table-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--blocks-primary-shades-300));
+    border-radius: 9999px;
+  }
+
+  .language-table-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border-medium-emphasis));
+    border: 2px solid hsl(var(--blocks-primary-shades-300));
+    border-radius: 9999px;
+  }
+
+  .language-table-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--medium-emphasis));
+  }
 }
