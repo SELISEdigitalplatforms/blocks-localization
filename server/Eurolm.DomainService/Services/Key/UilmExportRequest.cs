@@ -18,7 +18,7 @@ namespace Eurolm.DomainService.Services
         public List<string> Languages { get; set; }
         public string ReferenceFileId { get; set; }
         public string CallerTenantId { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }
