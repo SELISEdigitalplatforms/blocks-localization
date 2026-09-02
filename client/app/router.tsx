@@ -20,6 +20,7 @@ import {
   LocalizationModuleDetailPage,
   LocalizationModulesPage,
   LocalizationNewKeyPage,
+  LocalizationWordPressPluginGuidePage
 } from "./layout/localization-page-layout/localization-page-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { navigationMenus } from "./constants/navigation-menus";
@@ -97,6 +98,10 @@ export const router = createBrowserRouter([
                   {
                     path: "services/extension-guides",
                     element: <LocalizationExtensionGuidesPage />,
+                  },
+                  {
+                    path: "services/wordpress-plugin-guide",
+                    element: <LocalizationWordPressPluginGuidePage />,
                   },
                   {
                     path: "services/modules",

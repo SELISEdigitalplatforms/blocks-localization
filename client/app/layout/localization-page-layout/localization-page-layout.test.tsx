@@ -35,6 +35,12 @@ vi.mock("@blocks-localization/language-module/modules/module-table/module-table"
 vi.mock("@blocks-localization/language-module/modules/module-details/module-details", () => ({
   ModuleDetails: () => <div>ModuleDetails</div>,
 }));
+vi.mock(
+  "@blocks-localization/language-module/wordpress-plugin-guide/wordpress-plugin-guide",
+  () => ({
+    WordPressPluginGuide: () => <div>WordPressPluginGuide</div>,
+  }),
+);
 
 describe("layout/localization-page-layout", () => {
   it.each([
@@ -47,6 +53,7 @@ describe("layout/localization-page-layout", () => {
     ["LocalizationExportHistoryPage", "ExportHistory"],
     ["LocalizationLogsPage", "LanguageLogs"],
     ["LocalizationGlossaryPage", "GlossaryTable"],
+    ["LocalizationWordPressPluginGuidePage", "WordPressPluginGuide"],
   ])("%s should render its page content", (pageName, expected) => {
     const Page = (pages as Record<string, React.FC>)[pageName];
     render(<Page />);
