@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  AlertCircle,
-  Check,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  FileText,
-  LoaderCircle,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, FileText, LoaderCircle } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -34,6 +26,7 @@ import {
   type IamClientCredential,
 } from "@blocks-localization/services/wordpress-plugin.service";
 import { showErrorToast } from "@/hooks/use-toast";
+import { format, isValid } from "date-fns";
 
 const maskCredentialValue = (value: string) => {
   if (!value) return "N/A";
@@ -46,62 +39,19 @@ const formatCredentialDate = (value?: string) => {
   if (!value) return "N/A";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "N/A";
+  if (!isValid(date)) return "N/A";
 
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .format(date)
-    .replace(",", "");
+  return format(date, "dd/MM/yyyy HH:mm");
 };
 
-interface CredentialCopyValueProps {
-  id: string;
-  label: string;
-  value: string;
-  copiedField: string | null;
-  onCopy: (value: string, id: string) => void;
-}
+const getCredentialStatusMessage = (
+  credential: IamClientCredential,
+  hasWordPressRole: boolean,
+) => {
+  if (!credential.isActive) return "Credential is inactive";
+  if (!hasWordPressRole) return "wp_user role is missing";
 
-const CredentialCopyValue = ({
-  id,
-  label,
-  value,
-  copiedField,
-  onCopy,
-}: CredentialCopyValueProps) => {
-  const isCopied = copiedField === id;
-
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="mt-2 flex min-w-0 items-center gap-2">
-        <code
-          className="block shrink-0 whitespace-nowrap text-sm text-foreground sm:text-base"
-          title={maskCredentialValue(value)}
-        >
-          {maskCredentialValue(value)}
-        </code>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground"
-          disabled={!value}
-          aria-label={`Copy ${label}`}
-          title={`Copy ${label}`}
-          onClick={() => onCopy(value, id)}
-        >
-          {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-        </Button>
-      </div>
-    </div>
-  );
+  return "Credential values are incomplete";
 };
 
 export const WordPressPluginGuide = () => {
@@ -111,7 +61,8 @@ export const WordPressPluginGuide = () => {
   const projectKey = selectedProject?.tenantId ?? "";
   const projectId = selectedProject?.itemId ?? "";
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
-  const applicationOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const applicationOrigin =
+    typeof globalThis.location === "undefined" ? "" : globalThis.location.origin;
 
   const {
     data: iamClientCredentials,
@@ -131,8 +82,8 @@ export const WordPressPluginGuide = () => {
   useEffect(() => {
     if (!copiedField) return;
 
-    const timeout = window.setTimeout(() => setCopiedField(null), 2000);
-    return () => window.clearTimeout(timeout);
+    const timeout = globalThis.setTimeout(() => setCopiedField(null), 2000);
+    return () => globalThis.clearTimeout(timeout);
   }, [copiedField]);
 
   const copyToClipboard = async (value: string, id: string) => {
@@ -164,7 +115,7 @@ export const WordPressPluginGuide = () => {
     if (!projectId || isRedirectingToOs) return;
 
     setIsRedirectingToOs(true);
-    const osWindow = window.open("about:blank", "_blank");
+    const osWindow = globalThis.open("about:blank", "_blank");
     if (osWindow) osWindow.opener = null;
 
     try {
@@ -173,7 +124,7 @@ export const WordPressPluginGuide = () => {
         osWindow.location.replace(redirectUrl);
         setIsRedirectingToOs(false);
       } else {
-        window.location.replace(redirectUrl);
+        globalThis.location.replace(redirectUrl);
       }
     } catch {
       osWindow?.close();
@@ -339,11 +290,7 @@ export const WordPressPluginGuide = () => {
                         {!isReady && (
                           <div className="flex items-center gap-1.5 text-xs text-amber-600">
                             <AlertCircle className="h-4 w-4" />
-                            {!credential.isActive
-                              ? "Credential is inactive"
-                              : !hasWordPressRole
-                                ? "wp_user role is missing"
-                                : "Credential values are incomplete"}
+                            {getCredentialStatusMessage(credential, hasWordPressRole)}
                           </div>
                         )}
                       </div>
@@ -351,17 +298,19 @@ export const WordPressPluginGuide = () => {
 
                     <AccordionContent className="pb-6">
                       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 2xl:grid-cols-3">
-                        <CredentialCopyValue
+                        <CopyableSnippet
                           id={`wordpress-${credentialId}-client-id`}
                           label="Client ID"
                           value={credential.itemId}
+                          displayValue={maskCredentialValue(credential.itemId)}
                           copiedField={copiedField}
                           onCopy={copyToClipboard}
                         />
-                        <CredentialCopyValue
+                        <CopyableSnippet
                           id={`wordpress-${credentialId}-client-secret`}
                           label="Client Secret"
                           value={credential.clientSecret}
+                          displayValue={maskCredentialValue(credential.clientSecret)}
                           copiedField={copiedField}
                           onCopy={copyToClipboard}
                         />
