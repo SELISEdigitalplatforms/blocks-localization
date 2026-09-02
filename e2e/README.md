@@ -82,6 +82,9 @@ E2E_BASE_URL=https://dev-localization.blocksdevelopers.com
 E2E_NO_WEBSERVER=1
 ```
 
+OS is derived automatically (`dev-os.blocksdevelopers.com`). Override with
+`E2E_OS_BASE_URL` if needed.
+
 Nothing is built or started locally. You will see this on every remote run,
 and it is correct:
 
@@ -105,6 +108,17 @@ E2E_BASE_URL=https://dev-localization.blocksdevelopers.com:5000
 ```
 
 With `E2E_NO_WEBSERVER` unset, Playwright starts `run.sh -b` itself.
+
+### Remote prod
+
+```
+E2E_BASE_URL=https://localization.seliseblocks.com
+E2E_NO_WEBSERVER=1
+PROJECT_NAME=LOCALIZATION-TEST   # optional
+```
+
+OS is derived automatically (`os.seliseblocks.com`). Use credentials valid for
+prod IAM; captcha is not automated.
 
 ## Playwright MCP (Cursor)
 
@@ -174,50 +188,70 @@ config section. The key this suite cares about is
 
 | Variable                        | Effect                                                                                             |
 | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `E2E_BASE_URL`                  | Host under test. No default; a missing value fails loudly.                                        |
-| `E2E_USERNAME` / `E2E_PASSWORD` | Dev-IAM test account (captcha is disabled on dev).                                                 |
+| `E2E_BASE_URL`                  | Blocks **Localization** host. Dev: `https://dev-localization.blocksdevelopers.com`. Prod: `https://localization.seliseblocks.com`. |
+| `E2E_OS_BASE_URL`               | Blocks **OS** host (optional). Derived when omitted: `dev-localization`→`dev-os`, `localization.`→`os.`. |
+| `PROJECT_NAME`                  | Optional prefix for created projects (`${PROJECT_NAME} ${Date.now()}`; default `Test Project`).    |
+| `E2E_USERNAME` / `E2E_PASSWORD` | IAM test account (captcha is disabled on dev).                                                     |
 | `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
 | `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
 | `E2E_SLOWMO`                    | Milliseconds of delay per action, to watch the steps themselves.                                   |
+
+See `SPEC-multi-env.md` for Dev/Prod derivation rules and create-project flow notes.
+
+## Lifecycle
+
+Playwright projects: **`localization-setup` → `localization` → `localization-teardown`**
+
+1. **Suite setup** (`tests/suite/suite.setup.spec.ts`) — OIDC login, reuse or create one shared project, write `localization-project.json`, then save `localization-session.json` **after** the dashboard is open (so localStorage keeps project/env).
+2. **Features** (`tests/01-overview` … `06-extension-guides`) — use session; open pages with a direct `goto` to `/app/{itemId}/dashboard` or `/app/{itemId}/services/...`.
+3. **Session / context recovery** — login gate or console bounce → re-auth if needed, one env-chip open to reseed localStorage, persist session (never create a new project).
+4. **Suite teardown** (`tests/suite/suite.teardown.spec.ts`) — delete on **Blocks OS** only when every `localization` test passed (unless `E2E_KEEP_PROJECT=1`).
 
 ## Layout
 
 ```
 e2e/
   tests/
-    auth/login.spec.ts                  # setup project: login + create run's project in OS
-    modules/
-      translations/translations.spec.ts          # Translation Keys + History tabs
-      translations/new-key.spec.ts               # New Key + Key Details
-      configuration/configuration.spec.ts        # Languages + Webhook
-      glossary/glossary.spec.ts                  # Glossary list + details
-      modules/modules.spec.ts                    # Modules list + details
-      extension-guides/extension-guides.spec.ts  # Extension Guides
+    auth/login.spec.ts
+    suite/
+      suite.setup.spec.ts             # login → project → session (after dashboard open)
+      suite.teardown.spec.ts          # OS delete when suite passed
+    01-overview/overview.spec.ts
+    02-translations/translations.spec.ts
+    03-modules/modules.spec.ts
+    04-glossary/glossary.spec.ts
+    05-configuration/configuration.spec.ts
+    06-extension-guides/extension-guides.spec.ts
   support/
-    auth.ts                             # login() (setup project only)
-    project-name.ts                     # reads fixtures/project.json
-    test-base.ts                        # shared test/expect with headed pause + helpers
-    pages/
-      app/                              # console + project shell (AppShellPage)
-      login/                            # Localization login + dev-iam OIDC
-      os/                               # shared OS app: create-project + project-delete
-      translations/ configuration/ glossary/ modules/ extension-guides/
-    fixtures/e2e-key.ts                 # key name shared between add/delete specs
-  fixtures/                             # runtime json, gitignored (auth.json + project.json)
-  global-setup.ts                       # local-build only: patch served index.html
-  global-teardown.ts                    # best-effort: delete the run's project via OS
-  playwright.config.ts                  # baseURL + creds from .env.e2e; setup + chromium projects
+    env.ts
+    login-helper.ts
+    create-and-delete-project.ts
+    localization-project.ts           # localization-session / localization-project fixtures
+    suite-helpers.ts                  # openSharedProjectDashboard
+    localization-helpers.ts           # direct /app/{id}/dashboard + /services/... routes
+    run-outcome.ts
+    test-base.ts
+  fixtures/                           # gitignored (localization-session.json + localization-project.json)
+  SPEC-multi-env.md
+  playwright.config.ts
 ```
 
-The Playwright config runs **two projects**:
+Playwright projects:
 
-- **`setup`** — only matches `tests/auth/login.spec.ts`. Logs in, creates a
-  timestamped project in the OS app (`E2E_OS_BASE_URL`), writes
-  `fixtures/auth.json` (storageState) + `fixtures/project.json` (project name).
-- **`chromium`** — every other spec. Depends on `setup`, starts authenticated
-  via `storageState`, opens the project via `AppShellPage.openProjectWithDevelopment(getProjectName())`,
-  then navigates to its feature sidebar link. No inline login.
+- **`setup`** — `tests/auth/login.spec.ts` login smoke
+- **`localization-setup`** — reuse/create shared project, save session **after** dashboard open
+- **`localization`** — feature specs; `storageState` from `localization-session.json`
+- **`localization-teardown`** — OS delete when suite passed (`E2E_KEEP_PROJECT=1` keeps it)
 
-The global teardown deletes the project the setup created via the OS app's
-console; if anything fails it logs and continues so the real test result
-stays visible.
+Feature routes (direct URL):
+
+| Area | Path |
+|---|---|
+| Overview | `/app/{itemId}/dashboard` |
+| Translations | `/app/{itemId}/services/language` |
+| Modules | `/app/{itemId}/services/modules` |
+| Glossary | `/app/{itemId}/services/glossary` |
+| Configuration | `/app/{itemId}/services/configure` |
+| Extension Guides | `/app/{itemId}/services/extension-guides` |
+
+Same suite shape as `blocks-utilities/e2e` (`utilities-setup` → `utilities` → `utilities-teardown`).

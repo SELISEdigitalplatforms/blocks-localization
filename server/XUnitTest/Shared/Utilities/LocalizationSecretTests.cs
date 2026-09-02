@@ -12,10 +12,16 @@ namespace XUnitTest
         {
             var secret = new LocalizationSecret
             {
+                AzureOpenAIEncryptedSecret = "azure-encrypted",
+                AzureAIEndpoint = "https://example.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21",
+                AzureAIEncryptionKey = "azure-wrap-key",
                 ChatGptEncryptedSecret = "encrypted-value",
                 ChatGptEncryptionKey = "encryption-key"
             };
 
+            secret.AzureOpenAIEncryptedSecret.Should().Be("azure-encrypted");
+            secret.AzureAIEndpoint.Should().Contain("cognitiveservices.azure.com");
+            secret.AzureAIEncryptionKey.Should().Be("azure-wrap-key");
             secret.ChatGptEncryptedSecret.Should().Be("encrypted-value");
             secret.ChatGptEncryptionKey.Should().Be("encryption-key");
         }
@@ -69,6 +75,45 @@ namespace XUnitTest
             LocalizationSecret.UpdateProperty(secret, nameof(LocalizationSecret.ChatGptEncryptionKey), "new-key");
 
             secret.ChatGptEncryptionKey.Should().Be("new-key");
+        }
+
+        [Fact]
+        public void UpdateProperty_UpdatesAzureOpenAIEncryptedSecret()
+        {
+            var secret = new LocalizationSecret
+            {
+                AzureOpenAIEncryptedSecret = "old-blob"
+            };
+
+            LocalizationSecret.UpdateProperty(secret, nameof(LocalizationSecret.AzureOpenAIEncryptedSecret), "new-blob");
+
+            secret.AzureOpenAIEncryptedSecret.Should().Be("new-blob");
+        }
+
+        [Fact]
+        public void UpdateProperty_UpdatesAzureAIEndpoint()
+        {
+            var secret = new LocalizationSecret
+            {
+                AzureAIEndpoint = "https://old.example/openai"
+            };
+
+            LocalizationSecret.UpdateProperty(secret, nameof(LocalizationSecret.AzureAIEndpoint), "https://new.example/openai");
+
+            secret.AzureAIEndpoint.Should().Be("https://new.example/openai");
+        }
+
+        [Fact]
+        public void UpdateProperty_UpdatesAzureAIEncryptionKey()
+        {
+            var secret = new LocalizationSecret
+            {
+                AzureAIEncryptionKey = "old-wrap-key"
+            };
+
+            LocalizationSecret.UpdateProperty(secret, nameof(LocalizationSecret.AzureAIEncryptionKey), "new-wrap-key");
+
+            secret.AzureAIEncryptionKey.Should().Be("new-wrap-key");
         }
 
         [Fact]
