@@ -1,4 +1,4 @@
-import { BookText, Languages, Blocks, Cog, Home, Package, FileText } from "lucide-react";
+import { BookText, Languages, Blocks, Cog, Home, Package, FileText, Puzzle } from "lucide-react";
 import { Menu } from "@/models/menu-models";
 
 export const navigationMenus: Menu[] = [
@@ -47,6 +47,13 @@ export const navigationMenus: Menu[] = [
     name: "Extension Guides",
     path: "/app/services/extension-guides",
     icon: FileText,
+  },
+  {
+    type: "menu",
+    id: "service-localization__wordpress-plugin-guide",
+    name: "WordPress Plugin Guide",
+    path: "/app/services/wordpress-plugin-guide",
+    icon: Puzzle,
   },
   {
     id: "environments",

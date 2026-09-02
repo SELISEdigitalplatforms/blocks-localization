@@ -46,6 +46,7 @@ describe("lib/blocks-url.util", () => {
     it("should preserve the dev- prefix", () => {
       setOrigin("https://dev-cloud.blocksdevelopers.com");
       expect(deriveIamBaseUrl()).toBe("https://dev-iam.blocksdevelopers.com");
+      expect(deriveOsBaseUrl()).toBe("https://dev-os.blocksdevelopers.com");
     });
 
     it("should preserve the stg- prefix", () => {
