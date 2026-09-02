@@ -211,33 +211,120 @@ namespace XUnitTest
         }
 
         [Fact]
-        public void FormatAiTextForSuggestTranslation_WithMultipleColons_ExtractsTextAfterFirstColon()
+        public void FormatAiTextForSuggestTranslation_WithMultipleColons_KeepsEverythingAfterFirstColon()
         {
             var aiText = "Translation: Hello: World";
 
             var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
-            result.Should().Be("Hello");
+            result.Should().Be("Hello: World");
         }
 
         [Fact]
-        public void FormatAiTextForSuggestTranslation_ColonAtEnd_ReturnsEmptyAfterColon()
+        public void FormatAiTextForSuggestTranslation_ColonAtEnd_FallsBackToFullText()
         {
             var aiText = "Translation:";
 
             var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
-            result.Should().BeEmpty();
+            result.Should().Be("Translation:");
         }
 
         [Fact]
-        public void FormatAiTextForSuggestTranslation_WithMixedQuotes_RemovesBothQuoteTypes()
+        public void FormatAiTextForSuggestTranslation_WithMixedQuotes_RemovesOnlyWrappingQuotes()
         {
             var aiText = "\"Test'Value\"";
 
             var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
 
-            result.Should().Be("TestValue");
+            result.Should().Be("Test'Value");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_NestedQuotes_RemovesEveryWrappingPair()
+        {
+            var aiText = "\"'Enviar'\"";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText);
+
+            result.Should().Be("Enviar");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_SourceWithoutColon_StripsLabelPrefix()
+        {
+            var aiText = "Translation: Enviar";
+            var sourceText = "Submit";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("Enviar");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_SourceEndsWithColon_PreservesWholeTranslation()
+        {
+            var aiText = "Estas seguro de que quieres eliminar el evento:";
+            var sourceText = "Are you sure you want to delete the event:";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("Estas seguro de que quieres eliminar el evento:");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_SourceContainsColon_PreservesInnerColons()
+        {
+            var aiText = "Zeit: 09:30";
+            var sourceText = "Time: 09:30";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("Zeit: 09:30");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_SourceIsLabelledValue_PreservesLabel()
+        {
+            var aiText = "Hinweis: erforderlich";
+            var sourceText = "Note: required";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("Hinweis: erforderlich");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_ApostropheInTranslation_IsPreserved()
+        {
+            var aiText = "l'hotel";
+            var sourceText = "the hotel";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("l'hotel");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_QuotedApostropheTranslation_KeepsApostrophe()
+        {
+            var aiText = "\"aujourd'hui\"";
+            var sourceText = "today";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("aujourd'hui");
+        }
+
+        [Fact]
+        public void FormatAiTextForSuggestTranslation_SourceWithColonAndQuotedReply_StripsQuotesOnly()
+        {
+            var aiText = "'Nombre: Juan'";
+            var sourceText = "Name: John";
+
+            var result = AssistantService.FormatAiTextForSuggestTranslation(aiText, sourceText);
+
+            result.Should().Be("Nombre: Juan");
         }
 
         #endregion
