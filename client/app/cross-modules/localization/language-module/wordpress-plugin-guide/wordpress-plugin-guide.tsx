@@ -62,7 +62,7 @@ export const WordPressPluginGuide = () => {
   const projectId = selectedProject?.itemId ?? "";
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
   const applicationOrigin =
-    typeof globalThis.location === "undefined" ? "" : globalThis.location.origin;
+    globalThis.location === undefined ? "" : globalThis.location.origin;
 
   const {
     data: iamClientCredentials,
@@ -88,23 +88,10 @@ export const WordPressPluginGuide = () => {
 
   const copyToClipboard = async (value: string, id: string) => {
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = value;
-        textArea.style.position = "fixed";
-        textArea.style.opacity = "0";
-        document.body.appendChild(textArea);
-        try {
-          textArea.select();
-          if (!document.execCommand("copy")) {
-            throw new Error("Copy command failed");
-          }
-        } finally {
-          document.body.removeChild(textArea);
-        }
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API not available");
       }
+      await navigator.clipboard.writeText(value);
       setCopiedField(id);
     } catch {
       setCopiedField(null);
@@ -317,9 +304,9 @@ export const WordPressPluginGuide = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Token lifetime</p>
                           <p className="mt-2 text-sm sm:text-base">
-                            {credential.accessTokenValidForNumberMinutes != null
-                              ? `${credential.accessTokenValidForNumberMinutes} min`
-                              : "N/A"}
+                            {credential.accessTokenValidForNumberMinutes == null
+                              ? "N/A"
+                              : `${credential.accessTokenValidForNumberMinutes} min`}
                           </p>
                         </div>
                         <div>
