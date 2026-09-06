@@ -10,6 +10,7 @@ import { LanguageTable } from "@blocks-localization/language-module/language-tab
 import { ModuleTable } from "@blocks-localization/language-module/modules/module-table/module-table";
 import { ModuleDetails } from "@blocks-localization/language-module/modules/module-details/module-details";
 import { ExtensionGuides } from "@blocks-localization/language-module/extension-guides/extension-guides";
+import { WordPressPluginGuide } from "@blocks-localization/language-module/wordpress-plugin-guide/wordpress-plugin-guide";
 
 function LocalizationPageLayout({ children }: { children: React.ReactNode }) {
   return <div className="h-full w-full min-w-0 p-6">{children}</div>;
@@ -100,6 +101,14 @@ export function LocalizationExtensionGuidesPage() {
   return (
     <LocalizationPageLayout>
       <ExtensionGuides />
+    </LocalizationPageLayout>
+  );
+}
+
+export function LocalizationWordPressPluginGuidePage() {
+  return (
+    <LocalizationPageLayout>
+      <WordPressPluginGuide />
     </LocalizationPageLayout>
   );
 }

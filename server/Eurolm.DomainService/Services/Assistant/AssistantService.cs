@@ -81,13 +81,19 @@ namespace Eurolm.DomainService.Services
                 aiText = await AiCompletion(aiCompletionRequest);
                 retryCount++;
             }
-            if (retryCount >= maxRetryCount)
+            if (string.IsNullOrEmpty(aiText))
             {
                 _logger.LogError("SuggestTranslation -> CallAiCompletion: Maximum Retry count reached");
                 return null;
             }
 
-            var output = FormatAiTextForSuggestTranslation(aiText);
+            var output = FormatAiTextForSuggestTranslation(aiText, query.SourceText);
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                _logger.LogWarning("SuggestTranslation: formatting produced empty output for AI text '{AiText}'", aiText);
+                return null;
+            }
+
             return output;
         }
 
@@ -122,30 +128,50 @@ namespace Eurolm.DomainService.Services
             return string.Join("\n", glossaryLines);
         }
 
-        public static string FormatAiTextForSuggestTranslation(string aiText)
+        /// <summary>
+        /// Normalises a raw AI completion into a bare translation: removes a wrapping
+        /// quote pair and a label the model may have echoed from the prompt
+        /// ("Translation: Enviar"). A colon belonging to the text itself
+        /// ("Zeit: 09:30", "Delete the event:") is preserved by treating a colon as a
+        /// label separator only when <paramref name="sourceText"/> contained none.
+        /// </summary>
+        public static string FormatAiTextForSuggestTranslation(string? aiText, string? sourceText = null)
         {
             if (string.IsNullOrWhiteSpace(aiText))
             {
                 return string.Empty;
             }
 
-            string output = null;
+            var text = StripWrappingQuotes(aiText.Trim());
 
-            var trimmedAiText = aiText?.Replace("\"", "").Replace("'", "");
-            if (!string.IsNullOrEmpty(trimmedAiText) && trimmedAiText.Contains(":"))
+            var sourceHasColon = sourceText?.Contains(':') ?? false;
+            if (!sourceHasColon && text.Contains(':'))
             {
-                string[] parts = trimmedAiText.Split(':');
-                output = parts.Length > 1 ? parts[1] : trimmedAiText;
+                var parts = text.Split(':', 2);
+                var body = StripWrappingQuotes(parts[1].Trim());
+
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    text = body;
+                }
             }
-            else
+
+            return text.Trim();
+        }
+
+        /// <summary>
+        /// Strips matching outer quote pairs only, so apostrophes belonging to the
+        /// translation survive (l'hotel, aujourd'hui, dell'utente).
+        /// </summary>
+        private static string StripWrappingQuotes(string text)
+        {
+            while (text.Length > 1 &&
+                   ((text[0] == '"' && text[^1] == '"') || (text[0] == '\'' && text[^1] == '\'')))
             {
-                output = trimmedAiText;
+                text = text[1..^1].Trim();
             }
 
-            char[] charsToTrim = { ' ', '\t', '\n' };
-            string trimmedOutput = output?.Trim(charsToTrim) ?? string.Empty;
-
-            return trimmedOutput;
+            return text;
         }
 
         public async Task<string> AiCompletion(AiCompletionRequest request)

@@ -9,6 +9,7 @@ type CopyableSnippetProps = {
   copiedField: string | null;
   onCopy: (value: string, id: string) => void;
   className?: string;
+  displayValue?: string;
 };
 
 export const CopyableSnippet: FC<CopyableSnippetProps> = ({
@@ -18,6 +19,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
   copiedField,
   onCopy,
   className,
+  displayValue,
 }) => {
   const isCopied = copiedField === id;
   const isAvailable = Boolean(value);
@@ -32,7 +34,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
       </div>
       <div className="flex min-w-0 items-center gap-2 rounded-md border bg-muted/60 p-2 pl-3">
         <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-xs text-foreground sm:text-sm">
-          {isAvailable ? value : "Value is not configured"}
+          {isAvailable ? (displayValue ?? value) : "Value is not configured"}
         </code>
         <Button
           type="button"
