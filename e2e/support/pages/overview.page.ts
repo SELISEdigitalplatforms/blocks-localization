@@ -74,16 +74,6 @@ export class OverviewPage {
     await expect(button).toHaveAttribute("aria-expanded", expanded ? "true" : "false");
   }
 
-  async switchThemeToDark() {
-    await this.darkTab.click();
-    await expect(this.page.locator("html")).toHaveClass(/dark/);
-  }
-
-  async switchThemeToLight() {
-    await this.lightTab.click();
-    await expect(this.page.locator("html")).not.toHaveClass(/dark/);
-  }
-
   async openLanguageSelector() {
     await this.languageButton.click();
   }
@@ -93,7 +83,10 @@ export class OverviewPage {
   }
 
   async expectLanguageOptionDisabled(language: string) {
-    await expect(this.page.getByRole("menuitem", { name: language })).toHaveAttribute("aria-disabled", "true");
+    await expect(this.page.getByRole("menuitem", { name: language })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   }
 
   async closeLanguageSelector() {
@@ -102,7 +95,9 @@ export class OverviewPage {
 
   async openNotificationBell() {
     await this.notificationBell.click();
-    await expect(this.page.getByText("Notifications", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByText("Notifications", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async markAllNotificationsAsRead() {
