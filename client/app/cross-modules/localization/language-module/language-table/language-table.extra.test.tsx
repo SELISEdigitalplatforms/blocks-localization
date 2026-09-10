@@ -207,6 +207,138 @@ describe("language-table (extra coverage)", () => {
     primeStore([], []);
   });
 
+  describe("sticky left actions column", () => {
+    it("renders Actions immediately after the select column", () => {
+      primeStore(["en-US", "de-DE"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const headerCells = Array.from(
+        container.querySelectorAll("thead tr:first-child th"),
+      ).map((cell) => cell.textContent?.trim() ?? "");
+
+      const actionsIndex = headerCells.indexOf("Actions");
+      const keyIndex = headerCells.findIndex((text) => text.includes("Key"));
+
+      expect(actionsIndex).toBeGreaterThan(-1);
+      expect(keyIndex).toBeGreaterThan(actionsIndex);
+      expect(headerCells.at(-1)).not.toBe("Actions");
+    });
+
+    it("applies sticky classes to select and actions header and body cells", () => {
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const stickyHeaders = container.querySelectorAll("thead th.sticky");
+      expect(stickyHeaders.length).toBeGreaterThanOrEqual(4);
+
+      const selectBodyCell = container.querySelector("tbody td.sticky.left-0");
+      const actionsBodyCell = container.querySelector("tbody td.sticky.left-12");
+      expect(selectBodyCell).toBeTruthy();
+      expect(actionsBodyCell).toBeTruthy();
+    });
+
+    it("keeps the actions skeleton in the left cluster while loading", () => {
+      h.useGetBlocksLanguageKey.mockReturnValue({
+        isLoading: true,
+        data: undefined,
+      } as never);
+      primeStore(["en-US"], []);
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const skeletonCells = Array.from(container.querySelectorAll("tbody tr:first-child td"));
+      expect(skeletonCells[0]?.className).toContain("sticky");
+      expect(skeletonCells[1]?.className).toContain("sticky");
+      expect(skeletonCells[1]?.querySelector(".h-8.w-8")).toBeTruthy();
+    });
+
+    it("still expands a row after scrolling the viewport horizontally", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US", "de-DE"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const viewport = screen.getByTestId("language-table-viewport");
+      Object.defineProperty(viewport, "scrollLeft", {
+        configurable: true,
+        writable: true,
+        value: 500,
+      });
+      fireEvent.scroll(viewport);
+
+      await user.click(screen.getByRole("button", { name: "Expand greeting" }));
+      expect(screen.getByRole("textbox", { name: "English translation" })).toBeTruthy();
+      expect(container.querySelector("tbody td.sticky.left-12")).toBeTruthy();
+    });
+
+    it("keeps header order select → Actions → Key on an empty table", () => {
+      setKeys({ totalCount: 0, keys: [] });
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const headerCells = Array.from(
+        container.querySelectorAll("thead tr:first-child th"),
+      ).map((cell) => cell.textContent?.trim() ?? "");
+
+      expect(headerCells.indexOf("Actions")).toBe(1);
+      expect(headerCells.findIndex((text) => text.includes("Key"))).toBe(2);
+      expect(screen.getByText("No translation keys yet")).toBeTruthy();
+    });
+
+    it("spans InlineKeyDetails across every visible column", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US", "de-DE"], ["completeness"]);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const columnCount = container.querySelectorAll("thead tr:first-child th").length;
+      await user.click(screen.getByRole("button", { name: "Expand greeting" }));
+
+      const expandedCell = container.querySelector("tbody td[colspan]");
+      expect(expandedCell?.getAttribute("colspan")).toBe(String(columnCount));
+    });
+
+    it("applies selected-state sticky classes when a row is selected", () => {
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      fireEvent.click(screen.getByLabelText("Select row"));
+
+      const stickyCells = container.querySelectorAll("tbody td.sticky");
+      expect(stickyCells.length).toBeGreaterThanOrEqual(2);
+      stickyCells.forEach((cell) => {
+        expect(cell.className).toContain("group-data-[state=selected]:bg-muted");
+      });
+      expect(container.querySelector('tbody tr[data-state="selected"]')).toBeTruthy();
+    });
+
+    it("keeps Actions left when optional columns are toggled in View", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      await user.click(screen.getByText("View"));
+      await user.click(await screen.findByText("Completeness"));
+      await user.keyboard.press("Escape");
+
+      let headerCells = Array.from(container.querySelectorAll("thead tr:first-child th")).map(
+        (cell) => cell.textContent?.trim() ?? "",
+      );
+      expect(headerCells.indexOf("Actions")).toBe(1);
+
+      await user.click(screen.getByText("View"));
+      await user.click(await screen.findByText("Completeness"));
+      await user.keyboard.press("Escape");
+
+      headerCells = Array.from(container.querySelectorAll("thead tr:first-child th")).map(
+        (cell) => cell.textContent?.trim() ?? "",
+      );
+      expect(headerCells.indexOf("Actions")).toBe(1);
+    });
+  });
+
   describe("empty table filters", () => {
     it("disables toolbar filters and column searches for a truly empty table", () => {
       setKeys({ totalCount: 0, keys: [] });

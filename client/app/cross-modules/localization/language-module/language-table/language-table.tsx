@@ -88,6 +88,8 @@ import {
   getInclusiveDateRange,
   getPageSizeOptions,
   getResourceSearchFilters,
+  getStickyBodyCellClassName,
+  getStickyHeaderClassName,
   parseResourceSearch,
   updateResourceSearchValue,
 } from "./language-table.utils";
@@ -1022,7 +1024,7 @@ export function LanguageTable() {
                           {headerGroup.headers.map((header) => (
                             <TableHead
                               key={header.id}
-                              className="h-0 align-top font-bold text-medium-emphasis"
+                              className={`h-0 align-top font-bold text-medium-emphasis ${getStickyHeaderClassName(header.column.id)}`}
                             >
                               {header.isPlaceholder
                                 ? null
@@ -1072,16 +1074,24 @@ export function LanguageTable() {
                               </TableHead>
                             );
                           }
-                          return <TableHead key={column.id} />;
+                          return (
+                            <TableHead
+                              key={column.id}
+                              className={getStickyHeaderClassName(column.id)}
+                            />
+                          );
                         })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading
                         ? Array.from({ length: skeletonRowCount }).map(() => (
-                            <TableRow key={crypto.randomUUID()} className="h-9 md:h-11">
+                            <TableRow key={crypto.randomUUID()} className="group h-9 md:h-11">
                               {table.getVisibleLeafColumns().map((column) => (
-                                <TableCell key={column.id}>
+                                <TableCell
+                                  key={column.id}
+                                  className={getStickyBodyCellClassName(column.id)}
+                                >
                                   <Skeleton className={getTableSkeletonClassName(column.id)} />
                                 </TableCell>
                               ))}
@@ -1096,12 +1106,15 @@ export function LanguageTable() {
                                   <Fragment key={row.id}>
                                     <TableRow
                                       isHoverable
-                                      className="font-normal text-medium-emphasis"
+                                      className="group font-normal text-medium-emphasis"
                                       data-state={row.getIsSelected() && "selected"}
                                       onClick={() => handleRowClick(row.original.itemId)}
                                     >
                                       {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell
+                                          key={cell.id}
+                                          className={getStickyBodyCellClassName(cell.column.id)}
+                                        >
                                           {flexRender(
                                             cell.column.columnDef.cell,
                                             cell.getContext(),
@@ -1111,7 +1124,10 @@ export function LanguageTable() {
                                     </TableRow>
                                     {isRowExpanded && (
                                       <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
-                                        <TableCell colSpan={columns.length} className="p-0">
+                                        <TableCell
+                                          colSpan={table.getVisibleLeafColumns().length}
+                                          className="p-0"
+                                        >
                                           <InlineKeyDetails
                                             key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
                                             keyDetails={row.original}
@@ -1130,7 +1146,10 @@ export function LanguageTable() {
                               })
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                <TableCell
+                                  colSpan={table.getVisibleLeafColumns().length}
+                                  className="h-24 text-center"
+                                >
                                   <LanguageTableEmptyState
                                     hasActiveFilters={hasActiveFilters}
                                     importProgress={importProgress}

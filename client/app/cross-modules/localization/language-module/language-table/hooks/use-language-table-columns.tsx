@@ -173,6 +173,36 @@ export const useLanguageTableColumns = ({
         enableHiding: false,
       },
       {
+        id: "actions",
+        enableHiding: false,
+        header: () => (
+          <span className="font-bold text-medium-emphasis">Actions</span>
+        ),
+        cell: ({ row }) => {
+          const isExpanded = expandedRowId === row.original.itemId;
+          return (
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${row.original.keyName}`}
+              aria-expanded={isExpanded}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleExpanded(row.original.itemId);
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <ChevronRight
+                width={20}
+                height={20}
+                className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+              />
+            </Button>
+          );
+        },
+      },
+      {
         accessorKey: "keyName",
         header: () => (
           <div className="w-[300px] md:w-[200px]">
@@ -265,36 +295,6 @@ export const useLanguageTableColumns = ({
             } as ColumnDef<IBlocksLanguageKey>,
           ]
         : []),
-      {
-        id: "actions",
-        enableHiding: false,
-        header: () => (
-          <span className="font-bold text-medium-emphasis">Actions</span>
-        ),
-        cell: ({ row }) => {
-          const isExpanded = expandedRowId === row.original.itemId;
-          return (
-            <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${row.original.keyName}`}
-              aria-expanded={isExpanded}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleExpanded(row.original.itemId);
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              <ChevronRight
-                width={20}
-                height={20}
-                className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-              />
-            </Button>
-          );
-        },
-      },
     ],
     [
       expandedRowId,
