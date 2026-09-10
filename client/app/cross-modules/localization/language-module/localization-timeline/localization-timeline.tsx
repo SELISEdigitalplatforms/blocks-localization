@@ -434,7 +434,7 @@ export default function LocalizationTimeline({
       : timelineQuery,
   );
 
-  const timelineData = data as IGetLocalizationTimelineResponse | undefined;
+  const timelineData = data;
 
   return (
     <>
