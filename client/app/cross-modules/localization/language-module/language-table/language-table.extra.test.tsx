@@ -319,9 +319,12 @@ describe("language-table (extra coverage)", () => {
       setKeys(oneKey());
       const { container } = renderWithProviders(<LanguageTable />);
 
+      // Toggling "completeness" on also adds a table column header with the same
+      // text, so the menu item must be queried by its checkbox role -- a plain
+      // text query becomes ambiguous once that column exists.
+      // Radix checkbox items close the menu on select, so no explicit close is needed.
       await user.click(screen.getByText("View"));
-      await user.click(await screen.findByText("Completeness"));
-      await user.keyboard.press("Escape");
+      await user.click(await screen.findByRole("menuitemcheckbox", { name: "Completeness" }));
 
       let headerCells = Array.from(container.querySelectorAll("thead tr:first-child th")).map(
         (cell) => cell.textContent?.trim() ?? "",
@@ -329,8 +332,7 @@ describe("language-table (extra coverage)", () => {
       expect(headerCells.indexOf("Actions")).toBe(1);
 
       await user.click(screen.getByText("View"));
-      await user.click(await screen.findByText("Completeness"));
-      await user.keyboard.press("Escape");
+      await user.click(await screen.findByRole("menuitemcheckbox", { name: "Completeness" }));
 
       headerCells = Array.from(container.querySelectorAll("thead tr:first-child th")).map(
         (cell) => cell.textContent?.trim() ?? "",
