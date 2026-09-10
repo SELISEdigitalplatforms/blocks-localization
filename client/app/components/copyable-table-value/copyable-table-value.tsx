@@ -67,7 +67,7 @@ export function CopyableTableValue({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn("group flex min-w-0 items-center gap-1", className)}>
+      <div className={cn("group/copy flex min-w-0 items-center gap-1", className)}>
         {valueTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild>{renderedValue}</TooltipTrigger>
@@ -83,7 +83,7 @@ export function CopyableTableValue({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100"
+                className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:pointer-events-none md:opacity-0 md:group-hover/copy:pointer-events-auto md:group-hover/copy:opacity-100 md:group-focus-within/copy:pointer-events-auto md:group-focus-within/copy:opacity-100"
                 aria-label={`${isCopied ? "Copied" : "Copy"} ${label}`}
                 onClick={(event) => {
                   event.stopPropagation();
