@@ -1,6 +1,6 @@
 import { ExternalLink, ListPlus } from "lucide-react";
 
-export { default as KEY_MODE_INSTRUCTIONS_MD } from "./key-mode-instructions.md?raw";
+export { KEY_MODE_INSTRUCTIONS_MD } from "./key-mode-instructions";
 
 export const EXTENSION_WEBSTORE_URL =
   "https://chromewebstore.google.com/detail/selise-blocks-assistant/ehnhmdghlkaeaiinoahgipdeogkikjem";
