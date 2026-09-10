@@ -16,8 +16,19 @@ vi.mock("@seliseblocks/genesis-os/observability", () => ({
 // Vitest is configured with globals: false, so @testing-library/react's
 // automatic afterEach cleanup does not register itself. Wire it up manually
 // so component/hook renders are torn down between tests.
+//
+// Radix UI's modal primitives (Dialog, AlertDialog, DropdownMenu) lock
+// `document.body.style.pointerEvents = "none"` while open and restore it via
+// an effect cleanup on close/unmount. If a test is aborted mid-interaction
+// (e.g. it times out with a dialog still open), that restore can be skipped,
+// leaving the lock on `document.body` -- which outlives `cleanup()` because
+// it's a global style, not part of the unmounted React tree. The next test
+// in the same file then fails with "Unable to perform pointer interaction"
+// even though its own component tree is fine. Reset it defensively so one
+// test's timeout can't cascade into unrelated failures later in the file.
 afterEach(() => {
   cleanup();
+  document.body.style.pointerEvents = "";
 });
 
 // ─── jsdom polyfills for Radix UI / cmdk primitives ──────────────────────────

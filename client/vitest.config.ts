@@ -21,6 +21,12 @@ export default defineConfig({
     exclude: ["node_modules", "dist", "**/__mocks__/**"],
     setupFiles: ["app/test-setup.ts"],
     css: false,
+    // The default 5000ms is tight for userEvent-driven interaction tests once
+    // the full suite (90+ files) runs in parallel and workers contend for
+    // CPU -- tests that finish in well under a second in isolation can miss
+    // the deadline under that load. Give them headroom instead of chasing
+    // per-test timeouts as the suite grows.
+    testTimeout: 10000,
     coverage: {
       reporter: ["text", "lcov"],
       all: true,
