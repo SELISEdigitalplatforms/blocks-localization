@@ -179,7 +179,7 @@ export const InlineKeyDetails = memo(
           </TooltipProvider>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-blocks-primary-50 pt-4 dark:border-blocks-primary-100 sm:flex-row sm:items-center sm:justify-end">
+        <div className="sticky left-4 flex w-[calc(100cqw-2rem)] flex-col-reverse gap-2 border-t border-blocks-primary-50 pt-4 dark:border-blocks-primary-100 sm:flex-row sm:items-center sm:justify-end">
           {hasEmptyChange && (
             <p role="alert" className="mr-auto text-xs text-error">
               A changed translation cannot be empty.

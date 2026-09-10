@@ -58,10 +58,10 @@ export const getStickyHeaderClassName = (columnId: string) => {
 
 export const getStickyBodyCellClassName = (columnId: string) => {
   if (columnId === "select") {
-    return "sticky left-0 z-10 bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted";
+    return "sticky left-0 z-10 bg-background group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
   }
   if (columnId === "actions") {
-    return "sticky left-12 z-10 bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted";
+    return "sticky left-12 z-10 bg-background group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
   }
   return "";
 };

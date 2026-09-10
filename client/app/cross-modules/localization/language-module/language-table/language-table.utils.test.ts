@@ -19,10 +19,16 @@ describe("language-table sticky column helpers", () => {
     expect(getStickyHeaderClassName("keyName")).toBe("");
   });
 
-  it("returns sticky body classes that preserve row hover and selected backgrounds", () => {
-    expect(getStickyBodyCellClassName("select")).toContain("group-hover:bg-muted/50");
-    expect(getStickyBodyCellClassName("select")).toContain("group-data-[state=selected]:bg-muted");
-    expect(getStickyBodyCellClassName("actions")).toContain("sticky left-12");
+  it("returns opaque sticky body backgrounds for default, hover, and selected states", () => {
+    const selectClasses = getStickyBodyCellClassName("select");
+    const actionsClasses = getStickyBodyCellClassName("actions");
+
+    expect(selectClasses).toContain("bg-background");
+    expect(selectClasses).toContain("group-hover:bg-[linear-gradient(");
+    expect(selectClasses).not.toContain("group-hover:bg-muted/50");
+    expect(selectClasses).toContain("group-data-[state=selected]:bg-muted");
+    expect(actionsClasses).toContain("sticky left-12");
+    expect(actionsClasses).toContain("group-hover:bg-[linear-gradient(");
     expect(getStickyBodyCellClassName("moduleId")).toBe("");
   });
 });

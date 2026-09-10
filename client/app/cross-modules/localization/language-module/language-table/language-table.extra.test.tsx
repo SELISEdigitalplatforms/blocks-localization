@@ -347,6 +347,7 @@ describe("language-table (extra coverage)", () => {
 
       const tableViewport = screen.getByTestId("language-table-viewport");
       expect(tableViewport.className).toContain("overflow-x-auto");
+      expect(tableViewport.className).toContain("[container-type:inline-size]");
       expect(tableViewport.className).toContain("[&>div]:overflow-visible");
       expect(tableViewport.className).toContain("language-table-scrollbar");
       expect(
@@ -410,6 +411,12 @@ describe("language-table (extra coverage)", () => {
       expect(
         screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
       ).toContain("dark:border-blocks-primary-100");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("sticky left-4");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("w-[calc(100cqw-2rem)]");
       expect(
         screen.getByRole("button", { name: "Actions for greeting" }).parentElement?.className,
       ).toContain("row-start-1");

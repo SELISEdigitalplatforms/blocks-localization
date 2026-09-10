@@ -1008,7 +1008,7 @@ export function LanguageTable() {
               </div>
               <CardContent>
                 <div
-                  className="language-table-scrollbar w-full overflow-x-auto [&>div]:overflow-visible"
+                  className="language-table-scrollbar w-full overflow-x-auto [container-type:inline-size] [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}
                   data-testid="language-table-viewport"
                 >
