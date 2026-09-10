@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
+import { expectActionsColumnIsLast } from "../table-helpers";
 
 export class ConfigurationPage {
   readonly page: Page;
@@ -47,6 +48,10 @@ export class ConfigurationPage {
     await expect(this.languageColumnHeader).toBeVisible();
     await expect(this.languageCodeColumnHeader).toBeVisible();
     await expect(this.actionsColumnHeader).toBeVisible();
+  }
+
+  async expectActionsColumnIsLast() {
+    await expectActionsColumnIsLast(this.page);
   }
 
   async expectWebhooksSectionVisible() {
