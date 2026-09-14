@@ -190,7 +190,7 @@ export const useProjectForm = () => {
         setTenantGroup(response.tenantGroupId);
 
         try {
-          const projectGroups = await queryClient.fetchQuery({
+          const projectGroups = await queryClient.query({
             queryKey: ["identifier", "projects", response.tenantGroupId],
             queryFn: () => projectService.getProjects(0, 100, response.tenantGroupId),
             staleTime: 0,

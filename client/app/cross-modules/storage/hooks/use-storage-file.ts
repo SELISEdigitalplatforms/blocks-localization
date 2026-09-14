@@ -54,7 +54,7 @@ export const useLazyGetFile = () => {
   const queryClient = useQueryClient();
 
   const fetchFile = (option: IGetFileByFileIDPayload) => {
-    return queryClient.fetchQuery({
+    return queryClient.query({
       queryKey: ["file", option],
       queryFn: () => storageService.file.getFileByFileId(option),
     });
