@@ -51,17 +51,19 @@ export const STICKY_LEFT_COLUMN_IDS = new Set(["select", "actions"]);
 export const isStickyLeftColumn = (columnId: string) => STICKY_LEFT_COLUMN_IDS.has(columnId);
 
 export const getStickyHeaderClassName = (columnId: string) => {
-  if (columnId === "select") return "sticky left-0 z-10 bg-background";
-  if (columnId === "actions") return "sticky left-12 z-10 bg-background";
+  if (columnId === "select") {
+    return "sticky left-0 z-10 bg-background pl-2 pr-2 md:pl-2 md:pr-2 [&:has([role=checkbox])]:pr-2";
+  }
+  if (columnId === "actions") return "sticky left-8 z-10 bg-background pl-2 pr-2 md:pl-2 md:pr-2";
   return "";
 };
 
 export const getStickyBodyCellClassName = (columnId: string) => {
   if (columnId === "select") {
-    return "sticky left-0 z-10 bg-background group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
+    return "sticky left-0 z-10 bg-background pl-2 pr-2 py-0 md:pl-2 md:pr-2 md:py-0 [&:has([role=checkbox])]:pr-2 group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
   }
   if (columnId === "actions") {
-    return "sticky left-12 z-10 bg-background group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
+    return "sticky left-8 z-10 bg-background pl-2 pr-2 py-0 md:pl-2 md:pr-2 md:py-0 group-hover:bg-[linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5))] group-data-[state=selected]:bg-muted";
   }
   return "";
 };

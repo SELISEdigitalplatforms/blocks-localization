@@ -104,18 +104,18 @@ const getTableSkeletonClassName = (columnId: string) => {
   if (columnId === "createDate" || columnId === "lastUpdateDate") {
     return "h-5 w-[150px] rounded";
   }
-  if (columnId === "actions") return "h-8 w-8 rounded";
+  if (columnId === "actions") return "h-5 w-5 rounded";
   return "h-5 w-24 rounded";
 };
 
 const getTableColumnClassName = (columnId: string) => {
-  if (columnId === "select") return "w-12";
+  if (columnId === "select") return "w-8";
   if (columnId === "keyName") return "w-[332px] md:w-[232px]";
   if (columnId === "moduleId") return "w-32 sm:w-[182px]";
   if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
   if (columnId === "createDate") return "w-[182px]";
   if (columnId === "lastUpdateDate") return "w-[220px]";
-  if (columnId === "actions") return "w-14";
+  if (columnId === "actions") return "w-12";
   return "w-36";
 };
 

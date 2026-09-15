@@ -214,14 +214,14 @@ describe("language-table (extra coverage)", () => {
       const { container } = renderWithProviders(<LanguageTable />);
 
       // The actions column header has no text label -- it's identified by its
-      // sticky "left-12" position, the same class its body cells use.
+      // sticky "left-8" position, the same class its body cells use.
       const headerCells = Array.from(container.querySelectorAll("thead tr:first-child th"));
-      const actionsIndex = headerCells.findIndex((cell) => cell.className.includes("left-12"));
+      const actionsIndex = headerCells.findIndex((cell) => cell.className.includes("left-8"));
       const keyIndex = headerCells.findIndex((cell) => (cell.textContent ?? "").includes("Key"));
 
       expect(actionsIndex).toBeGreaterThan(-1);
       expect(keyIndex).toBeGreaterThan(actionsIndex);
-      expect(headerCells.at(-1)?.className).not.toContain("left-12");
+      expect(headerCells.at(-1)?.className).not.toContain("left-8");
     });
 
     it("applies sticky classes to select and actions header and body cells", () => {
@@ -233,7 +233,7 @@ describe("language-table (extra coverage)", () => {
       expect(stickyHeaders.length).toBeGreaterThanOrEqual(4);
 
       const selectBodyCell = container.querySelector("tbody td.sticky.left-0");
-      const actionsBodyCell = container.querySelector("tbody td.sticky.left-12");
+      const actionsBodyCell = container.querySelector("tbody td.sticky.left-8");
       expect(selectBodyCell).toBeTruthy();
       expect(actionsBodyCell).toBeTruthy();
     });
@@ -249,7 +249,7 @@ describe("language-table (extra coverage)", () => {
       const skeletonCells = Array.from(container.querySelectorAll("tbody tr:first-child td"));
       expect(skeletonCells[0]?.className).toContain("sticky");
       expect(skeletonCells[1]?.className).toContain("sticky");
-      expect(skeletonCells[1]?.querySelector(".h-8.w-8")).toBeTruthy();
+      expect(skeletonCells[1]?.querySelector(".h-5.w-5")).toBeTruthy();
     });
 
     it("still expands a row after scrolling the viewport horizontally", async () => {
@@ -268,7 +268,7 @@ describe("language-table (extra coverage)", () => {
 
       await user.click(screen.getByRole("button", { name: "Expand greeting" }));
       expect(screen.getByRole("textbox", { name: "English translation" })).toBeTruthy();
-      expect(container.querySelector("tbody td.sticky.left-12")).toBeTruthy();
+      expect(container.querySelector("tbody td.sticky.left-8")).toBeTruthy();
     });
 
     it("keeps header order select → Actions → Key on an empty table", () => {
@@ -277,7 +277,7 @@ describe("language-table (extra coverage)", () => {
 
       const headerCells = Array.from(container.querySelectorAll("thead tr:first-child th"));
 
-      expect(headerCells.findIndex((cell) => cell.className.includes("left-12"))).toBe(1);
+      expect(headerCells.findIndex((cell) => cell.className.includes("left-8"))).toBe(1);
       expect(headerCells.findIndex((cell) => (cell.textContent ?? "").includes("Key"))).toBe(2);
       expect(screen.getByText("No translation keys yet")).toBeTruthy();
     });
@@ -317,10 +317,10 @@ describe("language-table (extra coverage)", () => {
       const { container } = renderWithProviders(<LanguageTable />);
 
       // The actions column header has no text label -- it's identified by its
-      // sticky "left-12" position, the same class its body cells use.
+      // sticky "left-8" position, the same class its body cells use.
       const getActionsIndex = () =>
         Array.from(container.querySelectorAll("thead tr:first-child th")).findIndex((cell) =>
-          cell.className.includes("left-12"),
+          cell.className.includes("left-8"),
         );
 
       // Toggling "completeness" on also adds a table column header with the same
