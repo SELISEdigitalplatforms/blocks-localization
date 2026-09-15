@@ -104,18 +104,18 @@ const getTableSkeletonClassName = (columnId: string) => {
   if (columnId === "createDate" || columnId === "lastUpdateDate") {
     return "h-5 w-[150px] rounded";
   }
-  if (columnId === "actions") return "h-8 w-8 rounded";
+  if (columnId === "actions") return "h-5 w-5 rounded";
   return "h-5 w-24 rounded";
 };
 
 const getTableColumnClassName = (columnId: string) => {
-  if (columnId === "select") return "w-12";
+  if (columnId === "select") return "w-8";
   if (columnId === "keyName") return "w-[332px] md:w-[232px]";
   if (columnId === "moduleId") return "w-32 sm:w-[182px]";
   if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
   if (columnId === "createDate") return "w-[182px]";
   if (columnId === "lastUpdateDate") return "w-[220px]";
-  if (columnId === "actions") return "w-14";
+  if (columnId === "actions") return "w-12";
   return "w-36";
 };
 
@@ -278,6 +278,8 @@ export function LanguageTable() {
 
   const {
     isLoading,
+    isFetching,
+    isPlaceholderData,
     data: blocksLanguageKeyData,
     refetch: refetchLanguageKeys,
   } = useGetBlocksLanguageKey(
@@ -581,15 +583,23 @@ export function LanguageTable() {
   const tableData = useMemo(() => {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
-  const previousTableRowCountRef = useRef(queryParams.pageSize ?? 10);
 
-  useEffect(() => {
-    if (!isLoading) {
-      previousTableRowCountRef.current = Math.max(tableData.length, 1);
-    }
-  }, [isLoading, tableData.length]);
-
-  const skeletonRowCount = previousTableRowCountRef.current;
+  const requestedPageSize = queryParams.pageSize ?? 10;
+  const requestedPageNumber = queryParams.pageNumber ?? 0;
+  // While keepPreviousData is active, isLoading stays false during a page/pageSize
+  // change and the table keeps rendering the previous page's rows as a placeholder.
+  // Once that placeholder no longer matches the row count the new page will have
+  // (e.g. page size grew from 10 to 20), fall back to a skeleton instead of a
+  // stale/short table so scrolling into the not-yet-loaded rows never shows blank.
+  const skeletonRowCount =
+    stableTotalCount > 0
+      ? Math.max(
+          Math.min(stableTotalCount - requestedPageNumber * requestedPageSize, requestedPageSize),
+          1,
+        )
+      : requestedPageSize;
+  const isFetchingNewPage = isFetching && isPlaceholderData;
+  const showLoadingSkeleton = isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
   const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -1084,7 +1094,7 @@ export function LanguageTable() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isLoading
+                      {showLoadingSkeleton
                         ? Array.from({ length: skeletonRowCount }).map(() => (
                             <TableRow key={crypto.randomUUID()} className="group h-9 md:h-11">
                               {table.getVisibleLeafColumns().map((column) => (
@@ -1164,8 +1174,8 @@ export function LanguageTable() {
               </CardContent>
               {stableTotalCount > 0 && (
                 <div
-                  className={`mt-5 flex min-h-10 items-center md:justify-end ${isLoading ? "invisible pointer-events-none" : ""}`}
-                  aria-hidden={isLoading || undefined}
+                  className={`mt-5 flex min-h-10 items-center md:justify-end ${showLoadingSkeleton ? "invisible pointer-events-none" : ""}`}
+                  aria-hidden={showLoadingSkeleton || undefined}
                 >
                   <Pagination
                     page={queryParams.pageNumber}
