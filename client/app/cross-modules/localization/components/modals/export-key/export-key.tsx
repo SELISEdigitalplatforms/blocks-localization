@@ -344,7 +344,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
   }, [open, form]);
 
   const downloadFile = async (fileIdToUse: string) => {
-    const result = await queryClient.fetchQuery({
+    const result = await queryClient.query({
       queryKey: ["getFilesDownload", fileIdToUse, projectKey],
       queryFn: () =>
         storageService.file.getFilesDownloadUrl({
@@ -541,28 +541,27 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                       </div>
                       <div className="max-h-80 overflow-y-auto">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                          {languageModules &&
-                            languageModules.map((item) => (
-                              <FormItem
-                                key={item.itemId}
-                                className="ml-3 flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.itemId)}
-                                    onCheckedChange={(checked) => {
-                                      handleModuleToggle(
-                                        field.value,
-                                        field.onChange,
-                                        item.itemId,
-                                        checked,
-                                      );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">{item.moduleName}</FormLabel>
-                              </FormItem>
-                            ))}
+                          {languageModules?.map((item) => (
+                            <FormItem
+                              key={item.itemId}
+                              className="ml-3 flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(item.itemId)}
+                                  onCheckedChange={(checked) => {
+                                    handleModuleToggle(
+                                      field.value,
+                                      field.onChange,
+                                      item.itemId,
+                                      checked,
+                                    );
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">{item.moduleName}</FormLabel>
+                            </FormItem>
+                          ))}
                         </div>
                       </div>
                       <FormMessage />

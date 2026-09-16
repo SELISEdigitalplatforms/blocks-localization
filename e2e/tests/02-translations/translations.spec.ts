@@ -1,6 +1,16 @@
 import { test, expect } from "../../support/test-base";
 import { TranslationsPage, KeyDetailsPage } from "../../support/pages/translations.page";
-import { openTranslations, openNewKey, openLogs } from "../../support/localization-helpers";
+import { ModulesPage } from "../../support/pages/modules.page";
+import { ConfigurationPage } from "../../support/pages/configuration.page";
+import { GlossaryPage } from "../../support/pages/glossary.page";
+import {
+  openConfiguration,
+  openGlossary,
+  openModules,
+  openTranslations,
+  openNewKey,
+  openLogs,
+} from "../../support/localization-helpers";
 import { e2eBaseUrl } from "../../support/env";
 import { readLocalizationProject } from "../../support/localization-project";
 import path from "path";
@@ -215,6 +225,65 @@ test.describe("Translations", () => {
       await translations.expectBulkActionsVisible();
       await translations.openBulkDeleteDialog();
       await translations.cancelBulkDeleteDialog();
+    });
+
+    await test.step("Translation Keys keeps Actions left and sticky on wide tables", async () => {
+      const modules = new ModulesPage(page);
+      const configuration = new ConfigurationPage(page);
+      const glossary = new GlossaryPage(page);
+      const inlineValue = `E2E sticky ${Date.now()}`;
+
+      await page.setViewportSize({ width: 960, height: 900 });
+      await openTranslations(page);
+      await translations.openTranslationKeysTab();
+      await translations.expectTranslationsHeadingVisible();
+      await translations.expectFirstDataRowVisible();
+      await translations.selectAllLanguagesInView();
+      await translations.enableOptionalViewColumn("Completeness");
+      await translations.enableOptionalViewColumn("Created Date");
+      await translations.enableOptionalViewColumn("Last Updated Date");
+
+      await translations.expectActionsColumnLeftOfKeyColumn();
+      await translations.expectTableRequiresHorizontalScroll();
+      await translations.scrollTranslationTableToEnd();
+      await translations.expectStickySelectAndActionsVisible();
+      await translations.expandFirstTranslationKey();
+      await translations.expectInlineKeyEditorVisible();
+      await translations.expectExpandedInlineRowSpansFullTableWidth();
+      await translations.openExpandedRowOverflowActions();
+      await translations.expectExpandedRowOverflowMenuVisible();
+      await translations.closeExpandedRowOverflowMenu();
+      await translations.editFirstInlineTranslationAndSave(inlineValue);
+      await translations.expectInlineTranslationSaved();
+
+      const viewLanguages = await translations.getViewLanguageNames();
+      const languageToToggle = viewLanguages[0];
+      if (languageToToggle) {
+        await translations.toggleViewLanguage(languageToToggle);
+        await translations.expectActionsColumnLeftOfKeyColumn();
+        await translations.toggleViewLanguage(languageToToggle);
+        await translations.expectActionsColumnLeftOfKeyColumn();
+      }
+
+      await translations.toggleOptionalViewColumn("Completeness");
+      await translations.expectActionsColumnLeftOfKeyColumn();
+      await translations.toggleOptionalViewColumn("Completeness");
+
+      await openModules(page);
+      await modules.expectPageLoaded();
+      await modules.expectActionsColumnIsLast();
+
+      await openConfiguration(page);
+      await configuration.expectPageLoaded();
+      await configuration.expectLanguagesSectionVisible();
+      await configuration.expectActionsColumnIsLast();
+
+      await openGlossary(page);
+      await glossary.expectPageLoaded();
+      await glossary.expectActionsColumnIsLastIfTableVisible();
+
+      await openTranslations(page);
+      await translations.openTranslationKeysTab();
     });
 
     await test.step("Pagination navigates between pages when multiple exist", async () => {

@@ -40,8 +40,15 @@ test.describe("Overview", () => {
     });
 
     await test.step("Switching theme to Dark applies it, then Light restores it", async () => {
-      await overview.switchThemeToDark();
-      await overview.switchThemeToLight();
+      const themeButton = page.getByRole("button", { name: "Change theme" });
+      await expect(themeButton).toBeVisible({ timeout: 30_000 });
+      await themeButton.click();
+      await page.getByText("Light", { exact: true }).click();
+      await expect(page.locator("html")).not.toHaveClass(/dark/);
+
+      await themeButton.click();
+      await page.getByText("Dark", { exact: true }).click();
+      await expect(page.locator("html")).toHaveClass(/dark/);
     });
 
     await test.step("Language selector lists EN/German/French with non-English disabled", async () => {
