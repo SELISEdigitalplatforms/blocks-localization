@@ -58,6 +58,15 @@ describe("ExtensionGuides", () => {
       "BLOCKS_LOCALIZATION_BASE_URL",
     );
   });
+
+  it("offers a button to copy the Key Mode AI agent instructions", () => {
+    render(<ExtensionGuides />);
+
+    expect(screen.getByText("Key/Value Mode Integration")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Copy Key Mode instructions" }),
+    ).toBeTruthy();
+  });
 });
 
 describe("ExtensionGuides copy to clipboard", () => {

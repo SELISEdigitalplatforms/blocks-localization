@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Copy, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui-kits/accordion/accordion";
+import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
 import { getRuntimeEnv } from "@/lib/runtime-env";
-import { SETUP_STEPS } from "../../constants/extension-guides.constant";
+import { KEY_MODE_INSTRUCTIONS_MD, SETUP_STEPS } from "../../constants/extension-guides.constant";
 import { CopyableSnippet } from "@/components/copyable-snippet/copyable-snippet";
 
 /**
@@ -265,6 +266,31 @@ export const ExtensionGuides = () => {
           Need another environment? Return to Manage Instances and select
           <span className="font-medium text-foreground">Add Cloud Instance</span>.
         </div>
+      </Card>
+
+      <Card className="p-4 sm:p-6">
+        <h2 className="text-lg font-semibold">Key/Value Mode Integration</h2>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          Copy the prompt below into your AI coding agent (Claude Code, Cursor, GitHub Copilot,
+          etc.) to automatically configure Key Mode and Value Mode support in your codebase. This
+          instruction provides your AI agent with the extension&apos;s event contract and
+          framework-specific event listener implementations.
+        </p>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 gap-2"
+          aria-label="Copy Key Mode instructions"
+          onClick={() => copyToClipboard(KEY_MODE_INSTRUCTIONS_MD, "key-mode-instructions")}
+        >
+          {copiedField === "key-mode-instructions" ? (
+            <Check className="h-4 w-4 text-primary" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+          {copiedField === "key-mode-instructions" ? "Copied" : "Copy instructions"}
+        </Button>
       </Card>
     </div>
   );

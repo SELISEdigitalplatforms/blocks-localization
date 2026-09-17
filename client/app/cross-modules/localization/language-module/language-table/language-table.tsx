@@ -88,6 +88,8 @@ import {
   getInclusiveDateRange,
   getPageSizeOptions,
   getResourceSearchFilters,
+  getStickyBodyCellClassName,
+  getStickyHeaderClassName,
   parseResourceSearch,
   updateResourceSearchValue,
 } from "./language-table.utils";
@@ -102,18 +104,18 @@ const getTableSkeletonClassName = (columnId: string) => {
   if (columnId === "createDate" || columnId === "lastUpdateDate") {
     return "h-5 w-[150px] rounded";
   }
-  if (columnId === "actions") return "h-8 w-8 rounded";
+  if (columnId === "actions") return "h-5 w-5 rounded";
   return "h-5 w-24 rounded";
 };
 
 const getTableColumnClassName = (columnId: string) => {
-  if (columnId === "select") return "w-12";
+  if (columnId === "select") return "w-8";
   if (columnId === "keyName") return "w-[332px] md:w-[232px]";
   if (columnId === "moduleId") return "w-32 sm:w-[182px]";
   if (columnId.startsWith("resources_")) return "w-[332px] md:w-[232px]";
   if (columnId === "createDate") return "w-[182px]";
   if (columnId === "lastUpdateDate") return "w-[220px]";
-  if (columnId === "actions") return "w-14";
+  if (columnId === "actions") return "w-12";
   return "w-36";
 };
 
@@ -276,6 +278,8 @@ export function LanguageTable() {
 
   const {
     isLoading,
+    isFetching,
+    isPlaceholderData,
     data: blocksLanguageKeyData,
     refetch: refetchLanguageKeys,
   } = useGetBlocksLanguageKey(
@@ -579,15 +583,23 @@ export function LanguageTable() {
   const tableData = useMemo(() => {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
-  const previousTableRowCountRef = useRef(queryParams.pageSize ?? 10);
 
-  useEffect(() => {
-    if (!isLoading) {
-      previousTableRowCountRef.current = Math.max(tableData.length, 1);
-    }
-  }, [isLoading, tableData.length]);
-
-  const skeletonRowCount = previousTableRowCountRef.current;
+  const requestedPageSize = queryParams.pageSize ?? 10;
+  const requestedPageNumber = queryParams.pageNumber ?? 0;
+  // While keepPreviousData is active, isLoading stays false during a page/pageSize
+  // change and the table keeps rendering the previous page's rows as a placeholder.
+  // Once that placeholder no longer matches the row count the new page will have
+  // (e.g. page size grew from 10 to 20), fall back to a skeleton instead of a
+  // stale/short table so scrolling into the not-yet-loaded rows never shows blank.
+  const skeletonRowCount =
+    stableTotalCount > 0
+      ? Math.max(
+          Math.min(stableTotalCount - requestedPageNumber * requestedPageSize, requestedPageSize),
+          1,
+        )
+      : requestedPageSize;
+  const isFetchingNewPage = isFetching && isPlaceholderData;
+  const showLoadingSkeleton = isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
   const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -1006,7 +1018,7 @@ export function LanguageTable() {
               </div>
               <CardContent>
                 <div
-                  className="language-table-scrollbar w-full overflow-x-auto [&>div]:overflow-visible"
+                  className="language-table-scrollbar w-full overflow-x-auto [container-type:inline-size] [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}
                   data-testid="language-table-viewport"
                 >
@@ -1022,7 +1034,7 @@ export function LanguageTable() {
                           {headerGroup.headers.map((header) => (
                             <TableHead
                               key={header.id}
-                              className="h-0 align-top font-bold text-medium-emphasis"
+                              className={`h-0 align-top font-bold text-medium-emphasis ${getStickyHeaderClassName(header.column.id)}`}
                             >
                               {header.isPlaceholder
                                 ? null
@@ -1072,16 +1084,24 @@ export function LanguageTable() {
                               </TableHead>
                             );
                           }
-                          return <TableHead key={column.id} />;
+                          return (
+                            <TableHead
+                              key={column.id}
+                              className={getStickyHeaderClassName(column.id)}
+                            />
+                          );
                         })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isLoading
+                      {showLoadingSkeleton
                         ? Array.from({ length: skeletonRowCount }).map(() => (
-                            <TableRow key={crypto.randomUUID()} className="h-9 md:h-11">
+                            <TableRow key={crypto.randomUUID()} className="group h-9 md:h-11">
                               {table.getVisibleLeafColumns().map((column) => (
-                                <TableCell key={column.id}>
+                                <TableCell
+                                  key={column.id}
+                                  className={getStickyBodyCellClassName(column.id)}
+                                >
                                   <Skeleton className={getTableSkeletonClassName(column.id)} />
                                 </TableCell>
                               ))}
@@ -1096,12 +1116,15 @@ export function LanguageTable() {
                                   <Fragment key={row.id}>
                                     <TableRow
                                       isHoverable
-                                      className="font-normal text-medium-emphasis"
+                                      className="group font-normal text-medium-emphasis"
                                       data-state={row.getIsSelected() && "selected"}
                                       onClick={() => handleRowClick(row.original.itemId)}
                                     >
                                       {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell
+                                          key={cell.id}
+                                          className={getStickyBodyCellClassName(cell.column.id)}
+                                        >
                                           {flexRender(
                                             cell.column.columnDef.cell,
                                             cell.getContext(),
@@ -1111,7 +1134,10 @@ export function LanguageTable() {
                                     </TableRow>
                                     {isRowExpanded && (
                                       <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
-                                        <TableCell colSpan={columns.length} className="p-0">
+                                        <TableCell
+                                          colSpan={table.getVisibleLeafColumns().length}
+                                          className="p-0"
+                                        >
                                           <InlineKeyDetails
                                             key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
                                             keyDetails={row.original}
@@ -1130,7 +1156,10 @@ export function LanguageTable() {
                               })
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                <TableCell
+                                  colSpan={table.getVisibleLeafColumns().length}
+                                  className="h-24 text-center"
+                                >
                                   <LanguageTableEmptyState
                                     hasActiveFilters={hasActiveFilters}
                                     importProgress={importProgress}
@@ -1145,8 +1174,8 @@ export function LanguageTable() {
               </CardContent>
               {stableTotalCount > 0 && (
                 <div
-                  className={`mt-5 flex min-h-10 items-center md:justify-end ${isLoading ? "invisible pointer-events-none" : ""}`}
-                  aria-hidden={isLoading || undefined}
+                  className={`mt-5 flex min-h-10 items-center md:justify-end ${showLoadingSkeleton ? "invisible pointer-events-none" : ""}`}
+                  aria-hidden={showLoadingSkeleton || undefined}
                 >
                   <Pagination
                     page={queryParams.pageNumber}

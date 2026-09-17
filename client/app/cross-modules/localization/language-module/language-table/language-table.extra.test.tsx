@@ -207,6 +207,138 @@ describe("language-table (extra coverage)", () => {
     primeStore([], []);
   });
 
+  describe("sticky left actions column", () => {
+    it("renders Actions immediately after the select column", () => {
+      primeStore(["en-US", "de-DE"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      // The actions column header has no text label -- it's identified by its
+      // sticky "left-8" position, the same class its body cells use.
+      const headerCells = Array.from(container.querySelectorAll("thead tr:first-child th"));
+      const actionsIndex = headerCells.findIndex((cell) => cell.className.includes("left-8"));
+      const keyIndex = headerCells.findIndex((cell) => (cell.textContent ?? "").includes("Key"));
+
+      expect(actionsIndex).toBeGreaterThan(-1);
+      expect(keyIndex).toBeGreaterThan(actionsIndex);
+      expect(headerCells.at(-1)?.className).not.toContain("left-8");
+    });
+
+    it("applies sticky classes to select and actions header and body cells", () => {
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const stickyHeaders = container.querySelectorAll("thead th.sticky");
+      expect(stickyHeaders.length).toBeGreaterThanOrEqual(4);
+
+      const selectBodyCell = container.querySelector("tbody td.sticky.left-0");
+      const actionsBodyCell = container.querySelector("tbody td.sticky.left-8");
+      expect(selectBodyCell).toBeTruthy();
+      expect(actionsBodyCell).toBeTruthy();
+    });
+
+    it("keeps the actions skeleton in the left cluster while loading", () => {
+      h.useGetBlocksLanguageKey.mockReturnValue({
+        isLoading: true,
+        data: undefined,
+      } as never);
+      primeStore(["en-US"], []);
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const skeletonCells = Array.from(container.querySelectorAll("tbody tr:first-child td"));
+      expect(skeletonCells[0]?.className).toContain("sticky");
+      expect(skeletonCells[1]?.className).toContain("sticky");
+      expect(skeletonCells[1]?.querySelector(".h-5.w-5")).toBeTruthy();
+    });
+
+    it("still expands a row after scrolling the viewport horizontally", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US", "de-DE"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const viewport = screen.getByTestId("language-table-viewport");
+      Object.defineProperty(viewport, "scrollLeft", {
+        configurable: true,
+        writable: true,
+        value: 500,
+      });
+      fireEvent.scroll(viewport);
+
+      await user.click(screen.getByRole("button", { name: "Expand greeting" }));
+      expect(screen.getByRole("textbox", { name: "English translation" })).toBeTruthy();
+      expect(container.querySelector("tbody td.sticky.left-8")).toBeTruthy();
+    });
+
+    it("keeps header order select → Actions → Key on an empty table", () => {
+      setKeys({ totalCount: 0, keys: [] });
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const headerCells = Array.from(container.querySelectorAll("thead tr:first-child th"));
+
+      expect(headerCells.findIndex((cell) => cell.className.includes("left-8"))).toBe(1);
+      expect(headerCells.findIndex((cell) => (cell.textContent ?? "").includes("Key"))).toBe(2);
+      expect(screen.getByText("No translation keys yet")).toBeTruthy();
+    });
+
+    it("spans InlineKeyDetails across every visible column", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US", "de-DE"], ["completeness"]);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      const columnCount = container.querySelectorAll("thead tr:first-child th").length;
+      await user.click(screen.getByRole("button", { name: "Expand greeting" }));
+
+      const expandedCell = container.querySelector("tbody td[colspan]");
+      expect(expandedCell?.getAttribute("colspan")).toBe(String(columnCount));
+    });
+
+    it("applies selected-state sticky classes when a row is selected", () => {
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      fireEvent.click(screen.getByLabelText("Select row"));
+
+      const stickyCells = container.querySelectorAll("tbody td.sticky");
+      expect(stickyCells.length).toBeGreaterThanOrEqual(2);
+      stickyCells.forEach((cell) => {
+        expect(cell.className).toContain("group-data-[state=selected]:bg-muted");
+      });
+      expect(container.querySelector('tbody tr[data-state="selected"]')).toBeTruthy();
+    });
+
+    it("keeps Actions left when optional columns are toggled in View", async () => {
+      const user = userEvent.setup();
+      primeStore(["en-US"], []);
+      setKeys(oneKey());
+      const { container } = renderWithProviders(<LanguageTable />);
+
+      // The actions column header has no text label -- it's identified by its
+      // sticky "left-8" position, the same class its body cells use.
+      const getActionsIndex = () =>
+        Array.from(container.querySelectorAll("thead tr:first-child th")).findIndex((cell) =>
+          cell.className.includes("left-8"),
+        );
+
+      // Toggling "completeness" on also adds a table column header with the same
+      // text, so the menu item must be queried by its checkbox role -- a plain
+      // text query becomes ambiguous once that column exists.
+      // Radix checkbox items close the menu on select, so no explicit close is needed.
+      await user.click(screen.getByText("View"));
+      await user.click(await screen.findByRole("menuitemcheckbox", { name: "Completeness" }));
+
+      expect(getActionsIndex()).toBe(1);
+
+      await user.click(screen.getByText("View"));
+      await user.click(await screen.findByRole("menuitemcheckbox", { name: "Completeness" }));
+
+      expect(getActionsIndex()).toBe(1);
+    });
+  });
+
   describe("empty table filters", () => {
     it("disables toolbar filters and column searches for a truly empty table", () => {
       setKeys({ totalCount: 0, keys: [] });
@@ -215,6 +347,7 @@ describe("language-table (extra coverage)", () => {
 
       const tableViewport = screen.getByTestId("language-table-viewport");
       expect(tableViewport.className).toContain("overflow-x-auto");
+      expect(tableViewport.className).toContain("[container-type:inline-size]");
       expect(tableViewport.className).toContain("[&>div]:overflow-visible");
       expect(tableViewport.className).toContain("language-table-scrollbar");
       expect(
@@ -278,6 +411,12 @@ describe("language-table (extra coverage)", () => {
       expect(
         screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
       ).toContain("dark:border-blocks-primary-100");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("sticky left-4");
+      expect(
+        screen.getByRole("button", { name: "Save changes" }).parentElement?.className,
+      ).toContain("w-[calc(100cqw-2rem)]");
       expect(
         screen.getByRole("button", { name: "Actions for greeting" }).parentElement?.className,
       ).toContain("row-start-1");

@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
+import { expectActionsColumnIsLast } from "../table-helpers";
 
 export class ModulesPage {
   readonly page: Page;
@@ -45,6 +46,10 @@ export class ModulesPage {
     await expect(this.page.getByRole("columnheader", { name: "Created By" })).toBeVisible();
     await expect(this.page.getByRole("columnheader", { name: "Created Date" })).toBeVisible();
     await expect(this.page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  }
+
+  async expectActionsColumnIsLast() {
+    await expectActionsColumnIsLast(this.page);
   }
 
   async openNewModuleDialog() {

@@ -397,4 +397,136 @@ export class TranslationsPage {
       await expect(this.page.getByRole("button", { name: "Go to previous page" })).toBeEnabled();
     }
   }
+
+  private translationKeysTable() {
+    return this.tableViewport.locator("table");
+  }
+
+  async selectAllLanguagesInView() {
+    await this.openViewDropdown();
+    const languagesMaster = this.page.getByLabel("Languages");
+    if (!(await languagesMaster.isChecked())) {
+      await languagesMaster.click();
+    }
+    await this.page.keyboard.press("Escape");
+  }
+
+  async enableOptionalViewColumn(name: "Completeness" | "Created Date" | "Last Updated Date") {
+    await this.openViewDropdown();
+    const item = this.page.getByRole("menuitemcheckbox", { name });
+    if ((await item.getAttribute("aria-checked")) !== "true") {
+      await item.click();
+    }
+    await this.page.keyboard.press("Escape");
+  }
+
+  async toggleOptionalViewColumn(name: "Completeness" | "Created Date" | "Last Updated Date") {
+    await this.openViewDropdown();
+    await this.page.getByRole("menuitemcheckbox", { name }).click();
+    await this.page.keyboard.press("Escape");
+  }
+
+  async getViewLanguageNames() {
+    await this.openViewDropdown();
+    const optionalColumns = new Set(["Completeness", "Created Date", "Last Updated Date"]);
+    const items = this.page.getByRole("menuitemcheckbox");
+    const names: string[] = [];
+
+    for (let index = 0; index < (await items.count()); index += 1) {
+      const name = (await items.nth(index).innerText()).trim();
+      if (name && !optionalColumns.has(name)) names.push(name);
+    }
+
+    await this.page.keyboard.press("Escape");
+    return names;
+  }
+
+  async toggleViewLanguage(languageName: string) {
+    await this.openViewDropdown();
+    await this.page.getByRole("menuitemcheckbox", { name: languageName }).click();
+    await this.page.keyboard.press("Escape");
+  }
+
+  async expectActionsColumnLeftOfKeyColumn() {
+    const headers = this.translationKeysTable().locator("thead tr").first().locator("th");
+    const count = await headers.count();
+    let actionsIndex = -1;
+    let keyIndex = -1;
+
+    for (let index = 0; index < count; index += 1) {
+      const text = (await headers.nth(index).innerText()).replace(/\s+/g, " ").trim();
+      if (text.includes("Actions")) actionsIndex = index;
+      if (/\bKey\b/.test(text)) keyIndex = index;
+    }
+
+    expect(actionsIndex).toBeGreaterThanOrEqual(1);
+    expect(keyIndex).toBeGreaterThan(actionsIndex);
+
+    const lastHeaderText = (await headers.nth(count - 1).innerText()).replace(/\s+/g, " ").trim();
+    expect(lastHeaderText).not.toContain("Actions");
+  }
+
+  async expectTableRequiresHorizontalScroll() {
+    const metrics = await this.tableViewport.evaluate((element) => ({
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+    }));
+    expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth);
+  }
+
+  async scrollTranslationTableToEnd() {
+    await this.tableViewport.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth - element.clientWidth;
+    });
+  }
+
+  async expectStickySelectAndActionsVisible() {
+    await expect(this.page.getByLabel("Select all")).toBeInViewport();
+    await expect(this.page.getByRole("button", { name: /^Expand / }).first()).toBeInViewport();
+  }
+
+  async expandFirstTranslationKey() {
+    await this.page.getByRole("button", { name: /^Expand / }).first().click();
+  }
+
+  async expectInlineKeyEditorVisible() {
+    await expect(this.page.getByRole("textbox", { name: / translation$/i }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  }
+
+  async editFirstInlineTranslationAndSave(value: string) {
+    const translationInput = this.page.getByRole("textbox", { name: / translation$/i }).first();
+    await translationInput.fill(value);
+    await this.page.getByRole("button", { name: "Save changes" }).click();
+  }
+
+  async expectInlineTranslationSaved() {
+    await expect(
+      this.page.getByText("Language key updated successfully", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+  }
+
+  async openExpandedRowOverflowActions() {
+    await this.page.getByRole("button", { name: /^Actions for / }).first().click();
+  }
+
+  async expectExpandedRowOverflowMenuVisible() {
+    await expect(this.page.getByRole("menuitem", { name: "Translate" })).toBeVisible();
+    await expect(this.page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  }
+
+  async closeExpandedRowOverflowMenu() {
+    await this.page.keyboard.press("Escape");
+  }
+
+  async expectExpandedInlineRowSpansFullTableWidth() {
+    const columnCount = await this.translationKeysTable()
+      .locator("thead tr")
+      .first()
+      .locator("th")
+      .count();
+    const expandedCell = this.page.locator("tbody tr").filter({ has: this.page.locator("td[colspan]") }).locator("td").first();
+    await expect(expandedCell).toHaveAttribute("colspan", String(columnCount));
+  }
 }

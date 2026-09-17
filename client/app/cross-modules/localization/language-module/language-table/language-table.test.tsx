@@ -237,6 +237,31 @@ describe("language-module/language-table", () => {
     ).toContain("Page 1 of 1");
   });
 
+  it("should show a loading skeleton instead of stale short data while a larger page size is being fetched", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      data: oneKey,
+    } as never);
+    const { container, rerender } = renderWithProviders(<LanguageTable />);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+
+    // Simulate changing the page size: React Query's keepPreviousData keeps
+    // isLoading false and still returns the old (shorter) page as placeholder
+    // data while the new, larger page is fetched in the background.
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      isFetching: true,
+      isPlaceholderData: true,
+      data: { totalCount: 25, keys: oneKey.keys },
+    } as never);
+    rerender(<LanguageTable />);
+
+    expect(container.querySelectorAll("tbody .animate-pulse").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(10);
+  });
+
   it("should navigate to the new-key page", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,

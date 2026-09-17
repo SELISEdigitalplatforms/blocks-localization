@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
+import { expectActionsColumnIsLast } from "../table-helpers";
 
 export class GlossaryPage {
   readonly page: Page;
@@ -41,6 +42,12 @@ export class GlossaryPage {
       await expect(this.firstGlossaryRow).toBeVisible({ timeout: 10_000 });
     }
     await expect(this.newGlossaryButton).toBeVisible();
+  }
+
+  async expectActionsColumnIsLastIfTableVisible() {
+    const headers = this.page.locator("thead tr").first().locator("th");
+    if ((await headers.count()) === 0) return;
+    await expectActionsColumnIsLast(this.page);
   }
 
   async openNewGlossaryDialog() {
