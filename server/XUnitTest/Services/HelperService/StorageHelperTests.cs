@@ -10,6 +10,61 @@ using Xunit;
 
 namespace XUnitTest
 {
+    /// <summary>
+    /// A minimal loopback HTTP server for tests exercising <see cref="StorageHelper.SaveIntoStorage"/>,
+    /// which builds its own <see cref="HttpClient"/> internally rather than taking an injectable
+    /// factory - so the only way to observe the PUT's outcome is to actually receive it.
+    /// </summary>
+    internal sealed class TestHttpServer : IDisposable
+    {
+        private readonly HttpListener _listener;
+        private readonly Task _acceptLoop;
+
+        public string Url { get; }
+
+        public TestHttpServer(HttpStatusCode respondWith)
+        {
+            var port = GetFreeTcpPort();
+            Url = $"http://127.0.0.1:{port}/upload";
+            _listener = new HttpListener();
+            _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+            _listener.Start();
+
+            _acceptLoop = Task.Run(async () =>
+            {
+                try
+                {
+                    var context = await _listener.GetContextAsync();
+                    context.Response.StatusCode = (int)respondWith;
+                    context.Response.Close();
+                }
+                catch (HttpListenerException)
+                {
+                    // Listener stopped while awaiting a request - fine, the test is tearing down.
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Same as above.
+                }
+            });
+        }
+
+        private static int GetFreeTcpPort()
+        {
+            var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+            return port;
+        }
+
+        public void Dispose()
+        {
+            _listener.Stop();
+            _listener.Close();
+        }
+    }
+
     public class StorageHelperTests
     {
         private readonly Mock<ILogger<StorageHelper>> _logger;
@@ -61,7 +116,7 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task SaveIntoStorage_WhenStorageServiceReturnsNull_ThrowsException()
+        public async Task SaveIntoStorage_WhenStorageServiceReturnsNull_ReturnsFalseRatherThanThrowing()
         {
             // Arrange
             var inputStream = new MemoryStream();
@@ -70,11 +125,104 @@ namespace XUnitTest
                 .ReturnsAsync((GetPreSignedUrlForUploadResponse)null!);
 
             // Act
-            var act = async () => await _service.SaveIntoStorage(
+            var result = await _service.SaveIntoStorage(
                 inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
 
             // Assert
-            await act.Should().ThrowAsync<NullReferenceException>();
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task SaveIntoStorage_UsesPrivateAccessModifier()
+        {
+            var inputStream = new MemoryStream();
+            GetPreSignedUrlForUploadRequest? captured = null;
+            _storageDriverService
+                .Setup(s => s.GetPerSignedUrlForUploadAsync(It.IsAny<GetPreSignedUrlForUploadRequest>()))
+                .Callback<GetPreSignedUrlForUploadRequest>(r => captured = r)
+                .ReturnsAsync((GetPreSignedUrlForUploadResponse)null!);
+
+            await _service.SaveIntoStorage(
+                inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
+
+            captured!.AccessModifier.Should().Be("Private");
+        }
+
+        [Fact]
+        public async Task SaveIntoStorage_SkipsCompletion_WhenNotRequired()
+        {
+            var inputStream = new MemoryStream();
+            using var server = new TestHttpServer(HttpStatusCode.OK);
+            _storageDriverService
+                .Setup(s => s.GetPerSignedUrlForUploadAsync(It.IsAny<GetPreSignedUrlForUploadRequest>()))
+                .ReturnsAsync(new GetPreSignedUrlForUploadResponse
+                {
+                    UploadUrl = server.Url,
+                    UploadCompletionRequired = false,
+                });
+
+            var result = await _service.SaveIntoStorage(
+                inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
+
+            result.Should().BeTrue();
+            _storageDriverService.Verify(
+                s => s.CompleteUploadAsync(It.IsAny<CompleteUploadRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SaveIntoStorage_CallsCompletion_AndSucceeds_WhenVerified()
+        {
+            var inputStream = new MemoryStream();
+            using var server = new TestHttpServer(HttpStatusCode.OK);
+            _storageDriverService
+                .Setup(s => s.GetPerSignedUrlForUploadAsync(It.IsAny<GetPreSignedUrlForUploadRequest>()))
+                .ReturnsAsync(new GetPreSignedUrlForUploadResponse
+                {
+                    UploadUrl = server.Url,
+                    FileVersionId = "v1",
+                    UploadCompletionRequired = true,
+                });
+            _storageDriverService
+                .Setup(s => s.CompleteUploadAsync(It.Is<CompleteUploadRequest>(
+                    r => r.FileId == "file-1" && r.FileVersionId == "v1")))
+                .ReturnsAsync(new CompleteUploadResponse
+                {
+                    IsSuccess = true,
+                    VerificationStatus = Storage.DomainService.Enums.FileVerificationStatus.Verified,
+                });
+
+            var result = await _service.SaveIntoStorage(
+                inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
+
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task SaveIntoStorage_ReturnsFalse_WhenCompletionRejects()
+        {
+            var inputStream = new MemoryStream();
+            using var server = new TestHttpServer(HttpStatusCode.OK);
+            _storageDriverService
+                .Setup(s => s.GetPerSignedUrlForUploadAsync(It.IsAny<GetPreSignedUrlForUploadRequest>()))
+                .ReturnsAsync(new GetPreSignedUrlForUploadResponse
+                {
+                    UploadUrl = server.Url,
+                    FileVersionId = "v1",
+                    UploadCompletionRequired = true,
+                });
+            _storageDriverService
+                .Setup(s => s.CompleteUploadAsync(It.IsAny<CompleteUploadRequest>()))
+                .ReturnsAsync(new CompleteUploadResponse
+                {
+                    IsSuccess = true,
+                    VerificationStatus = Storage.DomainService.Enums.FileVerificationStatus.Rejected,
+                    RejectionReason = "real_file_type_mismatch",
+                });
+
+            var result = await _service.SaveIntoStorage(
+                inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
+
+            result.Should().BeFalse();
         }
 
         [Fact]
