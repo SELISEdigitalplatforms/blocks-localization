@@ -73,6 +73,7 @@
     "@typescript-eslint/parser": "^8.62.0",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.11",
+    "ajv": "^8.20.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9",
