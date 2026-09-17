@@ -33,26 +33,52 @@ namespace Eurolm.DomainService.Services.HelperService
                 Name = fileName,
                 ParentDirectoryId = parentDirectoryId,
                 Tags = "[\"File\"]",
+                AccessModifier = "Public",
             };
             var fileInfo = await _storageDriverService.GetPerSignedUrlForUploadAsync(payload);
-            _logger.LogInformation("SaveIntoStorage: Upload url - {Url}", fileInfo?.UploadUrl);
-
-            using (var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, fileInfo?.UploadUrl) { Content = new StreamContent(stream) })
+            if (fileInfo == null || string.IsNullOrEmpty(fileInfo.UploadUrl))
             {
-                AddAzureBlobHeaders(httpRequestMessage);
-                HttpClient httpClient = new HttpClient();
-
-                using var request = new HttpRequestMessage(HttpMethod.Put, fileInfo.UploadUrl)
-                {
-                    Content = new StreamContent(stream)
-                };
-
-                request.Headers.Add("x-ms-blob-type", "BlockBlob");
-
-                var httpResponseMessage = await httpClient.SendAsync(request);
-                stream.Close();
-                return httpResponseMessage.IsSuccessStatusCode;
+                _logger.LogError("SaveIntoStorage: Failed to get pre-signed URL for fileId={FileId}", fileId);
+                return false;
             }
+
+            _logger.LogInformation("SaveIntoStorage: Upload url - {Url}", fileInfo.UploadUrl);
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, fileInfo.UploadUrl)
+            {
+                Content = new StreamContent(stream)
+            };
+            AddAzureBlobHeaders(request);
+
+            using var httpClient = new HttpClient();
+            var httpResponseMessage = await httpClient.SendAsync(request);
+            stream.Close();
+
+            if (!httpResponseMessage.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            if (!fileInfo.UploadCompletionRequired)
+            {
+                return true;
+            }
+
+            var completion = await _storageDriverService.CompleteUploadAsync(new CompleteUploadRequest
+            {
+                FileId = fileId,
+                FileVersionId = fileInfo.FileVersionId,
+            });
+
+            if (completion?.VerificationStatus != Storage.DomainService.Enums.FileVerificationStatus.Verified)
+            {
+                _logger.LogError(
+                    "SaveIntoStorage: Upload completion rejected fileId={FileId}, reason={RejectionReason}",
+                    fileId, completion?.RejectionReason);
+                return false;
+            }
+
+            return true;
         }
 
         public void AddAzureBlobHeaders(HttpRequestMessage httpRequestMessage)
