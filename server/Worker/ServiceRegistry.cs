@@ -8,7 +8,7 @@ using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Validation;
 using FluentValidation;
-using Storage.DomainService.Shared.Services;
+using Storage.DomainService.Services;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
 using Worker.Consumers;
@@ -60,11 +60,8 @@ namespace Worker
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
 
             services.RegisterBlocksStorageServices();
-            services.AddSingleton<DmsArtifactBuilderFactory>();
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
             services.AddTransient<AwsS3CompatibleStorageService>();
-            services.AddSingleton<FileArtifactBuilder>();
-            services.AddSingleton<FolderArtifactBuilder>();
 
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IHttpHelperServices, HttpHelperServices>();

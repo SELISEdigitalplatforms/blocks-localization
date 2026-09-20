@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ICompleteUploadPayload,
   ICreateDmsFolderPayload,
   IDeleteFilePayload,
   IDeleteFolderPayload,
@@ -25,6 +26,13 @@ export const useGetPreSignedUrlForUpload = () => {
         queryKey: ["storage", "file", "getFilesInfo"],
       });
     },
+  });
+};
+
+export const useCompleteUpload = () => {
+  return useMutation({
+    mutationKey: ["storage", "file", "completeUpload"],
+    mutationFn: (payload: ICompleteUploadPayload) => storageService.file.completeUpload(payload),
   });
 };
 

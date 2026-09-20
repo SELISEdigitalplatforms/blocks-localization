@@ -34,7 +34,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { ModuleName } from "@/constants/modules.constants";
 import { IUilmExportNotificationData } from "@blocks-localization/models/language";
-import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
+import {
+  useCompleteUpload,
+  useGetPreSignedUrlForUpload,
+  useUploadFile,
+} from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { Calendar } from "@/components/ui-kits/calendar/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
@@ -84,6 +88,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
   const { mutateAsync: exportAsync } = useSaveLanguageKeyUilmExport();
   const { mutateAsync: getPresignedUrl } = useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFileMutate } = useUploadFile();
+  const { mutateAsync: completeUploadMutate } = useCompleteUpload();
   const queryClient = useQueryClient();
 
   const handleSelectFileType = () => {
@@ -199,6 +204,16 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
 
         // Upload file to storage
         await uploadFileMutate({ url: res.uploadUrl, file: xlfFile });
+
+        if (res.uploadCompletionRequired) {
+          const completion = await completeUploadMutate({
+            fileId,
+            fileVersionId: res.fileVersionId ?? "",
+          });
+          if (completion.verificationStatus !== "Verified") {
+            throw new Error(completion.rejectionReason ?? "File failed verification");
+          }
+        }
 
         // Use uploaded file ID for XLF export
         exportReferenceFileId = fileId;

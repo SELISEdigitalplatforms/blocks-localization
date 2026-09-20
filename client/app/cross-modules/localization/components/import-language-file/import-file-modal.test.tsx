@@ -4,13 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { showErrorToast, showSuccessToast, toast } from "@/hooks/use-toast";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
-import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
+import {
+  useCompleteUpload,
+  useGetPreSignedUrlForUpload,
+  useUploadFile,
+} from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import ImportCommunicationsModal from "./import-file-modal";
 
 const presign = vi.fn();
 const uploadFileMut = vi.fn();
 const importMut = vi.fn();
+const completeUploadMut = vi.fn();
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
@@ -23,6 +28,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
 vi.mock("@blocks-storage/hooks/use-storage-file", () => ({
   useGetPreSignedUrlForUpload: vi.fn(),
   useUploadFile: vi.fn(),
+  useCompleteUpload: vi.fn(),
 }));
 vi.mock("@blocks-storage/services/storage.service", () => ({
   storageService: { file: { getFileByFileId: vi.fn() } },
@@ -154,6 +160,9 @@ describe("components/import-file-modal", () => {
       mutateAsync: importMut,
       isPending: false,
     } as never);
+    vi.mocked(useCompleteUpload).mockReturnValue({
+      mutateAsync: completeUploadMut,
+    } as never);
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -254,6 +263,79 @@ describe("components/import-file-modal", () => {
       fileName: "data.json",
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should skip completion and succeed when the upload does not require it", async () => {
+    presign.mockResolvedValue({
+      isSuccess: true,
+      fileId: "f1",
+      uploadUrl: "https://up",
+      uploadCompletionRequired: false,
+    });
+    uploadFileMut.mockResolvedValue({});
+    importMut.mockResolvedValue({});
+    vi.mocked(storageService.file.getFileByFileId).mockResolvedValue({
+      itemId: "f1",
+      url: "https://file",
+    } as never);
+    renderModal();
+    const json = JSON.stringify([{ KeyName: "greeting" }]);
+    dropFile(makeFile("data.json", json, "application/json"));
+    await screen.findByText("data.json");
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(showSuccessToast).toHaveBeenCalled());
+    expect(completeUploadMut).not.toHaveBeenCalled();
+  });
+
+  it("should call completion and succeed when the upload is verified", async () => {
+    presign.mockResolvedValue({
+      isSuccess: true,
+      fileId: "f1",
+      fileVersionId: "v1",
+      uploadUrl: "https://up",
+      uploadCompletionRequired: true,
+    });
+    uploadFileMut.mockResolvedValue({});
+    completeUploadMut.mockResolvedValue({ isSuccess: true, verificationStatus: "Verified" });
+    importMut.mockResolvedValue({});
+    vi.mocked(storageService.file.getFileByFileId).mockResolvedValue({
+      itemId: "f1",
+      url: "https://file",
+    } as never);
+    renderModal();
+    const json = JSON.stringify([{ KeyName: "greeting" }]);
+    dropFile(makeFile("data.json", json, "application/json"));
+    await screen.findByText("data.json");
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() =>
+      expect(completeUploadMut).toHaveBeenCalledWith({ fileId: "f1", fileVersionId: "v1" }),
+    );
+    await waitFor(() => expect(showSuccessToast).toHaveBeenCalled());
+  });
+
+  it("should surface an error toast and skip import when completion is rejected", async () => {
+    presign.mockResolvedValue({
+      isSuccess: true,
+      fileId: "f1",
+      fileVersionId: "v1",
+      uploadUrl: "https://up",
+      uploadCompletionRequired: true,
+    });
+    uploadFileMut.mockResolvedValue({});
+    completeUploadMut.mockResolvedValue({
+      isSuccess: true,
+      verificationStatus: "Rejected",
+      rejectionReason: "real_file_type_mismatch",
+    });
+    renderModal();
+    const json = JSON.stringify([{ KeyName: "greeting" }]);
+    dropFile(makeFile("data.json", json, "application/json"));
+    await screen.findByText("data.json");
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "real_file_type_mismatch" }),
+    );
+    expect(importMut).not.toHaveBeenCalled();
   });
 
   it("should error the upload when the pre-signed URL fails", async () => {

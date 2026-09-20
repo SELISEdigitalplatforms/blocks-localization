@@ -30,6 +30,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
 vi.mock("@blocks-storage/hooks/use-storage-file", () => ({
   useGetPreSignedUrlForUpload: vi.fn(),
   useUploadFile: vi.fn(),
+  useCompleteUpload: vi.fn(),
 }));
 vi.mock("@blocks-storage/services/storage.service", () => ({
   storageService: {
@@ -67,6 +68,9 @@ describe("components/modals/export-key", () => {
       mutateAsync: vi.fn(),
     } as never);
     vi.mocked(storageHooks.useUploadFile).mockReturnValue({
+      mutateAsync: vi.fn(),
+    } as never);
+    vi.mocked(storageHooks.useCompleteUpload).mockReturnValue({
       mutateAsync: vi.fn(),
     } as never);
   });

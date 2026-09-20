@@ -7,7 +7,7 @@ using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using Storage.DomainService.Shared.Services;
+using Storage.DomainService.Services;
 using Storage.DomainService.Storage;
 using Storage.DomainService.Storage.Validators;
 using System;
@@ -32,11 +32,8 @@ namespace Eurolm.DomainService.Shared
 
             services.AddSingleton<StorageHelper>();
 
-            services.AddSingleton<DmsArtifactBuilderFactory>();
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
             services.AddTransient<AwsS3CompatibleStorageService>();
-            services.AddSingleton<FileArtifactBuilder>();
-            services.AddSingleton<FolderArtifactBuilder>();
 
             services.AddSingleton<IKeyManagementService, KeyManagementService>();
             services.AddSingleton<IKeyRepository, KeyRepository>();
