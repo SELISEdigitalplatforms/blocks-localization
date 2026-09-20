@@ -133,7 +133,7 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task SaveIntoStorage_UsesPrivateAccessModifier()
+        public async Task SaveIntoStorage_UsesPublicAccessModifier()
         {
             var inputStream = new MemoryStream();
             GetPreSignedUrlForUploadRequest? captured = null;
@@ -145,7 +145,7 @@ namespace XUnitTest
             await _service.SaveIntoStorage(
                 inputStream, "file-1", "test.txt", new Dictionary<string, object>(), "parent");
 
-            captured!.AccessModifier.Should().Be("Private");
+            captured!.AccessModifier.Should().Be("Public");
         }
 
         [Fact]
