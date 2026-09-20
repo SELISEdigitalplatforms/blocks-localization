@@ -173,6 +173,45 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
     },
   });
 
+  const uploadXlfReferenceFile = async (file: File): Promise<string> => {
+    const res = await getPresignedUrl({
+      itemId: "",
+      accessModifier: "Public",
+      configurationName: "Default",
+      name: file.name,
+      projectKey,
+      tags: "",
+      metaData: "",
+      parentDirectoryId: "",
+      moduleName: ModuleName.Localization,
+    });
+
+    if (!res.isSuccess) {
+      throw new Error("Failed to get pre-signed URL");
+    }
+
+    await uploadFileMutate({ url: res.uploadUrl, file });
+
+    if (res.uploadCompletionRequired) {
+      const completion = await completeUploadMutate({
+        fileId: res.fileId,
+        fileVersionId: res.fileVersionId ?? "",
+      });
+      if (completion.verificationStatus !== "Verified") {
+        throw new Error(completion.rejectionReason ?? "File failed verification");
+      }
+    }
+
+    return res.fileId;
+  };
+
+  const resolveExportLanguages = (): string[] => {
+    if (selectedOutputType === 5) {
+      return selectedLanguages;
+    }
+    return availableLanguages ? availableLanguages.map((lang) => lang.languageCode) : ["en-US"];
+  };
+
   const onSubmit = async () => {
     setIsUploadingXlf(true);
 
@@ -181,39 +220,8 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
 
       // For XLF export, upload the file first
       if (selectedOutputType === 5 && xlfFile) {
-        // Get pre-signed URL
-        const res = await getPresignedUrl({
-          itemId: "",
-          accessModifier: "Public",
-          configurationName: "Default",
-          name: xlfFile.name,
-          projectKey,
-          tags: "",
-          metaData: "",
-          parentDirectoryId: "",
-          moduleName: ModuleName.Localization,
-        });
-
-        if (!res.isSuccess) {
-          throw new Error("Failed to get pre-signed URL");
-        }
-
-        const fileId = res.fileId;
-
+        const fileId = await uploadXlfReferenceFile(xlfFile);
         setReferenceFileId(fileId);
-
-        // Upload file to storage
-        await uploadFileMutate({ url: res.uploadUrl, file: xlfFile });
-
-        if (res.uploadCompletionRequired) {
-          const completion = await completeUploadMutate({
-            fileId,
-            fileVersionId: res.fileVersionId ?? "",
-          });
-          if (completion.verificationStatus !== "Verified") {
-            throw new Error(completion.rejectionReason ?? "File failed verification");
-          }
-        }
 
         // Use uploaded file ID for XLF export
         exportReferenceFileId = fileId;
@@ -226,12 +234,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
         outputType: selectedOutputType,
         messageCoRelationId,
         appIds: selectedModuleIds,
-        languages:
-          selectedOutputType === 5
-            ? selectedLanguages
-            : availableLanguages
-              ? availableLanguages.map((lang) => lang.languageCode)
-              : ["en-US"],
+        languages: resolveExportLanguages(),
         referenceFileId: exportReferenceFileId,
         callerTenantId: itemId,
         startDate: date?.from ? date.from.toISOString() : undefined,
