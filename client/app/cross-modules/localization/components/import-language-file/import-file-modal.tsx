@@ -27,7 +27,11 @@ import { IImportFile, ILanguageImportRequest } from "@blocks-localization/models
 import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useGetPreSignedUrlForUpload, useUploadFile } from "@blocks-storage/hooks/use-storage-file";
+import {
+  useCompleteUpload,
+  useGetPreSignedUrlForUpload,
+  useUploadFile,
+} from "@blocks-storage/hooks/use-storage-file";
 import { storageService } from "@blocks-storage/services/storage.service";
 import { ModuleName } from "@/constants/modules.constants";
 import {
@@ -763,6 +767,7 @@ export default function ImportCommunicationsModal({
   const { mutateAsync: getPresignedUrl, isPending: isGettingPresignedUrl } =
     useGetPreSignedUrlForUpload();
   const { mutateAsync: uploadFileMutate, isPending: isUploadingFile } = useUploadFile();
+  const { mutateAsync: completeUploadMutate } = useCompleteUpload();
   const { mutateAsync: uploadUilmFile, isPending: isUploadingUilmFile } = useImportLanguageFile();
   const [isUploadingBatch, setIsUploadingBatch] = useState(false);
 
@@ -860,6 +865,16 @@ export default function ImportCommunicationsModal({
 
       const fileId = res.fileId;
       await uploadFileMutate({ url: res.uploadUrl, file });
+
+      if (res.uploadCompletionRequired) {
+        const completion = await completeUploadMutate({
+          fileId,
+          fileVersionId: res.fileVersionId ?? "",
+        });
+        if (completion.verificationStatus !== "Verified") {
+          throw new Error(completion.rejectionReason ?? "File failed verification");
+        }
+      }
 
       correlationId = uuidv4();
       const payload: IImportFile = {

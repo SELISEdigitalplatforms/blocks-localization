@@ -2505,8 +2505,8 @@ namespace Eurolm.DomainService.Services
             {
             Expression<Func<BlocksLanguageKey, bool>> filter = x =>
                 ( appIds == null || appIds.Count == 0 || appIds.Contains(x.ModuleId) ) &&
-                ( !startDate.HasValue || x.CreateDate >= startDate.Value ) &&
-                ( !endDate.HasValue || x.CreateDate <= endDate.Value );
+                ( !startDate.HasValue || x.LastUpdateDate >= startDate.Value ) &&
+                ( !endDate.HasValue || x.LastUpdateDate <= endDate.Value );
 
             return await _keyRepository.GetUilmResourceKeys(filter, _blocksBaseCommand?.ClientTenantId);
             }
