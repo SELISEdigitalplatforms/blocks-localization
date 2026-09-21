@@ -12,7 +12,8 @@ namespace Eurolm.DomainService.Services
         private readonly ILogger<LanguageManagementService> _logger;
         private readonly ILanguageRepository _languageRepository;
 
-        private readonly string _tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+        private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
+            ?? throw new InvalidOperationException("A tenant context is required to save a language.");
 
         public LanguageManagementService(IValidator<Language> validator,
                                         ILogger<LanguageManagementService> logger,
@@ -81,7 +82,7 @@ namespace Eurolm.DomainService.Services
             var repoLanguage = await _languageRepository.GetLanguageByNameAsync(language.LanguageName);
 
             if(repoLanguage == null)
-                repoLanguage = new BlocksLanguage { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = _tenantId};
+                repoLanguage = new BlocksLanguage { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = CurrentTenantId};
 
             repoLanguage.LastUpdateDate = DateTime.UtcNow;
             repoLanguage.LanguageCode = language.LanguageCode;

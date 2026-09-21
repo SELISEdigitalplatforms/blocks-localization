@@ -11,6 +11,23 @@ public class MigrationPlacementTests : IDisposable
     private readonly TenantPlacementFixture _fixture = new();
     public void Dispose() => _fixture.Dispose();
 
+    [Fact]
+    public async Task ModuleListing_UsesCurrentOrExplicitTenantAcrossPlacements()
+    {
+        var repository = new ModuleRepository(_fixture.Provider);
+        await _fixture.Dev.GetCollection<BlocksLanguageModule>("BlocksLanguageModules")
+            .InsertOneAsync(new BlocksLanguageModule { ItemId = "same-id", ModuleName = "dev-only", TenantId = "dev" });
+        await _fixture.Other.GetCollection<BlocksLanguageModule>("BlocksLanguageModules")
+            .InsertOneAsync(new BlocksLanguageModule { ItemId = "same-id", ModuleName = "other-only", TenantId = "other" });
+
+        TestBlocksContext.Set("dev");
+        Assert.Equal("dev-only", Assert.Single(await repository.GetAllAsync()).ModuleName);
+        Assert.Equal("other-only", Assert.Single(await repository.GetAllAsync("other")).ModuleName);
+        TestBlocksContext.Set("other");
+        Assert.Equal("other-only", Assert.Single(await repository.GetAllAsync()).ModuleName);
+        Assert.Equal(0, await _fixture.Main.GetCollection<BlocksLanguageModule>("BlocksLanguageModules").CountDocumentsAsync(x => true));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

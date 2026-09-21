@@ -45,7 +45,14 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<List<BlocksLanguageModule>> GetAllAsync()
         {
-            var collection = _dbContextProvider.GetCollection<BlocksLanguageModule>(_collectionName);
+            var tenantId = BlocksContext.GetContext()?.TenantId
+                ?? throw new InvalidOperationException("A tenant context is required to list modules.");
+            return await GetAllAsync(tenantId);
+        }
+
+        public async Task<List<BlocksLanguageModule>> GetAllAsync(string projectKey)
+        {
+            var collection = _dbContextProvider.GetDatabase(projectKey).GetCollection<BlocksLanguageModule>(_collectionName);
             return await collection.Find(_ => true).ToListAsync();
         }
 

@@ -34,7 +34,9 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<GetLanguageFileGenerationHistoryResponse> GetPaginatedAsync(GetLanguageFileGenerationHistoryRequest request)
         {
-            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext().TenantId??"");
+            var tenantId = BlocksContext.GetContext()?.TenantId
+                ?? throw new InvalidOperationException("A tenant context is required to read language file history.");
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
             var collection = dataBase.GetCollection<LanguageFileGenerationHistory>(_collectionName);
 
             var filter = Builders<LanguageFileGenerationHistory>.Filter.Empty;

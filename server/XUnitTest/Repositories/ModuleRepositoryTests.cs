@@ -23,6 +23,7 @@ namespace XUnitTest.Repositories
 
         public ModuleRepositoryTests()
         {
+            TestBlocksContext.Set("test-tenant");
             _dbContextProvider = new Mock<IDbContextProvider>();
             _database = new Mock<IMongoDatabase>();
             _collection = new Mock<IMongoCollection<BlocksLanguageModule>>();
