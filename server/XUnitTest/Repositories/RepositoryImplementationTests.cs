@@ -197,7 +197,7 @@ namespace XUnitTest
             var database = new Mock<IMongoDatabase>();
             var collection = new Mock<IMongoCollection<MigrationTracker>>();
 
-            dbContextProvider.Setup(x => x.GetDatabase()).Returns(database.Object);
+            dbContextProvider.Setup(x => x.GetDatabase("tracker-owner")).Returns(database.Object);
             database.Setup(x => x.GetCollection<MigrationTracker>("MigrationTrackers", It.IsAny<MongoCollectionSettings>()))
                 .Returns(collection.Object);
             collection.Setup(x => x.UpdateOneAsync(
@@ -210,7 +210,15 @@ namespace XUnitTest
             var repository = new EnvironmentDataMigrationRepository(dbContextProvider.Object);
             var status = new ServiceMigrationStatus { IsCompleted = true, QueueName = "q1" };
 
-            await repository.UpdateMigrationTrackerAsync("tracker-1", status);
+            XUnitTest.Shared.TestBlocksContext.Set("tracker-owner");
+            try
+            {
+                await repository.UpdateMigrationTrackerAsync("tracker-1", status);
+            }
+            finally
+            {
+                BlocksContext.ClearContext();
+            }
 
             collection.Verify(x => x.UpdateOneAsync(
                 It.IsAny<FilterDefinition<MigrationTracker>>(),

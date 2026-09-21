@@ -254,6 +254,22 @@ npm --prefix client run test -- --coverage
 - Reporting a vulnerability: [SECURITY.md](SECURITY.md)
 - Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
+## Database placement (Genesis 4.2.2)
+
+API and Worker use the published Genesis 4.2.2 package. Repositories follow persisted tenant connections per operation. No environment-to-connection mapping is added here.
+
+Migration source and destination databases remain explicit. Migration trackers belong to the initiating tenant carried by the authenticated message context, which may differ from both environments. Tracker repository writes require that owner; they do not fall back to root when context is missing. The migration worker preserves that context when publishing completion to OS. Shared timeline user enrichment continues using configured `RootTenantId` on main.
+
+Regression tests cover independent source/target/owner databases, overwrite and retry behavior, concurrent tracker ownership, and completion message context. They use disposable local MongoDB databases through the real Genesis provider:
+
+```powershell
+dotnet test server/XUnitTest/XUnitTest.csproj -c Release
+```
+
+The new routing fixture defaults to localhost:27017. `BLOCKS_ROUTING_TEST_MONGO_PORT` selects another local test port; remote hosts and deployed credentials are not used. These tests do not establish independent deployed cluster connectivity or an atomic cross-cluster migration.
+
+Deploy API and all translation/import/export/migration workers before enabling OS split placement. Keep the root registry on main. Existing tenant placement/data migration and coordinated cache refresh remain separate work.
+
 ## License
 
 See [LICENSE](LICENSE).

@@ -42,7 +42,12 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task UpdateMigrationTrackerAsync(string trackerId, ServiceMigrationStatus LanguageServiceStatus)
         {
-            var database = _dbContextProvider.GetDatabase();
+            // Trackers belong to the initiating tenant carried in the message envelope,
+            // which can differ from both the source and destination environments.
+            var ownerTenantId = BlocksContext.GetContext()?.TenantId;
+            if (string.IsNullOrWhiteSpace(ownerTenantId))
+                throw new InvalidOperationException("A migration tracker owner tenant is required.");
+            var database = _dbContextProvider.GetDatabase(ownerTenantId);
             var collection = database.GetCollection<MigrationTracker>("MigrationTrackers");
 
             var filter = Builders<MigrationTracker>.Filter.Eq(t => t.ItemId, trackerId);
