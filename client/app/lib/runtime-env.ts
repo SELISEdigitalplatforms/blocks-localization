@@ -44,9 +44,15 @@ const isPlaceholder = (value?: string) =>
   !!value && value.startsWith(PLACEHOLDER_PREFIX) && value.endsWith("__");
 
 export const getRuntimeEnv = (key: RuntimeKey): string => {
+  // The API serves this frontend, so browser requests must use the page's origin.
+  // Keep the configured value available when this helper runs without a window.
+  if (key === "BLOCKS_LOCALIZATION_BASE_URL" && globalThis.window !== undefined) {
+    return globalThis.window.location.origin;
+  }
+
   const windowValue =
-    typeof window !== "undefined"
-      ? (window.__BLOCKS_ENV__ as BlocksEnv | undefined)?.[key]
+    globalThis.window !== undefined
+      ? (globalThis.window.__BLOCKS_ENV__ as BlocksEnv | undefined)?.[key]
       : undefined;
   if (windowValue && !isPlaceholder(windowValue)) {
     return windowValue;

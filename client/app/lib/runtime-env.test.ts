@@ -17,6 +17,22 @@ describe("lib/runtime-env", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses the preview page origin for Localization even when runtime and build values differ", () => {
+    vi.stubEnv("BLOCKS_LOCALIZATION_BASE_URL", "https://build-localization.example.com");
+    vi.stubGlobal("window", {
+      location: { origin: "https://preview-localization.example.com:8443" },
+      __BLOCKS_ENV__: {
+        BLOCKS_LOCALIZATION_BASE_URL: "https://secret-localization.example.com",
+        BLOCKS_LOGIC_BASE_URL: "https://logic.example.com",
+      },
+    });
+
+    expect(getRuntimeEnv("BLOCKS_LOCALIZATION_BASE_URL")).toBe(
+      "https://preview-localization.example.com:8443",
+    );
+    expect(getRuntimeEnv("BLOCKS_LOGIC_BASE_URL")).toBe("https://logic.example.com");
+  });
+
   // ─── placeholder detection ───────────────────────────────────────────────
   describe("placeholder detection (internal isPlaceholder)", () => {
     it("should fall through to import.meta.env when window value matches __BLOCKS_*__ placeholder", () => {
@@ -81,6 +97,18 @@ describe("lib/runtime-env", () => {
       try {
         vi.stubEnv("BLOCKS_GOOGLE_SITE_KEY", "vite-value");
         expect(getRuntimeEnv("BLOCKS_GOOGLE_SITE_KEY")).toBe("vite-value");
+      } finally {
+        (globalThis as unknown as { window?: unknown }).window = originalWindow;
+      }
+    });
+
+    it("keeps the configured Localization URL available without a browser", () => {
+      const originalWindow = globalThis.window;
+      // @ts-expect-error: forcing non-browser-like environment for this test only
+      delete (globalThis as unknown as { window?: unknown }).window;
+      try {
+        vi.stubEnv("BLOCKS_LOCALIZATION_BASE_URL", "https://backend.example.com");
+        expect(getRuntimeEnv("BLOCKS_LOCALIZATION_BASE_URL")).toBe("https://backend.example.com");
       } finally {
         (globalThis as unknown as { window?: unknown }).window = originalWindow;
       }

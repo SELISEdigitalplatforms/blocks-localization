@@ -62,7 +62,7 @@ namespace Eurolm.DomainService.Services
         {
             if (string.IsNullOrEmpty(moduleId))
             {
-                return await _moduleRepository.GetAllAsync();
+                return await _moduleRepository.GetAllAsync(projectKey);
             }
 
             var module = await _moduleRepository.GetByIdAsync(projectKey,moduleId);

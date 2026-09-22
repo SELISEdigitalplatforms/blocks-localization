@@ -41,7 +41,7 @@ export class TranslationsPage {
     this.exportKeysMenuItem = page.getByRole("menuitem", { name: "Export keys" });
     this.exportHistoryMenuItem = page.getByRole("menuitem", { name: "Export History" });
     this.importKeysDialog = page.getByRole("heading", { name: "Import Keys" });
-    this.exportKeysDialog = page.getByRole("heading", { name: "Export keys" });
+    this.exportKeysDialog = page.getByRole("dialog", { name: "Export keys" });
     this.exportHistoryHeading = page.getByRole("heading", { name: "Export History" });
     this.searchInput = page.getByPlaceholder("Search...").first();
     this.bulkEditButton = page.getByRole("button", { name: "Bulk edit" });
@@ -73,7 +73,12 @@ export class TranslationsPage {
   }
 
   async expectHistoryEntryVisible() {
-    await expect(this.page.getByRole("button", { name: /Inserted by import by/ })).toBeVisible();
+    // Timeline entries are "Inserted/Updated by import by" or "Published by"
+    // (localization-timeline.tsx); the list only keeps recent entries, so any
+    // of the verbs is a valid history record.
+    await expect(
+      this.page.getByRole("button", { name: /(Inserted|Updated) by import by|Published by/ }).first(),
+    ).toBeVisible();
   }
 
   async openTranslationKeysTab() {
@@ -173,6 +178,13 @@ export class TranslationsPage {
   async toggleSelectAllCheckbox() {
     const selectAllCheckbox = this.page.locator("#select-all");
     await selectAllCheckbox.click();
+  }
+
+  async getExportDialogModuleNames(): Promise<string[]> {
+    const moduleLabels = this.exportKeysDialog.locator(".grid label");
+    await expect(moduleLabels.first()).toBeVisible({ timeout: 15_000 });
+    const names = await moduleLabels.allTextContents();
+    return names.map((name) => name.trim()).filter(Boolean);
   }
 
   async toggleModuleCheckbox(moduleName: string) {
@@ -380,6 +392,11 @@ export class TranslationsPage {
     await expect(this.bulkDeleteButton).toBeVisible();
   }
 
+  async expectBulkActionsHidden() {
+    await expect(this.bulkEditButton).toHaveCount(0);
+    await expect(this.bulkDeleteButton).toHaveCount(0);
+  }
+
   async openBulkDeleteDialog() {
     await this.bulkDeleteButton.click();
     await expect(this.deleteDialog).toBeVisible();
@@ -450,20 +467,20 @@ export class TranslationsPage {
   async expectActionsColumnLeftOfKeyColumn() {
     const headers = this.translationKeysTable().locator("thead tr").first().locator("th");
     const count = await headers.count();
-    let actionsIndex = -1;
-    let keyIndex = -1;
+    expect(count).toBeGreaterThanOrEqual(3);
 
-    for (let index = 0; index < count; index += 1) {
-      const text = (await headers.nth(index).innerText()).replace(/\s+/g, " ").trim();
-      if (text.includes("Actions")) actionsIndex = index;
-      if (/\bKey\b/.test(text)) keyIndex = index;
-    }
+    // The actions column renders an unlabeled sticky header right after the
+    // select checkbox and immediately before the Key column
+    // (use-language-table-columns.tsx defines only a cell renderer, no header).
+    const actionsHeaderText = (await headers.nth(1).innerText()).replace(/\s+/g, " ").trim();
+    expect(actionsHeaderText).toBe("");
 
-    expect(actionsIndex).toBeGreaterThanOrEqual(1);
-    expect(keyIndex).toBeGreaterThan(actionsIndex);
+    const keyHeaderText = (await headers.nth(2).innerText()).replace(/\s+/g, " ").trim();
+    expect(keyHeaderText).toBe("Key");
 
+    // The last column is a labelled data column, not the unlabeled actions one.
     const lastHeaderText = (await headers.nth(count - 1).innerText()).replace(/\s+/g, " ").trim();
-    expect(lastHeaderText).not.toContain("Actions");
+    expect(lastHeaderText).not.toBe("");
   }
 
   async expectTableRequiresHorizontalScroll() {
@@ -528,5 +545,152 @@ export class TranslationsPage {
       .count();
     const expandedCell = this.page.locator("tbody tr").filter({ has: this.page.locator("td[colspan]") }).locator("td").first();
     await expect(expandedCell).toHaveAttribute("colspan", String(columnCount));
+  }
+
+  // --- Publish Changes ---
+
+  async openPublishChangesDialog() {
+    await this.publishChangesButton.click();
+    await expect(this.page.getByRole("dialog", { name: "Publish changes?" })).toBeVisible();
+  }
+
+  async confirmPublishChanges() {
+    const dialog = this.page.getByRole("dialog", { name: "Publish changes?" });
+    await dialog.getByRole("button", { name: "Publish" }).click();
+  }
+
+  async expectPublishChangesConfirmed() {
+    await expect(
+      this.page.getByText("File generation is in progress.", { exact: true }),
+    ).toBeVisible({ timeout: 20_000 });
+  }
+
+  // --- Toolbar filters ---
+
+  async openModulesFilter() {
+    await this.page.getByRole("button", { name: /^Modules/ }).click();
+    await expect(this.page.getByPlaceholder("Modules")).toBeVisible();
+  }
+
+  async selectModuleFilterOption(moduleName: string) {
+    await this.page.getByRole("option", { name: moduleName }).click();
+  }
+
+  async selectFirstModuleFilterOption(): Promise<string> {
+    const firstOption = this.page.getByRole("option").first();
+    await expect(firstOption).toBeVisible();
+    const moduleName = ((await firstOption.innerText()) || "").trim();
+    await firstOption.click();
+    return moduleName;
+  }
+
+  async expectModuleFilterBadgeVisible(moduleName: string) {
+    await expect(
+      this.page.getByRole("button", { name: /^Modules/ }).getByText(moduleName, { exact: true }),
+    ).toBeVisible();
+  }
+
+  async closeFilterPopover() {
+    await this.page.keyboard.press("Escape");
+  }
+
+  async openMissingTranslationsFilter() {
+    await this.page.getByRole("button", { name: /^Missing Translations/ }).click();
+    await expect(this.page.getByPlaceholder("Missing Translations")).toBeVisible();
+  }
+
+  async resetFilters() {
+    await this.page.getByRole("button", { name: /^Reset/ }).click();
+  }
+
+  async expectFiltersReset() {
+    await expect(this.page.getByRole("button", { name: /^Modules/ })).not.toContainText("selected");
+  }
+
+  // --- Sorting ---
+
+  async sortByKeyColumn() {
+    await this.page.getByRole("button", { name: /^Key/ }).click();
+  }
+
+  async expectSortApplied(descending: boolean) {
+    // KeyName is the default sort property, so nuqs omits sort-property from the
+    // URL — only the direction param is observable.
+    await expect(this.page).toHaveURL(new RegExp(`sort-isDescending=${descending}`));
+  }
+
+  // --- Pagination ---
+
+  async changePageSize(size: number) {
+    await this.page.getByText("Rows per page").locator("..").getByRole("combobox").click();
+    await this.page.getByRole("option", { name: String(size), exact: true }).click();
+  }
+
+  async expectRowCountAtLeast(minCount: number) {
+    const dataRows = this.tableViewport
+      .locator("tbody tr")
+      .filter({ has: this.page.locator("td") });
+    await expect
+      .poll(async () => dataRows.count(), { timeout: 15_000 })
+      .toBeGreaterThanOrEqual(minCount);
+  }
+
+  // --- Bulk actions ---
+
+  async expectSelectionBannerVisible(count: number) {
+    await expect(
+      this.page.getByText(`${count} key${count > 1 ? "s" : ""} selected`, { exact: true }),
+    ).toBeVisible();
+  }
+
+  async clearSelection() {
+    await this.page.getByRole("button", { name: "Clear selection" }).click();
+    await expect(this.page.getByText(/keys? selected/, { exact: false })).toHaveCount(0);
+  }
+
+  async openBulkEditDialog(count: number) {
+    await this.bulkEditButton.click();
+    await expect(
+      this.page.getByRole("dialog", {
+        name: `Bulk edit ${count} ${count === 1 ? "key" : "keys"}`,
+      }),
+    ).toBeVisible({ timeout: 15_000 });
+  }
+
+  async cancelBulkEditDialog(count: number) {
+    const dialog = this.page.getByRole("dialog", {
+      name: `Bulk edit ${count} ${count === 1 ? "key" : "keys"}`,
+    });
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+
+  async openBulkTranslateDialog() {
+    await this.page.getByRole("button", { name: "Translate", exact: true }).click();
+    await expect(
+      this.page.getByRole("dialog", { name: "Auto-translate selected keys?" }),
+    ).toBeVisible();
+  }
+
+  async cancelBulkTranslateDialog() {
+    const dialog = this.page.getByRole("dialog", { name: "Auto-translate selected keys?" });
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+
+  // --- New key routes ---
+
+  async addRoute() {
+    await this.page.getByRole("button", { name: "Add Route" }).click();
+    await expect(this.page.getByLabel(/^Route 1/)).toBeVisible();
+  }
+
+  async fillFirstRoute(value: string) {
+    await this.page.getByLabel(/^Route 1/).fill(value);
+  }
+
+  async removeFirstRoute() {
+    await this.page.getByRole("button", { name: "Remove Route" }).first().click();
+    await expect(this.page.getByLabel(/^Route 1/)).toHaveCount(0);
   }
 }

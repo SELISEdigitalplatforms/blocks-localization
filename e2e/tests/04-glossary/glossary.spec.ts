@@ -34,7 +34,7 @@ test.describe("Glossary", () => {
     });
 
     await test.step("Select module", async () => {
-      await glossary.selectTagModule("common");
+      await glossary.selectTagModule();
     });
 
     await test.step("Fill Context and Additional Notes", async () => {
@@ -45,6 +45,17 @@ test.describe("Glossary", () => {
     await test.step("Add glossary and verify success", async () => {
       await glossary.clickAddButton();
       await glossary.expectAddSuccess(glossaryName);
+    });
+
+    await test.step("Search narrows the glossary list and shows the empty state on no match", async () => {
+      await glossary.searchGlossaries(glossaryName);
+      await glossary.expectGlossaryRowVisible(glossaryName);
+
+      await glossary.searchGlossaries(`no-such-glossary-${Date.now()}`);
+      await glossary.expectNoMatchingGlossaries();
+
+      await glossary.clearSearch();
+      await glossary.expectGlossaryRowVisible(glossaryName);
     });
 
     await test.step("Open glossary detail and verify sections", async () => {

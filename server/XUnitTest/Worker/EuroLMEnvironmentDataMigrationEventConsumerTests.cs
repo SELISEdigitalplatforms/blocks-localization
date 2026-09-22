@@ -68,6 +68,27 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task Consume_PreservesTrackerOwner_WhenSourceAndDestinationAreDifferentTenants()
+        {
+            SetupModulesAndKeys(false);
+            string? completionOwner = null;
+            _messageClient.Setup(x => x.SendToMassConsumerAsync(It.IsAny<ConsumerMessage<MigrationCompletionEvent>>()))
+                .Callback(() => completionOwner = BlocksContext.GetContext()?.TenantId)
+                .Returns(Task.CompletedTask);
+            XUnitTest.Shared.TestBlocksContext.Set("tracker-owner");
+            try
+            {
+                await _consumer.Consume(Event());
+                Assert.Equal("tracker-owner", completionOwner);
+                _migrationRepository.Verify(r => r.GetAllModulesAsync("source"), Times.Exactly(2));
+                _migrationRepository.Verify(r => r.BulkUpsertModulesByNameAsync(
+                    It.Is<List<BlocksLanguageModule>>(modules => modules.All(m => m.TenantId == "target")), "target", false), Times.Once);
+                _migrationRepository.Verify(r => r.GetAllModulesAsync("tracker-owner"), Times.Never);
+            }
+            finally { BlocksContext.ClearContext(); }
+        }
+
+        [Fact]
         public async Task Consume_WithNoModulesOrKeys_CompletesAndNotifiesSuccess()
         {
             _migrationRepository.Setup(x => x.GetAllModulesAsync(It.IsAny<string>())).ReturnsAsync(new List<BlocksLanguageModule>());

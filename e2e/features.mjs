@@ -43,6 +43,12 @@ export const FLOW_FEATURES = [
     enabled: true,
     spec: "tests/06-extension-guides/extension-guides.spec.ts",
   },
+  {
+    id: "wordpress-plugin-guide",
+    name: "WordPress Plugin Guide page",
+    enabled: true,
+    spec: "tests/07-wordpress-plugin-guide/wordpress-plugin-guide.spec.ts",
+  },
 ]
 
 export function resolveEnabledFeatures() {

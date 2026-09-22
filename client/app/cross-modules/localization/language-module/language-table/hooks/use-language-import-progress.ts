@@ -187,22 +187,33 @@ export const useLanguageImportProgress = ({
   useNotificationListener("language-import-export", handleNotification);
 
   useEffect(() => {
-    if (progress?.status !== "finalizing" || !refetch) return;
+    const activeProgress = progress;
+    if (!refetch || !activeProgress) return;
+    if (
+      activeProgress.status !== "finalizing" &&
+      activeProgress.status !== "processing" &&
+      activeProgress.status !== "delayed"
+    ) {
+      return;
+    }
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
+    const baselineTotalCount = activeProgress.baselineTotalCount;
 
     const poll = async () => {
       attempts += 1;
+
+      const current = progressRef.current;
+      if (!current || current.status === "failed") return;
+
       try {
         const result = await refetch();
         if (cancelled) return;
 
         const refreshedTotalCount = result.data?.totalCount ?? 0;
-        const keysAreVisible =
-          refreshedTotalCount > progress.baselineTotalCount || progress.baselineTotalCount > 0;
-        if (keysAreVisible) {
+        if (refreshedTotalCount > baselineTotalCount) {
           progressRef.current = null;
           setProgress(null);
           toast({
@@ -216,20 +227,25 @@ export const useLanguageImportProgress = ({
         // Keep polling through transient list-query failures.
       }
 
+      if (cancelled) return;
+
       if (attempts >= 60) {
         setProgress((current) => {
-          const next =
-            current?.status === "finalizing" ? { ...current, status: "delayed" as const } : current;
+          if (!current || current.status === "failed" || current.status === "delayed") {
+            return current;
+          }
+          const next = { ...current, status: "delayed" as const };
           progressRef.current = next;
           return next;
         });
-        return;
       }
 
       timeoutId = setTimeout(poll, 5000);
     };
 
-    void poll();
+    const initialDelay = activeProgress.status === "processing" ? 15000 : 0;
+    timeoutId = setTimeout(poll, initialDelay);
+
     return () => {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);

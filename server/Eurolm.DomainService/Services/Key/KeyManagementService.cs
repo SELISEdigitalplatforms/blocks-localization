@@ -41,7 +41,8 @@ namespace Eurolm.DomainService.Services
         private readonly IGlossaryRepository _glossaryRepository;
 
         private BaseBlocksCommand _blocksBaseCommand;
-        private readonly string _tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+        private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
+            ?? throw new InvalidOperationException("A tenant context is required to save a key.");
         private const string DateTimeFormat = "yyyyMMddHHmmss";
 
         public KeyManagementService(
@@ -217,7 +218,7 @@ namespace Eurolm.DomainService.Services
             var repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
 
             if (repoKey == null)
-                repoKey = new BlocksLanguageKey { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = _tenantId };
+                repoKey = new BlocksLanguageKey { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = CurrentTenantId };
 
             repoKey.LastUpdateDate = DateTime.UtcNow;
             repoKey.KeyName = key.KeyName;
@@ -770,6 +771,9 @@ namespace Eurolm.DomainService.Services
 
         public async Task<bool> GenerateAsync(GenerateUilmFilesEvent command)
         {
+            var projectKey = !string.IsNullOrWhiteSpace(command.ProjectKey)
+                ? command.ProjectKey
+                : throw new InvalidOperationException("A target project key is required to generate language files.");
             _logger.LogInformation("++ Started JsonOutputGeneratorService: GenerateAsync()...");
 
             List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
@@ -829,7 +833,7 @@ namespace Eurolm.DomainService.Services
             // Bulk-insert timeline entries after all operations are complete
             if (publishedKeys.Any())
             {
-                var mappedPublishedKeys = publishedKeys.Select(MapKeyToBlocksLanguageKey).ToList();
+                var mappedPublishedKeys = publishedKeys.Select(key => MapKeyToBlocksLanguageKey(key, projectKey)).ToList();
                 var entityIds = mappedPublishedKeys.Select(k => k.ItemId).ToList();
                 var previousPublishTimelines = await _keyTimelineRepository.GetLatestPublishTimelinesAsync(entityIds, command.ProjectKey ?? "") ?? new Dictionary<string, KeyTimeline>();
 
@@ -856,7 +860,7 @@ namespace Eurolm.DomainService.Services
 
             if (failedKeys.Any())
             {
-                var mappedFailedKeys = failedKeys.Select(MapKeyToBlocksLanguageKey).ToList();
+                var mappedFailedKeys = failedKeys.Select(key => MapKeyToBlocksLanguageKey(key, projectKey)).ToList();
                 await CreateBulkKeyTimelineEntriesAsync(mappedFailedKeys, LogFromConstants.PublishFailed, command.ProjectKey ?? "");
             }
 
@@ -1797,7 +1801,7 @@ namespace Eurolm.DomainService.Services
                     LastUpdateDate = DateTime.UtcNow,
                     Value = string.Empty,
                     Routes = languageJsonModel.Routes ?? olduilmResourceKey?.Routes,
-                    TenantId = _tenantId
+                    TenantId = CurrentTenantId
                 };
 
                 allResourceKeys.Add(uilmResourceKey);
@@ -2829,7 +2833,7 @@ namespace Eurolm.DomainService.Services
             }
         }
 
-        private BlocksLanguageKey MapKeyToBlocksLanguageKey(Key key)
+        private static BlocksLanguageKey MapKeyToBlocksLanguageKey(Key key, string projectKey)
         {
             return new BlocksLanguageKey
             {
@@ -2841,7 +2845,7 @@ namespace Eurolm.DomainService.Services
                 IsPartiallyTranslated = key.IsPartiallyTranslated,
                 LastUpdateDate = key.LastUpdateDate,
                 CreateDate = key.CreateDate,
-                TenantId = _tenantId
+                TenantId = projectKey
             };
         }
 

@@ -199,6 +199,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task UpdateMigrationTrackerAsync_CallsUpdateOneAsync()
         {
+            TestBlocksContext.Set("tracker-owner");
             _trackerCollection.Setup(x => x.UpdateOneAsync(
                 It.IsAny<FilterDefinition<MigrationTracker>>(),
                 It.IsAny<UpdateDefinition<MigrationTracker>>(),
@@ -206,7 +207,13 @@ namespace XUnitTest.Repositories
                 It.IsAny<CancellationToken>())).ReturnsAsync(Mock.Of<UpdateResult>());
 
             var status = new ServiceMigrationStatus { IsCompleted = true };
-            await _repo.UpdateMigrationTrackerAsync("tracker1", status);
+            try
+            {
+                await _repo.UpdateMigrationTrackerAsync("tracker1", status);
+                _dbContextProvider.Verify(p => p.GetDatabase("tracker-owner"), Times.Once);
+                _dbContextProvider.Verify(p => p.GetDatabase(), Times.Never);
+            }
+            finally { BlocksContext.ClearContext(); }
 
             _trackerCollection.Verify(x => x.UpdateOneAsync(
                 It.IsAny<FilterDefinition<MigrationTracker>>(),
