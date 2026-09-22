@@ -73,6 +73,25 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task SaveKeyAsync_ReusedSingleton_UsesEachRequestsTenant()
+        {
+            var saved = new List<BlocksLanguageKey>();
+            _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<KeyModel>(), default))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
+                .Callback<BlocksLanguageKey>(saved.Add).Returns(Task.CompletedTask);
+            _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
+                .Returns(Task.CompletedTask);
+
+            XUnitTest.Shared.TestBlocksContext.Set("dev");
+            await _service.SaveKeyAsync(new KeyModel { KeyName = "first", ModuleId = "module" });
+            XUnitTest.Shared.TestBlocksContext.Set("other");
+            await _service.SaveKeyAsync(new KeyModel { KeyName = "second", ModuleId = "module" });
+
+            saved.Select(x => x.TenantId).Should().Equal("dev", "other");
+        }
+
+        [Fact]
         public async Task SaveKeyAsync_ValidKey_ReturnsSuccess()
         {
             // Arrange
