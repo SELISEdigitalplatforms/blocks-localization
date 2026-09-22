@@ -19,6 +19,7 @@ namespace XUnitTest
 
         public LanguageManagementServiceTests()
         {
+            XUnitTest.Shared.TestBlocksContext.Set();
             _loggerMock = new Mock<ILogger<LanguageManagementService>>();
             _languageRepositoryMock = new Mock<ILanguageRepository>();
             _validatorMock = new Mock<IValidator<LanguageModel>>();
@@ -28,6 +29,23 @@ namespace XUnitTest
                 _loggerMock.Object,
                 _languageRepositoryMock.Object
             );
+        }
+
+        [Fact]
+        public async Task SaveLanguageAsync_ReusedSingleton_UsesEachRequestsTenant()
+        {
+            var saved = new List<BlocksLanguage>();
+            _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<LanguageModel>(), default))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _languageRepositoryMock.Setup(r => r.SaveAsync(It.IsAny<BlocksLanguage>()))
+                .Callback<BlocksLanguage>(saved.Add).Returns(Task.CompletedTask);
+
+            XUnitTest.Shared.TestBlocksContext.Set("dev");
+            await _service.SaveLanguageAsync(new LanguageModel { LanguageName = "English" });
+            XUnitTest.Shared.TestBlocksContext.Set("other");
+            await _service.SaveLanguageAsync(new LanguageModel { LanguageName = "French" });
+
+            saved.Select(x => x.TenantId).Should().Equal("dev", "other");
         }
 
         [Fact]

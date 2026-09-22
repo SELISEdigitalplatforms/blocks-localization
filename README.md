@@ -258,6 +258,8 @@ npm --prefix client run test -- --coverage
 
 API and Worker use the published Genesis 4.2.2 package. Repositories follow persisted tenant connections per operation. No environment-to-connection mapping is added here.
 
+Singleton language, glossary, and key services read the operation's tenant context when creating records; they do not retain the tenant from construction. Module listing with an explicit project key uses that target even when the caller has a different ambient tenant. The generation worker stamps published timeline records with its event's project key. Worker messages still require the expected authenticated tenant context for repository operations that use ambient routing.
+
 Migration source and destination databases remain explicit. Migration trackers belong to the initiating tenant carried by the authenticated message context, which may differ from both environments. Tracker repository writes require that owner; they do not fall back to root when context is missing. The migration worker preserves that context when publishing completion to OS. Shared timeline user enrichment continues using configured `RootTenantId` on main.
 
 Regression tests cover independent source/target/owner databases, overwrite and retry behavior, concurrent tracker ownership, and completion message context. They use disposable local MongoDB databases through the real Genesis provider:
