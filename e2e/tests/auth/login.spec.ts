@@ -1,6 +1,6 @@
 import { test, expect } from "../../support/test-base"
-import { e2eCredentials } from "../../support/env"
-import { loginThroughOidc } from "../../support/login-helper"
+import { e2eBaseUrl, e2eCredentials } from "../../support/env"
+import { isLoginSurface, loginThroughOidc } from "../../support/login-helper"
 
 test.describe("Authentication", () => {
   test.beforeAll(() => {
@@ -31,5 +31,24 @@ test.describe("Authentication", () => {
     if (holdMs > 0) {
       await page.waitForTimeout(holdMs)
     }
+  })
+
+  test("redirects logged-out visitors of a protected route to the login surface", async ({ page }) => {
+    const base = e2eBaseUrl()
+
+    await page.goto(`${base}/app/console`, { waitUntil: "domcontentloaded" })
+
+    await expect
+      .poll(
+        async () => (await isLoginSurface(page)) || /\/login/i.test(page.url()),
+        { timeout: 20_000, intervals: [500, 1000] },
+      )
+      .toBe(true)
+
+    const loginGateButton = page.getByRole("button", { name: "Log in to your account" })
+    const oidcEmail = page.locator("#oidc-email").or(page.getByRole("textbox", { name: "Work Email" }))
+    await expect(loginGateButton.or(oidcEmail)).toBeVisible({ timeout: 10_000 })
+
+    await expect(page.getByRole("heading", { name: /Your Blocks Projects/ })).toHaveCount(0)
   })
 })

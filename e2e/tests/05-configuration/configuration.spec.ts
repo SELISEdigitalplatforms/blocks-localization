@@ -16,6 +16,19 @@ test.describe("Configuration", () => {
       await config.expectLanguagesSectionVisible();
     });
 
+    await test.step("New Language dialog cancels without adding a language", async () => {
+      await config.openNewLanguageDialog();
+      await config.cancelNewLanguageDialog();
+    });
+
+    await test.step("Language search with no match shows the empty state", async () => {
+      await config.openNewLanguageDialog();
+      await config.searchLanguageInDialog(`zz-no-language-${Date.now()}`);
+      await config.expectNoLanguageSearchResults();
+      await config.closeLanguageSearch();
+      await config.cancelNewLanguageDialog();
+    });
+
     await test.step("Add a new language", async () => {
       await config.openNewLanguageDialog();
       await config.expectNewLanguageDialogLoaded();
@@ -94,6 +107,7 @@ test.describe("Configuration", () => {
 
       await test.step("Edit webhook fields and save", async () => {
         const stamp = Date.now();
+        await config.waitForWebhookFormSettled();
         await config.fillWebhookForm({
           url: `https://e2e-${stamp}.example.com/webhook`,
           contentType: "application/json",
@@ -105,6 +119,7 @@ test.describe("Configuration", () => {
       });
 
       await test.step("Toggle Disable webhook and save", async () => {
+        await config.waitForWebhookFormSettled();
         await config.fillWebhookForm({
           url: `https://e2e-toggle-${Date.now()}.example.com/webhook`,
           contentType: "application/json",

@@ -25,6 +25,7 @@ export type LocalizationRoute =
   | "services/glossary"
   | "services/configure"
   | "services/extension-guides"
+  | "services/wordpress-plugin-guide"
 
 const ROUTE_NAV_LINK: Record<Exclude<LocalizationRoute, "dashboard">, string> = {
   "services/language": "Translations",
@@ -32,6 +33,7 @@ const ROUTE_NAV_LINK: Record<Exclude<LocalizationRoute, "dashboard">, string> = 
   "services/glossary": "Glossary",
   "services/configure": "Configuration",
   "services/extension-guides": "Extension Guides",
+  "services/wordpress-plugin-guide": "WordPress Plugin Guide",
 }
 
 const ROUTE_HEADING: Record<LocalizationRoute, string | null> = {
@@ -41,6 +43,7 @@ const ROUTE_HEADING: Record<LocalizationRoute, string | null> = {
   "services/glossary": "Glossary Management",
   "services/configure": "Configure Languages",
   "services/extension-guides": "Extension Guides",
+  "services/wordpress-plugin-guide": "WordPress Plugin Guide",
 }
 
 export function buildProjectRouteUrl(itemId: string, route: string) {
@@ -168,6 +171,10 @@ export async function openConfiguration(page: Page) {
 
 export async function openExtensionGuides(page: Page) {
   return openProjectRoute(page, "services/extension-guides")
+}
+
+export async function openWordPressPluginGuide(page: Page) {
+  return openProjectRoute(page, "services/wordpress-plugin-guide")
 }
 
 export async function openNewKey(page: Page) {

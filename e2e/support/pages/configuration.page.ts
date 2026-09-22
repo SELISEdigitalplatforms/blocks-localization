@@ -89,6 +89,28 @@ export class ConfigurationPage {
     await this.page.getByRole("option", { name: languageName }).click();
   }
 
+  async searchLanguageInDialog(query: string) {
+    const languageButton = this.page
+      .getByRole("button", { name: "Language" })
+      .or(this.page.getByRole("button", { name: "Language *" }))
+      .first();
+    await languageButton.click();
+    await this.page.getByPlaceholder("Search language...").fill(query);
+  }
+
+  async expectNoLanguageSearchResults() {
+    await expect(this.page.getByText("No language found.", { exact: true })).toBeVisible();
+  }
+
+  async closeLanguageSearch() {
+    await this.page.keyboard.press("Escape");
+  }
+
+  async cancelNewLanguageDialog() {
+    await this.page.getByRole("button", { name: "Cancel" }).click();
+    await expect(this.newLanguageDialog).toHaveCount(0);
+  }
+
   async saveNewLanguage() {
     const saveButton = this.page.getByRole("button", { name: "Save" });
     await expect(saveButton).toBeEnabled();
@@ -189,6 +211,22 @@ export class ConfigurationPage {
     await this.secretHeaderKeyInput.fill(data.headerKey);
     await this.secretInput.fill(data.secret);
     await this.page.keyboard.press("Tab");
+  }
+
+  async waitForWebhookFormSettled() {
+    // Saving invalidates the webhook query; the refetch triggers a form.reset()
+    // that wipes freshly typed values (form no longer dirty → Save disabled).
+    // Wait for that GET to settle (skipped silently if it already landed) and
+    // confirm the pristine state before the next edit is typed.
+    await this.page
+      .waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("GetWebHookForCurrentTenant"),
+        { timeout: 8_000 },
+      )
+      .catch(() => {});
+    await expect(this.saveWebhookButton).toBeDisabled({ timeout: 10_000 });
   }
 
   async saveWebhook() {

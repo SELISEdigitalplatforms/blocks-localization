@@ -9,6 +9,8 @@ export class Sidebar {
   readonly glossaryLink: Locator;
   readonly configurationLink: Locator;
   readonly extensionGuidesLink: Locator;
+  readonly wordPressPluginGuideLink: Locator;
+  readonly environmentsLink: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -19,6 +21,8 @@ export class Sidebar {
     this.glossaryLink = page.getByRole("link", { name: "Glossary" });
     this.configurationLink = page.getByRole("link", { name: "Configuration" });
     this.extensionGuidesLink = page.getByRole("link", { name: "Extension Guides" });
+    this.wordPressPluginGuideLink = page.getByRole("link", { name: "WordPress Plugin Guide" });
+    this.environmentsLink = page.getByRole("link", { name: "Environments" });
   }
 
   async goToOverview() {
@@ -49,5 +53,10 @@ export class Sidebar {
   async goToExtensionGuides() {
     await this.extensionGuidesLink.click();
     await expect(this.page.getByRole("heading", { name: "Extension Guides" })).toBeVisible({ timeout: 15_000 });
+  }
+
+  async goToWordPressPluginGuide() {
+    await this.wordPressPluginGuideLink.click();
+    await expect(this.page.getByRole("heading", { name: "WordPress Plugin Guide" })).toBeVisible({ timeout: 15_000 });
   }
 }

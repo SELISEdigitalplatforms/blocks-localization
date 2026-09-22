@@ -1,10 +1,12 @@
 import { test, expect } from "../../support/test-base";
 import { OverviewPage } from "../../support/pages/overview.page";
+import { Sidebar } from "../../support/components/sidebar.component";
 import { openLocalizationConsole, openProjectDashboard } from "../../support/localization-helpers";
 
 test.describe("Overview", () => {
   test("Overview — full flow", async ({ page }) => {
     const overview = new OverviewPage(page);
+    const sidebar = new Sidebar(page);
 
     await test.step("Console shows the project list with at least one environment to enter", async () => {
       await openLocalizationConsole(page);
@@ -105,6 +107,37 @@ test.describe("Overview", () => {
 
     await test.step("Returning to console shows the project list again", async () => {
       await overview.goBackToConsole();
+    });
+
+    await test.step("Open the project dashboard", async () => {
+      await openProjectDashboard(page);
+    });
+
+    await test.step("Sidebar lists every section link", async () => {
+      await expect(sidebar.overviewLink).toBeVisible();
+      await expect(sidebar.translationsLink).toBeVisible();
+      await expect(sidebar.modulesLink).toBeVisible();
+      await expect(sidebar.glossaryLink).toBeVisible();
+      await expect(sidebar.configurationLink).toBeVisible();
+      await expect(sidebar.extensionGuidesLink).toBeVisible();
+      await expect(sidebar.wordPressPluginGuideLink).toBeVisible();
+      // "Environments" belongs to the Blocks OS project-overview section and is
+      // hidden by the OS shell while on regular app routes.
+      await expect(sidebar.environmentsLink).toHaveCount(0);
+    });
+
+    await test.step("Navigate to each Localization service via the sidebar", async () => {
+      await sidebar.goToTranslations();
+      await sidebar.goToModules();
+      await sidebar.goToGlossary();
+      await sidebar.goToConfiguration();
+      await sidebar.goToExtensionGuides();
+      await sidebar.goToWordPressPluginGuide();
+    });
+
+    await test.step("Overview link returns to the project dashboard", async () => {
+      await sidebar.goToOverview();
+      await expect(page).toHaveURL(/\/app\/[^/]+\/dashboard/);
     });
   });
 });
