@@ -17,7 +17,7 @@ import path from "path";
 
 test.describe("Translations", () => {
   test("Translations — full flow", async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(420_000);
     const translations = new TranslationsPage(page);
     const keyDetails = new KeyDetailsPage(page);
 
@@ -45,24 +45,20 @@ test.describe("Translations", () => {
       await translations.switchToHistoryTab();
       await translations.expectHistoryHeadingVisible();
 
+      // The empty state and any real entry are both valid outcomes.
       const noHistoryFound = page.getByText("No history found");
-      const localizationActivity = page.getByText("Your localization activity");
-      const historyEntry = page.getByRole("button", { name: /Inserted by import by/ });
+      const historyEntry = page
+        .getByRole("button", { name: /(Inserted|Updated) by import by|Published by/ })
+        .first();
 
       await expect
-        .poll(
-          async () =>
-            (await noHistoryFound.isVisible()) ||
-            (await localizationActivity.isVisible()) ||
-            (await historyEntry.isVisible()),
-          { timeout: 10_000 },
-        )
+        .poll(async () => (await noHistoryFound.isVisible()) || (await historyEntry.isVisible()), {
+          timeout: 10_000,
+        })
         .toBe(true);
 
       if (await noHistoryFound.isVisible()) {
         await expect(noHistoryFound).toBeVisible();
-      } else if (await localizationActivity.isVisible()) {
-        await expect(localizationActivity).toBeVisible();
       } else {
         await translations.expectHistoryEntryVisible();
       }
@@ -114,12 +110,13 @@ test.describe("Translations", () => {
       await translations.expectSelectAllChecked();
       await translations.toggleSelectAllCheckbox();
       await translations.expectSelectAllUnchecked();
-      await translations.toggleModuleCheckbox("common");
-      await translations.expectModuleCheckboxChecked("common");
-      await translations.toggleModuleCheckbox("profile");
-      await translations.expectModuleCheckboxChecked("profile");
-      await translations.toggleModuleCheckbox("dashboard");
-      await translations.expectModuleCheckboxChecked("dashboard");
+
+      // Module names differ per project — pick one that actually exists.
+      const moduleNames = await translations.getExportDialogModuleNames();
+      expect(moduleNames.length).toBeGreaterThan(0);
+      await translations.toggleModuleCheckbox(moduleNames[0]);
+      await translations.expectModuleCheckboxChecked(moduleNames[0]);
+
       await translations.expectSelectFileTypeButtonEnabled();
     });
 
@@ -159,6 +156,12 @@ test.describe("Translations", () => {
       await translations.expectPublishChangesButtonVisible();
     });
 
+    await test.step("Publish Changes confirmation dialog triggers publish", async () => {
+      await translations.openPublishChangesDialog();
+      await translations.confirmPublishChanges();
+      await translations.expectPublishChangesConfirmed();
+    });
+
     await test.step("Create new key: About the key section", async () => {
       await translations.openNewKeyDialog();
       await translations.expectNewKeyDialogLoaded();
@@ -169,6 +172,16 @@ test.describe("Translations", () => {
       const addRouteButton = page.getByRole("button", { name: "Add Route" });
       await expect(routesHeading).toBeVisible();
       await expect(addRouteButton).toBeVisible();
+      await page
+        .getByRole("link", { name: "Language Translation Keys" })
+        .click({ timeout: 15_000 });
+    });
+
+    await test.step("New key route fields can be added, filled, and removed", async () => {
+      await openNewKey(page);
+      await translations.addRoute();
+      await translations.fillFirstRoute(`e2e-route-${Date.now()}/{{ dynamic_routing }}`);
+      await translations.removeFirstRoute();
       await page
         .getByRole("link", { name: "Language Translation Keys" })
         .click({ timeout: 15_000 });
@@ -220,11 +233,67 @@ test.describe("Translations", () => {
       await translations.expectFirstDataRowVisible();
     });
 
+    await test.step("Modules filter narrows the table and Reset clears it", async () => {
+      await translations.openModulesFilter();
+      const moduleName = await translations.selectFirstModuleFilterOption();
+      await translations.closeFilterPopover();
+      await translations.expectModuleFilterBadgeVisible(moduleName);
+      await expect(page).toHaveURL(/moduleIds=/, { timeout: 10_000 });
+
+      await translations.resetFilters();
+      await translations.expectFiltersReset();
+      await expect(page).not.toHaveURL(/moduleIds=/);
+    });
+
+    await test.step("Missing Translations filter applies and Reset clears it", async () => {
+      await translations.openMissingTranslationsFilter();
+      await translations.selectModuleFilterOption("English");
+      await translations.closeFilterPopover();
+      await expect(page).toHaveURL(/missingLanguages=/, { timeout: 10_000 });
+
+      await translations.resetFilters();
+      await expect(page).not.toHaveURL(/missingLanguages=/);
+    });
+
+    await test.step("Sorting by the Key column updates the query state", async () => {
+      await translations.sortByKeyColumn();
+      await translations.expectSortApplied(true);
+
+      // Sorting back to the default (KeyName asc) clears the param entirely —
+      // no filters remain, so the toolbar hides its Reset button.
+      await translations.sortByKeyColumn();
+      await expect(page).not.toHaveURL(/sort-isDescending=/);
+    });
+
     await test.step("Bulk select reveals bulk actions and opens the delete confirmation", async () => {
       await translations.selectFirstKeyCheckbox();
       await translations.expectBulkActionsVisible();
       await translations.openBulkDeleteDialog();
       await translations.cancelBulkDeleteDialog();
+    });
+
+    await test.step("Bulk edit dialog opens for the selection and cancels cleanly", async () => {
+      await translations.expectSelectionBannerVisible(1);
+      await translations.openBulkEditDialog(1);
+      await translations.cancelBulkEditDialog(1);
+      await translations.expectSelectionBannerVisible(1);
+    });
+
+    await test.step("Bulk translate dialog opens for the selection and cancels cleanly", async () => {
+      await translations.openBulkTranslateDialog();
+      await translations.cancelBulkTranslateDialog();
+      await translations.expectSelectionBannerVisible(1);
+    });
+
+    await test.step("Clear selection dismisses the bulk action banner", async () => {
+      await translations.clearSelection();
+      await translations.expectBulkActionsHidden();
+    });
+
+    await test.step("Rows per page selector changes the page size", async () => {
+      await translations.changePageSize(30);
+      await translations.expectRowCountAtLeast(11);
+      await translations.changePageSize(10);
     });
 
     await test.step("Translation Keys keeps Actions left and sticky on wide tables", async () => {

@@ -22,6 +22,19 @@ function getOrphanProjectPattern(): RegExp {
 }
 
 async function listOrphanProjectNames(page: Page): Promise<string[]> {
+  // The project grid renders after the console heading — wait for the cards
+  // (or the empty-console "Add Project" state) before scanning, otherwise the
+  // single read races the list query and reports no orphans.
+  await expect
+    .poll(
+      async () => {
+        const text = await page.locator("body").innerText().catch(() => "")
+        return getOrphanProjectPattern().test(text) || /Add Project/.test(text)
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+
   const bodyText = await page.locator("body").innerText().catch(() => "")
   return [...new Set([...bodyText.matchAll(getOrphanProjectPattern())].map((match) => match[0]))]
 }

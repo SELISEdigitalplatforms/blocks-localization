@@ -203,7 +203,7 @@ See `SPEC-multi-env.md` for Dev/Prod derivation rules and create-project flow no
 Playwright projects: **`localization-setup` → `localization` → `localization-teardown`**
 
 1. **Suite setup** (`tests/suite/suite.setup.spec.ts`) — OIDC login, reuse or create one shared project, write `localization-project.json`, then save `localization-session.json` **after** the dashboard is open (so localStorage keeps project/env).
-2. **Features** (`tests/01-overview` … `06-extension-guides`) — use session; open pages with a direct `goto` to `/app/{itemId}/dashboard` or `/app/{itemId}/services/...`.
+2. **Features** (`tests/01-overview` … `07-wordpress-plugin-guide`) — use session; open pages with a direct `goto` to `/app/{itemId}/dashboard` or `/app/{itemId}/services/...`.
 3. **Session / context recovery** — login gate or console bounce → re-auth if needed, one env-chip open to reseed localStorage, persist session (never create a new project).
 4. **Suite teardown** (`tests/suite/suite.teardown.spec.ts`) — delete on **Blocks OS** only when every `localization` test passed (unless `E2E_KEEP_PROJECT=1`).
 
@@ -222,6 +222,7 @@ e2e/
     04-glossary/glossary.spec.ts
     05-configuration/configuration.spec.ts
     06-extension-guides/extension-guides.spec.ts
+    07-wordpress-plugin-guide/wordpress-plugin-guide.spec.ts
   support/
     env.ts
     login-helper.ts
@@ -253,5 +254,6 @@ Feature routes (direct URL):
 | Glossary | `/app/{itemId}/services/glossary` |
 | Configuration | `/app/{itemId}/services/configure` |
 | Extension Guides | `/app/{itemId}/services/extension-guides` |
+| WordPress Plugin Guide | `/app/{itemId}/services/wordpress-plugin-guide` |
 
 Same suite shape as `blocks-utilities/e2e` (`utilities-setup` → `utilities` → `utilities-teardown`).
