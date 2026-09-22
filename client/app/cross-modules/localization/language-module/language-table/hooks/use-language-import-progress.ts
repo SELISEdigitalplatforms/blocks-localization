@@ -186,13 +186,6 @@ export const useLanguageImportProgress = ({
 
   useNotificationListener("language-import-export", handleNotification);
 
-  // Normally the completion notification flips status to "finalizing" and this effect
-  // takes it from there. But the websocket notification can be dropped or delayed, which
-  // would otherwise leave the progress UI stuck on "processing" forever even though the
-  // import already finished server-side. To guard against that, this effect also polls
-  // as a fallback while still "processing" (after a grace period so the fast notification
-  // path stays the common case) and keeps polling through "delayed" instead of giving up,
-  // so the table recovers on its own without requiring a hard reload.
   useEffect(() => {
     const activeProgress = progress;
     if (!refetch || !activeProgress) return;
