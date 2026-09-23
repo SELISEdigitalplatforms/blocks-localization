@@ -50,6 +50,28 @@ export class GlossaryPage {
     await expectActionsColumnIsLast(this.page);
   }
 
+  async searchGlossaries(query: string) {
+    const searchInput = this.page.getByPlaceholder("Search glossary...");
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill(query);
+  }
+
+  async expectNoMatchingGlossaries() {
+    await expect(this.page.getByText("No matching glossaries", { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+  }
+
+  async clearSearch() {
+    await this.page.getByRole("button", { name: "Clear search" }).click();
+  }
+
+  async expectGlossaryRowVisible(name: string) {
+    await expect(this.page.getByRole("row").filter({ hasText: name })).toBeVisible({
+      timeout: 10_000,
+    });
+  }
+
   async openNewGlossaryDialog() {
     await this.newGlossaryButton.click();
     await expect(this.page.getByRole("heading", { name: "Add Glossary" })).toBeVisible();
@@ -86,12 +108,20 @@ export class GlossaryPage {
     await globalContextCheckbox.click();
   }
 
-  async selectTagModule(module: string) {
+  async selectTagModule(module?: string) {
     const tagModules = this.page.getByText("Tag modules...", { exact: true });
     await expect(tagModules).toBeVisible();
     await tagModules.click();
-    await expect(this.page.getByRole("option", { name: module })).toBeVisible();
-    await this.page.getByRole("option", { name: module }).click();
+    if (module) {
+      await expect(this.page.getByRole("option", { name: module })).toBeVisible();
+      await this.page.getByRole("option", { name: module }).click();
+      return;
+    }
+    // Module names differ per project — tag the first available module.
+    const firstOption = this.page.getByRole("option").first();
+    await expect(firstOption).toBeVisible();
+    await firstOption.click();
+    await this.page.keyboard.press("Escape");
   }
 
   async fillContext(text: string) {

@@ -73,7 +73,7 @@ export interface IGetPreSignedUrlForUploadPayload {
 export type FileVerificationStatus = "Unverified" | "Quarantined" | "Verified" | "Rejected";
 
 export interface IGetPreSignedUrlForUploadResponse {
-  errors: null | unknown;
+  errors: unknown;
   isSuccess: boolean;
   fileId: string;
   uploadUrl: string;
@@ -93,7 +93,7 @@ export interface ICompleteUploadPayload {
 }
 
 export interface ICompleteUploadResponse {
-  errors: null | unknown;
+  errors: unknown;
   isSuccess: boolean;
   fileId: string;
   fileVersionId: string;

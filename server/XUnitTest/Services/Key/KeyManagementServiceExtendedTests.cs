@@ -890,7 +890,7 @@ namespace XUnitTest
         [Fact]
         public void MapKeyToBlocksLanguageKey_WithItemId_KeepsIt()
         {
-            var method = GetInstanceMethod("MapKeyToBlocksLanguageKey");
+            var method = GetStaticMethod("MapKeyToBlocksLanguageKey");
             var key = new KeyModel
             {
                 ItemId = "existing-id",
@@ -900,17 +900,18 @@ namespace XUnitTest
                 Routes = new List<string> { "/page" }
             };
 
-            var result = method.Invoke(_service, new object[] { key }) as BlocksLanguageKey;
+            var result = method.Invoke(null, new object[] { key, "dev" }) as BlocksLanguageKey;
 
             result.Should().NotBeNull();
             result!.ItemId.Should().Be("existing-id");
             result.KeyName.Should().Be("key1");
+            result.TenantId.Should().Be("dev");
         }
 
         [Fact]
         public void MapKeyToBlocksLanguageKey_WithoutItemId_GeneratesNew()
         {
-            var method = GetInstanceMethod("MapKeyToBlocksLanguageKey");
+            var method = GetStaticMethod("MapKeyToBlocksLanguageKey");
             var key = new KeyModel
             {
                 ItemId = null,
@@ -918,11 +919,12 @@ namespace XUnitTest
                 ModuleId = "m1"
             };
 
-            var result = method.Invoke(_service, new object[] { key }) as BlocksLanguageKey;
+            var result = method.Invoke(null, new object[] { key, "other" }) as BlocksLanguageKey;
 
             result.Should().NotBeNull();
             result!.ItemId.Should().NotBeNullOrEmpty();
             result.Routes.Should().BeEmpty();
+            result.TenantId.Should().Be("other");
         }
 
         #endregion

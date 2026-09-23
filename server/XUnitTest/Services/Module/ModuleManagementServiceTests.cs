@@ -220,12 +220,12 @@ namespace XUnitTest
         public async Task GetModulesAsync_ProjectKeyOverload_NoModuleId_ReturnsAll()
         {
             var modules = new List<BlocksLanguageModule> { new BlocksLanguageModule { ItemId = "1", ModuleName = "auth" } };
-            _moduleRepositoryMock.Setup(r => r.GetAllAsync()).ReturnsAsync(modules);
+            _moduleRepositoryMock.Setup(r => r.GetAllAsync("proj-1")).ReturnsAsync(modules);
 
             var result = await _service.GetModulesAsync("proj-1", null);
 
             result.Should().HaveCount(1);
-            _moduleRepositoryMock.Verify(r => r.GetAllAsync(), Times.Once);
+            _moduleRepositoryMock.Verify(r => r.GetAllAsync("proj-1"), Times.Once);
         }
 
         [Fact]

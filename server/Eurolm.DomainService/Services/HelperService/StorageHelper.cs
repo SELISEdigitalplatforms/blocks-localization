@@ -1,6 +1,7 @@
 using DomainService.Storage;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Storage.DomainService.Shared.Enums;
 using StorageDriver;
 
 namespace Eurolm.DomainService.Services.HelperService
@@ -31,9 +32,10 @@ namespace Eurolm.DomainService.Services.HelperService
                 ItemId = fileId,
                 MetaData = JsonConvert.SerializeObject(metaData),
                 Name = fileName,
-                ParentDirectoryId = parentDirectoryId,
+                ParentDirectoryId = string.Empty,
                 Tags = "[\"File\"]",
                 AccessModifier = "Public",
+                ModuleName = ModuleName.Localization,
             };
             var fileInfo = await _storageDriverService.GetPerSignedUrlForUploadAsync(payload);
             if (fileInfo == null || string.IsNullOrEmpty(fileInfo.UploadUrl))

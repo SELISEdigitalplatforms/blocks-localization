@@ -138,7 +138,7 @@ namespace XUnitTest
                         timelines.Count == 2 &&
                         timelines.All(t => t.LogFrom == "Published") &&
                         timelines.All(t => t.PreviousData == null) &&
-                        timelines.All(t => t.CurrentData != null)),
+                        timelines.All(t => t.CurrentData != null && t.CurrentData.TenantId == "tenant-1")),
                     "tenant-1"),
                 Times.Once);
         }

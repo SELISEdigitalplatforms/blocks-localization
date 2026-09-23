@@ -13,7 +13,8 @@ namespace Eurolm.DomainService.Services
         private readonly ILogger<GlossaryManagementService> _logger;
         private readonly IGlossaryRepository _glossaryRepository;
 
-        private readonly string _tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+        private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
+            ?? throw new InvalidOperationException("A tenant context is required to save a glossary.");
 
         public GlossaryManagementService(IValidator<Glossary> validator,
                                          ILogger<GlossaryManagementService> logger,
@@ -93,7 +94,7 @@ namespace Eurolm.DomainService.Services
                     {
                         ItemId = existing.ItemId,
                         CreateDate = existing.CreateDate,
-                        TenantId = _tenantId
+                        TenantId = CurrentTenantId
                     };
                 }
                 else
@@ -102,7 +103,7 @@ namespace Eurolm.DomainService.Services
                     {
                         ItemId = glossary.ItemId,
                         CreateDate = DateTime.UtcNow,
-                        TenantId = _tenantId
+                        TenantId = CurrentTenantId
                     };
                 }
             }
@@ -112,7 +113,7 @@ namespace Eurolm.DomainService.Services
                 {
                     ItemId = Guid.NewGuid().ToString(),
                     CreateDate = DateTime.UtcNow,
-                    TenantId = _tenantId
+                    TenantId = CurrentTenantId
                 };
             }
 

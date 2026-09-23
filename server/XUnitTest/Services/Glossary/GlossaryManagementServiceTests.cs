@@ -32,6 +32,23 @@ namespace XUnitTest
             );
         }
 
+        [Fact]
+        public async Task SaveGlossaryAsync_ReusedSingleton_UsesEachRequestsTenant()
+        {
+            var saved = new List<BlocksGlossary>();
+            _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<GlossaryModel>(), default))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _glossaryRepositoryMock.Setup(r => r.SaveAsync(It.IsAny<BlocksGlossary>()))
+                .Callback<BlocksGlossary>(saved.Add).Returns(Task.CompletedTask);
+
+            XUnitTest.Shared.TestBlocksContext.Set("dev");
+            await _service.SaveGlossaryAsync(new GlossaryModel { Name = "First" });
+            XUnitTest.Shared.TestBlocksContext.Set("other");
+            await _service.SaveGlossaryAsync(new GlossaryModel { Name = "Second" });
+
+            saved.Select(x => x.TenantId).Should().Equal("dev", "other");
+        }
+
         #region SaveGlossaryAsync Tests
 
         [Fact]
