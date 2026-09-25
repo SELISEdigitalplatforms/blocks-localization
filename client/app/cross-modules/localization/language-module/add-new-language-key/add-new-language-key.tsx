@@ -45,7 +45,7 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 

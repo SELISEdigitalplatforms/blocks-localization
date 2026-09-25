@@ -70,7 +70,7 @@ const extractImportNotification = (notificationData: unknown) => {
     denormalizedPayload?.message ?? denormalizedPayload?.Message,
   );
 
-  return {
+  const extracted = {
     correlationId:
       getString(payload, ["responseKey", "ResponseKey", "correlationId", "CorrelationId"]) ??
       getString(notification, ["responseKey", "ResponseKey", "correlationId", "CorrelationId"]),
@@ -79,6 +79,7 @@ const extractImportNotification = (notificationData: unknown) => {
       getBoolean(denormalizedMessage, ["isSuccess", "IsSuccess"]) ??
       getBoolean(notification, ["isSuccess", "IsSuccess"]),
   };
+  return extracted;
 };
 
 export const getImportFileLabel = (fileNames: string[]) => {
@@ -137,7 +138,9 @@ export const useLanguageImportProgress = ({
   const handleNotification = useCallback(
     (notificationData: unknown) => {
       const current = progressRef.current;
-      if (!current || current.pendingCorrelationIds.length === 0) return;
+      if (!current || current.pendingCorrelationIds.length === 0) {
+        return;
+      }
 
       const { correlationId, isSuccess } = extractImportNotification(notificationData);
 
@@ -152,7 +155,9 @@ export const useLanguageImportProgress = ({
       };
 
       const matchingId = findMatchingCorrelationId();
-      if (!matchingId) return;
+      if (!matchingId) {
+        return;
+      }
 
       const pendingCorrelationIds = current.pendingCorrelationIds.filter((id) => id !== matchingId);
       const nextStatus: LanguageImportProgress["status"] = (() => {

@@ -1,7 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { renderWithProviders } from "@/test-utils/render";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
@@ -14,7 +13,7 @@ vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => navigate,
 }));
-vi.mock("@seliseblocks/genesis-os/hooks", () => ({
+vi.mock("@seliseblocks/genesis-os", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({

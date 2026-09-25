@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "rea
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { RowSelectionState } from "@tanstack/react-table";
 import {
@@ -21,6 +21,7 @@ import {
   CircleAlert,
   LoaderCircle,
 } from "lucide-react";
+import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
@@ -77,7 +78,10 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
-import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
+import {
+  getCompletenessCellValue,
+  useLanguageTableColumns,
+} from "./hooks/use-language-table-columns";
 import {
   getImportFileLabel,
   useLanguageImportProgress,
@@ -168,8 +172,10 @@ function ImportProgressState({
 
   const getImportDescription = () => {
     if (isFailed) return "The uploaded file could not be processed. Please try importing it again.";
-    if (isDelayed) return "Your keys are still being processed. You can leave this page and return later.";
-    if (isFinalizing) return "The import completed successfully. We're loading the new translation keys now.";
+    if (isDelayed)
+      return "Your keys are still being processed. You can leave this page and return later.";
+    if (isFinalizing)
+      return "The import completed successfully. We're loading the new translation keys now.";
     return "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they're ready.";
   };
 
@@ -444,8 +450,6 @@ export function LanguageTable() {
           title: "Processing Translation",
           description: "Key translation in progress.",
         });
-        // Start polling to wait for translation to complete before refreshing table
-        // Also track this key as translating (for showing skeleton/loading state)
         setPollingKeyId(selectedLanguageKeyId);
         setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
         setIsTranslateDialogOpen(false);
@@ -584,13 +588,16 @@ export function LanguageTable() {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
 
+  const partiallyTranslatedCount = useMemo(
+    () =>
+      tableData.filter(
+        (key) => getCompletenessCellValue(key.resources, languageListData) === "Partial",
+      ).length,
+    [tableData, languageListData],
+  );
+
   const requestedPageSize = queryParams.pageSize ?? 10;
   const requestedPageNumber = queryParams.pageNumber ?? 0;
-  // While keepPreviousData is active, isLoading stays false during a page/pageSize
-  // change and the table keeps rendering the previous page's rows as a placeholder.
-  // Once that placeholder no longer matches the row count the new page will have
-  // (e.g. page size grew from 10 to 20), fall back to a skeleton instead of a
-  // stale/short table so scrolling into the not-yet-loaded rows never shows blank.
   const skeletonRowCount =
     stableTotalCount > 0
       ? Math.max(
@@ -599,7 +606,8 @@ export function LanguageTable() {
         )
       : requestedPageSize;
   const isFetchingNewPage = isFetching && isPlaceholderData;
-  const showLoadingSkeleton = isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
+  const showLoadingSkeleton =
+    isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
   const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -888,7 +896,28 @@ export function LanguageTable() {
           <TabsContent value="keys">
             <Card className="rounded shadow-none">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
+                  {!isLoading && (
+                    <>
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-transparent bg-secondary text-secondary-foreground"
+                      >
+                        {stableTotalCount.toLocaleString()} keys
+                      </Badge>
+                      {partiallyTranslatedCount > 0 && (
+                        <Badge variant="warning" className="gap-1.5 rounded-full">
+                          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-icon-warning opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-icon-warning" />
+                          </span>
+                          {partiallyTranslatedCount.toLocaleString()} partial
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     size="default"

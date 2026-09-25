@@ -23,8 +23,6 @@ vi.mock("react-router", async (importOriginal) => ({
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
-}));
-vi.mock("@seliseblocks/genesis-os/hooks", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-utilities/notification", () => ({

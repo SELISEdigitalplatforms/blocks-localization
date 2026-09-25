@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +31,8 @@ import { FilterControls } from "@/components/filter-toolbar";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
+import { getModuleBadgeStyle } from "../../language-table/hooks/use-language-table-columns";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 
 const getPageSizeOptions = (totalCount: number) => {
   const fixedOptions = [10, 30, 50, 100];
@@ -47,9 +48,7 @@ const compareStrings = (a: string, b: string): number => {
   return 0;
 };
 
-const getDisplayNamePart = (
-  value: string | null | undefined,
-): string | null => {
+const getDisplayNamePart = (value: string | null | undefined): string | null => {
   if (typeof value === "string" && value.trim()) {
     return value.trim();
   }
@@ -57,7 +56,15 @@ const getDisplayNamePart = (
 };
 
 const getUserDisplayNameFromUser = (
-  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+  user:
+    | {
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        userName: string | null;
+      }
+    | null
+    | undefined,
 ): string => {
   if (!user) return "—";
 
@@ -70,6 +77,7 @@ const getUserDisplayNameFromUser = (
 
 function renderModuleRows(
   modules: IModuleGets[],
+  allModuleIds: string[],
   getUserDisplayNameById: (userId: string | null) => string,
   scoped: (path: string) => string,
   navigate: (path: string) => void,
@@ -81,7 +89,9 @@ function renderModuleRows(
     return (
       <TableRow>
         <TableCell colSpan={4} className="h-24 text-center">
-          {searchText ? "No modules match your search." : "No modules found. Create your first module to get started."}
+          {searchText
+            ? "No modules match your search."
+            : "No modules found. Create your first module to get started."}
         </TableCell>
       </TableRow>
     );
@@ -94,10 +104,15 @@ function renderModuleRows(
       className="font-normal text-medium-emphasis"
       onClick={() => navigate(scoped(`services/modules/${module.itemId}`))}
     >
-      <TableCell className="truncate font-medium">{module.moduleName}</TableCell>
       <TableCell className="truncate">
-        {getUserDisplayNameById(module.createdBy)}
+        <span
+          className="inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium"
+          style={getModuleBadgeStyle(module.itemId, allModuleIds)}
+        >
+          {module.moduleName}
+        </span>
       </TableCell>
+      <TableCell className="truncate">{getUserDisplayNameById(module.createdBy)}</TableCell>
       <TableCell className="whitespace-nowrap">
         {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
       </TableCell>
@@ -201,10 +216,7 @@ export function ModuleTable() {
   }, [modulesData]);
 
   const { data: userMap, isLoading: isUsersLoading } = useQuery({
-    queryKey: [
-      "module-users",
-      [...uniqueCreatedByIds].sort(compareStrings),
-    ],
+    queryKey: ["module-users", [...uniqueCreatedByIds].sort(compareStrings)],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueCreatedByIds);
     },
@@ -246,6 +258,11 @@ export function ModuleTable() {
 
   const totalCount = filteredModules.length;
   const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
+
+  const allModuleIds = useMemo(
+    () => (modulesData ?? []).map((module) => module.itemId),
+    [modulesData],
+  );
 
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
@@ -305,27 +322,26 @@ export function ModuleTable() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isModulesLoading ? (
-                    Array.from({ length: pageSize }).map((_, index) => (
-                      <TableRow key={index}>
-                        {[1, 2, 3, 4].map((_, colIndex) => (
-                          <TableCell key={colIndex}>
-                            <Skeleton className="h-6 w-full rounded" />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    renderModuleRows(
-                    paginatedModules,
-                    getUserDisplayNameById,
-                    scoped,
-                    navigate,
-                    searchValue,
-                    setEditTarget,
-                    setTagTarget,
-                  )
-                  )}
+                  {isModulesLoading
+                    ? Array.from({ length: pageSize }).map((_, index) => (
+                        <TableRow key={index}>
+                          {[1, 2, 3, 4].map((_, colIndex) => (
+                            <TableCell key={colIndex}>
+                              <Skeleton className="h-6 w-full rounded" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    : renderModuleRows(
+                        paginatedModules,
+                        allModuleIds,
+                        getUserDisplayNameById,
+                        scoped,
+                        navigate,
+                        searchValue,
+                        setEditTarget,
+                        setTagTarget,
+                      )}
                 </TableBody>
               </Table>
             </div>

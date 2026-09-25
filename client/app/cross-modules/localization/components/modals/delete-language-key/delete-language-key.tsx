@@ -8,11 +8,10 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
 import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 
 interface DeleteLanguageKeyProps {
   itemId: string;

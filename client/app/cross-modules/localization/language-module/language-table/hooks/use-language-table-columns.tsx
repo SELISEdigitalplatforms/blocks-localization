@@ -1,6 +1,7 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import type { ColumnDef, Row } from "@tanstack/react-table";
 import { ChevronRight } from "lucide-react";
+import { Badge, type BadgeProps } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { CopyableTableValue } from "@/components/copyable-table-value/copyable-table-value";
@@ -10,6 +11,34 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
+
+export const getModuleBadgeStyle = (moduleId: string, allModuleIds: string[]): CSSProperties => {
+  const sortedIds = Array.from(new Set(allModuleIds)).sort();
+  const total = sortedIds.length || 1;
+  const index = Math.max(sortedIds.indexOf(moduleId), 0);
+  const hue = Math.round((index * 360) / total);
+  return { backgroundColor: `hsl(${hue}, 70%, 55%)`, color: "#111827" };
+};
+
+const COMPLETENESS_BADGE_VARIANT: Record<
+  string,
+  { variant: BadgeProps["variant"]; className?: string }
+> = {
+  Complete: { variant: "success" },
+  Partial: { variant: "warning" },
+};
+
+const CompletenessBadge = ({ value }: { value: string }) => {
+  const { variant, className } = COMPLETENESS_BADGE_VARIANT[value] ?? {
+    variant: "outline",
+    className: "border-transparent bg-muted text-muted-foreground",
+  };
+  return (
+    <Badge variant={variant} className={`rounded-full ${className ?? ""}`}>
+      {value}
+    </Badge>
+  );
+};
 
 const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) => {
   const characterWidth = 7.5;
@@ -25,7 +54,7 @@ const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) =
       displayValue={displayValue}
       label="key"
       className="ml-2 w-full sm:ml-0"
-      valueClassName="max-w-full truncate"
+      valueClassName="max-w-full truncate text-primary"
       valueTooltip={shouldShowFullValue ? displayValue : undefined}
     />
   );
@@ -143,8 +172,13 @@ export const useLanguageTableColumns = ({
   selectedOptionalColumns,
   sortQueryParams,
   translatingKeys,
-}: UseLanguageTableColumnsOptions) =>
-  useMemo<ColumnDef<IBlocksLanguageKey>[]>(
+}: UseLanguageTableColumnsOptions) => {
+  const allModuleIds = useMemo(
+    () => (languageModules ?? []).map((languageModule) => languageModule.itemId),
+    [languageModules],
+  );
+
+  return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
         id: "select",
@@ -227,7 +261,8 @@ export const useLanguageTableColumns = ({
               value={keyModule.moduleName}
               label="module name"
               className="ml-2 sm:ml-0 sm:w-[150px]"
-              valueClassName="truncate"
+              valueClassName="inline-block truncate rounded-full px-2 py-0.5 text-xs font-medium"
+              valueStyle={getModuleBadgeStyle(keyModule.itemId, allModuleIds)}
             />
           );
         },
@@ -239,8 +274,11 @@ export const useLanguageTableColumns = ({
             {
               accessorKey: "resources",
               header: () => <span>Completeness</span>,
-              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) =>
-                getCompletenessCellValue(row.original.resources, languageListData),
+              cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => (
+                <CompletenessBadge
+                  value={getCompletenessCellValue(row.original.resources, languageListData)}
+                />
+              ),
               enableHiding: true,
             } as ColumnDef<IBlocksLanguageKey>,
           ]
@@ -294,6 +332,7 @@ export const useLanguageTableColumns = ({
         : []),
     ],
     [
+      allModuleIds,
       expandedRowId,
       languageListData,
       languageModules,
@@ -305,3 +344,4 @@ export const useLanguageTableColumns = ({
       translatingKeys,
     ],
   );
+};

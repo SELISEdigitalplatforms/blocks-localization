@@ -13,8 +13,6 @@ let tenantId = "t1";
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId } }),
-}));
-vi.mock("@seliseblocks/genesis-os/hooks", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("react-router", () => ({ useNavigate: () => navigateMock }));
