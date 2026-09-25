@@ -80,7 +80,7 @@ interface RenderModuleRowsParams {
   allModuleIds: string[];
   getUserDisplayNameById: (userId: string | null) => string;
   scoped: (path: string) => string;
-  navigate: (path: string) => void;
+  navigate: (path: string) => void | Promise<void>;
   searchText: string;
   onEditModule: (module: IModuleGets) => void;
   onTagGlossaryModule: (module: IModuleGets) => void;
