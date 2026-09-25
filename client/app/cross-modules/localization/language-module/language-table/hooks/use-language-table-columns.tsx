@@ -13,7 +13,7 @@ import type {
 } from "@blocks-localization/models/language";
 
 export const getModuleBadgeStyle = (moduleId: string, allModuleIds: string[]): CSSProperties => {
-  const sortedIds = Array.from(new Set(allModuleIds)).sort();
+  const sortedIds = Array.from(new Set(allModuleIds)).sort((a, b) => a.localeCompare(b));
   const total = sortedIds.length || 1;
   const index = Math.max(sortedIds.indexOf(moduleId), 0);
   const hue = Math.round((index * 360) / total);

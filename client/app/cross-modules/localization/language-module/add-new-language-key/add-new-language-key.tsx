@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -33,7 +33,7 @@ import {
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useGetLanguageModules,
@@ -45,7 +45,6 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -104,7 +103,6 @@ function AddNewLanguageKey() {
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Set breadcrumb title synchronously
   BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
     defaultValues: {
@@ -115,7 +113,7 @@ function AddNewLanguageKey() {
       context: "",
     },
     resolver: zodResolver(schema),
-    mode: "onChange", // Validate on change to provide immediate feedback
+    mode: "onChange",
   });
 
   // Field array for resources
@@ -400,7 +398,9 @@ function AddNewLanguageKey() {
                                             </button>
                                           </DialogTrigger>
                                           <NewModule
-                                            onClose={(val) => setIsNewModuleDialogOpen(val ?? false)}
+                                            onClose={(val) =>
+                                              setIsNewModuleDialogOpen(val ?? false)
+                                            }
                                           />
                                         </Dialog>
                                         <h3 className="py-2 pl-8 font-semibold text-high-emphasis">
@@ -460,11 +460,11 @@ function AddNewLanguageKey() {
                       control={form.control}
                       name="resources.0.value"
                       render={({ field }) => (
-                          <FormItem className="space-y-1">
-                            <FormLabel htmlFor="defaultValue">
-                              Default value ({languageListData?.[0]?.languageName}){" "}
-                              <span className="text-destructive">*</span>
-                            </FormLabel>
+                        <FormItem className="space-y-1">
+                          <FormLabel htmlFor="defaultValue">
+                            Default value ({languageListData?.[0]?.languageName}){" "}
+                            <span className="text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               id="defaultValue"

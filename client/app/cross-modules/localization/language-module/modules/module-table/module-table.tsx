@@ -75,16 +75,27 @@ const getUserDisplayNameFromUser = (
   return fullName ?? getDisplayNamePart(user.email) ?? getDisplayNamePart(user.userName) ?? "—";
 };
 
-function renderModuleRows(
-  modules: IModuleGets[],
-  allModuleIds: string[],
-  getUserDisplayNameById: (userId: string | null) => string,
-  scoped: (path: string) => string,
-  navigate: (path: string) => void,
-  searchText: string,
-  onEditModule: (module: IModuleGets) => void,
-  onTagGlossaryModule: (module: IModuleGets) => void,
-) {
+interface RenderModuleRowsParams {
+  modules: IModuleGets[];
+  allModuleIds: string[];
+  getUserDisplayNameById: (userId: string | null) => string;
+  scoped: (path: string) => string;
+  navigate: (path: string) => void;
+  searchText: string;
+  onEditModule: (module: IModuleGets) => void;
+  onTagGlossaryModule: (module: IModuleGets) => void;
+}
+
+function renderModuleRows({
+  modules,
+  allModuleIds,
+  getUserDisplayNameById,
+  scoped,
+  navigate,
+  searchText,
+  onEditModule,
+  onTagGlossaryModule,
+}: RenderModuleRowsParams) {
   if (modules.length === 0) {
     return (
       <TableRow>
@@ -332,16 +343,16 @@ export function ModuleTable() {
                           ))}
                         </TableRow>
                       ))
-                    : renderModuleRows(
-                        paginatedModules,
+                    : renderModuleRows({
+                        modules: paginatedModules,
                         allModuleIds,
                         getUserDisplayNameById,
                         scoped,
                         navigate,
-                        searchValue,
-                        setEditTarget,
-                        setTagTarget,
-                      )}
+                        searchText: searchValue,
+                        onEditModule: setEditTarget,
+                        onTagGlossaryModule: setTagTarget,
+                      })}
                 </TableBody>
               </Table>
             </div>

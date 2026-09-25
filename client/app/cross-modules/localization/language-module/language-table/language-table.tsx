@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "rea
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
-import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useScopedPath, useProjectStore } from "@seliseblocks/genesis-os";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { RowSelectionState } from "@tanstack/react-table";
 import {
@@ -70,7 +70,6 @@ import { shortGuidGenerator } from "@/components/create-project/utils";
 import ImportFileModal from "../../components/import-language-file/import-file-modal";
 import LocalizationTimeline from "../localization-timeline/localization-timeline";
 import { useNotificationListener } from "@blocks-utilities/notification";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
