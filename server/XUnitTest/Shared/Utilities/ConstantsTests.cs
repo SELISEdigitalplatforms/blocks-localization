@@ -58,11 +58,10 @@ namespace XUnitTest
                     Constants.MigrationCompletionTopicQueue,
                 });
 
-            config.RabbitMqConfiguration.ConsumerSubscriptions
-                .Single(subscription => subscription.QueueName == Constants.MigrationCompletionTopicQueue)
-                .ExchangeName
-                .Should()
-                .Be(Constants.MigrationCompletionTopic);
+            var completion = config.RabbitMqConfiguration.ConsumerSubscriptions
+                .Single(subscription => subscription.QueueName == Constants.MigrationCompletionTopicQueue);
+            completion.ExchangeName.Should().Be(Constants.MigrationCompletionTopic);
+            completion.IsDeclareOnly.Should().BeTrue("localization only publishes completion events; blocks-os consumes them");
         }
 
         [Fact]

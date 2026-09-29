@@ -11,7 +11,7 @@ namespace Eurolm.DomainService.Utilities
         public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
         public const string EnvironmentDataMigrationQueue = "blocks_localization_environment_data_migration_listener";
         public const string MigrationCompletionTopic = "blocks_migration_topic";
-        public const string MigrationCompletionTopicQueue = "blocks_migration_topic_queue";
+        public const string MigrationCompletionTopicQueue = "blocks_migration_topic";
         private const string DefaultProvider = "azure";
         private const string RabbitMqProvider = "rabbitmq";
         public const string ServiceName = "blocks-localization";
@@ -52,7 +52,11 @@ namespace Eurolm.DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue),
-                                             ConsumerSubscription.BindToQueueViaExchange(queueName: MigrationCompletionTopicQueue, exchangeName: MigrationCompletionTopic)],
+                                             // Producer only: blocks-os consumes completion events from the
+                                             // "blocks_migration_topic" queue. Bind that queue to the exchange we
+                                             // publish to, but don't consume it here — otherwise this worker takes
+                                             // the event itself and drops it with "No consumer found".
+                                             ConsumerSubscription.DeclareExchangeOnly(exchangeName: MigrationCompletionTopic, queueName: MigrationCompletionTopicQueue)],
                 }
             };
         }
