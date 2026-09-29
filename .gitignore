@@ -224,3 +224,4 @@ results/
 QWEN.md
 .clinerules
 .windsurfrules
+/server/Api/Properties/launchSettings.json
