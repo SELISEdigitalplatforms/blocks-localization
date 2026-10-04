@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
 import { ColumnDef, flexRender, getCoreRowModel, Row, useReactTable } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";

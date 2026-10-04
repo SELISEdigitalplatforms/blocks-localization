@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 4000 --host dev-localization.blocksdevelopers.com",
     "local": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b tsconfig.app.json tsconfig.node.json && vite build",
     "test": "vitest run",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
