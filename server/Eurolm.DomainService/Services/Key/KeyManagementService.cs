@@ -827,7 +827,7 @@ namespace Eurolm.DomainService.Services
 
             if (!string.IsNullOrWhiteSpace(command.ModuleId))
             {
-                //await _notificationService.NotifyExtensionEvent(true, command.ProjectKey);
+                await _notificationService.NotifyExtensionEvent(true, command.ProjectKey);
             }
 
             // Bulk-insert timeline entries after all operations are complete
