@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui-kits/button/button";
@@ -16,6 +16,7 @@ type CopyableTableValueProps = {
   label: string;
   className?: string;
   valueClassName?: string;
+  valueStyle?: CSSProperties;
   valueTooltip?: string;
 };
 
@@ -34,13 +35,14 @@ export function CopyableTableValue({
   label,
   className,
   valueClassName,
+  valueStyle,
   valueTooltip,
 }: Readonly<CopyableTableValueProps>) {
   const [isCopied, setIsCopied] = useState(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyValue = value ?? "";
   const renderedValue = (
-    <span className={cn("min-w-0 max-w-full", valueClassName)}>
+    <span className={cn("min-w-0 max-w-full", valueClassName)} style={valueStyle}>
       {displayValue ?? copyValue}
     </span>
   );

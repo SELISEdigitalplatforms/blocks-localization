@@ -153,7 +153,7 @@ namespace Eurolm.DomainService.Services.HelperService
                 DenormalizedPayload = JsonSerializer.Serialize(new
                 {
                     IsSuccess = response,
-                    title = "Language Migration Completed",
+                    title = response ? "Language Migration Completed": "Language Migration Failed",
                     description = $"Language Migration {(response ? "completed successfully" : "failed")}",
                     projectKey = projectKey,
                     targetedProjectKey = targetedProjectKey
@@ -192,8 +192,8 @@ namespace Eurolm.DomainService.Services.HelperService
                 DenormalizedPayload = JsonSerializer.Serialize(new
                 {
                     IsSuccess = response,
-                    title = "Extension Sync Completed",
-                    description = $"Extension Sync {(response ? "completed successfully" : "failed")}",
+                    title = response ? "Keys Published" : "Key Publish Failed",
+                    description = response ? "Language keys have been published successfully" : "Failed to publish language keys",
                     projectKey = projectKey
                 }),
                 SaveDenormalizedPayloadAsAnObject = false,
@@ -203,8 +203,8 @@ namespace Eurolm.DomainService.Services.HelperService
                 ResponseValue = response ? "Extension sync completed" : "Extension sync failed"
             };
 
-            var blocksKey = projectKey;
-            var rootTenantId = projectKey;
+            var blocksKey = _configuration[RootTenantIdKey];
+            var rootTenantId = _configuration[RootTenantIdKey];
             var salt = _tenants.GetTenantByID(rootTenantId)?.TenantSalt;
             var actulalSecret = _cryptoService.Hash(rootTenantId, salt);
 

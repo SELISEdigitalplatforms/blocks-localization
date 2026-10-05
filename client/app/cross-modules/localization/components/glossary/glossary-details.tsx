@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
-import { useScopedPath } from "@seliseblocks/genesis-os/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Button } from "@/components/ui-kits/button/button";
 import { Badge } from "@/components/ui-kits/badge/badge";
@@ -31,6 +30,7 @@ import {
 } from "@blocks-localization/hooks/use-language-manager";
 import AddEditGlossary from "@blocks-localization/components/modals/glossary/add-edit-glossary";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 
 interface GlossaryDetailsProps {
   itemId: string;
@@ -52,8 +52,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     isError: isTaggedKeysError,
   } = useGetKeysByGlossaryId(itemId, glossary?.moduleIds ?? [], keysPage, PAGE_SIZE);
 
-  // Set breadcrumb title synchronously when glossary data is available
   if (glossary?.name) {
+    // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] = glossary.name;
   }
 

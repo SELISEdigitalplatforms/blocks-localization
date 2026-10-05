@@ -16,8 +16,6 @@ vi.mock("react-router", async (importOriginal) => ({
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
-}));
-vi.mock("@seliseblocks/genesis-os/hooks", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/components/modals/new-module/new-module", () => ({

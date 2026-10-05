@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 4000 --host dev-localization.blocksdevelopers.com",
     "local": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b tsconfig.app.json tsconfig.node.json && vite build",
     "test": "vitest run",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
@@ -38,7 +38,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.2",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@seliseblocks/genesis-os": "^4.3.7",
+    "@seliseblocks/genesis-os": "^4.4.0",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-query-devtools": "^5.62.11",
     "@tanstack/react-table": "^8.20.5",
