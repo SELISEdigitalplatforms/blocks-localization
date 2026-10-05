@@ -153,7 +153,7 @@ namespace Eurolm.DomainService.Services.HelperService
                 DenormalizedPayload = JsonSerializer.Serialize(new
                 {
                     IsSuccess = response,
-                    title = "Language Migration Completed",
+                    title = response ? "Language Migration Completed": "Language Migration Failed",
                     description = $"Language Migration {(response ? "completed successfully" : "failed")}",
                     projectKey = projectKey,
                     targetedProjectKey = targetedProjectKey
