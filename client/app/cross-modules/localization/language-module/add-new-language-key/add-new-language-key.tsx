@@ -301,39 +301,37 @@ function AddNewLanguageKey() {
     defaultLanguageText: string,
     index: number,
   ): Promise<void> {
-    {
-      setLoadingIndex(index); // Set the loading state for the clicked button
-      try {
-        const payload = {
-          sourceText: defaultLanguageText,
-          destinationLanguage: destinationLanguage || "English",
-          currentLanguage: "English",
-          temperature: 0.1,
-        };
-        const res = await autoTranslateAsync(payload);
-        if (res.content) {
-          toast({
-            variant: "success",
-            title: "Success",
-            description: "Translated successfully",
-          });
-          form.setValue(`resources.${index + 1}.value`, res.content);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: JSON.stringify(res?.errors),
-          });
-        }
-      } catch (error) {
+    setLoadingIndex(index);
+    try {
+      const payload = {
+        sourceText: defaultLanguageText,
+        destinationLanguage: destinationLanguage || "English",
+        currentLanguage: "English",
+        temperature: 0.1,
+      };
+      const res = await autoTranslateAsync(payload);
+      if (res.content) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Translated successfully",
+        });
+        form.setValue(`resources.${index + 1}.value`, res.content);
+      } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(error),
+          description: JSON.stringify(res?.errors),
         });
-      } finally {
-        setLoadingIndex(null);
       }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    } finally {
+      setLoadingIndex(null);
     }
   }
 
