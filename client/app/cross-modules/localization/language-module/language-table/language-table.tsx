@@ -750,7 +750,9 @@ export function LanguageTable() {
   const selectAll = () => {
     setSelectedLanguages(
       selectedLanguages.length === languageListData?.length
-        ? []
+        ? languageListData
+            .filter((lang) => lang.isDefault)
+            .map((lang) => lang.languageCode)
         : languageListData?.map((lang) => lang.languageCode) || [],
     );
   };
@@ -1055,6 +1057,8 @@ export function LanguageTable() {
                       {table.getVisibleLeafColumns().map((column) => (
                         <col key={column.id} className={getTableColumnClassName(column.id)} />
                       ))}
+                      {/* Filler column absorbs spare width so fixed columns keep their size */}
+                      <col />
                     </colgroup>
                     <TableHeader>
                       {table.getHeaderGroups().map((headerGroup) => (
@@ -1069,6 +1073,7 @@ export function LanguageTable() {
                                 : flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                           ))}
+                          <TableHead aria-hidden="true" className="h-0 p-0" />
                         </TableRow>
                       ))}
 
@@ -1119,6 +1124,7 @@ export function LanguageTable() {
                             />
                           );
                         })}
+                        <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1133,6 +1139,7 @@ export function LanguageTable() {
                                   <Skeleton className={getTableSkeletonClassName(column.id)} />
                                 </TableCell>
                               ))}
+                              <TableCell aria-hidden="true" className="p-0" />
                             </TableRow>
                           ))
                         : (() => {
@@ -1159,11 +1166,12 @@ export function LanguageTable() {
                                           )}
                                         </TableCell>
                                       ))}
+                                      <TableCell aria-hidden="true" className="p-0" />
                                     </TableRow>
                                     {isRowExpanded && (
                                       <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
                                         <TableCell
-                                          colSpan={table.getVisibleLeafColumns().length}
+                                          colSpan={table.getVisibleLeafColumns().length + 1}
                                           className="p-0"
                                         >
                                           <InlineKeyDetails
@@ -1185,7 +1193,7 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell
-                                  colSpan={table.getVisibleLeafColumns().length}
+                                  colSpan={table.getVisibleLeafColumns().length + 1}
                                   className="h-24 text-center"
                                 >
                                   <LanguageTableEmptyState

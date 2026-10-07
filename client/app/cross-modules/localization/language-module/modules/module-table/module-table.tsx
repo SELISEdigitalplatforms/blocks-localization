@@ -79,6 +79,7 @@ interface RenderModuleRowsParams {
   modules: IModuleGets[];
   allModuleIds: string[];
   getUserDisplayNameById: (userId: string | null) => string;
+  isUserLoading: (userId: string | null) => boolean;
   scoped: (path: string) => string;
   navigate: (path: string) => void | Promise<void>;
   searchText: string;
@@ -90,6 +91,7 @@ function renderModuleRows({
   modules,
   allModuleIds,
   getUserDisplayNameById,
+  isUserLoading,
   scoped,
   navigate,
   searchText,
@@ -123,7 +125,13 @@ function renderModuleRows({
           {module.moduleName}
         </span>
       </TableCell>
-      <TableCell className="truncate">{getUserDisplayNameById(module.createdBy)}</TableCell>
+      <TableCell className="truncate">
+        {isUserLoading(module.createdBy) ? (
+          <Skeleton className="h-6 w-full rounded" />
+        ) : (
+          getUserDisplayNameById(module.createdBy)
+        )}
+      </TableCell>
       <TableCell className="whitespace-nowrap">
         {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
       </TableCell>
@@ -194,7 +202,7 @@ export function ModuleTable() {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
-  const { data: currentUser } = useCurrentUser();
+  const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUser();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
@@ -235,9 +243,10 @@ export function ModuleTable() {
     staleTime: Infinity,
   });
 
-  // Helper function to get user display name
+  const isUserLoading = (userId: string | null): boolean =>
+    userId ? isUsersLoading : !!isCurrentUserLoading;
+
   const getUserDisplayNameById = (userId: string | null): string => {
-    if (isUsersLoading) return "—";
     const user = userId ? userMap?.[userId] : currentUser;
     const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
     return getUserDisplayNameFromUser(resolvedUser);
@@ -347,6 +356,7 @@ export function ModuleTable() {
                         modules: paginatedModules,
                         allModuleIds,
                         getUserDisplayNameById,
+                        isUserLoading,
                         scoped,
                         navigate,
                         searchText: searchValue,

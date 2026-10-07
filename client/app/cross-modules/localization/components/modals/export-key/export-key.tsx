@@ -486,9 +486,8 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
+                  className="z-[60] w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
                   align="start"
-                  portalled={false}
                 >
                   <Calendar
                     initialFocus

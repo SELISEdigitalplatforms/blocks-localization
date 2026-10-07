@@ -844,15 +844,16 @@ describe("language-table (extra coverage)", () => {
       );
     });
 
-    it("select-all clears languages when all are already selected", async () => {
+    it("select-all keeps only the default language when all are already selected", async () => {
       const user = userEvent.setup();
       primeStore(["en-US", "de-DE"], []);
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
       await user.click(screen.getByText("View"));
-      // The "Languages" master checkbox is checked; clicking clears selection.
       await user.click(await screen.findByLabelText("Languages"));
-      await waitFor(() => expect(useLanguageViewStore.getState().selectedLanguages).toEqual([]));
+      await waitFor(() =>
+        expect(useLanguageViewStore.getState().selectedLanguages).toEqual(["en-US"]),
+      );
     });
 
     it("select-all selects every language when none are selected", async () => {

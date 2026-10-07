@@ -88,6 +88,81 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const TRANSLATION_SKELETON_COUNT = 2;
+
+const FieldSkeleton = ({
+  controlClassName,
+  labelClassName = "w-24",
+}: {
+  controlClassName: string;
+  labelClassName?: string;
+}) => (
+  <div className="space-y-1">
+    <Skeleton className={cn("h-[14px] rounded", labelClassName)} />
+    <Skeleton className={cn("w-full rounded-md", controlClassName)} />
+  </div>
+);
+
+function AddNewLanguageKeySkeleton() {
+  return (
+    <div>
+      <div className="hidden pl-5 md:flex">
+        <PageBreadcrumb />
+      </div>
+      <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
+        <div className="flex-1 pl-5 pr-5">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold">Create new key</h1>
+            <Skeleton className="h-10 w-[66px] rounded-md" />
+          </div>
+          <Card className="mt-6 rounded-sm border border-border shadow-none">
+            <CardHeader>
+              <CardTitle>About the key</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <FieldSkeleton labelClassName="w-20" controlClassName="h-10" />
+                  <FieldSkeleton labelClassName="w-16" controlClassName="h-[37px]" />
+                </div>
+                <FieldSkeleton labelClassName="w-40" controlClassName="h-20" />
+                <FieldSkeleton labelClassName="w-24" controlClassName="h-20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="mt-4 rounded-sm border border-border shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Translations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                {Array.from({ length: TRANSLATION_SKELETON_COUNT }, (_, index) => (
+                  <div key={index} className="grid gap-3">
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-[14px] w-32 rounded" />
+                      <Skeleton className="h-7 w-[118px] rounded-md" />
+                    </div>
+                    <Skeleton className="h-20 w-full rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="mt-4 rounded-sm border border-border shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Routes</CardTitle>
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-10 w-[150px] rounded-md" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddNewLanguageKey() {
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
@@ -122,7 +197,6 @@ function AddNewLanguageKey() {
     name: "resources",
   });
 
-  // Field array for routes
   const {
     fields: routeFields,
     append: appendRoute,
@@ -243,7 +317,6 @@ function AddNewLanguageKey() {
             title: "Success",
             description: "Translated successfully",
           });
-          // Update the resource at the given index + 1 (translations)
           form.setValue(`resources.${index + 1}.value`, res.content);
         } else {
           toast({
@@ -259,13 +332,11 @@ function AddNewLanguageKey() {
           description: JSON.stringify(error),
         });
       } finally {
-        setLoadingIndex(null); // Reset the loading state.
+        setLoadingIndex(null);
       }
     }
   }
 
-  // The handler itself must return void: a promise handed back to React is never
-  // awaited, so a rejection would surface as an unhandled rejection instead.
   function autoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
@@ -278,11 +349,7 @@ function AddNewLanguageKey() {
   }
 
   if (isLanguageModulesLoading || isLanguageListLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <AddNewLanguageKeySkeleton />;
   }
 
   languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
@@ -306,8 +373,6 @@ function AddNewLanguageKey() {
       </div> */}
       <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
         <div className="flex-1 pl-5 pr-5">
-          {/* <div className="mt-10 md:mt-24"> */}
-
           <Form {...form}>
             <form onSubmit={form.handleSubmit(formSubmitHandler)}>
               <div className="flex items-center justify-between">

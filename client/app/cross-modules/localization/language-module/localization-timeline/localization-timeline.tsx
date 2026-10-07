@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -332,7 +332,7 @@ function TimelineEntry({
       {/* Center: dot + line */}
       <div className="relative flex-shrink-0">
         {index !== entryCount - 1 && (
-          <div className="absolute left-[37%] h-full w-[4px] bg-[#D9D9D9]" />
+          <div className="absolute -bottom-[10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-[#D9D9D9]" />
         )}
         <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
       </div>
@@ -356,6 +356,44 @@ function TimelineEntry({
   );
 }
 
+const TIMELINE_SKELETON_DESCRIPTION_WIDTHS = ["w-[45%]", "w-[58%]", "w-[38%]", "w-[52%]", "w-[42%]"];
+
+function TimelineSkeleton({ isMobile }: Readonly<{ isMobile: boolean }>) {
+  return (
+    <div className="mt-4 flex flex-col items-start">
+      {TIMELINE_SKELETON_KEYS.map((skeletonKey, index) => (
+        <div key={skeletonKey} className="flex min-h-[66px] w-full">
+          <div
+            className={`${isMobile ? "w-[30%]" : "w-[16%]"} flex-shrink-0 pr-[6px] pt-[2px] md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
+          >
+            <div className="flex h-[16px] items-center justify-end xl:h-[20px]">
+              <Skeleton className="h-[10px] w-[44px] xl:h-[12px] xl:w-[52px]" />
+            </div>
+            <div className="flex h-[16px] items-center justify-end xl:h-[20px]">
+              <Skeleton className="h-[10px] w-[58px] xl:h-[12px] xl:w-[70px]" />
+            </div>
+          </div>
+
+          <div className="relative flex-shrink-0">
+            {index !== TIMELINE_SKELETON_KEYS.length - 1 && (
+              <div className="absolute -bottom-[10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-muted" />
+            )}
+            <Skeleton className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full" />
+          </div>
+
+          <div className="w-full pl-[18px] pt-[2px] md:pl-[20px]">
+            <div className="flex h-[20px] items-center md:h-[24px]">
+              <Skeleton
+                className={`h-[12px] md:h-[14px] ${TIMELINE_SKELETON_DESCRIPTION_WIDTHS[index % TIMELINE_SKELETON_DESCRIPTION_WIDTHS.length]}`}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type TimelineContentProps = {
   data: IGetLocalizationTimelineResponse | undefined;
   isLoading: boolean;
@@ -365,13 +403,7 @@ type TimelineContentProps = {
 
 function TimelineContent({ data, isLoading, isMobile, onSelect }: Readonly<TimelineContentProps>) {
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {TIMELINE_SKELETON_KEYS.map((skeletonKey) => (
-          <Skeleton key={skeletonKey} className="h-16 w-full" />
-        ))}
-      </div>
-    );
+    return <TimelineSkeleton isMobile={isMobile} />;
   }
 
   if (!data || data.operations.length === 0) {
@@ -401,10 +433,6 @@ function TimelineContent({ data, isLoading, isMobile, onSelect }: Readonly<Timel
 }
 
 export type LocalizationTimelineProps = {
-  /**
-   * When omitted, some high-volume per-key event types are hidden (used on the keys “History” tab).
-   * Pass `{}` for the full localization timeline (e.g. dedicated Activity log page).
-   */
   timelineQuery?: {
     userId?: string;
     logFrom?: string;
