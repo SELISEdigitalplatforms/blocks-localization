@@ -75,7 +75,10 @@ const ActionsHeader = () => (
   </div>
 );
 
-const SKELETON_LANGUAGE_ROWS = 5;
+const SKELETON_LANGUAGE_ROW_KEYS = Array.from(
+  { length: 5 },
+  (_, rowNumber) => `language-row-skeleton-${rowNumber}`,
+);
 
 const WebhookFieldSkeleton = ({ className }: { className?: string }) => (
   <div className={cn("space-y-2", className)}>
@@ -110,8 +113,8 @@ const LoadingSkelton = () => (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: SKELETON_LANGUAGE_ROWS }).map((_, index) => (
-              <TableRow key={index}>
+            {SKELETON_LANGUAGE_ROW_KEYS.map((rowKey) => (
+              <TableRow key={rowKey}>
                 <TableCell>
                   <div className="flex w-[150px] items-center">
                     <Skeleton className="h-4 w-24" />
