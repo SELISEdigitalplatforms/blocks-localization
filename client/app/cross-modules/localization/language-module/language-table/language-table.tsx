@@ -750,9 +750,7 @@ export function LanguageTable() {
   const selectAll = () => {
     setSelectedLanguages(
       selectedLanguages.length === languageListData?.length
-        ? languageListData
-            .filter((lang) => lang.isDefault)
-            .map((lang) => lang.languageCode)
+        ? languageListData.filter((lang) => lang.isDefault).map((lang) => lang.languageCode)
         : languageListData?.map((lang) => lang.languageCode) || [],
     );
   };
@@ -1057,7 +1055,6 @@ export function LanguageTable() {
                       {table.getVisibleLeafColumns().map((column) => (
                         <col key={column.id} className={getTableColumnClassName(column.id)} />
                       ))}
-                      {/* Filler column absorbs spare width so fixed columns keep their size */}
                       <col />
                     </colgroup>
                     <TableHeader>
