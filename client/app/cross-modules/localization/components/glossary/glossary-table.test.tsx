@@ -58,8 +58,10 @@ describe("components/glossary/glossary-table", () => {
     expect(
       screen.getByText("Glossaries help keep terminology consistent across translations."),
     ).toBeTruthy();
-    expect(screen.queryByPlaceholderText("Search glossary...")).toBeNull();
-    expect(screen.queryByRole("columnheader")).toBeNull();
+    expect((screen.getByPlaceholderText("Search glossary...") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Create glossary" })).toBeNull();
   });
 

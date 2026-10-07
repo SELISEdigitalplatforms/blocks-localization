@@ -306,40 +306,34 @@ const GlossaryTable = () => {
             Glossary
           </CardTitle>
         </CardHeader>
-        {!isUnfilteredEmpty && (
-          <div className="mb-4 w-full sm:w-[300px]">
-            <FilterControls.SearchInput
-              placeholder="Search glossary..."
-              value={searchText}
-              onChange={handleSearchChange}
-              className="h-9 w-full"
-            />
-          </div>
-        )}
+        <div className="mb-4 w-full sm:w-[300px]">
+          <FilterControls.SearchInput
+            placeholder="Search glossary..."
+            value={searchText}
+            onChange={handleSearchChange}
+            className="h-9 w-full"
+            disabled={isUnfilteredEmpty}
+          />
+        </div>
         <CardContent>
-          {isUnfilteredEmpty ? (
-            <div className="flex h-40 items-center justify-center text-center">
-              <GlossaryEmptyState searchQuery="" />
-            </div>
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <Table className="text-sm">
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} className="font-bold text-medium-emphasis">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 10 }).map((_, index) => (
+          <div className="w-full overflow-x-auto">
+            <Table className="text-sm">
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {isLoading
+                  ? Array.from({ length: 10 }).map((_, index) => (
                       <TableRow key={index}>
                         {columns.map((_, colIndex) => (
                           <TableCell key={colIndex}>
@@ -348,13 +342,10 @@ const GlossaryTable = () => {
                         ))}
                       </TableRow>
                     ))
-                  ) : (
-                    renderTableRows(tableRows, columns, scoped, navigate, searchText)
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                  : renderTableRows(tableRows, columns, scoped, navigate, searchText)}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
         {!isLoading && (data?.totalCount ?? 0) > pageSize && (
           <div className="mt-5 flex items-center md:justify-end">

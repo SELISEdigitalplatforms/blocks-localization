@@ -277,6 +277,8 @@ export function ModuleTable() {
   }, [filteredModules, pageNumber, pageSize]);
 
   const totalCount = filteredModules.length;
+  const isUnfilteredEmpty =
+    !isModulesLoading && searchValue.length === 0 && (modulesData?.length ?? 0) === 0;
   const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
 
   const allModuleIds = useMemo(
@@ -320,6 +322,7 @@ export function ModuleTable() {
                   onChange={onSearchChangeHandler}
                   placeholder="Search modules..."
                   className="h-9 w-full"
+                  disabled={isUnfilteredEmpty}
                 />
               </div>
             </div>
