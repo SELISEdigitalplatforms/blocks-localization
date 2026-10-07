@@ -319,7 +319,7 @@ function TimelineEntry({
     >
       {/* Left: time/date */}
       <div
-        className={`${isMobile ? "w-[30%]" : "w-[16%]"} flex-shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
+        className={`${isMobile ? "w-[30%]" : "w-[16%]"} shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
       >
         <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
           {time}
@@ -330,9 +330,9 @@ function TimelineEntry({
       </div>
 
       {/* Center: dot + line */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         {index !== entryCount - 1 && (
-          <div className="absolute -bottom-[10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-[#D9D9D9]" />
+          <div className="absolute bottom-[-10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-[#D9D9D9]" />
         )}
         <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
       </div>
@@ -364,7 +364,7 @@ function TimelineSkeleton({ isMobile }: Readonly<{ isMobile: boolean }>) {
       {TIMELINE_SKELETON_KEYS.map((skeletonKey, index) => (
         <div key={skeletonKey} className="flex min-h-[66px] w-full">
           <div
-            className={`${isMobile ? "w-[30%]" : "w-[16%]"} flex-shrink-0 pr-[6px] pt-[2px] md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
+            className={`${isMobile ? "w-[30%]" : "w-[16%]"} shrink-0 pr-[6px] pt-[2px] md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
           >
             <div className="flex h-[16px] items-center justify-end xl:h-[20px]">
               <Skeleton className="h-[10px] w-[44px] xl:h-[12px] xl:w-[52px]" />
@@ -374,9 +374,9 @@ function TimelineSkeleton({ isMobile }: Readonly<{ isMobile: boolean }>) {
             </div>
           </div>
 
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             {index !== TIMELINE_SKELETON_KEYS.length - 1 && (
-              <div className="absolute -bottom-[10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-muted" />
+              <div className="absolute bottom-[-10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-muted" />
             )}
             <Skeleton className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full" />
           </div>

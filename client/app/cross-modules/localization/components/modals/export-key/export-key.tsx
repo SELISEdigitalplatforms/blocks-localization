@@ -453,11 +453,11 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       <>
         <DialogHeader>
           <DialogTitle className="text-left">Export keys</DialogTitle>
-          <DialogDescription className="!mt-[12px] text-sm text-medium-emphasis">
+          <DialogDescription className="mt-[12px]! text-sm text-medium-emphasis">
             Select the modules you’d like to export
           </DialogDescription>
         </DialogHeader>
-        <div className="!mt-[8px] mb-8 flex-1 overflow-y-auto p-1 text-left text-high-emphasis">
+        <div className="mt-[8px]! mb-8 flex-1 overflow-y-auto p-1 text-left text-high-emphasis">
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={1}>
             <div className="mb-6 flex flex-col gap-1.5">
               <p className="text-sm text-high-emphasis">Date Range</p>
@@ -486,7 +486,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="z-[60] w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
+                  className="z-60 w-(--radix-popover-trigger-width) min-w-0 p-0"
                   align="start"
                 >
                   <Calendar
@@ -499,7 +499,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                       head_cell:
                         "w-auto rounded-md text-center text-[0.8rem] font-normal text-muted-foreground",
                       row: "mt-2 grid w-full grid-cols-7",
-                      cell: "relative flex h-9 items-center justify-center p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
+                      cell: "relative flex h-9 items-center justify-center p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 has-aria-[selected]:bg-accent first:has-aria-[selected]:rounded-l-md last:has-aria-[selected]:rounded-r-md",
                     }}
                     mode="range"
                     defaultMonth={date?.from}

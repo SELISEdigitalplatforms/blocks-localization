@@ -175,7 +175,7 @@ function KeyGlossaryAssignments({
       {assignments.map((glossary) => (
         <Badge
           key={glossary.itemId}
-          variant={glossary.source === "pending" ? "secondary" : "outline"}
+          variant={glossary.source === "pending" ? "secondary" : "outline-solid"}
           className="font-normal"
           title={getGlossaryAssignmentTitle(glossary.source)}
         >
@@ -292,7 +292,7 @@ export function BulkEditKeysDialog({
   };
 
   return (
-    <DialogContent className="h-[calc(100dvh-1rem)] max-h-[52rem] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:max-w-2xl">
+    <DialogContent className="h-[calc(100dvh-1rem)] max-h-208 grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:max-w-2xl">
       <DialogHeader className="border-b px-6 pb-5 pt-6 pr-12">
         <DialogTitle className="text-xl">
           Bulk edit {keys.length} {keys.length === 1 ? "key" : "keys"}
@@ -355,7 +355,7 @@ export function BulkEditKeysDialog({
                     {glossary.name}
                     <button
                       type="button"
-                      className="rounded-sm p-0.5 hover:bg-muted-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="rounded-sm p-0.5 hover:bg-muted-foreground/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                       aria-label={`Remove ${glossary.name}`}
                       disabled={isPending}
                       onClick={() => removeGlossary(glossary.itemId)}
@@ -387,7 +387,7 @@ export function BulkEditKeysDialog({
               </PopoverTrigger>
               <PopoverContent
                 align="start"
-                className="w-[var(--radix-popover-trigger-width)] p-0"
+                className="w-(--radix-popover-trigger-width) p-0"
                 portalled={false}
               >
                 <Command shouldFilter={false}>

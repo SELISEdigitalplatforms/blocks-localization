@@ -36,7 +36,7 @@
 //       className={cn(
 //         "stepper__step-button-container",
 //         "pointer-events-none rounded-full p-0",
-//         "h-[var(--step-icon-size)] w-[var(--step-icon-size)]",
+//         "h-(--step-icon-size) w-(--step-icon-size)",
 //         "flex items-center justify-center rounded-full border-2",
 //         "data-[clickable=true]:pointer-events-auto",
 //         "data-[active=true]:border-primary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground",

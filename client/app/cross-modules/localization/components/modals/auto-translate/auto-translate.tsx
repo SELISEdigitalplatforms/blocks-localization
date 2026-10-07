@@ -67,7 +67,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
     <DialogContent>
       <DialogHeader className="mb-4">
         <DialogTitle>Auto-translate all keys</DialogTitle>
-        <Label className="!mt-[12px] font-normal text-medium-emphasis">
+        <Label className="mt-[12px]! font-normal text-medium-emphasis">
           Are you sure you want to automatically translate all keys?
         </Label>
       </DialogHeader>

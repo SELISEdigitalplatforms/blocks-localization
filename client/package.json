@@ -62,6 +62,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -74,7 +75,6 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
-    "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9",
     "eslint-plugin-react": "^7.37.5",
@@ -82,7 +82,7 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.18",
     "prettier": "^3",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "~5.7.0",
     "vite": "^8.0.16",
     "vitest": "^4.1.11"

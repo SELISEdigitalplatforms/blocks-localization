@@ -534,7 +534,7 @@ function Configure() {
                       <FormControl>
                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="!mt-0">Disable webhook</FormLabel>
+                      <FormLabel className="mt-0!">Disable webhook</FormLabel>
                     </FormItem>
                   )}
                 />

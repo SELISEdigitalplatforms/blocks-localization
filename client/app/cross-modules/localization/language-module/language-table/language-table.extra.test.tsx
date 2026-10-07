@@ -345,7 +345,7 @@ describe("language-table (extra coverage)", () => {
 
       const tableViewport = screen.getByTestId("language-table-viewport");
       expect(tableViewport.className).toContain("overflow-x-auto");
-      expect(tableViewport.className).toContain("[container-type:inline-size]");
+      expect(tableViewport.className).toContain("@container");
       expect(tableViewport.className).toContain("[&>div]:overflow-visible");
       expect(tableViewport.className).toContain("language-table-scrollbar");
       expect(
