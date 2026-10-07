@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
+  getStretchedColumnWidths,
   isStickyLeftColumn,
 } from "./language-table.utils";
 
@@ -38,5 +39,20 @@ describe("language-table sticky column helpers", () => {
     expect(actionsClasses).toContain("pr-2");
     expect(actionsClasses).toContain("group-hover:bg-[linear-gradient(");
     expect(getStickyBodyCellClassName("moduleId")).toBe("");
+  });
+});
+
+describe("getStretchedColumnWidths", () => {
+  const columnIds = ["select", "actions", "keyName", "moduleId", "resources_en-US"];
+
+  it("does not stretch when the columns already fill or overflow the viewport", () => {
+    expect(getStretchedColumnWidths(columnIds, 500, 1280)).toEqual({});
+  });
+
+  it("stretches data columns proportionally and keeps sticky columns fixed", () => {
+    const widths = getStretchedColumnWidths(columnIds, 80 + 646 * 2, 1280);
+    expect(widths).toEqual({ keyName: 464, moduleId: 364, "resources_en-US": 464 });
+    expect(widths.select).toBeUndefined();
+    expect(widths.actions).toBeUndefined();
   });
 });

@@ -21,7 +21,7 @@
 //   <DialogContent className="rounded-md sm:max-w-[425px]">
 //     <DialogHeader>
 //       <DialogTitle className="text-left">Edit key</DialogTitle>
-//       <div className="!mt-4 grid gap-6">
+//       <div className="mt-4! grid gap-6">
 //         <div>
 //           <Label htmlFor="key" className="text-left font-medium text-high-emphasis">
 //             Key

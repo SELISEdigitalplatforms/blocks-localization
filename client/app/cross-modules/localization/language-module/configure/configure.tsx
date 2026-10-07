@@ -55,6 +55,7 @@ import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { cn } from "@/lib/utils";
 
 const LanguageHeader = () => (
   <div className="flex items-center">
@@ -74,11 +75,87 @@ const ActionsHeader = () => (
   </div>
 );
 
+const SKELETON_LANGUAGE_ROW_KEYS = Array.from(
+  { length: 5 },
+  (_, rowNumber) => `language-row-skeleton-${rowNumber}`,
+);
+
+const WebhookFieldSkeleton = ({ className }: { className?: string }) => (
+  <div className={cn("space-y-2", className)}>
+    <Skeleton className="h-4 w-32" />
+    <Skeleton className="h-10 w-full" />
+  </div>
+);
+
 const LoadingSkelton = () => (
-  <div className="grid w-full gap-2">
-    {Array.from({ length: 10 }).map((_, index) => (
-      <Skeleton key={index} className="h-12 w-full rounded-lg" />
-    ))}
+  <div data-testid="configure-loading-skeleton">
+    <div className="flex items-end justify-between">
+      <Skeleton className="mt-5 h-8 w-60" />
+      <Skeleton className="h-10 w-10 sm:w-36" />
+    </div>
+    <Card className="mt-6 rounded-sm border border-border shadow-none">
+      <CardHeader>
+        <Skeleton className="h-5 w-28" />
+      </CardHeader>
+      <CardContent>
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="px-4 py-3 hover:bg-transparent">
+              <TableHead>
+                <Skeleton className="h-4 w-20" />
+              </TableHead>
+              <TableHead>
+                <Skeleton className="h-4 w-28" />
+              </TableHead>
+              <TableHead>
+                <Skeleton className="h-4 w-16" />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {SKELETON_LANGUAGE_ROW_KEYS.map((rowKey) => (
+              <TableRow key={rowKey}>
+                <TableCell>
+                  <div className="flex w-[150px] items-center">
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex w-[180px] items-center">
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-8 w-8" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+    <Card className="mt-6 rounded-sm border border-border shadow-none">
+      <CardHeader>
+        <Skeleton className="h-5 w-28" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <WebhookFieldSkeleton className="sm:col-span-2" />
+            <WebhookFieldSkeleton />
+            <WebhookFieldSkeleton />
+            <WebhookFieldSkeleton className="sm:col-span-2" />
+            <div className="flex items-center gap-3 sm:col-span-2">
+              <Skeleton className="h-6 w-11 rounded-full" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 );
 
@@ -534,7 +611,7 @@ function Configure() {
                       <FormControl>
                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="!mt-0">Disable webhook</FormLabel>
+                      <FormLabel className="mt-0!">Disable webhook</FormLabel>
                     </FormItem>
                   )}
                 />

@@ -235,7 +235,7 @@ export const FileUploader = forwardRef<
           ref={ref}
           tabIndex={0}
           onKeyDownCapture={handleKeyDown}
-          className={cn("grid w-full overflow-hidden focus:outline-none", className, {
+          className={cn("grid w-full overflow-hidden focus:outline-hidden", className, {
             "gap-2": value && value.length > 0,
           })}
           dir={dir}

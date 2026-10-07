@@ -178,7 +178,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="group relative rounded-lg border bg-card p-3 shadow-sm hover:shadow-md"
+                  className="group relative rounded-lg border bg-card p-3 shadow-xs hover:shadow-md"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
