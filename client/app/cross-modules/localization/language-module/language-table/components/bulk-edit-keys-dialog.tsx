@@ -175,7 +175,7 @@ function KeyGlossaryAssignments({
       {assignments.map((glossary) => (
         <Badge
           key={glossary.itemId}
-          variant={glossary.source === "pending" ? "secondary" : "outline-solid"}
+          variant={glossary.source === "pending" ? "secondary" : "outline"}
           className="font-normal"
           title={getGlossaryAssignmentTitle(glossary.source)}
         >
