@@ -6,7 +6,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Keep Tailwind v3 behaviour: apply hover styles on touch devices too. */
 @custom-variant hover (&:hover);
 
 @utility container {

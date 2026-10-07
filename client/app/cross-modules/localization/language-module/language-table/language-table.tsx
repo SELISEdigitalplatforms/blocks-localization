@@ -638,7 +638,7 @@ export function LanguageTable() {
   const stretchedColumnWidths = getStretchedColumnWidths(
     table.getVisibleLeafColumns().map((column) => column.id),
     tableViewportWidth,
-    typeof window === "undefined" ? 0 : window.innerWidth,
+    globalThis.window?.innerWidth ?? 0,
   );
 
   const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
