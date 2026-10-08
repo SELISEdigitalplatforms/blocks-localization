@@ -934,11 +934,12 @@ namespace Eurolm.DomainService.Services
             var flattened = 0;
             foreach (var keyName in resourceKeys.Select(k => k.KeyName).Where(k => !string.IsNullOrEmpty(k)).OrderBy(k => k, StringComparer.Ordinal))
             {
-                if (!TryAssignNested(dictionary, keyName))
+                if (TryAssignNested(dictionary, keyName))
                 {
-                    dictionary[keyName] = keyName;
-                    flattened++;
+                    continue;
                 }
+                dictionary[keyName] = keyName;
+                flattened++;
             }
             return flattened;
         }
