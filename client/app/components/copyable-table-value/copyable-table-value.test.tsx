@@ -37,7 +37,7 @@ describe("CopyableTableValue", () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("welcome.title"));
     expect(onRowClick).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Copied key" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Copied key" })).toBeTruthy();
   });
 
   it("does not render a copy button for an empty value", () => {
