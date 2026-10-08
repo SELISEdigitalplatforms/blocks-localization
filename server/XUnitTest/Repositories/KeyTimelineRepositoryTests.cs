@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Blocks.Genesis;
@@ -8,6 +9,7 @@ using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Moq;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Microsoft.Extensions.Configuration;
 using Xunit;
@@ -632,17 +634,16 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task GetLatestPublishTimelinesAsync_GroupsByEntityId_ReturnsLatestPerEntity()
+        public async Task GetLatestPublishTimelinesAsync_ReturnsServerGroupedLatestPerEntity()
         {
             var now = DateTime.UtcNow;
-            // Descending sort means the first per group is the latest.
+            // The server pipeline already reduces to one (latest) entry per entity.
             var timelines = new List<KeyTimeline>
             {
                 new KeyTimeline { ItemId = "t1", EntityId = "e1", LogFrom = LogFromConstants.Published, CreateDate = now },
-                new KeyTimeline { ItemId = "t2", EntityId = "e1", LogFrom = LogFromConstants.Published, CreateDate = now.AddMinutes(-10) },
                 new KeyTimeline { ItemId = "t3", EntityId = "e2", LogFrom = LogFromConstants.Published, CreateDate = now.AddMinutes(-1) }
             };
-            MockCursorHelper.SetupFindAsync(_collection, timelines);
+            SetupAggregate(timelines);
 
             var result = await _repo.GetLatestPublishTimelinesAsync(new List<string> { "e1", "e2" }, "pub-tenant");
 
@@ -650,6 +651,57 @@ namespace XUnitTest.Repositories
             result["e1"].ItemId.Should().Be("t1");
             result["e2"].ItemId.Should().Be("t3");
             _dbContextProvider.Verify(x => x.GetDatabase("pub-tenant"), Times.Once);
+            _collection.Verify(x => x.FindAsync(
+                It.IsAny<FilterDefinition<KeyTimeline>>(),
+                It.IsAny<FindOptions<KeyTimeline, KeyTimeline>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLatestPublishTimelinesAsync_GroupsOnServerAndDropsPreviousData()
+        {
+            PipelineDefinition<KeyTimeline, KeyTimeline>? captured = null;
+            AggregateOptions? capturedOptions = null;
+            SetupAggregate(new List<KeyTimeline>(), (p, o) => { captured = p; capturedOptions = o; });
+
+            await _repo.GetLatestPublishTimelinesAsync(new List<string> { "e1" }, "pub-tenant");
+
+            captured.Should().NotBeNull();
+            capturedOptions!.AllowDiskUse.Should().BeTrue();
+
+            var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var stages = captured!.Render(new RenderArgs<KeyTimeline>(registry.GetSerializer<KeyTimeline>(), registry)).Documents.ToList();
+            var json = string.Join("\n", stages.Select(s => s.ToJson()));
+
+            stages[0].Contains("$match").Should().BeTrue();
+            json.Should().Contain("\"PreviousData\" : 0");
+            json.Should().Contain("$group");
+            json.Should().Contain("$first");
+        }
+
+        [Fact]
+        public async Task GetLatestPublishTimelinesAsync_SkipsEntriesWithoutEntityId()
+        {
+            SetupAggregate(new List<KeyTimeline>
+            {
+                new KeyTimeline { ItemId = "t1", EntityId = null, LogFrom = LogFromConstants.Published },
+                new KeyTimeline { ItemId = "t2", EntityId = "e1", LogFrom = LogFromConstants.Published }
+            });
+
+            var result = await _repo.GetLatestPublishTimelinesAsync(new List<string> { "e1" }, "pub-tenant");
+
+            result.Should().ContainSingle().Which.Key.Should().Be("e1");
+        }
+
+        private void SetupAggregate(List<KeyTimeline> items, Action<PipelineDefinition<KeyTimeline, KeyTimeline>, AggregateOptions>? callback = null)
+        {
+            var cursor = MockCursorHelper.CreateCursor(items);
+            _collection.Setup(x => x.AggregateAsync(
+                    It.IsAny<PipelineDefinition<KeyTimeline, KeyTimeline>>(),
+                    It.IsAny<AggregateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<PipelineDefinition<KeyTimeline, KeyTimeline>, AggregateOptions, CancellationToken>((p, o, _) => callback?.Invoke(p, o))
+                .ReturnsAsync(cursor.Object);
         }
 
         #endregion

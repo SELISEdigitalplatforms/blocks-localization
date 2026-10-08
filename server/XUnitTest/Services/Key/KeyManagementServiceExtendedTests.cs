@@ -955,41 +955,46 @@ namespace XUnitTest
 
         #endregion
 
-        #region AssignToDictionary (private) additional cases
+        #region AssignResourceKeysToDictionaryForKeyMode (private)
 
-        [Fact]
-        public void AssignToDictionary_SimpleKey_AssignsDirectly()
+        private static (Dictionary<string, object> Dict, int Flattened) AssignKeyMode(params string[] keyNames)
         {
             var dict = new Dictionary<string, object>();
-            var method = GetInstanceMethod("AssignToDictionary");
-            method.Invoke(_service, new object[] { dict, "simpleKey", "value" });
-            dict.Should().ContainKey("simpleKey");
-            dict["simpleKey"].Should().Be("value");
+            var method = typeof(KeyManagementService)
+                .GetMethod("AssignResourceKeysToDictionaryForKeyMode", BindingFlags.NonPublic | BindingFlags.Static)!;
+            var keys = keyNames.Select(n => new Key { KeyName = n }).ToList();
+            var flattened = (int)method.Invoke(null, new object[] { keys, dict })!;
+            return (dict, flattened);
         }
 
         [Fact]
-        public void AssignToDictionary_DeepNesting_CreatesAllLevels()
+        public void AssignResourceKeysToDictionaryForKeyMode_NestsKeysByDot()
         {
-            var dict = new Dictionary<string, object>();
-            var method = GetInstanceMethod("AssignToDictionary");
-            method.Invoke(_service, new object[] { dict, "a.b.c.d", "deep" });
+            var (dict, flattened) = AssignKeyMode("simpleKey", "a.b.c.d", "a.b.x");
 
-            var a = dict["a"] as Dictionary<string, object>;
-            var b = a!["b"] as Dictionary<string, object>;
-            var c = b!["c"] as Dictionary<string, object>;
-            c!["d"].Should().Be("deep");
+            flattened.Should().Be(0);
+            dict["simpleKey"].Should().Be("simpleKey");
+            var b = (Dictionary<string, object>)((Dictionary<string, object>)dict["a"])["b"];
+            ((Dictionary<string, object>)b["c"])["d"].Should().Be("a.b.c.d");
+            b["x"].Should().Be("a.b.x");
+            Newtonsoft.Json.JsonConvert.SerializeObject(dict)
+                .Should().Be("{\"a\":{\"b\":{\"c\":{\"d\":\"a.b.c.d\"},\"x\":\"a.b.x\"}},\"simpleKey\":\"simpleKey\"}");
         }
 
-        [Fact]
-        public void AssignToDictionary_ConflictingPath_LogsError()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void AssignResourceKeysToDictionaryForKeyMode_PrefixConflict_KeepsShorterNestedAndLongerFlat_InAnyOrder(bool reversed)
         {
-            var dict = new Dictionary<string, object>();
-            var method = GetInstanceMethod("AssignToDictionary");
-            // First set a.b = "value" (string)
-            method.Invoke(_service, new object[] { dict, "a.b", "value" });
-            // Then try a.b.c = "nested" which will conflict because a.b is already a string
-            method.Invoke(_service, new object[] { dict, "a.b.c", "nested" });
-            // Should not throw; the logger error path is triggered
+            var keyNames = new[] { "crm.customers", "crm.customers.noCode", "crm.customers.views.label" };
+            if (reversed) Array.Reverse(keyNames);
+
+            var (dict, flattened) = AssignKeyMode(keyNames);
+
+            flattened.Should().Be(2);
+            ((Dictionary<string, object>)dict["crm"])["customers"].Should().Be("crm.customers");
+            dict["crm.customers.noCode"].Should().Be("crm.customers.noCode");
+            dict["crm.customers.views.label"].Should().Be("crm.customers.views.label");
         }
 
         #endregion

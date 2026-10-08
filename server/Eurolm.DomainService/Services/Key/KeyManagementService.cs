@@ -884,7 +884,11 @@ namespace Eurolm.DomainService.Services
                 Dictionary<string, object> dictionary = new Dictionary<string, object>();
                 if (language.LanguageCode == "key")
                 {
-                    AssignResourceKeysToDictionaryForKeyMode(resourceKeys, dictionary);
+                    var flattenedKeys = AssignResourceKeysToDictionaryForKeyMode(resourceKeys, dictionary);
+                    if (flattenedKeys > 0)
+                    {
+                        _logger.LogWarning("Key-mode file for module {ModuleName}: {Count} keys overlap another key's path and were written as flat top-level entries.", application.ModuleName, flattenedKeys);
+                    }
                 }
                 else
                 {
@@ -918,47 +922,54 @@ namespace Eurolm.DomainService.Services
             });
         }
 
-        private void AssignResourceKeysToDictionaryForKeyMode(
+        // The key-mode file is nested by '.' (external consumers read it that way). Nesting cannot hold a key
+        // that is also a prefix of another key ("crm.customers" and "crm.customers.noCode"), so the key that
+        // does not fit is written as a flat top-level entry instead of being dropped. Keys are sorted so the
+        // result does not depend on the order the database returns them in: the shorter key always stays nested.
+        // Returns how many keys were written flat.
+        private static int AssignResourceKeysToDictionaryForKeyMode(
            List<Key> resourceKeys,
            Dictionary<string, object> dictionary)
         {
-            resourceKeys.ForEach((Key resourceKey) =>
+            var flattened = 0;
+            foreach (var keyName in resourceKeys.Select(k => k.KeyName).Where(k => !string.IsNullOrEmpty(k)).OrderBy(k => k, StringComparer.Ordinal))
             {
-                AssignToDictionary(dictionary: dictionary, keyPath: resourceKey.KeyName, value: resourceKey.KeyName);
-            });
+                if (TryAssignNested(dictionary, keyName))
+                {
+                    continue;
+                }
+                dictionary[keyName] = keyName;
+                flattened++;
+            }
+            return flattened;
         }
 
-        private void AssignToDictionary(
-            Dictionary<string, object> dictionary,
-            string keyPath,
-            string value)
+        private static bool TryAssignNested(Dictionary<string, object> dictionary, string keyName)
         {
-            try
+            string[] segments = keyName.Split('.');
+            Dictionary<string, object> current = dictionary;
+
+            for (int i = 0; i < segments.Length - 1; i++)
             {
-                string[] keys = keyPath.Split('.');
-
-                Dictionary<string, object> current = dictionary;
-
-                for (int i = 0; i < keys.Length - 1; i++)
+                if (!current.TryGetValue(segments[i], out var next))
                 {
-                    if (current.ContainsKey(keys[i]))
-                    {
-                        current = (Dictionary<string, object>)current[keys[i]];
-                    }
-                    else
-                    {
-                        Dictionary<string, object> next = new Dictionary<string, object>();
-                        current[keys[i]] = next;
-                        current = next;
-                    }
+                    next = new Dictionary<string, object>();
+                    current[segments[i]] = next;
                 }
+                if (next is not Dictionary<string, object> nested)
+                {
+                    return false; // a shorter key already occupies this path
+                }
+                current = nested;
+            }
 
-                current[keys[keys.Length - 1]] = value;
-            }
-            catch (Exception ex)
+            var leaf = segments[^1];
+            if (current.TryGetValue(leaf, out var existing) && existing is Dictionary<string, object>)
             {
-                _logger.LogError("Error in AssignToDictionary, keyPath: {KeyPath},  exception: {Ex}", keyPath, JsonConvert.SerializeObject(ex));
+                return false; // longer keys already live under this path
             }
+            current[leaf] = keyName;
+            return true;
         }
 
         public async Task<bool> SaveUniqeFiles(List<UilmFile> uilmfiles)
