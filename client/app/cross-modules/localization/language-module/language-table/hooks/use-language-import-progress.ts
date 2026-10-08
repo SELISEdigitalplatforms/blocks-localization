@@ -219,6 +219,11 @@ export const useLanguageImportProgress = ({
 
         const refreshedTotalCount = result.data?.totalCount ?? 0;
         if (refreshedTotalCount > baselineTotalCount) {
+          await Promise.allSettled([
+            queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all }),
+            queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all }),
+          ]);
+          if (cancelled) return;
           progressRef.current = null;
           setProgress(null);
           toast({
@@ -255,7 +260,7 @@ export const useLanguageImportProgress = ({
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [progress?.baselineTotalCount, progress?.status, refetch]);
+  }, [progress?.baselineTotalCount, progress?.status, queryClient, refetch]);
 
   return { progress, onImportStarted, onImportRequestFailed };
 };

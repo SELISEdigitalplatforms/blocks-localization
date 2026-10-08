@@ -77,10 +77,7 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
-import {
-  getCompletenessCellValue,
-  useLanguageTableColumns,
-} from "./hooks/use-language-table-columns";
+import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
   getImportFileLabel,
   useLanguageImportProgress,
@@ -588,14 +585,6 @@ export function LanguageTable() {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
 
-  const partiallyTranslatedCount = useMemo(
-    () =>
-      tableData.filter(
-        (key) => getCompletenessCellValue(key.resources, languageListData) === "Partial",
-      ).length,
-    [tableData, languageListData],
-  );
-
   const requestedPageSize = queryParams.pageSize ?? 10;
   const requestedPageNumber = queryParams.pageNumber ?? 0;
   const skeletonRowCount =
@@ -917,23 +906,12 @@ export function LanguageTable() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                   {!isLoading && (
-                    <>
-                      <Badge
-                        variant="outline"
-                        className="rounded-full border-transparent bg-secondary text-secondary-foreground"
-                      >
-                        {stableTotalCount.toLocaleString()} keys
-                      </Badge>
-                      {partiallyTranslatedCount > 0 && (
-                        <Badge variant="warning" className="gap-1.5 rounded-full">
-                          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-icon-warning opacity-75" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-icon-warning" />
-                          </span>
-                          {partiallyTranslatedCount.toLocaleString()} partial
-                        </Badge>
-                      )}
-                    </>
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-transparent bg-secondary text-secondary-foreground"
+                    >
+                      {stableTotalCount.toLocaleString()} keys
+                    </Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
