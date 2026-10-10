@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCookie, getJsonCookie, removeCookie, setCookie, setJsonCookie } from "@/lib/cookie";
 
+type WindowWithBlocksEnv = Window & { __BLOCKS_ENV__?: Record<string, unknown> };
+
 const ORIGIN = window.location.origin;
 
 /** Set a cookie directly via document.cookie (jsdom-friendly, no domain). */
@@ -91,8 +93,8 @@ describe("lib/cookie", () => {
     });
 
     it("should use BLOCKS_BASE_DOMAIN with the default 365-day expiry", () => {
-      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
-      (window as any).__BLOCKS_ENV__ = {
+      const originalWindowEnv = (window as WindowWithBlocksEnv).__BLOCKS_ENV__;
+      (window as WindowWithBlocksEnv).__BLOCKS_ENV__ = {
         ...originalWindowEnv,
         BLOCKS_BASE_DOMAIN: window.location.hostname,
       };
@@ -114,7 +116,7 @@ describe("lib/cookie", () => {
         setCookie("name", "value");
       } finally {
         spy.mockRestore();
-        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+        (window as WindowWithBlocksEnv).__BLOCKS_ENV__ = originalWindowEnv;
       }
 
       // The cookie write should have happened with all expected attributes.
@@ -128,8 +130,8 @@ describe("lib/cookie", () => {
     });
 
     it("should fall back to a host-only cookie when the configured domain does not match", () => {
-      const originalWindowEnv = (window as any).__BLOCKS_ENV__;
-      (window as any).__BLOCKS_ENV__ = {
+      const originalWindowEnv = (window as WindowWithBlocksEnv).__BLOCKS_ENV__;
+      (window as WindowWithBlocksEnv).__BLOCKS_ENV__ = {
         ...originalWindowEnv,
         BLOCKS_BASE_DOMAIN: "another-domain.example",
       };
@@ -144,7 +146,7 @@ describe("lib/cookie", () => {
         setCookie("name", "value");
       } finally {
         spy.mockRestore();
-        (window as any).__BLOCKS_ENV__ = originalWindowEnv;
+        (window as WindowWithBlocksEnv).__BLOCKS_ENV__ = originalWindowEnv;
       }
 
       expect(calls[0]).not.toContain("domain=");
@@ -295,7 +297,7 @@ describe("lib/cookie", () => {
 
     it("should log an error and bail when JSON.stringify throws (circular ref)", () => {
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const circular: any = {};
+      const circular: { self?: unknown } = {};
       circular.self = circular;
       // Should not throw.
       setJsonCookie("circ", circular, 1, "localhost");

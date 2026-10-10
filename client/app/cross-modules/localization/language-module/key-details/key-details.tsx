@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui-kits/tabs/tabs";
-import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+import { setBreadcrumbTitle } from "@/constants/breadcrumb-custom-title";
 import {
   IBlocksLanguageKey,
   IGetTimelineResponse,
@@ -55,8 +55,8 @@ const KeyDetails = () => {
   const { keyId } = useParams<{ keyId: string }>();
   const id = keyId ?? "";
   const { data: blocksLanguageKeyData } = useGetBlocksLanguageKeyById(id);
-  const [keyDetails, setKeyDetails] = useState<IBlocksLanguageKey | null>(null);
-  const [events, setEvents] = useState<TimelineEvents[]>([]);
+  // Derived from the query rather than copied into state by an effect.
+  const keyDetails: IBlocksLanguageKey | null = id ? (blocksLanguageKeyData ?? null) : null;
   const [tabId, setTabId] = useQueryState("translationActivity", {
     defaultValue: "details",
   });
@@ -73,8 +73,10 @@ const KeyDetails = () => {
 
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
-    BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/language/translations/${keyDetails.itemId}`] =
-      keyDetails.keyName;
+    setBreadcrumbTitle(
+      `/app/:itemId/services/language/translations/${keyDetails.itemId}`,
+      keyDetails.keyName,
+    );
   }
 
   // Fetch timeline with current pagination
@@ -143,18 +145,11 @@ const KeyDetails = () => {
     });
   }, []);
 
-  useEffect(() => {
-    if (id) {
-      setKeyDetails(blocksLanguageKeyData || null);
-    }
-  }, [id, blocksLanguageKeyData]);
-
-  useEffect(() => {
-    if (tabId === "history" && keyTimelineData) {
-      const timelineData = mapTimelineEvents(keyTimelineData);
-      setEvents(timelineData);
-    }
-  }, [tabId, keyTimelineData, mapTimelineEvents]);
+  // Timeline entries for the current page; only rendered on the history tab.
+  const events = useMemo<TimelineEvents[]>(
+    () => (keyTimelineData ? mapTimelineEvents(keyTimelineData) : []),
+    [keyTimelineData, mapTimelineEvents],
+  );
 
   // Handle auto-translate
   const handleTranslate = async () => {
@@ -195,7 +190,11 @@ const KeyDetails = () => {
 
   // Scroll to top of the timeline when page changes
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Scroll back to the top when the timeline page changes (not on the initial render).
+  const lastScrolledPage = useRef(filter.page);
   useEffect(() => {
+    if (lastScrolledPage.current === filter.page) return;
+    lastScrolledPage.current = filter.page;
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
