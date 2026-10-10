@@ -99,33 +99,24 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   }
 
   async function handleSave() {
-    const index = keyDetails.resources.findIndex(
+    // Build the updated list without touching the `keyDetails` prop (it is the caller's cached
+    // query data); a successful save invalidates those queries so the new value is refetched.
+    const existingResources = keyDetails.resources ?? [];
+    const index = existingResources.findIndex(
       (resource) => resource.culture === destinationLanguageCode,
     );
-    if (index === -1) {
-      keyDetails.resources?.push({
-        culture: destinationLanguageCode,
-        value: translation,
-      });
-    } else if (keyDetails.resources) {
-      keyDetails.resources[index].value = translation;
-    } else {
-      keyDetails.resources = [
-        {
-          culture: destinationLanguageCode,
-          value: translation,
-        },
-      ];
-    }
+    const resources =
+      index === -1
+        ? [...existingResources, { culture: destinationLanguageCode, value: translation }]
+        : existingResources.map((resource, i) =>
+            i === index ? { ...resource, value: translation } : resource,
+          );
     try {
       const payload = {
         itemId: keyDetails.itemId,
         keyName: keyDetails.keyName,
         moduleId: keyDetails.moduleId,
-        resources:
-          keyDetails?.resources?.length && keyDetails?.resources?.length > 0
-            ? keyDetails.resources
-            : [],
+        resources,
         routes:
           keyDetails?.routes?.length && keyDetails?.routes?.length > 0 ? keyDetails.routes : [],
         glossaryIds: keyDetails.glossaryIds,

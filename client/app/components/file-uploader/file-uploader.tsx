@@ -100,63 +100,6 @@ export const FileUploader = forwardRef<
       }
     }, [isFileTooBig]);
 
-    const handleKeyDown = useCallback(
-      // eslint-disable-next-line no-undef
-      (e: React.KeyboardEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!value) return;
-
-        const moveNext = () => {
-          const nextIndex = activeIndex + 1;
-          setActiveIndex(nextIndex > value.length - 1 ? 0 : nextIndex);
-        };
-
-        const movePrev = () => {
-          const nextIndex = activeIndex - 1;
-          setActiveIndex(nextIndex < 0 ? value.length - 1 : nextIndex);
-        };
-
-        const prevKey =
-          orientation === "horizontal"
-            ? direction === "ltr"
-              ? "ArrowLeft"
-              : "ArrowRight"
-            : "ArrowUp";
-
-        const nextKey =
-          orientation === "horizontal"
-            ? direction === "ltr"
-              ? "ArrowRight"
-              : "ArrowLeft"
-            : "ArrowDown";
-
-        if (e.key === nextKey) {
-          moveNext();
-        } else if (e.key === prevKey) {
-          movePrev();
-        } else if (e.key === "Enter" || e.key === "Space") {
-          if (activeIndex === -1) {
-            dropzoneState.inputRef.current?.click();
-          }
-        } else if (e.key === "Delete" || e.key === "Backspace") {
-          if (activeIndex !== -1) {
-            removeFileFromSet(activeIndex);
-            if (value.length - 1 === 0) {
-              setActiveIndex(-1);
-              return;
-            }
-            movePrev();
-          }
-        } else if (e.key === "Escape") {
-          setActiveIndex(-1);
-        }
-      },
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [value, activeIndex, removeFileFromSet],
-    );
-
     const onDrop = useCallback(
       (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
         const files = acceptedFiles;
@@ -217,6 +160,63 @@ export const FileUploader = forwardRef<
       // onDropRejected: () => setIsFileTooBig(true),
       onDropAccepted: () => setIsFileTooBig(false),
     });
+
+    const handleKeyDown = useCallback(
+      // eslint-disable-next-line no-undef
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!value) return;
+
+        const moveNext = () => {
+          const nextIndex = activeIndex + 1;
+          setActiveIndex(nextIndex > value.length - 1 ? 0 : nextIndex);
+        };
+
+        const movePrev = () => {
+          const nextIndex = activeIndex - 1;
+          setActiveIndex(nextIndex < 0 ? value.length - 1 : nextIndex);
+        };
+
+        const prevKey =
+          orientation === "horizontal"
+            ? direction === "ltr"
+              ? "ArrowLeft"
+              : "ArrowRight"
+            : "ArrowUp";
+
+        const nextKey =
+          orientation === "horizontal"
+            ? direction === "ltr"
+              ? "ArrowRight"
+              : "ArrowLeft"
+            : "ArrowDown";
+
+        if (e.key === nextKey) {
+          moveNext();
+        } else if (e.key === prevKey) {
+          movePrev();
+        } else if (e.key === "Enter" || e.key === "Space") {
+          if (activeIndex === -1) {
+            dropzoneState.inputRef.current?.click();
+          }
+        } else if (e.key === "Delete" || e.key === "Backspace") {
+          if (activeIndex !== -1) {
+            removeFileFromSet(activeIndex);
+            if (value.length - 1 === 0) {
+              setActiveIndex(-1);
+              return;
+            }
+            movePrev();
+          }
+        } else if (e.key === "Escape") {
+          setActiveIndex(-1);
+        }
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [value, activeIndex, removeFileFromSet],
+    );
 
     return (
       <FileUploaderContext.Provider
@@ -349,7 +349,6 @@ export const FileInput = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
           {children}
         </div>
         <Input
-          ref={dropzoneState.inputRef}
           disabled={isLOF}
           {...dropzoneState.getInputProps()}
           className={`${isLOF ? "cursor-not-allowed" : ""}`}
