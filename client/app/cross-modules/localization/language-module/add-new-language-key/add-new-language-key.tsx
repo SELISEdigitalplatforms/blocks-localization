@@ -33,7 +33,7 @@ import {
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useGetLanguageModules,
@@ -176,7 +176,6 @@ function AddNewLanguageKey() {
   const { mutateAsync: autoTranslateAsync } = useGetTranslationSuggestion();
 
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
@@ -577,6 +576,7 @@ function AddNewLanguageKey() {
                               size="sm"
                               variant="outline"
                               className="h-7 gap-1"
+                              // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() keeps the button state in sync with the source value.
                               disabled={loadingIndex === index || !form.watch().resources[0].value} // Disable only the clicked button.
                               onClick={autoTranslate(
                                 languageListData?.[index + 1]?.languageName,

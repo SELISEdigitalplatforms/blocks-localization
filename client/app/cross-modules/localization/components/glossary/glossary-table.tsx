@@ -271,6 +271,7 @@ const GlossaryTable = () => {
     [handleEditClick, handleDeleteClick],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable is the table API this component is built on.
   const table = useReactTable({
     data: data?.items ?? [],
     columns,

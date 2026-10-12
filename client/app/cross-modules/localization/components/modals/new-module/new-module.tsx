@@ -23,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui-kits/form/form";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 
 interface NewModuleProps {
   onClose: (value?: boolean) => void;
@@ -40,7 +39,6 @@ type FormValues = z.infer<typeof schema>;
 
 const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
   const { isPending, mutateAsync } = useSaveLanguageModule();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const form = useForm<FormValues>({
     defaultValues: {

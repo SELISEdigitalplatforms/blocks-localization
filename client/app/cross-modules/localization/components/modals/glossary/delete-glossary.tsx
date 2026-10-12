@@ -8,7 +8,6 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { useDeleteGlossary } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
@@ -21,7 +20,6 @@ interface DeleteGlossaryProps {
 
 const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, onClose }) => {
   const { isPending, mutateAsync } = useDeleteGlossary();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const deleteGlossary = async () => {
     try {

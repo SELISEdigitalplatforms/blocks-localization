@@ -88,7 +88,7 @@ const detectDelimiter = (line: string): string => {
   const delimiters = [",", ";", "\t"];
   const counts = delimiters.map((d) => ({
     delimiter: d,
-    count: (line.match(new RegExp(`\\${d}`, "g")) || []).length,
+    count: line.split(d).length - 1,
   }));
   // Return the delimiter with the highest count, default to comma
   // Seeded so an empty candidate list falls back to the comma rather than throwing.
