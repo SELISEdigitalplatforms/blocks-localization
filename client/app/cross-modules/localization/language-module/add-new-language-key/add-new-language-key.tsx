@@ -305,7 +305,7 @@ function AddNewLanguageKey() {
       const payload = {
         sourceText: defaultLanguageText,
         destinationLanguage: destinationLanguage || "English",
-        currentLanguage: "English",
+        currentLanguage: languageListData?.[0]?.languageName || "English",
         temperature: 0.1,
       };
       const res = await autoTranslateAsync(payload);

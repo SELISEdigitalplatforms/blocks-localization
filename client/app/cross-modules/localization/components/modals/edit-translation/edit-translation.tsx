@@ -43,10 +43,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       "",
   );
 
-  // Split so the click handler itself returns void. React ignores a promise
-  // returned from an event handler, so an async handler leaves a rejection
-  // unobserved; the await happens in here, where the catch turns a failure into
-  // a toast the user actually sees.
   async function runAutoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
@@ -55,7 +51,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       const payload = {
         sourceText: defaultLanguageText,
         destinationLanguage: destinationLanguage || "English",
-        currentLanguage: "English",
+        currentLanguage: languageListData[0]?.languageName || "English",
         temperature: 0.1,
         // elementDetailContext: keyDetails.context,
         glossaryIds: keyDetails.glossaryIds,
