@@ -19,10 +19,8 @@ import { IBlocksLanguageKey } from "../../models/language";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { mutateAsync: saveKey } = useSaveBlocksLanguageKey();
   const { data: languageModules } = useGetLanguageModules();
   const {

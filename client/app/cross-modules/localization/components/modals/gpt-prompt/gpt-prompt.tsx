@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { formatErrorMessage } from "@/lib/error";
 
 const GptPrompt: React.FC<{
@@ -26,7 +25,6 @@ const GptPrompt: React.FC<{
     propDefaultValue ||
     "The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
   const [text, setText] = useState(defaultValue);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
 

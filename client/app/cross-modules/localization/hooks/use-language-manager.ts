@@ -279,7 +279,7 @@ export const useTranslateKeyWithPolling = (
           onTranslationComplete?.();
           return;
         }
-      } catch (error) {
+      } catch {
         // Continue polling even on error
       }
 

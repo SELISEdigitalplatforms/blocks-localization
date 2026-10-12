@@ -260,6 +260,7 @@ export const useLanguageImportProgress = ({
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- polling must restart only on status/baseline changes, not on every progress update.
   }, [progress?.baselineTotalCount, progress?.status, queryClient, refetch]);
 
   return { progress, onImportStarted, onImportRequestFailed };

@@ -25,7 +25,6 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeleteLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { IModuleGets } from "@blocks-localization/models/language";
 
 interface DeleteModuleModalProps {
@@ -39,7 +38,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
   const [targetModuleId, setTargetModuleId] = useState<string>("");
   const [comboOpen, setComboOpen] = useState(false);
   const inputRef = useRef(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { isPending, mutateAsync } = useDeleteLanguageModule();
 
   const availableModules = allModules.filter((m) => m.itemId !== module.itemId);

@@ -135,14 +135,14 @@ export interface IUpdateTenantGroupResponse {
   isSuccess: boolean;
 }
 
-type SSO_INFO = {
+type SsoInfo = {
   provider: SSO_PROVIDERS;
   audience: string;
 };
 
 export type LoginOption = {
   allowedGrantTypes: GRANT_TYPES[];
-  ssoInfo: SSO_INFO[];
+  ssoInfo: SsoInfo[];
 };
 
 export interface IMigrationServiceDetails {

@@ -18,7 +18,6 @@ import {
 import { useSaveLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,7 +41,6 @@ interface FormValues {
 
 const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
   const { isPending, mutateAsync } = useSaveLanguageModule();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const form = useForm<FormValues>({
     defaultValues: {
