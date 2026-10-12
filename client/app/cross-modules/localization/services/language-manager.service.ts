@@ -406,7 +406,7 @@ export class LanguageManagerService {
     });
 
     if (request.searchText) {
-      params.append("SearchText", request.searchText);
+      params.append("SearchText", request.searchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     }
 
     if (request.isGlobal !== undefined) {

@@ -3,12 +3,19 @@ import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
   IDeleteModuleRequest,
+  IGlossary,
   ILanguageConfig,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 export const useGetBlocksLanguageKey = (
   pageNumber: number,
@@ -681,6 +688,25 @@ export const useGetGlossaryById = (itemId: string) => {
   });
 };
 
+const combineSuccessfulGlossaries = (
+  results: { status: string; data?: IGlossary }[],
+): IGlossary[] =>
+  results.flatMap((result) => (result.status === "success" && result.data ? [result.data] : []));
+
+export const useGetGlossariesByIds = (itemIds: string[], enabled: boolean) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQueries({
+    queries: itemIds.map((itemId) => ({
+      queryKey: localizationQueryKeys.glossaries.detail(tenantId, itemId),
+      queryFn: () => languageManagerService.getGlossaryById({ itemId }),
+      enabled: enabled && !!itemId && !!tenantId,
+      staleTime: 0,
+      retry: false,
+    })),
+    combine: combineSuccessfulGlossaries,
+  });
+};
+
 export const useGetKeysByGlossaryId = (
   glossaryId: string,
   moduleIds: string[],
@@ -689,7 +715,6 @@ export const useGetKeysByGlossaryId = (
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  // Only enable query when moduleIds is available
   const queryKey = localizationQueryKeys.languageKeys.byGlossary(
     tenantId,
     glossaryId,

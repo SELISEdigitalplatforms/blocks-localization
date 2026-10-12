@@ -10,6 +10,7 @@ import {
   useGetLanguageModules,
   useGetLanguages,
   useGetGlossaries,
+  useGetGlossariesByIds,
   useGetSuggestedGlossaries,
   useGetGlobalGlossaries,
   useGetModuleGlossaries,
@@ -44,10 +45,30 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
 
+  const missingGlossaryIds = useMemo(() => {
+    if (!hasGlossaryIds || !allGlossariesData?.items) return [];
+    const loadedIds = new Set(allGlossariesData.items.map((g) => g.itemId));
+    return (keyDetails.glossaryIds ?? []).filter((id) => !loadedIds.has(id));
+  }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
+  const missingGlossaries = useGetGlossariesByIds(
+    missingGlossaryIds,
+    missingGlossaryIds.length > 0,
+  );
+
   const resolvedGlossaries = useMemo(() => {
     if (!hasGlossaryIds || !allGlossariesData?.items) return [];
-    return allGlossariesData.items.filter((g) => keyDetails.glossaryIds?.includes(g.itemId));
-  }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
+    const fromFirstPage = allGlossariesData.items.filter((g) =>
+      keyDetails.glossaryIds?.includes(g.itemId),
+    );
+    const fetchedById = missingGlossaries.filter((g) => missingGlossaryIds.includes(g.itemId));
+    return [...fromFirstPage, ...fetchedById];
+  }, [
+    hasGlossaryIds,
+    allGlossariesData,
+    keyDetails.glossaryIds,
+    missingGlossaries,
+    missingGlossaryIds,
+  ]);
 
   const contextGlossaries = useMemo(() => {
     const taggedIds = new Set(keyDetails.glossaryIds ?? []);
