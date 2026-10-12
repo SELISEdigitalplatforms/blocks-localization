@@ -152,6 +152,6 @@ export function setJsonCookie<T>(
     const jsonString = JSON.stringify(value);
     setCookie(name, jsonString, days, domain);
   } catch (error) {
-    console.error(`Failed to stringify cookie "${name}":`, error);
+    console.error('Failed to stringify cookie "%s":', name, error);
   }
 }

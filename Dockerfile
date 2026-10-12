@@ -13,12 +13,15 @@ FROM node:22.22-alpine AS client
 WORKDIR /src
 
 COPY client/package.json client/package-lock.json ./client/
-RUN cd client && npm ci --no-audit --no-fund
+WORKDIR /src/client
+RUN npm ci --no-audit --no-fund
 
+WORKDIR /src
 COPY client ./client
-RUN mkdir -p server/Api/wwwroot \
-    && cd client \
-    && npm run build
+RUN mkdir -p server/Api/wwwroot
+WORKDIR /src/client
+RUN npm run build
+WORKDIR /src
 
 # -----------------------------------------------------------------------------
 # Stage: publish — .NET SDK (glibc). Default platform linux/amd64 avoids Grpc.Tools
@@ -60,6 +63,9 @@ RUN apk add --no-cache icu-libs
 
 COPY --from=publish /app/publish .
 RUN chown -R app:app /app
+
+# The base image defines no healthcheck; NONE states that explicitly, so runtime behavior is unchanged.
+HEALTHCHECK NONE
 
 USER app
 

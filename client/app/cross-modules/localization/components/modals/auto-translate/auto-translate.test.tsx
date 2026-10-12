@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
+import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import AutoTranslate from "./auto-translate";

@@ -48,7 +48,6 @@ import {
   useGetLanguages,
   useSaveGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { z } from "zod";
@@ -86,7 +85,6 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
   const { isPending, mutateAsync } = useSaveGlossary();
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [languageOpen, setLanguageOpen] = useState(false);
   const [modulePopoverOpen, setModulePopoverOpen] = useState(false);
 
@@ -131,6 +129,7 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
     });
   }, [form, glossary]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() drives the re-render when the language changes.
   const selectedLanguage = form.watch("language");
 
   const formSubmitHandler = async (data: IGlossaryFormData) => {

@@ -343,9 +343,12 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
     };
   };
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() is required to re-run the sync below when items change.
+  const watchedItems = form.watch("items");
+
   useEffect(() => {
     setSelectedModuleIds(form.getValues("items") || []);
-  }, [form.watch("items")]);
+  }, [form, watchedItems]);
 
   // Reset state when modal is closed
   useEffect(() => {
@@ -424,6 +427,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       }
     },
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleExportNotification is recreated every render; adding it would defeat this memoization.
     [projectKey, queryClient],
   );
 

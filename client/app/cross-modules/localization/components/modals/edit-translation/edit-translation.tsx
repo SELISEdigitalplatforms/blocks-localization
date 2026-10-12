@@ -17,7 +17,6 @@ import {
   useSaveBlocksLanguageKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { formatErrorMessage } from "@/lib/error";
 
 interface EditTranslationProps {
@@ -39,7 +38,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   const { isPending: isAutoTranslateLoading, mutateAsync: autoTranslateAsync } =
     useGetTranslationSuggestion();
 
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [translation, setTranslation] = useState(
     keyDetails.resources?.find((resource) => resource.culture === destinationLanguageCode)?.value ||
       "",
@@ -108,8 +106,10 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         value: translation,
       });
     } else if (keyDetails.resources) {
+      // eslint-disable-next-line react-hooks/immutability -- mutating the caller's keyDetails in place is the existing contract this save relies on.
       keyDetails.resources[index].value = translation;
     } else {
+      // eslint-disable-next-line react-hooks/immutability -- mutating the caller's keyDetails in place is the existing contract this save relies on.
       keyDetails.resources = [
         {
           culture: destinationLanguageCode,

@@ -73,6 +73,7 @@ const KeyDetails = () => {
 
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
+    // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/language/translations/${keyDetails.itemId}`] =
       keyDetails.keyName;
   }
@@ -145,6 +146,7 @@ const KeyDetails = () => {
 
   useEffect(() => {
     if (id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keyDetails must keep its last value while id is absent, so it cannot be derived during render.
       setKeyDetails(blocksLanguageKeyData || null);
     }
   }, [id, blocksLanguageKeyData]);
@@ -152,6 +154,7 @@ const KeyDetails = () => {
   useEffect(() => {
     if (tabId === "history" && keyTimelineData) {
       const timelineData = mapTimelineEvents(keyTimelineData);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- events must keep the last history snapshot when the history tab is not active.
       setEvents(timelineData);
     }
   }, [tabId, keyTimelineData, mapTimelineEvents]);
