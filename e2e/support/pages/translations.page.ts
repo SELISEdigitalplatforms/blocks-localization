@@ -69,7 +69,9 @@ export class TranslationsPage {
   }
 
   async expectHistoryHeadingVisible() {
-    await expect(this.page.getByRole("heading", { name: "History" })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: "History" })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async expectHistoryEntryVisible() {
@@ -77,7 +79,9 @@ export class TranslationsPage {
     // (localization-timeline.tsx); the list only keeps recent entries, so any
     // of the verbs is a valid history record.
     await expect(
-      this.page.getByRole("button", { name: /(Inserted|Updated) by import by|Published by/ }).first(),
+      this.page
+        .getByRole("button", { name: /(Inserted|Updated) by import by|Published by/ })
+        .first(),
     ).toBeVisible();
   }
 
@@ -87,7 +91,9 @@ export class TranslationsPage {
   }
 
   async expectTranslationsHeadingVisible() {
-    await expect(this.page.getByRole("heading", { name: "Translations" })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: "Translations" })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async expectTableToolbarButtonsVisible() {
@@ -154,7 +160,9 @@ export class TranslationsPage {
 
   async expectUploadSuccessVisible() {
     await expect(
-      this.page.getByText("Upload complete. Your translation keys are being processed.", { exact: true }),
+      this.page.getByText("Upload complete. Your translation keys are being processed.", {
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 60_000 });
   }
 
@@ -172,7 +180,9 @@ export class TranslationsPage {
   }
 
   async expectSelectFileTypeButtonEnabled() {
-    await expect(this.page.getByRole("button", { name: "Select file type" })).toBeEnabled({ timeout: 10_000 });
+    await expect(this.page.getByRole("button", { name: "Select file type" })).toBeEnabled({
+      timeout: 10_000,
+    });
   }
 
   async toggleSelectAllCheckbox() {
@@ -234,9 +244,12 @@ export class TranslationsPage {
 
   async expectExportPreparingMessageVisible() {
     await expect(
-      this.page.getByText("Your export is being prepared. The download will start when the file is ready.", {
-        exact: true,
-      }),
+      this.page.getByText(
+        "Your export is being prepared. The download will start when the file is ready.",
+        {
+          exact: true,
+        },
+      ),
     ).toBeVisible();
   }
 
@@ -271,7 +284,9 @@ export class TranslationsPage {
 
   async openNewKeyDialog() {
     await this.newKeyButton.click();
-    await expect(this.page.getByRole("heading", { name: "Create new key" })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: "Create new key" })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async expectNewKeyDialogLoaded() {
@@ -294,7 +309,9 @@ export class TranslationsPage {
   }
 
   async expectKeyNameValidationVisible() {
-    await expect(this.page.getByText("Key name must be at least 3 characters")).toBeVisible({ timeout: 10_000 });
+    await expect(this.page.getByText("Key name must be at least 3 characters")).toBeVisible({
+      timeout: 10_000,
+    });
   }
 
   async expectKeyNameValidationHidden() {
@@ -350,7 +367,9 @@ export class TranslationsPage {
   }
 
   async expectAutoTranslateProgressVisible() {
-    await expect(this.page.getByText("Keys translation in progress.", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByText("Keys translation in progress.", { exact: true })).toBeVisible(
+      { timeout: 15_000 },
+    );
   }
 
   async openViewDropdown() {
@@ -364,7 +383,9 @@ export class TranslationsPage {
   }
 
   async expectNoMatchingKeys() {
-    await expect(this.page.getByText("No matching translation keys", { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(this.page.getByText("No matching translation keys", { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
   }
 
   async clearSearch() {
@@ -503,7 +524,10 @@ export class TranslationsPage {
   }
 
   async expandFirstTranslationKey() {
-    await this.page.getByRole("button", { name: /^Expand / }).first().click();
+    await this.page
+      .getByRole("button", { name: /^Expand / })
+      .first()
+      .click();
   }
 
   async expectInlineKeyEditorVisible() {
@@ -525,7 +549,10 @@ export class TranslationsPage {
   }
 
   async openExpandedRowOverflowActions() {
-    await this.page.getByRole("button", { name: /^Actions for / }).first().click();
+    await this.page
+      .getByRole("button", { name: /^Actions for / })
+      .first()
+      .click();
   }
 
   async expectExpandedRowOverflowMenuVisible() {
@@ -543,7 +570,11 @@ export class TranslationsPage {
       .first()
       .locator("th")
       .count();
-    const expandedCell = this.page.locator("tbody tr").filter({ has: this.page.locator("td[colspan]") }).locator("td").first();
+    const expandedCell = this.page
+      .locator("tbody tr")
+      .filter({ has: this.page.locator("td[colspan]") })
+      .locator("td")
+      .first();
     await expect(expandedCell).toHaveAttribute("colspan", String(columnCount));
   }
 
@@ -614,9 +645,9 @@ export class TranslationsPage {
   }
 
   async expectSortApplied(descending: boolean) {
-    // KeyName is the default sort property, so nuqs omits sort-property from the
-    // URL — only the direction param is observable.
-    await expect(this.page).toHaveURL(new RegExp(`sort-isDescending=${descending}`));
+    await expect(this.page).toHaveURL(
+      descending ? /[?&]sort-isDescending=true(?:&|$)/ : /[?&]sort-isDescending=false(?:&|$)/,
+    );
   }
 
   // --- Pagination ---
