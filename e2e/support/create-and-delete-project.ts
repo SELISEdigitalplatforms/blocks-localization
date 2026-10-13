@@ -478,7 +478,7 @@ export async function deleteCreatedProject(
       }
       return deleted
     } catch (error) {
-      console.warn(`[e2e] Failed to delete project "${projectName}" on OS:`, error)
+      console.warn('[e2e] Failed to delete project "%s" on OS:', projectName, error)
       return false
     }
   })
