@@ -145,4 +145,17 @@ describe("modals/delete-module-modal", () => {
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledWith(false);
   });
+
+  it("should toast the error message, not a JSON blob, when deletion throws", async () => {
+    deleteModuleMock.mockRejectedValue(new Error("network down"));
+    render(
+      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive", description: "network down" }),
+      ),
+    );
+  });
 });

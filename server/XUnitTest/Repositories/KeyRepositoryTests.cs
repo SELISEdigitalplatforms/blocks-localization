@@ -10,6 +10,7 @@ using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Moq;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Xunit;
 using XUnitTest.Shared;
@@ -90,6 +91,95 @@ namespace XUnitTest.Repositories
             _blkCollection.Verify(x => x.DeleteOneAsync(
                 It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        #endregion
+
+        #region DeleteByModuleAsync / MoveByModuleAsync
+
+        private static string RenderKeyFilter(FilterDefinition<BlocksLanguageKey> filter) =>
+            filter.Render(new RenderArgs<BlocksLanguageKey>(
+                BsonSerializer.SerializerRegistry.GetSerializer<BlocksLanguageKey>(),
+                BsonSerializer.SerializerRegistry)).ToString();
+
+        [Fact]
+        public async Task DeleteByModuleAsync_DeletesManyKeysMatchingTheModuleInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? captured = null;
+            _blkCollection.Setup(x => x.DeleteManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, CancellationToken>((f, _) => captured = f)
+                .ReturnsAsync(Mock.Of<DeleteResult>());
+
+            await _repo.DeleteByModuleAsync("mod-1");
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(captured!).Should().Be("{ \"ModuleId\" : \"mod-1\" }");
+            _blkCollection.Verify(x => x.DeleteOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task MoveByModuleAsync_SetsTheTargetModuleOnKeysOfTheSourceModuleInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            UpdateDefinition<BlocksLanguageKey>? capturedUpdate = null;
+            _blkCollection.Setup(x => x.UpdateManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, UpdateDefinition<BlocksLanguageKey>, UpdateOptions, CancellationToken>(
+                    (f, u, _, _) => { capturedFilter = f; capturedUpdate = u; })
+                .ReturnsAsync(Mock.Of<UpdateResult>());
+
+            await _repo.MoveByModuleAsync("mod-1", "mod-2");
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"ModuleId\" : \"mod-1\" }");
+            var registry = BsonSerializer.SerializerRegistry;
+            capturedUpdate!.Render(new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry))
+                .ToString().Should().Be("{ \"$set\" : { \"ModuleId\" : \"mod-2\" } }");
+            _blkCollection.Verify(x => x.DeleteManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task DeleteByModuleAsync_WithBlankModuleId_ThrowsWithoutTouchingTheCollection(string? moduleId)
+        {
+            Func<Task> act = () => _repo.DeleteByModuleAsync(moduleId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.DeleteManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null, "mod-2")]
+        [InlineData("", "mod-2")]
+        [InlineData("   ", "mod-2")]
+        [InlineData("mod-1", null)]
+        [InlineData("mod-1", "")]
+        [InlineData("mod-1", "   ")]
+        public async Task MoveByModuleAsync_WithBlankModuleIds_ThrowsWithoutTouchingTheCollection(string? sourceModuleId, string? targetModuleId)
+        {
+            Func<Task> act = () => _repo.MoveByModuleAsync(sourceModuleId!, targetModuleId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion

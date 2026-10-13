@@ -1,6 +1,3 @@
-// TODO: Enable delete module feature — uncomment this component and its usage in module-table.tsx
-// when the delete module backend (Phase A of plan-modulesTab) is ready.
-
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
@@ -25,7 +22,22 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeleteLanguageModule } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage, getForbiddenErrorMessage, isErrorWithErrors } from "@/lib/error";
 import { IModuleGets } from "@blocks-localization/models/language";
+
+// genesis-os HttpError's `message` is a JSON dump of `errors`, so read the record directly.
+// The 403 check gets only its own fields, as the toast did when the error was JSON.stringify'd.
+function getDeleteErrorMessage(error: unknown): string {
+  if (!isErrorWithErrors(error)) {
+    return getForbiddenErrorMessage(error) ?? formatErrorMessage(error);
+  }
+
+  const { status } = error as { status?: unknown };
+  return (
+    getForbiddenErrorMessage({ status, errors: error.errors }) ??
+    formatErrorMessage({ errors: error.errors })
+  );
+}
 
 interface DeleteModuleModalProps {
   module: IModuleGets;
@@ -70,7 +82,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getDeleteErrorMessage(error),
       });
     }
   };

@@ -197,6 +197,84 @@ namespace XUnitTest
             result.IsSuccess.Should().BeFalse();
             _moduleManagementServiceMock.Verify(x => x.TagGlossaryAsync(It.IsAny<TagGlossaryRequest>()), Times.Never);
         }
+
+        #region Delete Tests
+
+        [Fact]
+        public async Task Delete_WithValidRequest_ReturnsOkWithServiceResult()
+        {
+            var request = new DeleteModuleRequest { ItemId = "m1" };
+            var response = new BaseMutationResponse { IsSuccess = true };
+            _moduleManagementServiceMock.Setup(x => x.DeleteModuleAsync(request)).ReturnsAsync(response);
+
+            var result = await _controller.Delete(request);
+
+            var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+            ok.Value.Should().BeSameAs(response);
+            _moduleManagementServiceMock.Verify(x => x.DeleteModuleAsync(request), Times.Once);
+        }
+
+        [Fact]
+        public async Task Delete_WithTargetModule_PassesRequestThrough()
+        {
+            var request = new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" };
+            _moduleManagementServiceMock.Setup(x => x.DeleteModuleAsync(request))
+                .ReturnsAsync(new BaseMutationResponse { IsSuccess = true });
+
+            var result = await _controller.Delete(request);
+
+            result.Should().BeOfType<OkObjectResult>();
+            _moduleManagementServiceMock.Verify(x => x.DeleteModuleAsync(
+                It.Is<DeleteModuleRequest>(r => r.ItemId == "m1" && r.TargetModuleId == "m2")), Times.Once);
+        }
+
+        [Fact]
+        public async Task Delete_WithNullRequest_ReturnsBadRequestWithoutCallingService()
+        {
+            var result = await _controller.Delete(null!);
+
+            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            var body = badRequest.Value.Should().BeOfType<BaseMutationResponse>().Subject;
+            body.IsSuccess.Should().BeFalse();
+            body.Errors.Should().BeNullOrEmpty();
+            _moduleManagementServiceMock.Verify(x => x.DeleteModuleAsync(It.IsAny<DeleteModuleRequest>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Delete_WithEmptyItemId_ReturnsBadRequestWithoutCallingService(string? itemId)
+        {
+            var result = await _controller.Delete(new DeleteModuleRequest { ItemId = itemId! });
+
+            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            badRequest.Value.Should().BeOfType<BaseMutationResponse>().Which.IsSuccess.Should().BeFalse();
+            _moduleManagementServiceMock.Verify(x => x.DeleteModuleAsync(It.IsAny<DeleteModuleRequest>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("ItemId", "Module not found")]
+        [InlineData("ItemId", "Target module not found")]
+        [InlineData("ItemId", "Cannot move module keys to itself")]
+        [InlineData("Error", "An unexpected error occurred")]
+        public async Task Delete_WhenServiceFails_ReturnsBadRequestWithServiceErrors(string key, string message)
+        {
+            var request = new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" };
+            var response = new BaseMutationResponse
+            {
+                IsSuccess = false,
+                Errors = new Dictionary<string, string> { { key, message } }
+            };
+            _moduleManagementServiceMock.Setup(x => x.DeleteModuleAsync(request)).ReturnsAsync(response);
+
+            var result = await _controller.Delete(request);
+
+            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+            badRequest.Value.Should().BeSameAs(response);
+        }
+
+        #endregion
     }
 }
 

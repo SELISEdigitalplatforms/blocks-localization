@@ -77,14 +77,21 @@ namespace BlocksTemplate.Api.Controllers
             return await _moduleManagementService.GetModulesAsync();
         }
 
-        //[HttpDelete]
-        //[ProtectedEndPoint]
-        //public async Task<BaseMutationResponse> Delete([FromQuery] DeleteModuleRequest request)
-        //{
-        //    if (request == null) return new BaseMutationResponse { IsSuccess = false };
-        //    _changeControllerContext.ChangeContext(request);
-        //    return await _moduleManagementService.DeleteModuleAsync(request);
-        //}
+        /// <summary>
+        /// Deletes a module, either cascading the delete to its keys or moving them to another module.
+        /// </summary>
+        /// <param name="request">The module to delete and an optional target module for its keys.</param>
+        /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
+        [HttpDelete]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::delete")]
+        public async Task<IActionResult> Delete([FromQuery] DeleteModuleRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ItemId))
+                return BadRequest(new BaseMutationResponse { IsSuccess = false });
+
+            var result = await _moduleManagementService.DeleteModuleAsync(request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::module::tagglossary")]

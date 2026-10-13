@@ -462,6 +462,27 @@
         "OrganizationId" : "default"
     },
     {
+        "_id" : "1cab5901-2195-4fe7-889d-06925f576a6f",
+        "CreatedDate" : "2026-09-24T00:00:00.000+0000",
+        "LastUpdatedDate" : "2026-09-24T00:00:00.000+0000",
+        "CreatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
+        "Language" : null,
+        "LastUpdatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
+        "OrganizationIds" : [],
+        "Tags" : [],
+        "Name" : "Delete Module",
+        "Type" : "Endpoint",
+        "Description" : "Permanently delete a localization module. Covers: DELETE /Module/Delete?ItemId={itemId}[&TargetModuleId={targetModuleId}]. Cascade-deletes all keys in the module, or moves them to another module if targetModuleId is given. Cannot be undone.",
+        "Resource" : "blocks-localization::module::delete",
+        "ResourceGroup" : "localization",
+        "IsBuiltIn" : true,
+        "IsArchived" : false,
+        "PermissionSeverity" : "High",
+        "DependentPermissions" : [],
+        "Roles" : [],
+        "OrganizationId" : "default"
+    },
+    {
         "_id" : "c9fc1d25-7826-4f59-9419-e82595ab1295",
         "CreatedDate" : "2026-07-09T11:32:25.758+0000",
         "LastUpdatedDate" : "2026-07-09T11:32:25.758+0000",

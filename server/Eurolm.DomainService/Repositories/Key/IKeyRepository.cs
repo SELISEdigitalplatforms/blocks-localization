@@ -16,6 +16,8 @@ namespace Eurolm.DomainService.Repositories
         Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key> GetByIdAsync(string itemId);
         Task DeleteAsync(string itemId);
+        Task DeleteByModuleAsync(string moduleId);
+        Task MoveByModuleAsync(string sourceModuleId, string targetModuleId);
         Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size);
         Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys);
         Task<T> GetUilmResourceKey<T>(Expression<Func<BlocksLanguageKey, bool>> expression);

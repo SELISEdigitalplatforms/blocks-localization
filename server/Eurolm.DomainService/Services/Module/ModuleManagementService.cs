@@ -13,18 +13,21 @@ namespace Eurolm.DomainService.Services
         private readonly ILogger<ModuleManagementService> _logger;
         //private readonly Lazy<IKeyBulkOperationsService> _keyBulkOperationsService;
         private readonly IGlossaryRepository _glossaryRepository;
+        private readonly IKeyRepository _keyRepository;
 
         public ModuleManagementService(IValidator<Module> validator,
                                       IModuleRepository moduleRepository,
                                       ILogger<ModuleManagementService> logger,
                                       //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
-                                      IGlossaryRepository glossaryRepository)
+                                      IGlossaryRepository glossaryRepository,
+                                      IKeyRepository keyRepository)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
             _logger = logger;
             //_keyBulkOperationsService = keyBulkOperationsService;
             _glossaryRepository = glossaryRepository;
+            _keyRepository = keyRepository;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -69,28 +72,45 @@ namespace Eurolm.DomainService.Services
             return module != null ? new List<BlocksLanguageModule> { module } : new List<BlocksLanguageModule>();
         }
 
-        //public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(request.TargetModuleId))
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkDeleteByModuleAsync(request.ItemId, request.ProjectKey ?? "");
-        //        }
-        //        else
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkMoveByModuleAsync(request.ItemId, request.TargetModuleId, request.ProjectKey ?? "");
-        //        }
+        public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.ItemId))
+                return new BaseMutationResponse { IsSuccess = false };
 
-        //        await _moduleRepository.DeleteAsync(request.ItemId);
-        //        return new BaseMutationResponse { IsSuccess = true };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError("Error while deleting BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
-        //        return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
-        //    }
-        //}
+            var isMove = !string.IsNullOrEmpty(request.TargetModuleId);
+
+            if (isMove && request.ItemId == request.TargetModuleId)
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Cannot move module keys to itself" } } };
+
+            try
+            {
+                var module = await _moduleRepository.GetByIdAsync(request.ItemId);
+                if (module == null)
+                    return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Module not found" } } };
+
+                if (isMove)
+                {
+                    var targetModule = await _moduleRepository.GetByIdAsync(request.TargetModuleId!);
+                    if (targetModule == null)
+                        return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Target module not found" } } };
+
+                    await _keyRepository.MoveByModuleAsync(request.ItemId, request.TargetModuleId!);
+                }
+                else
+                {
+                    await _keyRepository.DeleteByModuleAsync(request.ItemId);
+                }
+
+                // Keys are cleaned up first so a failure above leaves the module intact rather than orphaning keys.
+                await _moduleRepository.DeleteAsync(request.ItemId);
+                return new BaseMutationResponse { IsSuccess = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error while deleting BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "An unexpected error occurred" } } };
+            }
+        }
 
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {
