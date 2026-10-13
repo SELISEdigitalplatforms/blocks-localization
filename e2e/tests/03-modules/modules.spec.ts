@@ -99,4 +99,81 @@ test.describe("Modules", () => {
       });
     });
   });
+
+  // Needs blocks-localization::module::delete (seed T6a) on the test role; otherwise the delete is a 403.
+  test.describe("Delete module", () => {
+    // Modules a scenario created and has not yet seen deleted; afterEach removes leftovers.
+    let pendingCleanup: string[] = [];
+
+    test.afterEach(async ({ page }) => {
+      if (pendingCleanup.length === 0) return;
+      const modules = new ModulesPage(page);
+      await openModules(page);
+      for (const name of pendingCleanup) {
+        await modules.deleteModuleIfPresent(name);
+      }
+      pendingCleanup = [];
+    });
+
+    test("Cascade delete removes the module", async ({ page }) => {
+      const modules = new ModulesPage(page);
+      const moduleName = `DeleteCascade-${Date.now()}`;
+
+      await test.step("Create a throwaway module", async () => {
+        await modules.expectPageLoaded();
+        pendingCleanup.push(moduleName);
+        await modules.createModule(moduleName);
+      });
+
+      await test.step("Row menu Delete opens the dialog with cascade as the default", async () => {
+        await modules.openDeleteModuleDialog(moduleName);
+        // H4: both options are offered and cascade is preselected.
+        await expect(modules.cascadeOption).toBeVisible();
+        await expect(modules.moveOption).toBeVisible();
+        await expect(modules.cascadeOption).toBeChecked();
+        await expect(modules.moveOption).not.toBeChecked();
+      });
+
+      await test.step("Confirming deletes the module", async () => {
+        await modules.confirmDeleteModuleButton.click();
+        // H5: success toast, dialog closes, and the row disappears after the list refresh.
+        await modules.expectModuleDeleted(moduleName);
+        pendingCleanup = pendingCleanup.filter((name) => name !== moduleName);
+      });
+    });
+
+    test("Move delete removes the module and keeps the target", async ({ page }) => {
+      const modules = new ModulesPage(page);
+      const stamp = Date.now();
+      const sourceName = `DeleteMoveSrc-${stamp}`;
+      const targetName = `DeleteMoveDst-${stamp}`;
+
+      await test.step("Create a source and a target module", async () => {
+        await modules.expectPageLoaded();
+        pendingCleanup.push(sourceName, targetName);
+        await modules.createModule(targetName);
+        await modules.createModule(sourceName);
+      });
+
+      await test.step("Move mode requires a target, picked from the full module list", async () => {
+        await modules.openDeleteModuleDialog(sourceName);
+        await modules.moveOption.click();
+        // Move mode (canSubmit, alongside C7): Delete stays disabled until a target is chosen.
+        await expect(modules.confirmDeleteModuleButton).toBeDisabled();
+        // H4 (T7): the table is filtered to the source, yet the picker still offers the target.
+        await modules.selectMoveTarget(targetName);
+        await expect(modules.confirmDeleteModuleButton).toBeEnabled();
+      });
+
+      await test.step("Confirming deletes the source and leaves the target", async () => {
+        await modules.confirmDeleteModuleButton.click();
+        // H5: success toast, dialog closes, and the source row disappears.
+        await modules.expectModuleDeleted(sourceName);
+        pendingCleanup = pendingCleanup.filter((name) => name !== sourceName);
+        // H2: the target module survives the move (key migration is out of scope, §8).
+        await modules.searchModules(targetName);
+        await expect(modules.getModuleRow(targetName)).toBeVisible({ timeout: 10_000 });
+      });
+    });
+  });
 });
