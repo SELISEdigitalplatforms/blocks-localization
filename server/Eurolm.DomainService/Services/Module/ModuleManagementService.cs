@@ -44,7 +44,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while saving BlocksLanguageModule {ErrorMessage}", ex.Message);
                 return new ApiResponse(ex.Message);
             }
 
@@ -107,7 +107,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while deleting BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while deleting BlocksLanguageModule {ErrorMessage}", ex.Message);
                 return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "An unexpected error occurred" } } };
             }
         }
@@ -146,7 +146,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while tagging glossary for module {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while tagging glossary for module {ErrorMessage}", ex.Message);
                 return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
             }
         }
