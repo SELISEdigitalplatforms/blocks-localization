@@ -104,6 +104,8 @@ const KeyDetails = () => {
         return `Key deleted by ${userName}.`;
       case "KeyController.Create":
         return `Key created by ${userName}.`;
+      case "KeyController.BulkMove":
+        return `Moved to another module by ${userName}.`;
       case "Rollback":
         return `Translate rolled back by ${userName}.`;
       case "Published":

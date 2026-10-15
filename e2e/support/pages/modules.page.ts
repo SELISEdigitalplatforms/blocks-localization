@@ -112,6 +112,72 @@ export class ModulesPage {
     await expect(this.page.getByRole("heading", { name: "Tag Glossary" })).toBeVisible();
   }
 
+  getModuleRow(moduleName: string) {
+    return this.page.getByRole("row").filter({ hasText: moduleName });
+  }
+
+  async createModule(moduleName: string) {
+    await this.openNewModuleDialog();
+    await this.fillModuleName(moduleName);
+    await this.clickCreateButton();
+    await this.expectModuleAddedSuccess();
+    await this.searchModules(moduleName);
+    await expect(this.getModuleRow(moduleName)).toBeVisible({ timeout: 10_000 });
+  }
+
+  get deleteModuleDialog() {
+    return this.page
+      .getByRole("dialog")
+      .filter({ has: this.page.getByRole("heading", { name: "Delete module" }) });
+  }
+
+  get confirmDeleteModuleButton() {
+    return this.deleteModuleDialog.getByRole("button", { name: "Delete", exact: true });
+  }
+
+  async openDeleteModuleDialog(moduleName: string) {
+    await this.waitForRowMenuButton(moduleName);
+    await this.getRowMenuButton(moduleName).click();
+    const deleteItem = this.page.getByRole("menuitem", { name: "Delete", exact: true });
+    await expect(deleteItem).toBeVisible();
+    await deleteItem.click();
+    await expect(this.deleteModuleDialog).toBeVisible();
+  }
+
+  get goToModuleButton() {
+    return this.deleteModuleDialog.getByRole("button", { name: "Go to module" });
+  }
+
+  async expectDeleteConfirmationForEmptyModule(moduleName: string) {
+    await expect(
+      this.deleteModuleDialog.getByText(`Are you sure you want to delete ${moduleName}?`),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(this.confirmDeleteModuleButton).toBeEnabled();
+    await expect(this.goToModuleButton).toHaveCount(0);
+  }
+
+  async expectModuleDeleted(moduleName: string) {
+    await expect(this.page.getByText("Module deleted", { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(this.deleteModuleDialog).toBeHidden();
+    await this.searchModules(moduleName);
+    await expect(this.getModuleRow(moduleName)).toHaveCount(0, { timeout: 15_000 });
+  }
+
+  async deleteModuleIfPresent(moduleName: string) {
+    try {
+      await this.searchModules(moduleName);
+      const row = this.getModuleRow(moduleName);
+      await row.first().waitFor({ state: "visible", timeout: 5_000 });
+      await this.openDeleteModuleDialog(moduleName);
+      await this.confirmDeleteModuleButton.click();
+      await expect(row).toHaveCount(0, { timeout: 15_000 });
+    } catch (error) {
+      console.warn('[e2e] Cleanup could not delete module "%s":', moduleName, error);
+    }
+  }
+
   async openModuleDetails(cellText: string) {
     await this.page.getByRole("cell", { name: cellText }).first().click();
     await expect(this.page.getByRole("tab", { name: "Details" })).toBeVisible({ timeout: 15_000 });

@@ -6,6 +6,7 @@ namespace Eurolm.DomainService.Services
     {
         public string ItemId { get; set; }
         public string? TargetModuleId { get; set; }
+        public bool DeleteKeys { get; set; }
         public string? ProjectKey { get; set; }
     }
 }

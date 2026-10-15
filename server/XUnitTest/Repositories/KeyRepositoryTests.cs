@@ -10,6 +10,7 @@ using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Moq;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Xunit;
 using XUnitTest.Shared;
@@ -94,6 +95,138 @@ namespace XUnitTest.Repositories
 
         #endregion
 
+        #region HasKeysInModuleAsync
+
+        private static string RenderKeyFilter(FilterDefinition<BlocksLanguageKey> filter) =>
+            filter.Render(new RenderArgs<BlocksLanguageKey>(
+                BsonSerializer.SerializerRegistry.GetSerializer<BlocksLanguageKey>(),
+                BsonSerializer.SerializerRegistry)).ToString();
+
+        [Theory]
+        [InlineData(1L, true)]
+        [InlineData(0L, false)]
+        public async Task HasKeysInModuleAsync_CountsAtMostOneKeyOfTheModuleInTheTenantDatabase(long count, bool expected)
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            CountOptions? capturedOptions = null;
+            _blkCollection.Setup(x => x.CountDocumentsAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<CountOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, CountOptions, CancellationToken>(
+                    (f, o, _) => { capturedFilter = f; capturedOptions = o; })
+                .ReturnsAsync(count);
+
+            var result = await _repo.HasKeysInModuleAsync("mod-1");
+
+            result.Should().Be(expected);
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"ModuleId\" : \"mod-1\" }");
+            capturedOptions!.Limit.Should().Be(1);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task HasKeysInModuleAsync_WithBlankModuleId_ThrowsWithoutTouchingTheCollection(string? moduleId)
+        {
+            Func<Task<bool>> act = () => _repo.HasKeysInModuleAsync(moduleId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.CountDocumentsAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<CountOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
+        #region MoveKeysAsync
+
+        [Fact]
+        public async Task MoveKeysAsync_SetsTheTargetModuleOnTheGivenKeysInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            UpdateDefinition<BlocksLanguageKey>? capturedUpdate = null;
+            _blkCollection.Setup(x => x.UpdateManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, UpdateDefinition<BlocksLanguageKey>, UpdateOptions, CancellationToken>(
+                    (f, u, _, _) => { capturedFilter = f; capturedUpdate = u; })
+                .ReturnsAsync(Mock.Of<UpdateResult>());
+
+            await _repo.MoveKeysAsync(new[] { "k1", "k2" }, "mod-2");
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"_id\" : { \"$in\" : [\"k1\", \"k2\"] } }");
+            var registry = BsonSerializer.SerializerRegistry;
+            var update = capturedUpdate!.Render(new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry)).AsBsonDocument;
+            update["$set"]["ModuleId"].AsString.Should().Be("mod-2");
+            update["$set"].AsBsonDocument.Contains("LastUpdateDate").Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task MoveKeysAsync_WithNoKeys_DoesNotTouchTheCollection()
+        {
+            await _repo.MoveKeysAsync(Array.Empty<string>(), "mod-2");
+
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task MoveKeysAsync_WithBlankTargetModule_ThrowsWithoutTouchingTheCollection(string? targetModuleId)
+        {
+            Func<Task> act = () => _repo.MoveKeysAsync(new[] { "k1" }, targetModuleId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
+        #region DeleteKeysAsync
+
+        [Fact]
+        public async Task DeleteKeysAsync_DeletesOnlyTheGivenKeysInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            _blkCollection.Setup(x => x.DeleteManyAsync(It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(Mock.Of<DeleteResult>());
+
+            await _repo.DeleteKeysAsync(new[] { "k1", "k2" });
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"_id\" : { \"$in\" : [\"k1\", \"k2\"] } }");
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_WithNoKeys_DoesNotTouchTheCollection()
+        {
+            await _repo.DeleteKeysAsync(Array.Empty<string>());
+
+            _blkCollection.Verify(x => x.DeleteManyAsync(It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region GetByIdAsync
 
         [Fact]
@@ -172,6 +305,31 @@ namespace XUnitTest.Repositories
         #endregion
 
         #region GetAllKeysAsync
+
+        [Theory]
+        [InlineData(null, false, "{ \"KeyName\" : 1 }")]
+        [InlineData("", false, "{ \"KeyName\" : 1 }")]
+        [InlineData("   ", false, "{ \"KeyName\" : 1 }")]
+        [InlineData("", true, "{ \"KeyName\" : 1 }")]
+        [InlineData("LastUpdateDate", false, "{ \"LastUpdateDate\" : 1 }")]
+        [InlineData("LastUpdateDate", true, "{ \"LastUpdateDate\" : -1 }")]
+        public async Task GetAllKeysAsync_SortsByTheRequestedFieldAndFallsBackToKeyNameWhenBlank(string? sortProperty, bool isDescending, string expectedSort)
+        {
+            FindOptions<Key, Key>? capturedOptions = null;
+            _keyCollection.Setup(x => x.FindAsync(
+                    It.IsAny<FilterDefinition<Key>>(),
+                    It.IsAny<FindOptions<Key, Key>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Key>, FindOptions<Key, Key>, CancellationToken>((_, o, _) => capturedOptions = o)
+                .ReturnsAsync(MockCursorHelper.CreateCursor(new List<Key>()).Object);
+            MockCursorHelper.SetupCountDocuments(_keyCollection, 0);
+
+            await _repo.GetAllKeysAsync(new GetKeysRequest { PageNumber = 0, PageSize = 1, SortProperty = sortProperty!, IsDescending = isDescending });
+
+            var registry = BsonSerializer.SerializerRegistry;
+            capturedOptions!.Sort.Render(new RenderArgs<Key>(registry.GetSerializer<Key>(), registry)).ToString()
+                .Should().Be(expectedSort);
+        }
 
         [Fact]
         public async Task GetAllKeysAsync_ReturnsKeysAndCount()

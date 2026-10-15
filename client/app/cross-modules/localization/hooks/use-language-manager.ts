@@ -164,16 +164,51 @@ export const useSaveLanguageModule = () => {
   });
 };
 
+export const useGetModuleKeyCount = (moduleId: string) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.countByModule(tenantId, moduleId),
+    queryFn: () =>
+      languageManagerService.fetchBlocksLanguageKey({
+        pageNumber: 0,
+        pageSize: 1,
+        searchKey: "",
+        moduleIds: [moduleId],
+        isPartiallyTranslated: false,
+        sortProperty: "KeyName",
+        isDescending: false,
+      }),
+    select: (data) => data.totalCount,
+    enabled: !!moduleId,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+};
+
 export const useDeleteLanguageModule = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["language-module", "delete"],
     mutationFn: (payload: IDeleteModuleRequest) =>
       languageManagerService.deleteLanguageModule(payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
       });
+      if (payload.targetModuleId || payload.deleteKeys) {
+        queryClient.invalidateQueries({
+          queryKey: localizationQueryKeys.languageKeys.all,
+        });
+        queryClient.invalidateQueries({
+          queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+        });
+        queryClient.invalidateQueries({
+          queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+        });
+        queryClient.invalidateQueries({
+          queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+        });
+      }
     },
   });
 };
