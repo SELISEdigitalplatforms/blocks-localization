@@ -363,7 +363,10 @@ test.describe("Duplicate keys", () => {
       await test.step("Opened directly: back to the plain table (C19)", async () => {
         const keyName = `e2e-direct-${Date.now()}`;
         const itemId = await createKey(keyName);
-        await keyDetails.navigateTo(itemId, e2eBaseUrl());
+        // A direct URL inside the current project, as a bookmark would be (no router state).
+        const projectBase = new URL(page.url()).pathname.replace(/\/services\/language.*$/, "");
+        await page.goto(`${e2eBaseUrl()}${projectBase}/services/language/translations/${itemId}`);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
         await keyDetails.openDeleteDialog();
         await keyDetails.confirmDelete();
         await keyDetails.expectDeleteSuccess();
