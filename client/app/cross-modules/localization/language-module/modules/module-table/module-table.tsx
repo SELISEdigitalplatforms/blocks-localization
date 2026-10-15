@@ -70,7 +70,6 @@ const getUserDisplayNameFromUser = (
 
 interface RenderModuleRowsParams {
   modules: IModuleGets[];
-  allModuleIds: string[];
   getUserDisplayNameById: (userId: string | null) => string;
   isUserLoading: (userId: string | null) => boolean;
   scoped: (path: string) => string;
@@ -82,7 +81,6 @@ interface RenderModuleRowsParams {
 
 function renderModuleRows({
   modules,
-  allModuleIds,
   getUserDisplayNameById,
   isUserLoading,
   scoped,
@@ -113,7 +111,7 @@ function renderModuleRows({
       <TableCell className="truncate">
         <span
           className="inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium"
-          style={getModuleBadgeStyle(module.itemId, allModuleIds)}
+          style={getModuleBadgeStyle(module.itemId)}
         >
           {module.moduleName}
         </span>
@@ -274,11 +272,6 @@ export function ModuleTable() {
     !isModulesLoading && searchValue.length === 0 && (modulesData?.length ?? 0) === 0;
   const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
 
-  const allModuleIds = useMemo(
-    () => (modulesData ?? []).map((module) => module.itemId),
-    [modulesData],
-  );
-
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
   };
@@ -350,7 +343,6 @@ export function ModuleTable() {
                       ))
                     : renderModuleRows({
                         modules: paginatedModules,
-                        allModuleIds,
                         getUserDisplayNameById,
                         isUserLoading,
                         scoped,
