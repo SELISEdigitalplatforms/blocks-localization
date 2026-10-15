@@ -44,6 +44,13 @@ namespace Eurolm.DomainService.Services
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a key.");
         private const string DateTimeFormat = "yyyyMMddHHmmss";
+        private const string ItemIdErrorKey = "ItemId";
+
+        // Column headers of imported CSV and Excel files.
+        private const string ItemIdColumn = "ItemId";
+        private const string ModuleIdColumn = "ModuleId";
+        private const string ModuleColumn = "Module";
+        private const string KeyNameColumn = "KeyName";
 
         public KeyManagementService(
             IKeyRepository keyRepository,
@@ -362,7 +369,7 @@ namespace Eurolm.DomainService.Services
                     IsSuccess = false,
                     Errors = new Dictionary<string, string>
                     {
-                        { "ItemId", "Key not found" }
+                        { ItemIdErrorKey, "Key not found" }
                     }
                 };
             }
@@ -1314,11 +1321,11 @@ namespace Eurolm.DomainService.Services
 
                         var languageJsonModel = new LanguageJsonModel
                         {
-                            _id = csv.GetField<string>("ItemId"),
-                            Module = csv.GetField<string>("Module"),
-                            KeyName = csv.GetField<string>("KeyName"),
+                            _id = csv.GetField<string>(ItemIdColumn),
+                            Module = csv.GetField<string>(ModuleColumn),
+                            KeyName = csv.GetField<string>(KeyNameColumn),
                             // Resources will be populated from individual culture columns below
-                            ModuleId = csv.GetField<string>("ModuleId"),
+                            ModuleId = csv.GetField<string>(ModuleIdColumn),
                             IsPartiallyTranslated = TryGetField<bool>("IsPartiallyTranslated", out bool isPartiallyTranslated) ? isPartiallyTranslated : false,
                         };
 
@@ -1518,7 +1525,7 @@ namespace Eurolm.DomainService.Services
                 Dictionary<string, string> columns = new Dictionary<string, string>();
                 Dictionary<string, string> languages = new Dictionary<string, string>();
 
-                List<string> systemColumns = new List<string>() { "ItemId", "ModuleId", "Module", "KeyName" };
+                List<string> systemColumns = new List<string>() { ItemIdColumn, ModuleIdColumn, ModuleColumn, KeyNameColumn };
                 List<BlocksLanguageKey> blocksLanguageKeys = new List<BlocksLanguageKey>();
 
                 foreach (IXLColumn col in worksheet.Columns())
@@ -1546,7 +1553,7 @@ namespace Eurolm.DomainService.Services
                 _logger.LogInformation("ImportExcelFile: Detected {LanguagesCount} cultures={Cultures} in FileName={FileDataName}", languages.Count, string.Join(", ", languages.Select(x => x.Key).ToList()), fileData.Name);
 
                 // Validate required columns exist
-                var requiredColumns = new[] { "ItemId", "ModuleId", "Module", "KeyName" };
+                var requiredColumns = new[] { ItemIdColumn, ModuleIdColumn, ModuleColumn, KeyNameColumn };
                 var missingColumns = requiredColumns.Where(col => !columns.ContainsKey(col)).ToList();
                 if (missingColumns.Any())
                 {
@@ -1988,10 +1995,10 @@ namespace Eurolm.DomainService.Services
 
             for (int i = 2; i <= excelRows; i++)
             {
-                string id = worksheet.Cell(i, columns["ItemId"]).Value.ToString();
-                string moduleId = worksheet.Cell(i, columns["ModuleId"]).Value.ToString();
-                string moduleName = worksheet.Cell(i, columns["Module"]).Value.ToString();
-                string keyName = worksheet.Cell(i, columns["KeyName"]).Value.ToString();
+                string id = worksheet.Cell(i, columns[ItemIdColumn]).Value.ToString();
+                string moduleId = worksheet.Cell(i, columns[ModuleIdColumn]).Value.ToString();
+                string moduleName = worksheet.Cell(i, columns[ModuleColumn]).Value.ToString();
+                string keyName = worksheet.Cell(i, columns[KeyNameColumn]).Value.ToString();
                 // Note: Resources column is not required as resources are populated from language columns
                 moduleId = HandleUilmApplication(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, moduleId, false, moduleName);
 
@@ -2745,7 +2752,7 @@ namespace Eurolm.DomainService.Services
                         IsSuccess = false,
                         Errors = new Dictionary<string, string>
                         {
-                            { "ItemId", "No timeline found for the specified key" }
+                            { ItemIdErrorKey, "No timeline found for the specified key" }
                         }
                     };
                 }
@@ -2759,7 +2766,7 @@ namespace Eurolm.DomainService.Services
                         IsSuccess = false,
                         Errors = new Dictionary<string, string>
                         {
-                            { "ItemId", "A move cannot be reverted. Move the keys back to their previous module instead." }
+                            { ItemIdErrorKey, "A move cannot be reverted. Move the keys back to their previous module instead." }
                         }
                     };
                 }
