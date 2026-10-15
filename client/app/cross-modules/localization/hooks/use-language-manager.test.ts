@@ -120,7 +120,13 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(7);
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
-      expect.objectContaining({ pageNumber: 0, pageSize: 1, moduleIds: ["m1"] }),
+      // An empty sortProperty makes the server fail with a 500, so the count query sorts by name.
+      expect.objectContaining({
+        pageNumber: 0,
+        pageSize: 1,
+        moduleIds: ["m1"],
+        sortProperty: "KeyName",
+      }),
     );
   });
 

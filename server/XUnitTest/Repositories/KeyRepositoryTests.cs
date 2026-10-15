@@ -279,6 +279,31 @@ namespace XUnitTest.Repositories
 
         #region GetAllKeysAsync
 
+        [Theory]
+        [InlineData(null, false, "{ \"KeyName\" : 1 }")]
+        [InlineData("", false, "{ \"KeyName\" : 1 }")]
+        [InlineData("   ", false, "{ \"KeyName\" : 1 }")]
+        [InlineData("", true, "{ \"KeyName\" : 1 }")]
+        [InlineData("LastUpdateDate", false, "{ \"LastUpdateDate\" : 1 }")]
+        [InlineData("LastUpdateDate", true, "{ \"LastUpdateDate\" : -1 }")]
+        public async Task GetAllKeysAsync_SortsByTheRequestedFieldAndFallsBackToKeyNameWhenBlank(string? sortProperty, bool isDescending, string expectedSort)
+        {
+            FindOptions<Key, Key>? capturedOptions = null;
+            _keyCollection.Setup(x => x.FindAsync(
+                    It.IsAny<FilterDefinition<Key>>(),
+                    It.IsAny<FindOptions<Key, Key>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Key>, FindOptions<Key, Key>, CancellationToken>((_, o, _) => capturedOptions = o)
+                .ReturnsAsync(MockCursorHelper.CreateCursor(new List<Key>()).Object);
+            MockCursorHelper.SetupCountDocuments(_keyCollection, 0);
+
+            await _repo.GetAllKeysAsync(new GetKeysRequest { PageNumber = 0, PageSize = 1, SortProperty = sortProperty!, IsDescending = isDescending });
+
+            var registry = BsonSerializer.SerializerRegistry;
+            capturedOptions!.Sort.Render(new RenderArgs<Key>(registry.GetSerializer<Key>(), registry)).ToString()
+                .Should().Be(expectedSort);
+        }
+
         [Fact]
         public async Task GetAllKeysAsync_ReturnsKeysAndCount()
         {

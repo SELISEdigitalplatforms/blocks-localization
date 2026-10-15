@@ -176,7 +176,7 @@ export const useGetModuleKeyCount = (moduleId: string) => {
         searchKey: "",
         moduleIds: [moduleId],
         isPartiallyTranslated: false,
-        sortProperty: "",
+        sortProperty: "KeyName",
         isDescending: false,
       }),
     select: (data) => data.totalCount,

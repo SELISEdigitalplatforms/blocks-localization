@@ -63,7 +63,9 @@ namespace Eurolm.DomainService.Repositories
 
             var filter = getAllKeysFilter(request);
 
-            var sort = !string.IsNullOrWhiteSpace(request.SortProperty) && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(request.SortProperty ?? "KeyName");
+            // A blank sort field is not a valid Mongo field path, so it falls back to KeyName like null does.
+            var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
+            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(hasSortProperty ? request.SortProperty : "KeyName");
 
             var findKeysTask = collection
                 .Find(filter)
