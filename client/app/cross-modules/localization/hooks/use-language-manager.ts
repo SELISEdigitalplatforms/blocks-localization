@@ -164,6 +164,28 @@ export const useSaveLanguageModule = () => {
   });
 };
 
+// Only the total is needed, so a single-row page keeps the request cheap.
+export const useGetModuleKeyCount = (moduleId: string) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.countByModule(tenantId, moduleId),
+    queryFn: () =>
+      languageManagerService.fetchBlocksLanguageKey({
+        pageNumber: 0,
+        pageSize: 1,
+        searchKey: "",
+        moduleIds: [moduleId],
+        isPartiallyTranslated: false,
+        sortProperty: "",
+        isDescending: false,
+      }),
+    select: (data) => data.totalCount,
+    enabled: !!moduleId,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+};
+
 export const useDeleteLanguageModule = () => {
   const queryClient = useQueryClient();
   return useMutation({

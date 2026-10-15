@@ -181,6 +181,15 @@ describe("localization/constants/query-keys", () => {
     });
   });
 
+  // ─── languageKeys.countByModule ───────────────────────────────────────────
+  describe("languageKeys.countByModule", () => {
+    it("should sit under the languageKeys.all prefix so key mutations invalidate it", () => {
+      const key = localizationQueryKeys.languageKeys.countByModule("t1", "m1");
+      expect(key).toEqual(["get-blocksLanguageKeys", "t1", "count-by-module", "m1"]);
+      expect(key[0]).toBe(localizationQueryKeys.languageKeys.all[0]);
+    });
+  });
+
   // ─── languages ────────────────────────────────────────────────────────────
   describe("languages", () => {
     it("should expose an 'all' tuple", () => {

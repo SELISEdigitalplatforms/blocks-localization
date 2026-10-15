@@ -329,7 +329,7 @@ namespace Eurolm.DomainService.Repositories
             await collection.DeleteOneAsync(filter);
         }
 
-        public async Task DeleteByModuleAsync(string moduleId)
+        public async Task<bool> HasKeysInModuleAsync(string moduleId)
         {
             // Eq(ModuleId, null) would also match keys with no ModuleId at all.
             ArgumentException.ThrowIfNullOrWhiteSpace(moduleId);
@@ -338,20 +338,9 @@ namespace Eurolm.DomainService.Repositories
             var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
             var filter = Builders<BlocksLanguageKey>.Filter.Eq(k => k.ModuleId, moduleId);
 
-            await collection.DeleteManyAsync(filter);
-        }
-
-        public async Task MoveByModuleAsync(string sourceModuleId, string targetModuleId)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(sourceModuleId);
-            ArgumentException.ThrowIfNullOrWhiteSpace(targetModuleId);
-
-            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
-            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
-            var filter = Builders<BlocksLanguageKey>.Filter.Eq(k => k.ModuleId, sourceModuleId);
-            var update = Builders<BlocksLanguageKey>.Update.Set(k => k.ModuleId, targetModuleId);
-
-            await collection.UpdateManyAsync(filter, update);
+            // Existence check only: stop counting at the first match.
+            var count = await collection.CountDocumentsAsync(filter, new CountOptions { Limit = 1 });
+            return count > 0;
         }
 
         public async Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys)

@@ -215,20 +215,6 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task Delete_WithTargetModule_PassesRequestThrough()
-        {
-            var request = new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" };
-            _moduleManagementServiceMock.Setup(x => x.DeleteModuleAsync(request))
-                .ReturnsAsync(new BaseMutationResponse { IsSuccess = true });
-
-            var result = await _controller.Delete(request);
-
-            result.Should().BeOfType<OkObjectResult>();
-            _moduleManagementServiceMock.Verify(x => x.DeleteModuleAsync(
-                It.Is<DeleteModuleRequest>(r => r.ItemId == "m1" && r.TargetModuleId == "m2")), Times.Once);
-        }
-
-        [Fact]
         public async Task Delete_WithNullRequest_ReturnsBadRequestWithoutCallingService()
         {
             var result = await _controller.Delete(null!);
@@ -255,12 +241,11 @@ namespace XUnitTest
 
         [Theory]
         [InlineData("ItemId", "Module not found")]
-        [InlineData("ItemId", "Target module not found")]
-        [InlineData("ItemId", "Cannot move module keys to itself")]
+        [InlineData("ItemId", "Module has keys. Please delete or move all keys to another module before deleting it.")]
         [InlineData("Error", "An unexpected error occurred")]
         public async Task Delete_WhenServiceFails_ReturnsBadRequestWithServiceErrors(string key, string message)
         {
-            var request = new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" };
+            var request = new DeleteModuleRequest { ItemId = "m1" };
             var response = new BaseMutationResponse
             {
                 IsSuccess = false,

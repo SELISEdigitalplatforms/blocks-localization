@@ -114,6 +114,22 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchBlocksLanguageKeyById).toHaveBeenCalledWith({ itemId: "k1" });
   });
 
+  it("useGetModuleKeyCount should request a single key of the module and return the total", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [{}] } as never);
+    const { result } = renderQ(() => hooks.useGetModuleKeyCount("m1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe(7);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 0, pageSize: 1, moduleIds: ["m1"] }),
+    );
+  });
+
+  it("useGetModuleKeyCount should stay idle without a module id", () => {
+    const { result } = renderQ(() => hooks.useGetModuleKeyCount(""));
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
   it("useGetLanguageModules should fetch modules", async () => {
     svc.fetchBlocksLanguageModules.mockResolvedValue([] as never);
     const { result } = renderQ(() => hooks.useGetLanguageModules());

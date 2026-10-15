@@ -327,50 +327,41 @@ namespace XUnitTest
             result.Errors.Should().ContainKey("Error");
         }
 
+        private const string ModuleHasKeysMessage =
+            "Module has keys. Please delete or move all keys to another module before deleting it.";
+
         private void SetupModuleExists(string itemId) =>
             _moduleRepositoryMock.Setup(r => r.GetByIdAsync(itemId))
                 .ReturnsAsync(new BlocksLanguageModule { ItemId = itemId, ModuleName = itemId });
 
-        private void VerifyNoDataMutated()
-        {
-            _keyRepositoryMock.Verify(r => r.DeleteByModuleAsync(It.IsAny<string>()), Times.Never);
-            _keyRepositoryMock.Verify(r => r.MoveByModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
-        }
+        private void SetupModuleHasKeys(string itemId, bool hasKeys) =>
+            _keyRepositoryMock.Setup(r => r.HasKeysInModuleAsync(itemId)).ReturnsAsync(hasKeys);
 
         [Fact]
-        public async Task DeleteModuleAsync_WithoutTarget_DeletesKeysThenModule()
+        public async Task DeleteModuleAsync_EmptyModule_DeletesModule()
         {
             SetupModuleExists("m1");
-            var calls = new List<string>();
-            _keyRepositoryMock.Setup(r => r.DeleteByModuleAsync("m1"))
-                .Callback(() => calls.Add("keys")).Returns(Task.CompletedTask);
-            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1"))
-                .Callback(() => calls.Add("module")).Returns(Task.CompletedTask);
+            SetupModuleHasKeys("m1", false);
+            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1")).Returns(Task.CompletedTask);
 
             var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1" });
 
             result.IsSuccess.Should().BeTrue();
-            calls.Should().Equal("keys", "module");
-            _keyRepositoryMock.Verify(r => r.MoveByModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _keyRepositoryMock.Verify(r => r.HasKeysInModuleAsync("m1"), Times.Once);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync("m1"), Times.Once);
         }
 
         [Fact]
-        public async Task DeleteModuleAsync_WithTarget_MovesKeysThenDeletesModule()
+        public async Task DeleteModuleAsync_ModuleWithKeys_ReturnsErrorWithoutDeleting()
         {
             SetupModuleExists("m1");
-            SetupModuleExists("m2");
-            var calls = new List<string>();
-            _keyRepositoryMock.Setup(r => r.MoveByModuleAsync("m1", "m2"))
-                .Callback(() => calls.Add("keys")).Returns(Task.CompletedTask);
-            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1"))
-                .Callback(() => calls.Add("module")).Returns(Task.CompletedTask);
+            SetupModuleHasKeys("m1", true);
 
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1" });
 
-            result.IsSuccess.Should().BeTrue();
-            calls.Should().Equal("keys", "module");
-            _keyRepositoryMock.Verify(r => r.DeleteByModuleAsync(It.IsAny<string>()), Times.Never);
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("ItemId").WhoseValue.Should().Be(ModuleHasKeysMessage);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -379,12 +370,13 @@ namespace XUnitTest
         [InlineData("   ")]
         public async Task DeleteModuleAsync_WithEmptyItemId_ReturnsFailureWithoutLookup(string? itemId)
         {
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = itemId!, TargetModuleId = itemId });
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = itemId! });
 
             result.IsSuccess.Should().BeFalse();
             result.Errors.Should().BeNullOrEmpty();
             _moduleRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Never);
-            VerifyNoDataMutated();
+            _keyRepositoryMock.Verify(r => r.HasKeysInModuleAsync(It.IsAny<string>()), Times.Never);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -393,51 +385,27 @@ namespace XUnitTest
             var result = await _service.DeleteModuleAsync(null!);
 
             result.IsSuccess.Should().BeFalse();
-            VerifyNoDataMutated();
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public async Task DeleteModuleAsync_MoveToItself_ReturnsErrorWithoutLookupOrMutation()
-        {
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m1" });
-
-            result.IsSuccess.Should().BeFalse();
-            result.Errors.Should().ContainKey("ItemId").WhoseValue.Should().Be("Cannot move module keys to itself");
-            _moduleRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Never);
-            VerifyNoDataMutated();
-        }
-
-        [Fact]
-        public async Task DeleteModuleAsync_SourceNotFound_ReturnsModuleNotFound()
+        public async Task DeleteModuleAsync_ModuleNotFound_ReturnsModuleNotFoundWithoutKeyCheck()
         {
             _moduleRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((BlocksLanguageModule)null!);
 
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "missing", TargetModuleId = "m2" });
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "missing" });
 
             result.IsSuccess.Should().BeFalse();
             result.Errors.Should().ContainKey("ItemId").WhoseValue.Should().Be("Module not found");
-            _moduleRepositoryMock.Verify(r => r.GetByIdAsync("m2"), Times.Never);
-            VerifyNoDataMutated();
+            _keyRepositoryMock.Verify(r => r.HasKeysInModuleAsync(It.IsAny<string>()), Times.Never);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public async Task DeleteModuleAsync_TargetNotFound_ReturnsTargetNotFoundWithoutMutation()
+        public async Task DeleteModuleAsync_WhenKeyCheckThrows_DoesNotDeleteModuleAndReturnsGenericError()
         {
             SetupModuleExists("m1");
-            _moduleRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((BlocksLanguageModule)null!);
-
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "missing" });
-
-            result.IsSuccess.Should().BeFalse();
-            result.Errors.Should().ContainKey("ItemId").WhoseValue.Should().Be("Target module not found");
-            VerifyNoDataMutated();
-        }
-
-        [Fact]
-        public async Task DeleteModuleAsync_WhenKeyDeleteThrows_DoesNotDeleteModuleAndReturnsGenericError()
-        {
-            SetupModuleExists("m1");
-            _keyRepositoryMock.Setup(r => r.DeleteByModuleAsync("m1")).ThrowsAsync(new InvalidOperationException("mongo secret detail"));
+            _keyRepositoryMock.Setup(r => r.HasKeysInModuleAsync("m1")).ThrowsAsync(new InvalidOperationException("mongo secret detail"));
 
             var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1" });
 
@@ -454,23 +422,10 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task DeleteModuleAsync_WhenKeyMoveThrows_DoesNotDeleteModule()
-        {
-            SetupModuleExists("m1");
-            SetupModuleExists("m2");
-            _keyRepositoryMock.Setup(r => r.MoveByModuleAsync("m1", "m2")).ThrowsAsync(new InvalidOperationException("db down"));
-
-            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
-
-            result.IsSuccess.Should().BeFalse();
-            result.Errors.Should().ContainKey("Error").WhoseValue.Should().Be("An unexpected error occurred");
-            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
-        }
-
-        [Fact]
         public async Task DeleteModuleAsync_WhenModuleDeleteThrows_ReturnsGenericError()
         {
             SetupModuleExists("m1");
+            SetupModuleHasKeys("m1", false);
             _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1")).ThrowsAsync(new InvalidOperationException("db down"));
 
             var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1" });

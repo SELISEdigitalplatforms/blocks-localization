@@ -72,6 +72,9 @@ export const localizationQueryKeys = {
     ) => ["get-timeline-by-operation", tenantId, operationId, pageNumber, pageSize] as const,
     byGlossary: (tenantId: string, glossaryId: string, pageNumber: number, pageSize: number) =>
       ["get-keys-by-glossary", tenantId, glossaryId, pageNumber, pageSize] as const,
+    // Under the `all` prefix so any key mutation that invalidates the key lists refreshes it too.
+    countByModule: (tenantId: string, moduleId: string) =>
+      ["get-blocksLanguageKeys", tenantId, "count-by-module", moduleId] as const,
   },
   languages: {
     all: ["get-languages"] as const,

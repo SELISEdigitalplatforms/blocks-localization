@@ -9,26 +9,28 @@ import DeleteModuleModal from "./delete-module-modal";
 const deleteModuleMock = vi.fn();
 const toastMock = vi.fn();
 
+vi.mock("@seliseblocks/genesis-os", () => ({
+  useScopedPath: () => (p: string) => `/scoped/${p}`,
+}));
+vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => toastMock(...a) }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useDeleteLanguageModule: () => ({
     isPending: false,
     mutateAsync: deleteModuleMock,
   }),
+  // An empty module, so the Delete button is offered.
+  useGetModuleKeyCount: () => ({ data: 0, isLoading: false, refetch: vi.fn() }),
 }));
 
 const FALLBACK = "An unexpected error occurred. Please try again.";
 
 const module = { itemId: "m1", moduleName: "Alpha" } as never;
-const allModules = [
-  { itemId: "m1", moduleName: "Alpha" },
-  { itemId: "m2", moduleName: "Beta" },
-] as never;
 
 const renderAndDelete = () => {
   render(
     <Dialog open onOpenChange={() => {}}>
-      <DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />
+      <DeleteModuleModal module={module} onClose={vi.fn()} />
     </Dialog>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -44,9 +46,14 @@ describe("modals/delete-module-modal error messages", () => {
       "Module not found",
     ],
     [
-      "an HttpError 400 for a self-move → the API error text",
-      new HttpError(400, { errors: { ItemId: "Cannot move module keys to itself" } }),
-      "Cannot move module keys to itself",
+      "an HttpError 400 for a module that still has keys → the API error text",
+      new HttpError(400, {
+        errors: {
+          ItemId:
+            "Module has keys. Please delete or move all keys to another module before deleting it.",
+        },
+      }),
+      "Module has keys. Please delete or move all keys to another module before deleting it.",
     ],
     [
       "an HttpError 400 for a server fault → the generic API error text",

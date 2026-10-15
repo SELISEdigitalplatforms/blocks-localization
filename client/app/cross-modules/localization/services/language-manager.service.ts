@@ -130,9 +130,6 @@ export class LanguageManagerService {
     const params = new URLSearchParams({
       itemId: payload.itemId,
     });
-    if (payload.targetModuleId) {
-      params.set("targetModuleId", payload.targetModuleId);
-    }
     return this.httpClient
       .delete<{
         errors: unknown;

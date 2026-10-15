@@ -10,6 +10,12 @@ const deleteModuleMock = vi.fn();
 const toastMock = vi.fn();
 const navigateMock = vi.fn();
 let tenantId = "t1";
+const refetchKeyCountMock = vi.fn();
+let keyCountState: { data?: number; isLoading: boolean; refetch: () => void } = {
+  data: 0,
+  isLoading: false,
+  refetch: refetchKeyCountMock,
+};
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId } }),
@@ -23,6 +29,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
     isPending: false,
     mutateAsync: deleteModuleMock,
   }),
+  useGetModuleKeyCount: () => keyCountState,
 }));
 
 const withDialog = (node: React.ReactNode) => (
@@ -96,29 +103,71 @@ describe("modals/delete-language-key", () => {
 
 describe("modals/delete-module-modal", () => {
   const module = { itemId: "m1", moduleName: "Alpha" } as never;
-  const allModules = [
-    { itemId: "m1", moduleName: "Alpha" },
-    { itemId: "m2", moduleName: "Beta" },
-  ] as never;
+  const setKeyCount = (data: number | undefined, isLoading = false) => {
+    keyCountState = { data, isLoading, refetch: refetchKeyCountMock };
+  };
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setKeyCount(0);
+  });
 
-  it("should delete in cascade mode and close on success", async () => {
+  it("should confirm and delete an empty module, then close on success", async () => {
     deleteModuleMock.mockResolvedValue({ isSuccess: true });
     const onClose = vi.fn();
-    render(
-      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />),
-    );
+    render(withDialog(<DeleteModuleModal module={module} onClose={onClose} />));
+    expect(screen.getByText(/Are you sure you want to delete/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(onClose).toHaveBeenCalledWith(false));
     expect(deleteModuleMock).toHaveBeenCalledWith({ itemId: "m1" });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "success", description: "Module deleted" }),
+    );
+  });
+
+  it("should disable delete while the key count is loading", () => {
+    setKeyCount(undefined, true);
+    render(withDialog(<DeleteModuleModal module={module} onClose={vi.fn()} />));
+    expect(screen.getByText(/Checking keys in/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    [1, "has 1 key."],
+    [3, "has 3 keys."],
+  ])("should block deletion when the module has %i key(s)", (count, text) => {
+    setKeyCount(count);
+    render(withDialog(<DeleteModuleModal module={module} onClose={vi.fn()} />));
+    expect(screen.getByText(new RegExp(text))).toBeTruthy();
+    expect(
+      screen.getByText(/Please delete or move all keys to another module before deleting it\./),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(deleteModuleMock).not.toHaveBeenCalled();
+  });
+
+  it("should navigate to the module details from the blocked state", () => {
+    setKeyCount(2);
+    const onClose = vi.fn();
+    render(withDialog(<DeleteModuleModal module={module} onClose={onClose} />));
+    fireEvent.click(screen.getByRole("button", { name: "Go to module" }));
+    expect(onClose).toHaveBeenCalledWith(false);
+    expect(navigateMock).toHaveBeenCalledWith("/scoped/services/modules/m1");
+  });
+
+  it("should leave the decision to the server when the key count could not be loaded", async () => {
+    setKeyCount(undefined);
+    deleteModuleMock.mockResolvedValue({ isSuccess: true });
+    render(withDialog(<DeleteModuleModal module={module} onClose={vi.fn()} />));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(deleteModuleMock).toHaveBeenCalledWith({ itemId: "m1" }));
   });
 
   it("should toast an error when deletion is unsuccessful", async () => {
     deleteModuleMock.mockResolvedValue({ isSuccess: false });
-    render(
-      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
-    );
+    render(withDialog(<DeleteModuleModal module={module} onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
@@ -127,35 +176,23 @@ describe("modals/delete-module-modal", () => {
     );
   });
 
-  it("should disable delete in move mode until a target is chosen", () => {
-    render(
-      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
-    );
-    fireEvent.click(screen.getByLabelText("Move keys to another module"));
-    expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
-  });
-
   it("should let the user cancel", () => {
     const onClose = vi.fn();
-    render(
-      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={onClose} />),
-    );
-    fireEvent.click(screen.getByText("Cancel"));
+    render(withDialog(<DeleteModuleModal module={module} onClose={onClose} />));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledWith(false);
+    expect(deleteModuleMock).not.toHaveBeenCalled();
   });
 
-  it("should toast the error message, not a JSON blob, when deletion throws", async () => {
+  it("should toast a thrown error and re-check the key count", async () => {
     deleteModuleMock.mockRejectedValue(new Error("network down"));
-    render(
-      withDialog(<DeleteModuleModal module={module} allModules={allModules} onClose={vi.fn()} />),
-    );
+    render(withDialog(<DeleteModuleModal module={module} onClose={vi.fn()} />));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "destructive", description: "network down" }),
       ),
     );
+    expect(refetchKeyCountMock).toHaveBeenCalled();
   });
 });

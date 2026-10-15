@@ -131,16 +131,6 @@ export class ModulesPage {
       .filter({ has: this.page.getByRole("heading", { name: "Delete module" }) });
   }
 
-  get cascadeOption() {
-    return this.deleteModuleDialog.getByRole("radio", {
-      name: "Delete keys along with the module",
-    });
-  }
-
-  get moveOption() {
-    return this.deleteModuleDialog.getByRole("radio", { name: "Move keys to another module" });
-  }
-
   get confirmDeleteModuleButton() {
     return this.deleteModuleDialog.getByRole("button", { name: "Delete", exact: true });
   }
@@ -154,12 +144,17 @@ export class ModulesPage {
     await expect(this.deleteModuleDialog).toBeVisible();
   }
 
-  async selectMoveTarget(targetModuleName: string) {
-    await this.moveOption.click();
-    await this.deleteModuleDialog.getByRole("combobox").click();
-    await this.page.getByPlaceholder("Search module...").fill(targetModuleName);
-    await this.page.getByRole("option", { name: targetModuleName, exact: true }).click();
-    await expect(this.deleteModuleDialog.getByRole("combobox")).toHaveText(targetModuleName);
+  get goToModuleButton() {
+    return this.deleteModuleDialog.getByRole("button", { name: "Go to module" });
+  }
+
+  /** An empty module gets a plain confirmation once its key count has loaded. */
+  async expectDeleteConfirmationForEmptyModule(moduleName: string) {
+    await expect(
+      this.deleteModuleDialog.getByText(`Are you sure you want to delete ${moduleName}?`),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(this.confirmDeleteModuleButton).toBeEnabled();
+    await expect(this.goToModuleButton).toHaveCount(0);
   }
 
   async expectModuleDeleted(moduleName: string) {
@@ -171,7 +166,7 @@ export class ModulesPage {
     await expect(this.getModuleRow(moduleName)).toHaveCount(0, { timeout: 15_000 });
   }
 
-  /** Best-effort cascade delete for test cleanup; never throws. */
+  /** Best-effort delete of an empty module for test cleanup; never throws. */
   async deleteModuleIfPresent(moduleName: string) {
     try {
       await this.searchModules(moduleName);

@@ -77,31 +77,16 @@ namespace Eurolm.DomainService.Services
             if (string.IsNullOrWhiteSpace(request?.ItemId))
                 return new BaseMutationResponse { IsSuccess = false };
 
-            var isMove = !string.IsNullOrEmpty(request.TargetModuleId);
-
-            if (isMove && request.ItemId == request.TargetModuleId)
-                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Cannot move module keys to itself" } } };
-
             try
             {
                 var module = await _moduleRepository.GetByIdAsync(request.ItemId);
                 if (module == null)
                     return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Module not found" } } };
 
-                if (isMove)
-                {
-                    var targetModule = await _moduleRepository.GetByIdAsync(request.TargetModuleId!);
-                    if (targetModule == null)
-                        return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Target module not found" } } };
+                // Keys are deleted or moved separately; a module is only deletable once it is empty.
+                if (await _keyRepository.HasKeysInModuleAsync(request.ItemId))
+                    return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Module has keys. Please delete or move all keys to another module before deleting it." } } };
 
-                    await _keyRepository.MoveByModuleAsync(request.ItemId, request.TargetModuleId!);
-                }
-                else
-                {
-                    await _keyRepository.DeleteByModuleAsync(request.ItemId);
-                }
-
-                // Keys are cleaned up first so a failure above leaves the module intact rather than orphaning keys.
                 await _moduleRepository.DeleteAsync(request.ItemId);
                 return new BaseMutationResponse { IsSuccess = true };
             }
