@@ -127,7 +127,8 @@ namespace Eurolm.DomainService.Services
             catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
             {
                 // The unique index caught a concurrent save of the same new key; answer as the validator would.
-                _logger.LogWarning("Duplicate key rejected by the unique index: Key '{KeyName}' in Module '{ModuleId}'", key.KeyName, key.ModuleId);
+                // User-supplied names stay out of the log; the response carries the details.
+                _logger.LogWarning("A key save was rejected by the unique key index");
                 return new ApiResponse(string.Empty, [DuplicateKeyFailure()]);
             }
             catch (Exception ex)
@@ -204,7 +205,8 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
                 {
-                    _logger.LogWarning("Duplicate key rejected by the unique index: Key '{KeyName}' in Module '{ModuleId}'", key.KeyName, key.ModuleId);
+                    // User-supplied names stay out of the log; the response carries the details.
+                _logger.LogWarning("A key save was rejected by the unique key index");
                     var failure = DuplicateKeyFailure();
                     errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}");
                 }
@@ -2228,7 +2230,7 @@ namespace Eurolm.DomainService.Services
 
                 // Keep counting keys for the module that now holds them.
                 modulesToInsert[modulesToInsert.IndexOf(module)] = taken;
-                _logger.LogInformation("Module {ModuleName} was created meanwhile by another writer; this import uses it", module.ModuleName);
+                _logger.LogInformation("An imported module already exists under the same name (created by another import, or exported from another environment); its keys use the existing module");
             }
         }
 
