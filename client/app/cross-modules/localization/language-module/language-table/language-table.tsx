@@ -9,6 +9,7 @@ import {
   EllipsisVertical,
   FolderInput,
   FolderOutput,
+  FolderSymlink,
   History,
   PencilLine,
   Plus,
@@ -77,6 +78,7 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
+import { MoveKeysDialog } from "./components/move-keys-dialog";
 import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
   getImportFileLabel,
@@ -339,6 +341,7 @@ export function LanguageTable() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+  const [isMoveKeysDialogOpen, setIsMoveKeysDialogOpen] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const { isPending: isBulkDeletingKeys, mutateAsync: bulkDeleteAsync } = useDeleteLanguageKeys();
   const { isPending: isBulkTranslatingKeys, mutateAsync: bulkTranslateAsync } =
@@ -1016,6 +1019,15 @@ export function LanguageTable() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => setIsMoveKeysDialogOpen(true)}
+                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <FolderSymlink className="lg:mr-1 h-4 w-4" />
+                      <span className="sr-only lg:not-sr-only">Move</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => setIsBulkDeleteDialogOpen(true)}
                       className="border-error text-error hover:bg-error hover:text-primary-foreground"
                     >
@@ -1282,6 +1294,19 @@ export function LanguageTable() {
                 onCancel={() => setIsBulkEditDialogOpen(false)}
                 onSaved={() => {
                   setIsBulkEditDialogOpen(false);
+                  setRowSelection({});
+                }}
+              />
+            )}
+          </Dialog>
+          <Dialog open={isMoveKeysDialogOpen} onOpenChange={setIsMoveKeysDialogOpen}>
+            {isMoveKeysDialogOpen && (
+              <MoveKeysDialog
+                keys={selectedKeyRows}
+                modules={languageModules ?? []}
+                onCancel={() => setIsMoveKeysDialogOpen(false)}
+                onMoved={() => {
+                  setIsMoveKeysDialogOpen(false);
                   setRowSelection({});
                 }}
               />

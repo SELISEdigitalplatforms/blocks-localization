@@ -367,6 +367,29 @@ export const useDeleteLanguageKeys = () => {
   });
 };
 
+export const useMoveLanguageKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["language-keys", "bulk-move"],
+    mutationFn: languageManagerService.moveLanguageKeys,
+    onSuccess: () => {
+      // `all` also refreshes the per-module key counts used by the delete-module dialog.
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.detailPrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
+      });
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.localizationTimelinePrefix,
+      });
+    },
+  });
+};
+
 export const useTranslateLanguageKeys = () => {
   const queryClient = useQueryClient();
   return useMutation({

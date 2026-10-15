@@ -143,6 +143,63 @@ namespace XUnitTest.Repositories
 
         #endregion
 
+        #region MoveKeysAsync
+
+        [Fact]
+        public async Task MoveKeysAsync_SetsTheTargetModuleOnTheGivenKeysInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            UpdateDefinition<BlocksLanguageKey>? capturedUpdate = null;
+            _blkCollection.Setup(x => x.UpdateManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, UpdateDefinition<BlocksLanguageKey>, UpdateOptions, CancellationToken>(
+                    (f, u, _, _) => { capturedFilter = f; capturedUpdate = u; })
+                .ReturnsAsync(Mock.Of<UpdateResult>());
+
+            await _repo.MoveKeysAsync(new[] { "k1", "k2" }, "mod-2");
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"_id\" : { \"$in\" : [\"k1\", \"k2\"] } }");
+            var registry = BsonSerializer.SerializerRegistry;
+            var update = capturedUpdate!.Render(new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry)).AsBsonDocument;
+            update["$set"]["ModuleId"].AsString.Should().Be("mod-2");
+            update["$set"].AsBsonDocument.Contains("LastUpdateDate").Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task MoveKeysAsync_WithNoKeys_DoesNotTouchTheCollection()
+        {
+            await _repo.MoveKeysAsync(Array.Empty<string>(), "mod-2");
+
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task MoveKeysAsync_WithBlankTargetModule_ThrowsWithoutTouchingTheCollection(string? targetModuleId)
+        {
+            Func<Task> act = () => _repo.MoveKeysAsync(new[] { "k1" }, targetModuleId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region GetByIdAsync
 
         [Fact]

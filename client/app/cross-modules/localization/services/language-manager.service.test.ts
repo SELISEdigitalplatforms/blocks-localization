@@ -447,6 +447,19 @@ describe("LanguageManagerService", () => {
     });
   });
 
+  // ─── moveLanguageKeys ────────────────────────────────────────────────────
+  describe("moveLanguageKeys", () => {
+    it("should POST the key ids and target module to MOVE_KEYS", async () => {
+      const response = { success: true, errorMessage: null };
+      vi.mocked(http.post).mockResolvedValue(response);
+
+      const payload = { itemIds: ["k-1", "k-2"], targetModuleId: "mod-2" };
+      await expect(service.moveLanguageKeys(payload)).resolves.toBe(response);
+
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.MOVE_KEYS, payload);
+    });
+  });
+
   // ─── deleteLanguageKeys ──────────────────────────────────────────────────
   describe("deleteLanguageKeys", () => {
     it("should DELETE to DELETE_KEYS endpoint with itemIds body", async () => {

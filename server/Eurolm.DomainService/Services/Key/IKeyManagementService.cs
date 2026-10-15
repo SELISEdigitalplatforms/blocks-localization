@@ -19,6 +19,7 @@ namespace Eurolm.DomainService.Services
         Task<Key?> GetAsync(GetKeyRequest request);
         Task<BaseMutationResponse> DeleteAsync(DeleteKeyRequest request);
         Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request);
+        Task<ApiResponse> MoveKeysAsync(MoveKeysRequest request);
         Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request);
         Task SendTranslateAllEvent(TranslateAllRequest request);
         Task SendTranslateBlocksLanguageKeyEvent(TranslateBlocksLanguageKeyRequest request);

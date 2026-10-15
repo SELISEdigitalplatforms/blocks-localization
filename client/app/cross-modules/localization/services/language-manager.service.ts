@@ -23,6 +23,7 @@ import {
   IKeyUilmExport,
   ILanguageConfig,
   IDeleteModuleRequest,
+  IMoveKeysRequest,
   IModuleGets,
   IRollbackResponse,
   ISaveBlocksLanguageKeyPayload,
@@ -173,6 +174,15 @@ export class LanguageManagerService {
       errors: unknown;
       isSuccess: boolean;
     }>(`${url}?${params.toString()}`);
+  };
+
+  moveLanguageKeys = (
+    payload: IMoveKeysRequest,
+  ): Promise<{
+    success: boolean;
+    errorMessage: string | null;
+  }> => {
+    return this.httpClient.post(LANGUAGE_KEY_ENDPOINTS.MOVE_KEYS, payload);
   };
 
   deleteLanguageKeys = (payload: {

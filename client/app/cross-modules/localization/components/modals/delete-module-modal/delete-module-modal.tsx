@@ -14,22 +14,8 @@ import {
   useGetModuleKeyCount,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { formatErrorMessage, getForbiddenErrorMessage, isErrorWithErrors } from "@/lib/error";
+import { getHttpErrorMessage } from "@/lib/error";
 import { IModuleGets } from "@blocks-localization/models/language";
-
-// genesis-os HttpError's `message` is a JSON dump of `errors`, so read the record directly.
-// The 403 check gets only its own fields, as the toast did when the error was JSON.stringify'd.
-function getDeleteErrorMessage(error: unknown): string {
-  if (!isErrorWithErrors(error)) {
-    return getForbiddenErrorMessage(error) ?? formatErrorMessage(error);
-  }
-
-  const { status } = error as { status?: unknown };
-  return (
-    getForbiddenErrorMessage({ status, errors: error.errors }) ??
-    formatErrorMessage({ errors: error.errors })
-  );
-}
 
 interface DeleteModuleModalProps {
   module: IModuleGets;
@@ -49,9 +35,10 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, onClose }
   // The server enforces the rule too; if the count could not be loaded, let it decide.
   const hasKeys = (keyCount ?? 0) > 0;
 
-  const handleGoToModule = () => {
+  // The translations table filtered to this module, where its keys can be moved or deleted.
+  const handleViewKeys = () => {
     onClose(false);
-    navigate(scoped(`services/modules/${module.itemId}`));
+    navigate(scoped(`services/language?moduleIds=${encodeURIComponent(module.itemId)}`));
   };
 
   const handleSubmit = async () => {
@@ -75,7 +62,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, onClose }
       toast({
         variant: "destructive",
         title: "Error",
-        description: getDeleteErrorMessage(error),
+        description: getHttpErrorMessage(error),
       });
       // Keys may have been added since the dialog opened; refresh so it can show the blocked state.
       void refetchKeyCount();
@@ -126,8 +113,8 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, onClose }
           Cancel
         </Button>
         {hasKeys ? (
-          <Button type="button" onClick={handleGoToModule}>
-            Go to module
+          <Button type="button" onClick={handleViewKeys}>
+            View keys
           </Button>
         ) : (
           <Button

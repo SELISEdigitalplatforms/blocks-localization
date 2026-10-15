@@ -147,6 +147,11 @@ export interface IDeleteModuleRequest {
   itemId: string;
 }
 
+export interface IMoveKeysRequest {
+  itemIds: string[];
+  targetModuleId: string;
+}
+
 export interface ITagGlossaryRequest {
   moduleId: string;
   glossaryIds: string[];

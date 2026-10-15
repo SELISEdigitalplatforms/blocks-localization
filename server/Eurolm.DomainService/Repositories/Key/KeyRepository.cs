@@ -343,6 +343,22 @@ namespace Eurolm.DomainService.Repositories
             return count > 0;
         }
 
+        public async Task MoveKeysAsync(IReadOnlyCollection<string> itemIds, string targetModuleId)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            ArgumentException.ThrowIfNullOrWhiteSpace(targetModuleId);
+            if (itemIds.Count == 0) return;
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds);
+            var update = Builders<BlocksLanguageKey>.Update
+                .Set(k => k.ModuleId, targetModuleId)
+                .Set(k => k.LastUpdateDate, DateTime.UtcNow);
+
+            await collection.UpdateManyAsync(filter, update);
+        }
+
         public async Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys)
         {
             return await UpdateUilmResourceKeys(uilmResourceKeys);

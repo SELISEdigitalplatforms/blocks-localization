@@ -148,13 +148,13 @@ describe("modals/delete-module-modal", () => {
     expect(deleteModuleMock).not.toHaveBeenCalled();
   });
 
-  it("should navigate to the module details from the blocked state", () => {
+  it("should open the module's keys in the translations table from the blocked state", () => {
     setKeyCount(2);
     const onClose = vi.fn();
     render(withDialog(<DeleteModuleModal module={module} onClose={onClose} />));
-    fireEvent.click(screen.getByRole("button", { name: "Go to module" }));
+    fireEvent.click(screen.getByRole("button", { name: "View keys" }));
     expect(onClose).toHaveBeenCalledWith(false);
-    expect(navigateMock).toHaveBeenCalledWith("/scoped/services/modules/m1");
+    expect(navigateMock).toHaveBeenCalledWith("/scoped/services/language?moduleIds=m1");
   });
 
   it("should leave the decision to the server when the key count could not be loaded", async () => {
