@@ -14,13 +14,18 @@ namespace Eurolm.DomainService.Services
         //private readonly Lazy<IKeyBulkOperationsService> _keyBulkOperationsService;
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IKeyRepository _keyRepository;
+        private readonly IKeyTimelineRepository _keyTimelineRepository;
+
+        private const string ItemIdErrorKey = "ItemId";
+        private const string TargetModuleIdErrorKey = "TargetModuleId";
 
         public ModuleManagementService(IValidator<Module> validator,
                                       IModuleRepository moduleRepository,
                                       ILogger<ModuleManagementService> logger,
                                       //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
                                       IGlossaryRepository glossaryRepository,
-                                      IKeyRepository keyRepository)
+                                      IKeyRepository keyRepository,
+                                      IKeyTimelineRepository keyTimelineRepository)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
@@ -28,6 +33,7 @@ namespace Eurolm.DomainService.Services
             //_keyBulkOperationsService = keyBulkOperationsService;
             _glossaryRepository = glossaryRepository;
             _keyRepository = keyRepository;
+            _keyTimelineRepository = keyTimelineRepository;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -77,15 +83,26 @@ namespace Eurolm.DomainService.Services
             if (string.IsNullOrWhiteSpace(request?.ItemId))
                 return new BaseMutationResponse { IsSuccess = false };
 
+            var isMove = !string.IsNullOrWhiteSpace(request.TargetModuleId);
+            if (isMove && request.TargetModuleId == request.ItemId)
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Choose a different module to move the keys to");
+
             try
             {
                 var module = await _moduleRepository.GetByIdAsync(request.ItemId);
                 if (module == null)
-                    return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Module not found" } } };
+                    return DeleteModuleFailure(ItemIdErrorKey, "Module not found");
 
-                // Keys are deleted or moved separately; a module is only deletable once it is empty.
+                if (isMove)
+                {
+                    var moveError = await MoveAllKeysAsync(request.ItemId, request.TargetModuleId!);
+                    if (moveError != null)
+                        return DeleteModuleFailure(TargetModuleIdErrorKey, moveError);
+                }
+
+                // A module is only deletable once it is empty; this also catches a key added during the move.
                 if (await _keyRepository.HasKeysInModuleAsync(request.ItemId))
-                    return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "ItemId", "Module has keys. Please delete or move all keys to another module before deleting it." } } };
+                    return DeleteModuleFailure(ItemIdErrorKey, "Module has keys. Please delete or move all keys to another module before deleting it.");
 
                 await _moduleRepository.DeleteAsync(request.ItemId);
                 return new BaseMutationResponse { IsSuccess = true };
@@ -93,9 +110,92 @@ namespace Eurolm.DomainService.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while deleting BlocksLanguageModule {ErrorMessage}", ex.Message);
-                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "An unexpected error occurred" } } };
+                return DeleteModuleFailure("Error", "An unexpected error occurred");
             }
         }
+
+        /// <summary>
+        /// Moves every key of the source module to the target module. All-or-nothing: returns an error
+        /// message, and moves nothing, when the target is missing or already has a key with the same name.
+        /// </summary>
+        private async Task<string?> MoveAllKeysAsync(string sourceModuleId, string targetModuleId)
+        {
+            var targetModule = await _moduleRepository.GetByIdAsync(targetModuleId);
+            if (targetModule == null)
+                return "Target module not found";
+
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var keysToMove = await _keyRepository.GetUilmResourceKeys(k => k.ModuleId == sourceModuleId, tenantId);
+            if (keysToMove.Count == 0)
+                return null;
+
+            // A module cannot hold two keys with the same name.
+            var conflictingNames = (await _keyRepository.GetKeysByKeyNamesAsync(
+                    keysToMove.Select(k => k.KeyName).Distinct().ToArray(), targetModuleId))
+                .Select(k => k.KeyName)
+                .Distinct()
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToList();
+
+            if (conflictingNames.Count > 0)
+                return $"Keys with these names already exist in {targetModule.ModuleName}: {string.Join(", ", conflictingNames)}. Rename or delete them before moving";
+
+            await _keyRepository.MoveKeysAsync(keysToMove.Select(k => k.ItemId).ToList(), targetModuleId);
+            await CreateMoveTimelinesAsync(keysToMove, targetModuleId, tenantId);
+            return null;
+        }
+
+        private async Task CreateMoveTimelinesAsync(List<BlocksLanguageKey> movedKeys, string targetModuleId, string tenantId)
+        {
+            try
+            {
+                var userId = BlocksContext.GetContext()?.UserId ?? "System";
+                var operationId = Guid.NewGuid().ToString();
+                var movedAt = DateTime.UtcNow;
+                var timelines = movedKeys.Select(key => new KeyTimeline
+                {
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = CloneWithModule(key, targetModuleId, movedAt),
+                    LogFrom = LogFromConstants.KeyBulkMove,
+                    UserId = userId,
+                    CreateDate = movedAt,
+                    LastUpdateDate = movedAt,
+                    OperationId = operationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                // The keys are already moved; a missing history entry must not fail the operation.
+                _logger.LogError(ex, "Failed to create move timeline entries for {Count} keys", movedKeys.Count);
+            }
+        }
+
+        private static BlocksLanguageKey CloneWithModule(BlocksLanguageKey key, string moduleId, DateTime lastUpdateDate) => new BlocksLanguageKey
+        {
+            ItemId = key.ItemId,
+            TenantId = key.TenantId,
+            CreateDate = key.CreateDate,
+            CreatedBy = key.CreatedBy,
+            LastUpdateDate = lastUpdateDate,
+            LastUpdatedBy = key.LastUpdatedBy,
+            KeyName = key.KeyName,
+            ModuleId = moduleId,
+            Value = key.Value,
+            Resources = key.Resources,
+            Routes = key.Routes,
+            GlossaryIds = key.GlossaryIds,
+            Context = key.Context,
+            IsPartiallyTranslated = key.IsPartiallyTranslated
+        };
+
+        private static BaseMutationResponse DeleteModuleFailure(string field, string message) => new BaseMutationResponse
+        {
+            IsSuccess = false,
+            Errors = new Dictionary<string, string> { { field, message } }
+        };
 
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {

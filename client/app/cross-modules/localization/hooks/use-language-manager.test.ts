@@ -25,7 +25,6 @@ vi.mock("@blocks-localization/services/language-manager.service", () => ({
     saveLanguage: vi.fn(),
     deleteLanguageKey: vi.fn(),
     deleteLanguageKeys: vi.fn(),
-    moveLanguageKeys: vi.fn(),
     translateLanguageKeys: vi.fn(),
     deleteLanguage: vi.fn(),
     setDefault: vi.fn(),
@@ -326,27 +325,37 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.deleteLanguageKeys).toHaveBeenCalled();
   });
 
-  it("useMoveLanguageKeys should invoke the service and refresh key lists, counts and timelines", async () => {
-    svc.moveLanguageKeys.mockResolvedValue({ success: true, errorMessage: null } as never);
+  it("useDeleteLanguageModule with a target module should also refresh key lists and timelines", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
     const { queryClient, wrapper } = createQueryWrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    const { result } = renderHook(() => hooks.useMoveLanguageKeys(), { wrapper });
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
 
-    await result.current.mutateAsync({ itemIds: ["k1"], targetModuleId: "m2" });
+    await result.current.mutateAsync({ itemId: "m1", targetModuleId: "m2" });
 
-    expect(svc.moveLanguageKeys).toHaveBeenCalledWith(
-      { itemIds: ["k1"], targetModuleId: "m2" },
-      expect.anything(),
-    );
     const invalidatedKeys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
     expect(invalidatedKeys).toEqual(
       expect.arrayContaining([
+        ["get-language-modules"],
         ["get-blocksLanguageKeys"],
         ["get-blocksLanguageKey"],
         ["get-uilm-timeline"],
         ["get-localization-timeline"],
       ]),
     );
+  });
+
+  it("useDeleteLanguageModule without a target module should only refresh the modules", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
+
+    await result.current.mutateAsync({ itemId: "m1" });
+
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+      ["get-language-modules"],
+    ]);
   });
 
   it("useTranslateLanguageKeys should invoke the service", async () => {

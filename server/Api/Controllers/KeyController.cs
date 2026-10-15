@@ -215,23 +215,6 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         /// <summary>
-        /// Moves multiple keys to another module. All-or-nothing: if any key name already exists in the
-        /// target module, no key is moved. Moved keys share the same OperationId in the timeline.
-        /// </summary>
-        /// <param name="request">The keys to move and the target module.</param>
-        /// <returns>An <see cref="ApiResponse"/> indicating the success or failure of the move operation.</returns>
-        [HttpPost]
-        [ProtectedEndPoint($"{Constants.ServiceName}::key::movekeys")]
-        public async Task<ApiResponse> MoveKeys([FromBody] MoveKeysRequest request)
-        {
-            if (request == null || request.ItemIds == null || !request.ItemIds.Any())
-                return new ApiResponse("Select at least one key to move.");
-            if (string.IsNullOrWhiteSpace(request.TargetModuleId))
-                return new ApiResponse("Target module is required.");
-            return await _keyManagementService.MoveKeysAsync(request);
-        }
-
-        /// <summary>
         /// Returns a JSON UILM file for a specified module and language.
         /// </summary>
         /// <param name="request">The request containing the project key, module, and language information.</param>

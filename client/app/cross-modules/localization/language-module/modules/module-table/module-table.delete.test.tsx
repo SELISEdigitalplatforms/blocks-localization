@@ -33,7 +33,7 @@ vi.mock("@blocks-localization/components/modals/edit-module/edit-module", () => 
 vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal", () => ({
   default: () => null,
 }));
-// Capture the props so the test can assert which module the dialog receives.
+// Capture the props so the test can assert which modules the dialog receives.
 vi.mock("@blocks-localization/components/modals/delete-module-modal/delete-module-modal", () => ({
   default: (props: { module: { moduleName: string }; onClose: () => void }) => {
     deleteModalProps(props);
@@ -72,7 +72,7 @@ describe("module-table (delete module)", () => {
     } as never);
   });
 
-  it("opens the delete dialog for the row's module while the table is filtered", async () => {
+  it("opens the delete dialog with the full, unfiltered module list as move targets", async () => {
     vi.useFakeTimers();
     renderWithProviders(<ModuleTable />);
 
@@ -91,6 +91,7 @@ describe("module-table (delete module)", () => {
     expect(await screen.findByText("delete-dialog-Module 12")).toBeTruthy();
     const props = deleteModalProps.mock.lastCall![0];
     expect(props.module).toBe(modulesData[11]);
+    expect(props.modules).toBe(modulesData);
   });
 
   it("closes the delete dialog when the modal calls onClose", async () => {

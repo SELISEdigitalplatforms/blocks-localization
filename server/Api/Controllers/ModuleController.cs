@@ -78,9 +78,10 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         /// <summary>
-        /// Deletes a module. Only an empty module can be deleted: its keys must be deleted or moved to another module first.
+        /// Deletes a module. A module with keys is only deleted when a target module is given: its keys are
+        /// moved there first (all-or-nothing on key-name conflicts). Otherwise the module must already be empty.
         /// </summary>
-        /// <param name="request">The module to delete.</param>
+        /// <param name="request">The module to delete and an optional target module for its keys.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
         [Authorize]

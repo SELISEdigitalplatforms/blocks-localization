@@ -399,6 +399,17 @@ describe("LanguageManagerService", () => {
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
       expect(calledUrl).toBe(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1`);
     });
+
+    it("should include targetModuleId in the query string when moving the keys", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true });
+
+      await service.deleteLanguageModule({ itemId: "mod-1", targetModuleId: "mod-2" });
+
+      const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
+      expect(calledUrl).toBe(
+        `${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1&targetModuleId=mod-2`,
+      );
+    });
   });
 
   // ─── tagGlossary ──────────────────────────────────────────────────────────
@@ -444,19 +455,6 @@ describe("LanguageManagerService", () => {
       await expect(service.deleteLanguageKey({ itemId: "key-1" })).resolves.toBe(response);
 
       expect(http.delete).toHaveBeenCalledWith(`${LANGUAGE_KEY_ENDPOINTS.DELETE}?itemId=key-1`);
-    });
-  });
-
-  // ─── moveLanguageKeys ────────────────────────────────────────────────────
-  describe("moveLanguageKeys", () => {
-    it("should POST the key ids and target module to MOVE_KEYS", async () => {
-      const response = { success: true, errorMessage: null };
-      vi.mocked(http.post).mockResolvedValue(response);
-
-      const payload = { itemIds: ["k-1", "k-2"], targetModuleId: "mod-2" };
-      await expect(service.moveLanguageKeys(payload)).resolves.toBe(response);
-
-      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.MOVE_KEYS, payload);
     });
   });
 

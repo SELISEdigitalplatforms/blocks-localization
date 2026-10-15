@@ -30,7 +30,7 @@ const module = { itemId: "m1", moduleName: "Alpha" } as never;
 const renderAndDelete = () => {
   render(
     <Dialog open onOpenChange={() => {}}>
-      <DeleteModuleModal module={module} onClose={vi.fn()} />
+      <DeleteModuleModal module={module} modules={[]} onClose={vi.fn()} />
     </Dialog>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Delete" }));

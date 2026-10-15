@@ -16,6 +16,7 @@ namespace XUnitTest
         private readonly Mock<IModuleRepository> _moduleRepositoryMock;
         private readonly Mock<IGlossaryRepository> _glossaryRepositoryMock;
         private readonly Mock<IKeyRepository> _keyRepositoryMock;
+        private readonly Mock<IKeyTimelineRepository> _keyTimelineRepositoryMock;
         private readonly Mock<IValidator<ModuleModel>> _validatorMock;
         private readonly ModuleManagementService _service;
 
@@ -26,6 +27,7 @@ namespace XUnitTest
             _moduleRepositoryMock = new Mock<IModuleRepository>();
             _glossaryRepositoryMock = new Mock<IGlossaryRepository>();
             _keyRepositoryMock = new Mock<IKeyRepository>();
+            _keyTimelineRepositoryMock = new Mock<IKeyTimelineRepository>();
             _validatorMock = new Mock<IValidator<ModuleModel>>();
             
             _service = new ModuleManagementService(
@@ -33,7 +35,8 @@ namespace XUnitTest
                 _moduleRepositoryMock.Object,
                 _loggerMock.Object,
                 _glossaryRepositoryMock.Object,
-                _keyRepositoryMock.Object
+                _keyRepositoryMock.Object,
+                _keyTimelineRepositoryMock.Object
             );
         }
 
@@ -434,6 +437,174 @@ namespace XUnitTest
             result.Errors.Should().ContainKey("Error").WhoseValue.Should().Be("An unexpected error occurred");
         }
 
+
+        #region DeleteModuleAsync with a target module
+
+        private void SetupKeysInModule(params BlocksLanguageKey[] keys) =>
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeys(It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(), It.IsAny<string>()))
+                .ReturnsAsync(keys.ToList());
+
+        private void SetupNamesInTarget(string targetModuleId, params string[] keyNames) =>
+            _keyRepositoryMock.Setup(r => r.GetKeysByKeyNamesAsync(It.IsAny<string[]>(), targetModuleId))
+                .ReturnsAsync(keyNames.Select(n => new Key { KeyName = n, ModuleId = targetModuleId }).ToList());
+
+        private void VerifyNothingMovedOrDeleted()
+        {
+            _keyRepositoryMock.Verify(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string>()), Times.Never);
+            _keyTimelineRepositoryMock.Verify(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()), Times.Never);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_MovesAllKeysWritesHistoryThenDeletesModule()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(
+                new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1", Context = "ctx" },
+                new BlocksLanguageKey { ItemId = "k2", KeyName = "b", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            var calls = new List<string>();
+            IReadOnlyCollection<string>? movedIds = null;
+            _keyRepositoryMock.Setup(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), "m2"))
+                .Callback<IReadOnlyCollection<string>, string>((ids, _) => { movedIds = ids; calls.Add("move"); })
+                .Returns(Task.CompletedTask);
+            List<KeyTimeline>? timelines = null;
+            string? timelineTenant = null;
+            _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
+                .Callback<List<KeyTimeline>, string>((t, tenant) => { timelines = t; timelineTenant = tenant; calls.Add("history"); })
+                .Returns(Task.CompletedTask);
+            SetupModuleHasKeys("m1", false);
+            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1")).Callback(() => calls.Add("delete")).Returns(Task.CompletedTask);
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeTrue();
+            calls.Should().Equal("move", "history", "delete");
+            movedIds.Should().BeEquivalentTo(new[] { "k1", "k2" });
+            timelineTenant.Should().Be("mod-tenant");
+            timelines.Should().HaveCount(2);
+            timelines!.Select(t => t.OperationId).Distinct().Should().ContainSingle();
+            timelines.Should().OnlyContain(t => t.LogFrom == LogFromConstants.KeyBulkMove);
+            var first = timelines.Single(t => t.EntityId == "k1");
+            first.PreviousData!.ModuleId.Should().Be("m1");
+            first.CurrentData!.ModuleId.Should().Be("m2");
+            first.CurrentData.Context.Should().Be("ctx");
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTargetAndNoKeys_DeletesWithoutMoving()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule();
+            SetupModuleHasKeys("m1", false);
+            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1")).Returns(Task.CompletedTask);
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeTrue();
+            _keyRepositoryMock.Verify(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string>()), Times.Never);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync("m1"), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTargetHavingSameKeyName_RejectsWithoutMovingOrDeleting()
+        {
+            SetupModuleExists("m1");
+            _moduleRepositoryMock.Setup(r => r.GetByIdAsync("m2"))
+                .ReturnsAsync(new BlocksLanguageModule { ItemId = "m2", ModuleName = "Beta" });
+            SetupKeysInModule(
+                new BlocksLanguageKey { ItemId = "k1", KeyName = "taken", ModuleId = "m1" },
+                new BlocksLanguageKey { ItemId = "k2", KeyName = "free", ModuleId = "m1" });
+            SetupNamesInTarget("m2", "taken");
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("TargetModuleId").WhoseValue
+                .Should().Be("Keys with these names already exist in Beta: taken. Rename or delete them before moving");
+            VerifyNothingMovedOrDeleted();
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithMissingTarget_RejectsWithoutMovingOrDeleting()
+        {
+            SetupModuleExists("m1");
+            _moduleRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((BlocksLanguageModule)null!);
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "missing" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("TargetModuleId").WhoseValue.Should().Be("Target module not found");
+            VerifyNothingMovedOrDeleted();
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithItselfAsTarget_RejectsWithoutLookup()
+        {
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m1" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("TargetModuleId").WhoseValue.Should().Be("Choose a different module to move the keys to");
+            _moduleRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Never);
+            VerifyNothingMovedOrDeleted();
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_WhenAKeyIsAddedDuringTheMove_KeepsTheModule()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            _keyRepositoryMock.Setup(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), "m2")).Returns(Task.CompletedTask);
+            SetupModuleHasKeys("m1", true);
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("ItemId").WhoseValue.Should().Be(ModuleHasKeysMessage);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_WhenHistoryFails_StillDeletesModule()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            _keyRepositoryMock.Setup(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), "m2")).Returns(Task.CompletedTask);
+            _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("timeline down"));
+            SetupModuleHasKeys("m1", false);
+            _moduleRepositoryMock.Setup(r => r.DeleteAsync("m1")).Returns(Task.CompletedTask);
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeTrue();
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync("m1"), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_WhenMoveThrows_ReturnsGenericErrorAndKeepsModule()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            _keyRepositoryMock.Setup(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), "m2"))
+                .ThrowsAsync(new InvalidOperationException("mongo secret detail"));
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("Error").WhoseValue.Should().Be("An unexpected error occurred");
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        #endregion
     }
 }
 

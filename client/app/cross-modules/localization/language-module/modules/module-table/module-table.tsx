@@ -417,10 +417,14 @@ export function ModuleTable() {
           {tagTarget && <TagGlossaryModal module={tagTarget} onClose={() => setTagTarget(null)} />}
         </Dialog>
 
-        {/* Delete Module Dialog */}
+        {/* Delete Module Dialog — offers every module as a move target, regardless of search */}
         <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           {deleteTarget && (
-            <DeleteModuleModal module={deleteTarget} onClose={() => setDeleteTarget(null)} />
+            <DeleteModuleModal
+              module={deleteTarget}
+              modules={modulesData ?? []}
+              onClose={() => setDeleteTarget(null)}
+            />
           )}
         </Dialog>
       </div>

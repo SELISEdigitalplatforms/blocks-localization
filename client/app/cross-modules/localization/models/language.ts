@@ -145,11 +145,7 @@ export interface IModuleGets {
 
 export interface IDeleteModuleRequest {
   itemId: string;
-}
-
-export interface IMoveKeysRequest {
-  itemIds: string[];
-  targetModuleId: string;
+  targetModuleId?: string;
 }
 
 export interface ITagGlossaryRequest {
