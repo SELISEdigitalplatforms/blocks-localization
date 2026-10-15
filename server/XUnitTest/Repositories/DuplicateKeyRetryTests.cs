@@ -99,5 +99,41 @@ namespace XUnitTest.Repositories
             DuplicateKeyRetry.IsDuplicateKey(MongoExceptionFactory.DuplicateKeyWrite()).Should().BeTrue();
             DuplicateKeyRetry.IsDuplicateKey(MongoExceptionFactory.Command(11000)).Should().BeFalse();
         }
+
+        [Fact]
+        public void An_immutable_id_conflict_from_mongos_own_upsert_retry_counts_as_a_concurrent_insert()
+        {
+            DuplicateKeyRetry.IsDuplicateKey(MongoExceptionFactory.ImmutableIdWrite()).Should().BeTrue();
+            DuplicateKeyRetry.IsDuplicateKey(MongoExceptionFactory.Write(ServerErrorCategory.Uncategorized, 2, "bad value")).Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Immutable_id_conflicts_are_retried_like_duplicate_key_errors()
+        {
+            var ops = Operations(1);
+            Respond(_ => throw MongoExceptionFactory.BulkWrite(new List<WriteModel<BsonDocument>>(), new[] { MongoExceptionFactory.BulkError(0, code: 66) }, Enumerable.Empty<WriteModel<BsonDocument>>()), Ok);
+
+            await DuplicateKeyRetry.BulkWriteAsync(_collection.Object, ops);
+
+            _calls.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public async Task The_retry_can_be_adjusted_before_it_runs()
+        {
+            var ops = Operations(2);
+            var adjusted = Operations(1);
+            Respond(_ => throw MongoExceptionFactory.BulkWrite(new List<WriteModel<BsonDocument>>(), new[] { MongoExceptionFactory.BulkError(0) }, ops.Skip(1)), Ok);
+            IReadOnlyList<WriteModel<BsonDocument>>? seen = null;
+
+            await DuplicateKeyRetry.BulkWriteAsync(_collection.Object, ops, retry =>
+            {
+                seen = retry;
+                return Task.FromResult<IReadOnlyList<WriteModel<BsonDocument>>>(adjusted);
+            });
+
+            seen.Should().Equal(ops[0], ops[1]);
+            _calls[1].Should().Equal(adjusted);
+        }
     }
 }

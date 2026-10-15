@@ -85,7 +85,7 @@ namespace XUnitTest.Repositories
             var response = await _repo.GetAllKeysAsync(Request());
 
             Rendered(_countFilter!).Should().Contain("\"_id\" : { \"$in\" : [\"id-0\", \"id-1\", \"id-2\"] }");
-            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1, ModuleId: 1, CreateDate: 1 }").ToJson());
+            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1, ModuleId: 1, CreateDate: 1, _id: 1 }").ToJson());
             response.DuplicatesTruncated.Should().BeFalse();
             _aggregateOptions!.AllowDiskUse.Should().BeTrue();
         }
@@ -107,7 +107,7 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task An_explicit_sort_wins_over_the_duplicate_order()
+        public async Task An_explicit_sort_comes_first_and_the_tie_breakers_keep_paging_stable()
         {
             DuplicateIds(2);
             var request = Request();
@@ -116,7 +116,20 @@ namespace XUnitTest.Repositories
 
             await _repo.GetAllKeysAsync(request);
 
-            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ LastUpdateDate: -1 }").ToJson());
+            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ LastUpdateDate: -1, ModuleId: 1, CreateDate: 1, _id: 1 }").ToJson());
+        }
+
+        [Fact]
+        public async Task The_tables_default_key_name_sort_still_groups_copies_by_module()
+        {
+            // The UI always sends its sort property, "KeyName" by default.
+            DuplicateIds(2);
+            var request = Request();
+            request.SortProperty = "KeyName";
+
+            await _repo.GetAllKeysAsync(request);
+
+            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1, ModuleId: 1, CreateDate: 1, _id: 1 }").ToJson());
         }
 
         [Fact]

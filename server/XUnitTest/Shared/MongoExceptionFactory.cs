@@ -24,11 +24,18 @@ namespace XUnitTest.Shared
             new(Connection(), $"command failed with code {code}", new BsonDocument("createIndexes", "test"),
                 new BsonDocument { { "ok", 0 }, { "code", code }, { "errmsg", $"error {code}" } });
 
-        public static MongoWriteException DuplicateKeyWrite()
+        public static MongoWriteException DuplicateKeyWrite() =>
+            Write(ServerErrorCategory.DuplicateKey, DuplicateKeyCode, "E11000 duplicate key error");
+
+        /// <summary>What a concurrent upsert gets when MongoDB's own retry hits a row with another _id.</summary>
+        public static MongoWriteException ImmutableIdWrite() =>
+            Write(ServerErrorCategory.Uncategorized, 66, "Performing an update on the path '_id' would modify the immutable field '_id'");
+
+        public static MongoWriteException Write(ServerErrorCategory category, int code, string message)
         {
             var error = (WriteError)Activator.CreateInstance(
                 typeof(WriteError), BindingFlags.Instance | BindingFlags.NonPublic, null,
-                new object[] { ServerErrorCategory.DuplicateKey, DuplicateKeyCode, "E11000 duplicate key error", new BsonDocument() }, null)!;
+                new object[] { category, code, message, new BsonDocument() }, null)!;
             return new MongoWriteException(Connection(), error, null, null);
         }
 

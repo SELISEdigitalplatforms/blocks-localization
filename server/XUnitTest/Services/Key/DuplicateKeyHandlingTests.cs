@@ -96,6 +96,19 @@ namespace XUnitTest.Services.Key
         }
 
         [Fact]
+        public async Task A_save_that_loses_mongos_own_upsert_retry_answers_like_the_key_validator()
+        {
+            _keyRepository.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>())).ThrowsAsync(MongoExceptionFactory.ImmutableIdWrite());
+
+            var response = await _service.SaveKeyAsync(NewKey());
+
+            var failure = response.ValidationErrors.Should().ContainSingle().Subject;
+            failure.PropertyName.Should().Be("IsNewKey");
+            response.ErrorMessage.Should().NotContain("immutable");
+            VerifyNothingFollowedTheSave();
+        }
+
+        [Fact]
         public async Task A_rejected_save_never_shows_mongo_text()
         {
             SaveRejectedFor("race-key");

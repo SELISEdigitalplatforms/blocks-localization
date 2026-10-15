@@ -83,15 +83,46 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchBlocksLanguageKey.mock.calls[0][0]).not.toHaveProperty("onlyDuplicates");
 
     const on = renderQ(() =>
-      hooks.useGetBlocksLanguageKey(0, 10, "", [], false, "", false, undefined, undefined, undefined, [], true),
+      hooks.useGetBlocksLanguageKey(
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        [],
+        true,
+      ),
     );
     await waitFor(() => expect(on.result.current.isSuccess).toBe(true));
-    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(expect.objectContaining({ onlyDuplicates: true }));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onlyDuplicates: true }),
+    );
   });
 
   it("the duplicate filter is part of the list query key", () => {
     const list = (onlyDuplicates: boolean) =>
-      localizationQueryKeys.languageKeys.list("t", 0, 10, "", [], false, "", false, "", "", "", "", [], [], onlyDuplicates);
+      localizationQueryKeys.languageKeys.list(
+        "t",
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        "",
+        "",
+        "",
+        "",
+        [],
+        [],
+        onlyDuplicates,
+      );
     expect(list(true)).not.toEqual(list(false));
   });
 
@@ -120,7 +151,10 @@ describe("localization/hooks/use-language-manager", () => {
     const { queryClient, wrapper } = createQueryWrapper();
     const summaryKey = localizationQueryKeys.languageKeys.duplicateSummary("tenant-1");
     queryClient.setQueryData(summaryKey, { extraKeyCount: 1 });
-    const { result } = renderHook(() => (hooks[hook] as () => { mutateAsync: (p: unknown) => Promise<unknown> })(), { wrapper });
+    const { result } = renderHook(
+      () => (hooks[hook] as () => { mutateAsync: (p: unknown) => Promise<unknown> })(),
+      { wrapper },
+    );
 
     await result.current.mutateAsync({} as never);
 

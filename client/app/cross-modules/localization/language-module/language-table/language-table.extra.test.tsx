@@ -711,9 +711,9 @@ describe("language-table (extra coverage)", () => {
       renderWithProviders(<LanguageTable />);
       await user.click(screen.getByText("greeting"));
       expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1", {
-      // Key details returns to this list (with its filters) after a delete.
-      state: { returnSearch: expect.any(String) },
-    });
+        // Key details returns to this list (with its filters) after a delete.
+        state: { returnSearch: expect.any(String) },
+      });
     });
 
     it("opens and confirms the single-key translate dialog", async () => {

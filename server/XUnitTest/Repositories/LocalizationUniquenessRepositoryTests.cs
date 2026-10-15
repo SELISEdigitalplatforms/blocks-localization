@@ -116,7 +116,7 @@ namespace XUnitTest.Repositories
             // Example 1: (m1,"save") x2 and (m1,"cancel") x3 are two groups of five rows.
             _keys.Groups(2, 5);
             _modules.Groups(1, 2);
-            _keys.Existing(new BsonDocument { { "name", "_id_" } }, new BsonDocument { { "name", LocalizationUniquenessRepository.KeyIndexName } });
+            _keys.Existing(new BsonDocument { { "name", "_id_" } }, new BsonDocument { { "name", LocalizationUniquenessRepository.KeyIndexName }, { "unique", true } });
 
             var summary = await _repo.GetDuplicateSummaryAsync(_tenant);
 
@@ -129,6 +129,16 @@ namespace XUnitTest.Repositories
             summary.ModuleUniquenessEnforced.Should().BeFalse();
             _keys.AggregateOptions.Should().OnlyContain(o => o.AllowDiskUse == true);
             _modules.AggregateOptions.Should().OnlyContain(o => o.AllowDiskUse == true);
+        }
+
+        [Fact]
+        public async Task An_index_with_our_name_that_is_not_unique_does_not_count_as_enforced()
+        {
+            _keys.Existing(new BsonDocument { { "name", LocalizationUniquenessRepository.KeyIndexName }, { "key", new BsonDocument { { "ModuleId", 1 }, { "KeyName", 1 } } } });
+
+            var summary = await _repo.GetDuplicateSummaryAsync(_tenant);
+
+            summary.KeyUniquenessEnforced.Should().BeFalse();
         }
 
         [Fact]
@@ -216,7 +226,8 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task An_index_conflict_logs_the_existing_index_for_manual_review()
         {
-            _keys.Existing(BsonDocument.Parse("{ name: 'ModuleId_1_KeyName_1', key: { ModuleId: 1, KeyName: 1 }, unique: true }"));
+            // Created from the shell, so the key pattern holds doubles.
+            _keys.Existing(BsonDocument.Parse("{ name: 'ModuleId_1_KeyName_1', key: { ModuleId: 1.0, KeyName: 1.0 }, unique: true }"));
             _keys.CreateFails(MongoExceptionFactory.Command(85));
 
             await _repo.EnsureUniqueIndexesAsync(_tenant);

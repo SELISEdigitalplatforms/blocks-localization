@@ -237,7 +237,9 @@ describe("language-module/language-table", () => {
       } as never);
       const { container } = renderWithProviders(<LanguageTable />);
       const note = within(container).queryByTestId("duplicates-truncated-note");
-      expect(note?.textContent ?? null).toBe(shown ? "Showing the first 10,000 duplicate rows." : null);
+      expect(note?.textContent ?? null).toBe(
+        shown ? "Showing the first 10,000 duplicate rows." : null,
+      );
     },
   );
 

@@ -143,8 +143,11 @@ namespace Eurolm.DomainService.Repositories
 
         private static async Task<bool> HasIndexAsync(IMongoCollection<BsonDocument> collection, string indexName)
         {
+            // Only a unique index under our name actually prevents duplicates.
             var indexes = await ListIndexesAsync(collection);
-            return indexes.Any(index => index.GetValue("name", BsonNull.Value) == indexName);
+            return indexes.Any(index =>
+                index.GetValue("name", BsonNull.Value) == indexName &&
+                index.GetValue("unique", false).ToBoolean());
         }
 
         private static async Task<List<BsonDocument>> ListIndexesAsync(IMongoCollection<BsonDocument> collection)
@@ -215,11 +218,11 @@ namespace Eurolm.DomainService.Repositories
         {
             try
             {
-                var keyPattern = new BsonDocument(fields.Select(f => new BsonElement(f, 1)));
+                // Compare key fields by name and order only: a shell-created index stores 1.0, not 1.
                 var indexes = await ListIndexesAsync(collection);
                 var conflicting = indexes.Where(index =>
                     index.GetValue("name", BsonNull.Value) == indexName ||
-                    index.GetValue("key", BsonNull.Value) == keyPattern);
+                    (index.GetValue("key", BsonNull.Value) is BsonDocument key && key.Names.SequenceEqual(fields)));
 
                 return string.Join("; ", conflicting.Select(index => index.ToJson()));
             }

@@ -9,8 +9,13 @@ namespace Eurolm.DomainService.Repositories
     /// </summary>
     public static class DuplicateKeyRetry
     {
+        /// <param name="prepareRetry">
+        /// Optional: adjusts the operations before the retry, for example to point a replacement at
+        /// the row the concurrent writer created.
+        /// </param>
         public static async Task<(long Upserted, long Modified)> BulkWriteAsync<T>(
-            IMongoCollection<T> collection, IReadOnlyList<WriteModel<T>> operations)
+            IMongoCollection<T> collection, IReadOnlyList<WriteModel<T>> operations,
+            Func<IReadOnlyList<WriteModel<T>>, Task<IReadOnlyList<WriteModel<T>>>>? prepareRetry = null)
         {
             try
             {
@@ -20,9 +25,13 @@ namespace Eurolm.DomainService.Repositories
             catch (MongoBulkWriteException<T> ex) when (IsOnlyDuplicateKeyErrors(ex))
             {
                 // An ordered bulk write stops at its first error, so everything after it is also unprocessed.
-                var retry = ex.WriteErrors.Select(error => operations[error.Index])
+                IReadOnlyList<WriteModel<T>> retry = ex.WriteErrors.Select(error => operations[error.Index])
                     .Concat(ex.UnprocessedRequests)
                     .ToList();
+                if (prepareRetry != null)
+                {
+                    retry = await prepareRetry(retry);
+                }
 
                 // A second duplicate-key error, or any other error, propagates to the caller.
                 var second = await collection.BulkWriteAsync(retry);
@@ -37,12 +46,21 @@ namespace Eurolm.DomainService.Repositories
                 ? (result.Upserts?.Count ?? 0, result.IsModifiedCountAvailable ? result.ModifiedCount : 0)
                 : (0, 0);
 
+        // MongoDB retries an upsert itself when its filter matches the unique index fields. If the
+        // concurrent writer's row then has a different _id than the replacement, the conflict
+        // surfaces as ImmutableField (66) instead of DuplicateKey (11000). Both mean "someone else
+        // created this key first".
+        private const int ImmutableFieldCode = 66;
+
+        private static bool IsConcurrentInsertConflict(ServerErrorCategory category, int code) =>
+            category == ServerErrorCategory.DuplicateKey || code == ImmutableFieldCode;
+
         public static bool IsOnlyDuplicateKeyErrors<T>(MongoBulkWriteException<T> ex) =>
             ex.WriteConcernError == null
             && ex.WriteErrors.Count > 0
-            && ex.WriteErrors.All(error => error.Category == ServerErrorCategory.DuplicateKey);
+            && ex.WriteErrors.All(error => IsConcurrentInsertConflict(error.Category, error.Code));
 
         public static bool IsDuplicateKey(Exception ex) =>
-            ex is MongoWriteException { WriteError.Category: ServerErrorCategory.DuplicateKey };
+            ex is MongoWriteException { WriteError: { } error } && IsConcurrentInsertConflict(error.Category, error.Code);
     }
 }

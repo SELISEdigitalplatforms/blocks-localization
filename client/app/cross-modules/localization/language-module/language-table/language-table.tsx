@@ -1051,7 +1051,10 @@ export function LanguageTable() {
               </div>
               <CardContent>
                 {queryParams.duplicates && blocksLanguageKeyData?.duplicatesTruncated && (
-                  <p className="mb-2 text-sm text-medium-emphasis" data-testid="duplicates-truncated-note">
+                  <p
+                    className="mb-2 text-sm text-medium-emphasis"
+                    data-testid="duplicates-truncated-note"
+                  >
                     Showing the first 10,000 duplicate rows.
                   </p>
                 )}

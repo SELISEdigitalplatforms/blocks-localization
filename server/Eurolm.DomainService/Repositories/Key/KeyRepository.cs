@@ -72,11 +72,16 @@ namespace Eurolm.DomainService.Repositories
                 duplicatesTruncated = truncated;
                 filter = Builders<Key>.Filter.And(filter, Builders<Key>.Filter.In(k => k.ItemId, ids));
 
-                // Copies of the same key sit next to each other unless the caller chose a sort.
-                if (string.IsNullOrWhiteSpace(request.SortProperty))
-                {
-                    sort = Builders<Key>.Sort.Ascending(k => k.KeyName).Ascending(k => k.ModuleId).Ascending(k => k.CreateDate);
-                }
+                // Copies of the same key sit next to each other unless the caller chose a sort. Either
+                // way the tie-breakers keep paging stable and copies of one key in order.
+                var primary = string.IsNullOrWhiteSpace(request.SortProperty)
+                    ? Builders<Key>.Sort.Ascending(k => k.KeyName)
+                    : sort;
+                sort = Builders<Key>.Sort.Combine(
+                    primary,
+                    Builders<Key>.Sort.Ascending(k => k.ModuleId),
+                    Builders<Key>.Sort.Ascending(k => k.CreateDate),
+                    Builders<Key>.Sort.Ascending(k => k.ItemId));
             }
 
             var findKeysTask = collection

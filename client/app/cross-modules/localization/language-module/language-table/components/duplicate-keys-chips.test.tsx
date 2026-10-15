@@ -71,7 +71,14 @@ describe("DuplicateKeysChips", () => {
   });
 
   it("shows nothing when there are no duplicates", () => {
-    withSummary(summary({ keyGroupCount: 0, duplicateKeyRowCount: 0, extraKeyCount: 0, keyUniquenessEnforced: true }));
+    withSummary(
+      summary({
+        keyGroupCount: 0,
+        duplicateKeyRowCount: 0,
+        extraKeyCount: 0,
+        keyUniquenessEnforced: true,
+      }),
+    );
     const { container } = renderChips();
     expect(container.innerHTML).toBe("");
   });
@@ -130,7 +137,9 @@ describe("DuplicateKeysChips", () => {
     [1, "1 duplicate module"],
     [2, "2 duplicate modules"],
   ])("reports %i extra module(s) with a non-interactive badge", (count, text) => {
-    withSummary(summary({ moduleGroupCount: 1, extraModuleCount: count, moduleUniquenessEnforced: false }));
+    withSummary(
+      summary({ moduleGroupCount: 1, extraModuleCount: count, moduleUniquenessEnforced: false }),
+    );
     renderChips();
 
     const badge = screen.getByTestId("duplicate-modules-badge");
@@ -156,6 +165,30 @@ describe("DuplicateKeysChips", () => {
       expect(window.sessionStorage.getItem(enforceUniquenessFlag("tenant-1"))).not.toBeNull();
     });
 
+    it("still asks for the keys once they become clean after the modules were requested", () => {
+      // First visit: modules are clean, keys still have duplicates.
+      withSummary(summary({ moduleUniquenessEnforced: false }));
+      renderChips().unmount();
+      expect(enforce).toHaveBeenCalledTimes(1);
+      expect(window.sessionStorage.getItem(enforceUniquenessFlag("tenant-1"))).toBe("modules");
+
+      // Same session, after the duplicates were deleted: the keys get their one request.
+      withSummary(
+        summary({
+          keyGroupCount: 0,
+          duplicateKeyRowCount: 0,
+          extraKeyCount: 0,
+          moduleUniquenessEnforced: true,
+        }),
+      );
+      renderChips().unmount();
+      expect(enforce).toHaveBeenCalledTimes(2);
+
+      // Nothing new is ready: no third request.
+      renderChips();
+      expect(enforce).toHaveBeenCalledTimes(2);
+    });
+
     it("asks when only the modules are clean and unprotected", () => {
       withSummary(summary({ moduleUniquenessEnforced: false }));
       renderChips();
@@ -165,7 +198,14 @@ describe("DuplicateKeysChips", () => {
     it("does not ask while duplicates remain or once everything is protected", () => {
       withSummary(summary());
       renderChips().unmount();
-      withSummary(summary({ keyGroupCount: 0, duplicateKeyRowCount: 0, extraKeyCount: 0, keyUniquenessEnforced: true }));
+      withSummary(
+        summary({
+          keyGroupCount: 0,
+          duplicateKeyRowCount: 0,
+          extraKeyCount: 0,
+          keyUniquenessEnforced: true,
+        }),
+      );
       renderChips();
 
       expect(enforce).not.toHaveBeenCalled();

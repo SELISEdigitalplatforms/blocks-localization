@@ -13,23 +13,32 @@ export const DUPLICATES_TOOLTIP_SUFFIX = "Click to show them.";
 export const DUPLICATE_MODULES_TOOLTIP =
   "Some module names are used by more than one module. Keys may be split between them.";
 
-/** sessionStorage flag: uniqueness is requested at most once per tenant per browser session. */
+/**
+ * sessionStorage flag: uniqueness is requested at most once per tenant per browser session for each
+ * collection. The value lists the collections already requested ("keys", "modules"), so keys that
+ * become clean later in the session still get their request after modules had theirs.
+ */
 export const enforceUniquenessFlag = (tenantId: string) => `loc-enforce-uniqueness:${tenantId}`;
+
+type Collection = "keys" | "modules";
 
 const plural = (count: number, one: string, many: string) =>
   `${count.toLocaleString()} ${count === 1 ? one : many}`;
 
-const readFlag = (key: string) => {
+const readRequested = (key: string): Collection[] => {
   try {
-    return window.sessionStorage.getItem(key) !== null;
+    const value = window.sessionStorage.getItem(key);
+    return value
+      ? (value.split(",").filter((c) => c === "keys" || c === "modules") as Collection[])
+      : [];
   } catch {
-    return false;
+    return [];
   }
 };
 
-const writeFlag = (key: string) => {
+const writeRequested = (key: string, collections: Collection[]) => {
   try {
-    window.sessionStorage.setItem(key, "1");
+    window.sessionStorage.setItem(key, collections.join(","));
   } catch {
     // Without storage the request may repeat on a later visit; enforcement is idempotent.
   }
@@ -50,13 +59,15 @@ export function DuplicateKeysChips() {
   // (for example 403 for a user without the bulk-delete permission) is ignored silently.
   useEffect(() => {
     if (!summary || !tenantId) return;
-    const keysReady = summary.extraKeyCount === 0 && !summary.keyUniquenessEnforced;
-    const modulesReady = summary.extraModuleCount === 0 && !summary.moduleUniquenessEnforced;
-    if (!keysReady && !modulesReady) return;
+    const ready: Collection[] = [];
+    if (summary.extraKeyCount === 0 && !summary.keyUniquenessEnforced) ready.push("keys");
+    if (summary.extraModuleCount === 0 && !summary.moduleUniquenessEnforced) ready.push("modules");
 
     const flag = enforceUniquenessFlag(tenantId);
-    if (readFlag(flag)) return;
-    writeFlag(flag);
+    const requested = readRequested(flag);
+    if (!ready.some((collection) => !requested.includes(collection))) return;
+
+    writeRequested(flag, Array.from(new Set([...requested, ...ready])));
     enforceUniqueness(undefined, { onError: () => undefined });
   }, [summary, tenantId, enforceUniqueness]);
 
@@ -107,8 +118,16 @@ export function DuplicateKeysChips() {
         <Tooltip>
           {/* Badge does not forward refs, so a focusable span carries the tooltip. */}
           <TooltipTrigger asChild>
-            <span tabIndex={0} className="inline-flex rounded-full" aria-label={`${moduleText}. ${DUPLICATE_MODULES_TOOLTIP}`}>
-              <Badge variant="warning" className="rounded-full" data-testid="duplicate-modules-badge">
+            <span
+              tabIndex={0}
+              className="inline-flex rounded-full"
+              aria-label={`${moduleText}. ${DUPLICATE_MODULES_TOOLTIP}`}
+            >
+              <Badge
+                variant="warning"
+                className="rounded-full"
+                data-testid="duplicate-modules-badge"
+              >
                 {moduleText}
               </Badge>
             </span>
