@@ -461,6 +461,49 @@ namespace Eurolm.DomainService.Repositories
             await dataBase.GetCollection<BlocksLanguageKey>(_collectionName).InsertManyAsync(entities);
         }
 
+        public async Task<List<BlocksLanguageKey>> InsertOrMergeResourceKeysAsync(List<BlocksLanguageKey> keys)
+        {
+            if (keys.Count == 0)
+            {
+                return new List<BlocksLanguageKey>();
+            }
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            try
+            {
+                // Unordered, so one rejected key does not stop the others.
+                await collection.InsertManyAsync(keys, new InsertManyOptions { IsOrdered = false });
+                return new List<BlocksLanguageKey>();
+            }
+            catch (MongoBulkWriteException<BlocksLanguageKey> ex) when (DuplicateKeyRetry.IsOnlyDuplicateKeyErrors(ex))
+            {
+                var lost = ex.WriteErrors.Select(error => keys[error.Index]).ToList();
+                await UpsertResourceKeysWithMergeAsync(lost);
+                return lost;
+            }
+        }
+
+        public async Task<List<BlocksLanguageModule>> InsertModulesSkippingTakenNamesAsync(List<BlocksLanguageModule> modules)
+        {
+            if (modules.Count == 0)
+            {
+                return new List<BlocksLanguageModule>();
+            }
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageModule>(BlocksLanguageModulesCollection);
+            try
+            {
+                await collection.InsertManyAsync(modules, new InsertManyOptions { IsOrdered = false });
+                return new List<BlocksLanguageModule>();
+            }
+            catch (MongoBulkWriteException<BlocksLanguageModule> ex) when (DuplicateKeyRetry.IsOnlyDuplicateKeyErrors(ex))
+            {
+                return ex.WriteErrors.Select(error => modules[error.Index]).ToList();
+            }
+        }
+
         /// <summary>
         /// Upserts resource keys with atomic resource merging to handle concurrent imports.
         /// Uses ModuleId + KeyName as the unique identifier for upsert operations.

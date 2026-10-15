@@ -27,6 +27,18 @@ namespace Eurolm.DomainService.Repositories
         Task<bool> UpdateKeysCountOfAppAsync(string appId, bool isExternal, string tenantId, string organizationId);    
         Task InsertUilmApplications(List<BlocksLanguageModule> uilmApplicationsToBeInserted, string clientTenantId);
         Task InsertUilmApplications(IEnumerable<BlocksLanguageModule> entities);
+
+        /// <summary>
+        /// Inserts new keys; a key another writer created meanwhile (rejected by the unique key index) is
+        /// merged into that row instead. Returns the keys that were merged rather than inserted.
+        /// </summary>
+        Task<List<BlocksLanguageKey>> InsertOrMergeResourceKeysAsync(List<BlocksLanguageKey> keys);
+
+        /// <summary>
+        /// Inserts new modules, skipping any whose name another writer took meanwhile (rejected by the unique
+        /// module-name index). Returns the skipped modules.
+        /// </summary>
+        Task<List<BlocksLanguageModule>> InsertModulesSkippingTakenNamesAsync(List<BlocksLanguageModule> modules);
         Task<List<T>> GetUilmApplications<T>(Expression<Func<BlocksLanguageModule, bool>> expression);
         Task<List<BlocksLanguageKey>> GetUilmResourceKeys(Expression<Func<BlocksLanguageKey, bool>> expression, string tenantId);
         Task<List<T>> GetUilmResourceKeys<T>(Expression<Func<BlocksLanguageKey, bool>> expression);
