@@ -24,15 +24,22 @@ type SaveResponse = {
   validationErrors?: { propertyName: string; errorMessage: string }[] | null;
 };
 
-const DUPLICATE_KEY_MESSAGE = "KeyName and ModuleId combination must not already exist for this key.";
+const DUPLICATE_KEY_MESSAGE =
+  "KeyName and ModuleId combination must not already exist for this key.";
 const isSummary = (url: string) => url.includes("/Key/GetDuplicateSummary");
 const isEnforce = (url: string) => url.includes("/Key/EnforceUniqueness");
 
 /** Opens the Translations keys tab and returns the summary the page loaded with it. */
-async function openKeysWithSummary(page: Page, translations: TranslationsPage): Promise<DuplicateSummary> {
-  const summaryResponse = page.waitForResponse((r) => isSummary(r.url()) && r.request().method() === "GET", {
-    timeout: 30_000,
-  });
+async function openKeysWithSummary(
+  page: Page,
+  translations: TranslationsPage,
+): Promise<DuplicateSummary> {
+  const summaryResponse = page.waitForResponse(
+    (r) => isSummary(r.url()) && r.request().method() === "GET",
+    {
+      timeout: 30_000,
+    },
+  );
   await openTranslations(page);
   await translations.openTranslationKeysTab();
   await translations.expectTranslationsHeadingVisible();
@@ -46,21 +53,33 @@ async function openKeysWithSummary(page: Page, translations: TranslationsPage): 
  * direct API calls below are authenticated exactly like the app.
  */
 async function captureApi(page: Page, translations: TranslationsPage) {
-  const listRequest = page.waitForRequest((r) => r.url().includes("/Key/Gets") && r.method() === "POST", {
-    timeout: 30_000,
-  });
-  const modulesResponse = page.waitForResponse((r) => r.url().includes("/Module/GetModulesForCurrentTenant"), {
-    timeout: 30_000,
-  });
+  const listRequest = page.waitForRequest(
+    (r) => r.url().includes("/Key/Gets") && r.method() === "POST",
+    {
+      timeout: 30_000,
+    },
+  );
+  const modulesResponse = page.waitForResponse(
+    (r) => r.url().includes("/Module/GetModulesForCurrentTenant"),
+    {
+      timeout: 30_000,
+    },
+  );
   await openTranslations(page);
   await translations.openTranslationKeysTab();
   const request: Request = await listRequest;
-  const modules = (await (await modulesResponse).json()) as { itemId: string; moduleName: string }[];
+  const modules = (await (await modulesResponse).json()) as {
+    itemId: string;
+    moduleName: string;
+  }[];
   expect(modules.length, "the test project needs at least one module").toBeGreaterThan(0);
 
   const headers = Object.fromEntries(
     Object.entries(await request.allHeaders()).filter(
-      ([name]) => !["content-length", "host", "cookie", "connection", "accept-encoding"].includes(name.toLowerCase()),
+      ([name]) =>
+        !["content-length", "host", "cookie", "connection", "accept-encoding"].includes(
+          name.toLowerCase(),
+        ),
     ),
   );
   const keyApi = request.url().replace(/\/Key\/Gets(\?.*)?$/, "/Key");
@@ -91,13 +110,18 @@ test.describe("Duplicate keys", () => {
       await expect(chip).toHaveAttribute("aria-pressed", "false");
 
       const filtered = page.waitForRequest(
-        (r) => r.url().includes("/Key/Gets") && (r.postDataJSON() as { onlyDuplicates?: boolean })?.onlyDuplicates === true,
+        (r) =>
+          r.url().includes("/Key/Gets") &&
+          (r.postDataJSON() as { onlyDuplicates?: boolean })?.onlyDuplicates === true,
       );
       await chip.click();
       await expect(page).toHaveURL(/duplicates=true/);
       await expect(chip).toHaveAttribute("aria-pressed", "true");
       const response = await (await filtered).response();
-      const body = (await response!.json()) as { totalCount: number; duplicatesTruncated?: boolean };
+      const body = (await response!.json()) as {
+        totalCount: number;
+        duplicatesTruncated?: boolean;
+      };
       if (!body.duplicatesTruncated) expect(body.totalCount).toBe(summary.duplicateKeyRowCount);
 
       await chip.click();
@@ -118,13 +142,18 @@ test.describe("Duplicate keys", () => {
     });
   });
 
-  test("A clean project turns on duplicate prevention at most once per session", async ({ page }) => {
+  test("A clean project turns on duplicate prevention at most once per session", async ({
+    page,
+  }) => {
     test.setTimeout(180_000);
     const translations = new TranslationsPage(page);
     const enforceCalls: { status: number; body: unknown }[] = [];
     page.on("response", async (response) => {
       if (isEnforce(response.url()) && response.request().method() === "POST") {
-        enforceCalls.push({ status: response.status(), body: await response.json().catch(() => null) });
+        enforceCalls.push({
+          status: response.status(),
+          body: await response.json().catch(() => null),
+        });
       }
     });
 
@@ -137,7 +166,10 @@ test.describe("Duplicate keys", () => {
       if (shouldEnforce) {
         await expect.poll(() => enforceCalls.length, { timeout: 30_000 }).toBe(1);
         expect(enforceCalls[0].status).toBe(200);
-        const result = enforceCalls[0].body as { keyUniquenessEnforced: boolean; moduleUniquenessEnforced: boolean };
+        const result = enforceCalls[0].body as {
+          keyUniquenessEnforced: boolean;
+          moduleUniquenessEnforced: boolean;
+        };
         // A collection with no duplicates gets its index (H11, H12); one with duplicates does not (C5).
         expect(result.keyUniquenessEnforced).toBe(summary.extraKeyCount === 0);
         expect(result.moduleUniquenessEnforced).toBe(summary.extraModuleCount === 0);
@@ -177,6 +209,18 @@ test.describe("Duplicate keys", () => {
     const api = await captureApi(page, translations);
     const bursts: { size: number; successes: number; rejections: number; rows: number }[] = [];
 
+    const deleteKeys = async (itemIds: string[]) => {
+      for (const itemId of itemIds) {
+        const response = await page.request.delete(
+          `${api.keyApi}/Delete?itemId=${encodeURIComponent(itemId)}`,
+          {
+            headers: api.headers,
+          },
+        );
+        expect(response.ok(), `cleanup of key ${itemId}`).toBe(true);
+      }
+    };
+
     const countRows = async (keyName: string) => {
       const response = await page.request.post(`${api.keyApi}/Gets`, {
         headers: api.headers,
@@ -208,26 +252,32 @@ test.describe("Duplicate keys", () => {
 
       let successes = 0;
       let rejections = 0;
-      for (const response of responses) {
-        const text = await response.text();
-        // No MongoDB text ever reaches the caller (C8).
-        expect(text).not.toMatch(/E11000|duplicate key|MongoWriteException/i);
-        expect(response.status()).toBe(200);
-        const body = JSON.parse(text) as SaveResponse;
-        if (body.success) {
-          successes += 1;
-        } else {
-          expect(body.validationErrors?.[0]).toMatchObject({ propertyName: "IsNewKey", errorMessage: DUPLICATE_KEY_MESSAGE });
-          rejections += 1;
+      let rowCount = 0;
+      try {
+        for (const response of responses) {
+          const text = await response.text();
+          // No MongoDB text ever reaches the caller (C8).
+          expect(text).not.toMatch(/E11000|duplicate key|MongoWriteException/i);
+          expect(response.status()).toBe(200);
+          const body = JSON.parse(text) as SaveResponse;
+          if (body.success) {
+            successes += 1;
+          } else {
+            expect(body.validationErrors?.[0]).toMatchObject({
+              propertyName: "IsNewKey",
+              errorMessage: DUPLICATE_KEY_MESSAGE,
+            });
+            rejections += 1;
+          }
         }
+      } finally {
+        // Remove every row this burst created, even when an assertion above failed.
+        const rows = await countRows(keyName);
+        rowCount = rows.length;
+        bursts.push({ size, successes, rejections, rows: rowCount });
+        await deleteKeys(rows.map((row) => row.itemId));
       }
-
-      const rows = await countRows(keyName);
-      bursts.push({ size, successes, rejections, rows: rows.length });
-      for (const row of rows) {
-        await page.request.delete(`${api.keyApi}/Delete?itemId=${encodeURIComponent(row.itemId)}`, { headers: api.headers });
-      }
-      return rows.length;
+      return rowCount;
     };
 
     await test.step("Ten bursts of 20 concurrent saves", async () => {
@@ -240,14 +290,21 @@ test.describe("Duplicate keys", () => {
     });
 
     test.info().annotations.push({ type: "save-race-bursts", description: JSON.stringify(bursts) });
-    expect(bursts.some((b) => b.rejections > 0), "at least one concurrent save must have been rejected").toBe(true);
+    expect(
+      bursts.some((b) => b.rejections > 0),
+      "at least one concurrent save must have been rejected",
+    ).toBe(true);
   });
 
-  test("Deleting a key from its details returns to the list the user came from", async ({ page }) => {
+  test("Deleting a key from its details returns to the list the user came from", async ({
+    page,
+  }) => {
     test.setTimeout(240_000);
     const translations = new TranslationsPage(page);
     const keyDetails = new KeyDetailsPage(page);
     const api = await captureApi(page, translations);
+    // Keys created here that the UI has not deleted yet; removed through the API if a step fails.
+    const leftovers = new Set<string>();
 
     const createKey = async (keyName: string) => {
       const response = await page.request.post(`${api.keyApi}/Save`, {
@@ -270,40 +327,60 @@ test.describe("Duplicate keys", () => {
       const body = (await list.json()) as { keys: { itemId: string; keyName: string }[] };
       const created = body.keys.find((k) => k.keyName === keyName);
       expect(created, `the new key ${keyName} is listed`).toBeTruthy();
+      leftovers.add(created!.itemId);
       return created!.itemId;
     };
 
-    await test.step("From the filtered table: back to the same query string (H17)", async () => {
-      const keyName = `e2e-return-${Date.now()}`;
-      await createKey(keyName);
-      await openTranslations(page);
-      await translations.openTranslationKeysTab();
-      await translations.searchKeys(keyName);
-      await expect(page).toHaveURL(/search=/, { timeout: 10_000 });
-      const listSearch = new URL(page.url()).search;
+    try {
+      await test.step("From the filtered table: back to the same query string (H17)", async () => {
+        const keyName = `e2e-return-${Date.now()}`;
+        const itemId = await createKey(keyName);
+        await openTranslations(page);
+        await translations.openTranslationKeysTab();
+        await translations.searchKeys(keyName);
+        await expect(page).toHaveURL(/search=/, { timeout: 10_000 });
+        const listSearch = new URL(page.url()).search;
 
-      await page.getByText(keyName, { exact: true }).first().click();
-      await expect(page).toHaveURL(/\/services\/language\/translations\/[^/?]+/, { timeout: 15_000 });
-      await keyDetails.openDeleteDialog();
-      await keyDetails.confirmDelete();
-      await keyDetails.expectDeleteSuccess();
+        await page.getByText(keyName, { exact: true }).first().click();
+        await expect(page).toHaveURL(/\/services\/language\/translations\/[^/?]+/, {
+          timeout: 15_000,
+        });
+        await keyDetails.openDeleteDialog();
+        await keyDetails.confirmDelete();
+        await keyDetails.expectDeleteSuccess();
+        leftovers.delete(itemId);
 
-      await expect(page).toHaveURL((url) => url.pathname.endsWith("/services/language") && url.search === listSearch, {
-        timeout: 15_000,
+        await expect(page).toHaveURL(
+          (url) => url.pathname.endsWith("/services/language") && url.search === listSearch,
+          {
+            timeout: 15_000,
+          },
+        );
       });
-    });
 
-    await test.step("Opened directly: back to the plain table (C19)", async () => {
-      const keyName = `e2e-direct-${Date.now()}`;
-      const itemId = await createKey(keyName);
-      await keyDetails.navigateTo(itemId, e2eBaseUrl());
-      await keyDetails.openDeleteDialog();
-      await keyDetails.confirmDelete();
-      await keyDetails.expectDeleteSuccess();
+      await test.step("Opened directly: back to the plain table (C19)", async () => {
+        const keyName = `e2e-direct-${Date.now()}`;
+        const itemId = await createKey(keyName);
+        await keyDetails.navigateTo(itemId, e2eBaseUrl());
+        await keyDetails.openDeleteDialog();
+        await keyDetails.confirmDelete();
+        await keyDetails.expectDeleteSuccess();
+        leftovers.delete(itemId);
 
-      await expect(page).toHaveURL((url) => url.pathname.endsWith("/services/language") && url.search === "", {
-        timeout: 15_000,
+        await expect(page).toHaveURL(
+          (url) => url.pathname.endsWith("/services/language") && url.search === "",
+          {
+            timeout: 15_000,
+          },
+        );
       });
-    });
+    } finally {
+      // A failed step leaves its key behind; remove it so the shared project stays clean.
+      for (const itemId of leftovers) {
+        await page.request.delete(`${api.keyApi}/Delete?itemId=${encodeURIComponent(itemId)}`, {
+          headers: api.headers,
+        });
+      }
+    }
   });
 });
