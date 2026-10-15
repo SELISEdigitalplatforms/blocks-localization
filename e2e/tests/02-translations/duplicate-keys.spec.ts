@@ -77,6 +77,8 @@ async function captureApi(page: Page, translations: TranslationsPage) {
   const headers = Object.fromEntries(
     Object.entries(await request.allHeaders()).filter(
       ([name]) =>
+        // HTTP/2 pseudo-headers (":authority", ":path", ...) are not valid request header names.
+        !name.startsWith(":") &&
         !["content-length", "host", "cookie", "connection", "accept-encoding"].includes(
           name.toLowerCase(),
         ),
