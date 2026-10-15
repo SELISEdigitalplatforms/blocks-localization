@@ -196,8 +196,8 @@ export const useDeleteLanguageModule = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
       });
-      // Keys were moved to another module, so key lists and their history changed too.
-      if (payload.targetModuleId) {
+      // Keys were moved to another module or deleted, so key lists and their history changed too.
+      if (payload.targetModuleId || payload.deleteKeys) {
         queryClient.invalidateQueries({
           queryKey: localizationQueryKeys.languageKeys.all,
         });

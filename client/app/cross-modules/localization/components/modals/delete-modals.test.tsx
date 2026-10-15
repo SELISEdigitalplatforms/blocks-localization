@@ -151,10 +151,10 @@ describe("modals/delete-module-modal", () => {
     expect(screen.queryByRole("button", { name: "View keys" })).toBeNull();
   });
 
-  it("should show the key count badge and View keys next to the move label", () => {
+  it("should show the key count badge and View keys next to the key choice label", () => {
     setKeyCount(3);
     render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
-    expect(screen.getByText("Move all keys to")).toBeTruthy();
+    expect(screen.getByText("What should happen to the keys?")).toBeTruthy();
     expect(screen.getByText("3 keys")).toBeTruthy();
     expect(screen.getByRole("button", { name: "View keys" })).toBeTruthy();
     expect(screen.queryByTestId("module-key-count-loading")).toBeNull();
@@ -163,13 +163,18 @@ describe("modals/delete-module-modal", () => {
   it.each([
     [1, "has 1 key."],
     [3, "has 3 keys."],
-  ])("should block deletion when the module has %i key(s)", (count, text) => {
+  ])("should ask what to do with the keys when the module has %i key(s)", (count, text) => {
     setKeyCount(count);
     render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
     expect(screen.getByText(new RegExp(text))).toBeTruthy();
     expect(
-      screen.getByText(/Please delete or move all keys to another module before deleting it\./),
+      screen.getByText(/Move them to another module or delete them together with the module\./),
     ).toBeTruthy();
+    expect(
+      (
+        screen.getByRole("radio", { name: "Move all keys to another module" }) as HTMLButtonElement
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
     expect(deleteModuleMock).not.toHaveBeenCalled();
   });
@@ -235,18 +240,66 @@ describe("modals/delete-module-modal", () => {
     await waitFor(() => expect(deleteModuleMock).toHaveBeenCalledWith({ itemId: "m1" }));
   });
 
-  it("should explain when there is no other module to move the keys to", () => {
+  it("should only offer deleting the keys when there is no other module to move them to", async () => {
     setKeyCount(2);
+    deleteModuleMock.mockResolvedValue({ isSuccess: true });
+    const onClose = vi.fn();
     render(
-      withDialog(<DeleteModuleModal module={module} modules={[modules[0]]} onClose={vi.fn()} />),
+      withDialog(<DeleteModuleModal module={module} modules={[modules[0]]} onClose={onClose} />),
     );
+    expect(screen.getByText("There is no other module to move the keys to.")).toBeTruthy();
+    const moveOption = screen.getByRole("radio", { name: "Move all keys to another module" });
+    expect((moveOption as HTMLButtonElement).disabled).toBe(true);
     expect(
-      screen.getByText(
-        "There is no other module to move the keys to. View the keys to delete them instead.",
-      ),
-    ).toBeTruthy();
+      screen
+        .getByRole("radio", { name: "Delete all keys with the module" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.queryByRole("combobox", { name: "Target module" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Move keys & delete module" })).toBeNull();
     expect(screen.getByRole("button", { name: "View keys" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete module & keys" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledWith(false));
+    expect(deleteModuleMock).toHaveBeenCalledWith({ itemId: "m1", deleteKeys: true });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "success", description: "Module and its keys deleted" }),
+    );
+  });
+
+  it("should delete the keys with the module when the user chooses not to move them", async () => {
+    setKeyCount(2);
+    deleteModuleMock.mockResolvedValue({ isSuccess: true });
+    const onClose = vi.fn();
+    render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={onClose} />));
+
+    fireEvent.click(screen.getByRole("radio", { name: "Delete all keys with the module" }));
+
+    expect(screen.queryByRole("combobox", { name: "Target module" })).toBeNull();
+    expect(
+      screen.getByText(/2 keys and all of their translations are permanently deleted/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Move keys & delete module" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete module & keys" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledWith(false));
+    expect(deleteModuleMock).toHaveBeenCalledWith({ itemId: "m1", deleteKeys: true });
+  });
+
+  it("should bring back the target picker when switching back to moving the keys", () => {
+    setKeyCount(2);
+    render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
+    fireEvent.click(screen.getByRole("radio", { name: "Delete all keys with the module" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Move all keys to another module" }));
+
+    expect(screen.getByRole("combobox", { name: "Target module" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Move keys & delete module" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Delete module & keys" })).toBeNull();
   });
 
   it("should not offer the move step for an empty module", () => {

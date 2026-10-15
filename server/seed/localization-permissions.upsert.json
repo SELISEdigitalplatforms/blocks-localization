@@ -472,7 +472,7 @@
         "Tags" : [],
         "Name" : "Delete Module",
         "Type" : "Endpoint",
-        "Description" : "Permanently delete a localization module. Covers: DELETE /Module/Delete?ItemId={itemId}[&TargetModuleId={targetModuleId}]. With targetModuleId, all keys are moved to that module first (rejected if a key name already exists there); without it, the delete is rejected while the module still has keys. Cannot be undone.",
+        "Description" : "Permanently delete a localization module. Covers: DELETE /Module/Delete?ItemId={itemId}[&TargetModuleId={targetModuleId}|&DeleteKeys=true]. With targetModuleId, all keys are moved to that module first (rejected if a key name already exists there); with deleteKeys=true, all keys of the module are permanently deleted with it; with neither, the delete is rejected while the module still has keys. Cannot be undone.",
         "Resource" : "blocks-localization::module::delete",
         "ResourceGroup" : "localization",
         "IsBuiltIn" : true,

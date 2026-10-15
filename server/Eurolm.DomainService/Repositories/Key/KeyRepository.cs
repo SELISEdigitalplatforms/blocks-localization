@@ -361,6 +361,18 @@ namespace Eurolm.DomainService.Repositories
             await collection.UpdateManyAsync(filter, update);
         }
 
+        public async Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            if (itemIds.Count == 0) return;
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds);
+
+            await collection.DeleteManyAsync(filter);
+        }
+
         public async Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys)
         {
             return await UpdateUilmResourceKeys(uilmResourceKeys);

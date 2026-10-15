@@ -200,6 +200,33 @@ namespace XUnitTest.Repositories
 
         #endregion
 
+        #region DeleteKeysAsync
+
+        [Fact]
+        public async Task DeleteKeysAsync_DeletesOnlyTheGivenKeysInTheTenantDatabase()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? capturedFilter = null;
+            _blkCollection.Setup(x => x.DeleteManyAsync(It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(Mock.Of<DeleteResult>());
+
+            await _repo.DeleteKeysAsync(new[] { "k1", "k2" });
+
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            RenderKeyFilter(capturedFilter!).Should().Be("{ \"_id\" : { \"$in\" : [\"k1\", \"k2\"] } }");
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_WithNoKeys_DoesNotTouchTheCollection()
+        {
+            await _repo.DeleteKeysAsync(Array.Empty<string>());
+
+            _blkCollection.Verify(x => x.DeleteManyAsync(It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region GetByIdAsync
 
         [Fact]

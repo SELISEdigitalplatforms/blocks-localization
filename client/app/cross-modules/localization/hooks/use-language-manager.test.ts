@@ -331,6 +331,26 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.deleteLanguageKeys).toHaveBeenCalled();
   });
 
+  it("useDeleteLanguageModule with deleteKeys should also refresh key lists and timelines", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
+
+    await result.current.mutateAsync({ itemId: "m1", deleteKeys: true });
+
+    const invalidatedKeys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+    expect(invalidatedKeys).toEqual(
+      expect.arrayContaining([
+        ["get-language-modules"],
+        ["get-blocksLanguageKeys"],
+        ["get-blocksLanguageKey"],
+        ["get-uilm-timeline"],
+        ["get-localization-timeline"],
+      ]),
+    );
+  });
+
   it("useDeleteLanguageModule with a target module should also refresh key lists and timelines", async () => {
     svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
     const { queryClient, wrapper } = createQueryWrapper();

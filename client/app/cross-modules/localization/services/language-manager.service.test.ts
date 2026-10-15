@@ -410,6 +410,15 @@ describe("LanguageManagerService", () => {
         `${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1&targetModuleId=mod-2`,
       );
     });
+
+    it("should include deleteKeys in the query string when deleting the keys with the module", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true });
+
+      await service.deleteLanguageModule({ itemId: "mod-1", deleteKeys: true });
+
+      const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
+      expect(calledUrl).toBe(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1&deleteKeys=true`);
+    });
   });
 
   // ─── tagGlossary ──────────────────────────────────────────────────────────

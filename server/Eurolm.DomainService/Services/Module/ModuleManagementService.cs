@@ -84,6 +84,9 @@ namespace Eurolm.DomainService.Services
                 return new BaseMutationResponse { IsSuccess = false };
 
             var isMove = !string.IsNullOrWhiteSpace(request.TargetModuleId);
+            if (isMove && request.DeleteKeys)
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Either move the keys or delete them, not both");
+
             if (isMove && request.TargetModuleId == request.ItemId)
                 return DeleteModuleFailure(TargetModuleIdErrorKey, "Choose a different module to move the keys to");
 
@@ -99,6 +102,9 @@ namespace Eurolm.DomainService.Services
                     if (moveError != null)
                         return DeleteModuleFailure(TargetModuleIdErrorKey, moveError);
                 }
+
+                if (request.DeleteKeys)
+                    await DeleteAllKeysAsync(request.ItemId);
 
                 // A module is only deletable once it is empty; this also catches a key added during the move.
                 if (await _keyRepository.HasKeysInModuleAsync(request.ItemId))
@@ -143,6 +149,48 @@ namespace Eurolm.DomainService.Services
             await _keyRepository.MoveKeysAsync(keysToMove.Select(k => k.ItemId).ToList(), targetModuleId);
             await CreateMoveTimelinesAsync(keysToMove, targetModuleId, tenantId);
             return null;
+        }
+
+        /// <summary>
+        /// Deletes every key of the module, recording each one in its history like a bulk key delete.
+        /// </summary>
+        private async Task DeleteAllKeysAsync(string moduleId)
+        {
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var keysToDelete = await _keyRepository.GetUilmResourceKeys(k => k.ModuleId == moduleId, tenantId);
+            if (keysToDelete.Count == 0)
+                return;
+
+            await _keyRepository.DeleteKeysAsync(keysToDelete.Select(k => k.ItemId).ToList());
+            await CreateDeleteTimelinesAsync(keysToDelete, tenantId);
+        }
+
+        private async Task CreateDeleteTimelinesAsync(List<BlocksLanguageKey> deletedKeys, string tenantId)
+        {
+            try
+            {
+                var userId = BlocksContext.GetContext()?.UserId ?? "System";
+                var operationId = Guid.NewGuid().ToString();
+                var deletedAt = DateTime.UtcNow;
+                var timelines = deletedKeys.Select(key => new KeyTimeline
+                {
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = null,
+                    LogFrom = LogFromConstants.KeyBulkDelete,
+                    UserId = userId,
+                    CreateDate = deletedAt,
+                    LastUpdateDate = deletedAt,
+                    OperationId = operationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                // The keys are already deleted; a missing history entry must not fail the operation.
+                _logger.LogError(ex, "Failed to create delete timeline entries for {Count} keys", deletedKeys.Count);
+            }
         }
 
         private async Task CreateMoveTimelinesAsync(List<BlocksLanguageKey> movedKeys, string targetModuleId, string tenantId)
