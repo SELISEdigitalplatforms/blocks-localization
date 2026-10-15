@@ -76,6 +76,7 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
+import { DuplicateKeysChips } from "./components/duplicate-keys-chips";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
 import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
@@ -265,6 +266,7 @@ export function LanguageTable() {
     queryParams.createEndDate ||
     queryParams.lastUpdateStartDate ||
     queryParams.lastUpdateEndDate ||
+    queryParams.duplicates ||
     resourceSearchFilters.length > 0,
   );
 
@@ -297,6 +299,7 @@ export function LanguageTable() {
     getInclusiveDateRange(queryParams.lastUpdateStartDate, queryParams.lastUpdateEndDate),
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
     queryParams.missingLanguages ?? [],
+    queryParams.duplicates,
   );
 
   const {
@@ -535,7 +538,12 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      navigate(scoped(`services/language/translations/${keyId}`));
+      // Key details returns here with the same filters (including duplicates) after a delete.
+      navigate(scoped(`services/language/translations/${keyId}`), {
+        // nuqs writes the filters straight to the browser URL, so React Router's location can be
+        // stale here; read the live query string.
+        state: { returnSearch: window.location.search },
+      });
     },
     [navigate, scoped],
   );
@@ -913,6 +921,7 @@ export function LanguageTable() {
                       {stableTotalCount.toLocaleString()} keys
                     </Badge>
                   )}
+                  <DuplicateKeysChips />
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1042,6 +1051,14 @@ export function LanguageTable() {
                 )}
               </div>
               <CardContent>
+                {queryParams.duplicates && blocksLanguageKeyData?.duplicatesTruncated && (
+                  <p
+                    className="mb-2 text-sm text-medium-emphasis"
+                    data-testid="duplicates-truncated-note"
+                  >
+                    Showing the first 10,000 duplicate rows.
+                  </p>
+                )}
                 <div
                   className="language-table-scrollbar w-full overflow-x-auto @container [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}

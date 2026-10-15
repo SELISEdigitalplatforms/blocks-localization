@@ -16,6 +16,7 @@ export const localizationQueryKeys = {
       lastUpdateEndDate: string,
       resourceSearchFilters: { culture: string; searchText: string }[],
       missingLanguages: string[],
+      onlyDuplicates = false,
     ) =>
       [
         "get-blocksLanguageKeys",
@@ -33,7 +34,12 @@ export const localizationQueryKeys = {
         lastUpdateEndDate,
         JSON.stringify(resourceSearchFilters),
         JSON.stringify(missingLanguages),
+        onlyDuplicates,
       ] as const,
+    // Sits under `all`, so every key save or delete that refreshes the list refreshes the summary too.
+    duplicateSummary: (tenantId: string) =>
+      ["get-blocksLanguageKeys", "duplicate-summary", tenantId] as const,
+    duplicateSummaryPrefix: ["get-blocksLanguageKeys", "duplicate-summary"] as const,
     detail: (tenantId: string, itemId: string) =>
       ["get-blocksLanguageKey", tenantId, itemId] as const,
     detailPrefix: ["get-blocksLanguageKey"] as const,

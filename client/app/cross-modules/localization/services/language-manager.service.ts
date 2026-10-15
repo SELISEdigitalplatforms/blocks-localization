@@ -23,6 +23,8 @@ import {
   IKeyUilmExport,
   ILanguageConfig,
   IDeleteModuleRequest,
+  IDuplicateSummary,
+  IEnforceUniquenessResult,
   IModuleGets,
   IRollbackResponse,
   ISaveBlocksLanguageKeyPayload,
@@ -52,7 +54,8 @@ export class LanguageManagerService {
     resourceSearchFilters?: { culture: string; searchText: string }[];
     glossaryId?: string;
     missingLanguages?: string[];
-  }): Promise<{ totalCount: number; keys: IBlocksLanguageKey[] }> => {
+    onlyDuplicates?: boolean;
+  }): Promise<{ totalCount: number; keys: IBlocksLanguageKey[]; duplicatesTruncated?: boolean }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
     if (!request.createDateRange) {
@@ -70,6 +73,14 @@ export class LanguageManagerService {
       delete payload.lastUpdateDateRange.endDate;
     }
     return this.httpClient.post(url, payload);
+  };
+
+  fetchDuplicateSummary = (): Promise<IDuplicateSummary> => {
+    return this.httpClient.get(LANGUAGE_KEY_ENDPOINTS.GET_DUPLICATE_SUMMARY);
+  };
+
+  enforceUniqueness = (): Promise<IEnforceUniquenessResult> => {
+    return this.httpClient.post<IEnforceUniquenessResult>(LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS, {});
   };
 
   fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {

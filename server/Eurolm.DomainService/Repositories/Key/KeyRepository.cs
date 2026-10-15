@@ -65,6 +65,25 @@ namespace Eurolm.DomainService.Repositories
 
             var sort = !string.IsNullOrWhiteSpace(request.SortProperty) && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(request.SortProperty ?? "KeyName");
 
+            var duplicatesTruncated = false;
+            if (request.OnlyDuplicates)
+            {
+                var (ids, truncated) = await GetDuplicateKeyIdsAsync(dataBase.GetCollection<BsonDocument>(_collectionName));
+                duplicatesTruncated = truncated;
+                filter = Builders<Key>.Filter.And(filter, Builders<Key>.Filter.In(k => k.ItemId, ids));
+
+                // Copies of the same key sit next to each other unless the caller chose a sort. Either
+                // way the tie-breakers keep paging stable and copies of one key in order.
+                var primary = string.IsNullOrWhiteSpace(request.SortProperty)
+                    ? Builders<Key>.Sort.Ascending(k => k.KeyName)
+                    : sort;
+                sort = Builders<Key>.Sort.Combine(
+                    primary,
+                    Builders<Key>.Sort.Ascending(k => k.ModuleId),
+                    Builders<Key>.Sort.Ascending(k => k.CreateDate),
+                    Builders<Key>.Sort.Ascending(k => k.ItemId));
+            }
+
             var findKeysTask = collection
                 .Find(filter)
                 .Skip(request.PageNumber * request.PageSize)
@@ -79,9 +98,51 @@ namespace Eurolm.DomainService.Repositories
             return new GetKeysQueryResponse
             {
                 Keys = findKeysTask.Result,
-                TotalCount = countDocumentsTask.Result
+                TotalCount = countDocumentsTask.Result,
+                DuplicatesTruncated = duplicatesTruncated
             };
         }
+
+        public const int DuplicateKeyIdCap = 10_000;
+
+        /// <summary>
+        /// The ItemIds of every key in a duplicate group (same ModuleId and KeyName), ordered by
+        /// KeyName, ModuleId and CreateDate and capped at <see cref="DuplicateKeyIdCap"/>.
+        /// </summary>
+        private static async Task<(List<string> Ids, bool Truncated)> GetDuplicateKeyIdsAsync(IMongoCollection<BsonDocument> collection)
+        {
+            var options = new AggregateOptions { AllowDiskUse = true };
+            using var cursor = await collection.AggregateAsync(DuplicateKeyIdsPipeline(DuplicateKeyIdCap + 1), options);
+            var ids = (await cursor.ToListAsync()).Select(doc => doc["_id"].ToString()!).ToList();
+
+            var truncated = ids.Count > DuplicateKeyIdCap;
+            return (truncated ? ids.Take(DuplicateKeyIdCap).ToList() : ids, truncated);
+        }
+
+        public static PipelineDefinition<BsonDocument, BsonDocument> DuplicateKeyIdsPipeline(int limit) => new[]
+        {
+            new BsonDocument("$match", new BsonDocument
+            {
+                { "ModuleId", new BsonDocument("$type", "string") },
+                { "KeyName", new BsonDocument("$type", "string") },
+            }),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", new BsonDocument { { "ModuleId", "$ModuleId" }, { "KeyName", "$KeyName" } } },
+                { "count", new BsonDocument("$sum", 1) },
+                { "members", new BsonDocument("$push", new BsonDocument { { "id", "$_id" }, { "created", "$CreateDate" } }) },
+            }),
+            new BsonDocument("$match", new BsonDocument("count", new BsonDocument("$gt", 1))),
+            new BsonDocument("$unwind", "$members"),
+            new BsonDocument("$sort", new BsonDocument
+            {
+                { "_id.KeyName", 1 },
+                { "_id.ModuleId", 1 },
+                { "members.created", 1 },
+            }),
+            new BsonDocument("$limit", limit),
+            new BsonDocument("$project", new BsonDocument("_id", "$members.id")),
+        };
 
         private static FilterDefinition<Key> getAllKeysFilter(GetKeysRequest query)
         {
@@ -400,10 +461,54 @@ namespace Eurolm.DomainService.Repositories
             await dataBase.GetCollection<BlocksLanguageKey>(_collectionName).InsertManyAsync(entities);
         }
 
+        public async Task<List<BlocksLanguageKey>> InsertOrMergeResourceKeysAsync(List<BlocksLanguageKey> keys)
+        {
+            if (keys.Count == 0)
+            {
+                return new List<BlocksLanguageKey>();
+            }
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            try
+            {
+                // Unordered, so one rejected key does not stop the others.
+                await collection.InsertManyAsync(keys, new InsertManyOptions { IsOrdered = false });
+                return new List<BlocksLanguageKey>();
+            }
+            catch (MongoBulkWriteException<BlocksLanguageKey> ex) when (DuplicateKeyRetry.IsOnlyDuplicateKeyErrors(ex))
+            {
+                var lost = ex.WriteErrors.Select(error => keys[error.Index]).ToList();
+                await UpsertResourceKeysWithMergeAsync(lost);
+                return lost;
+            }
+        }
+
+        public async Task<List<BlocksLanguageModule>> InsertModulesSkippingTakenNamesAsync(List<BlocksLanguageModule> modules)
+        {
+            if (modules.Count == 0)
+            {
+                return new List<BlocksLanguageModule>();
+            }
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageModule>(BlocksLanguageModulesCollection);
+            try
+            {
+                await collection.InsertManyAsync(modules, new InsertManyOptions { IsOrdered = false });
+                return new List<BlocksLanguageModule>();
+            }
+            catch (MongoBulkWriteException<BlocksLanguageModule> ex) when (DuplicateKeyRetry.IsOnlyDuplicateKeyErrors(ex))
+            {
+                return ex.WriteErrors.Select(error => modules[error.Index]).ToList();
+            }
+        }
+
         /// <summary>
         /// Upserts resource keys with atomic resource merging to handle concurrent imports.
         /// Uses ModuleId + KeyName as the unique identifier for upsert operations.
-        /// This method is safe for concurrent calls as it merges resources at the database level.
+        /// Concurrent calls merge resources at the database level; the unique ModuleId + KeyName
+        /// index (when the tenant has it) guarantees a single row per key.
         /// </summary>
         public async Task<(long upsertedCount, long modifiedCount)> UpsertResourceKeysWithMergeAsync(IEnumerable<BlocksLanguageKey> entities, string? tenantId = null)
         {
@@ -457,13 +562,15 @@ namespace Eurolm.DomainService.Repositories
                 return (0, 0);
             }
 
-            var result = await collection.BulkWriteAsync(bulkOps);
+            // Once the unique key index exists, a concurrent import can lose the insert race;
+            // its retry then matches the winner's row.
+            var result = await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps);
 
             // Now merge resources in a second pass for keys that have resources
             // This is done separately to handle the complex array merging
             await MergeResourcesForKeysAsync(collection, entities);
 
-            return (result.Upserts?.Count ?? 0, result.ModifiedCount);
+            return (result.Upserted, result.Modified);
         }
 
         /// <summary>

@@ -1149,11 +1149,11 @@ namespace XUnitTest
         [Fact]
         public async Task SaveUilmResourceKey_UsesUpdateAndInsertMethods()
         {
-            // SaveUilmResourceKey uses the old methods: UpdateUilmResourceKeysForChangeAll and InsertUilmResourceKeys
+            // SaveUilmResourceKey updates existing keys and inserts new ones (merging any a concurrent writer created)
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1L);
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
@@ -1178,8 +1178,8 @@ namespace XUnitTest
             // Verify the OLD methods are called (not upsert)
             _keyRepositoryMock.Verify(r => r.UpdateUilmResourceKeysForChangeAll(
                 It.Is<List<BlocksLanguageKey>>(keys => keys.Count == 1)), Times.Once);
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.Is<List<BlocksLanguageKey>>(keys => keys.Count == 1), It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(
+                It.Is<List<BlocksLanguageKey>>(keys => keys.Count == 1)), Times.Once);
         }
 
         [Fact]
@@ -1236,9 +1236,9 @@ namespace XUnitTest
         [Fact]
         public async Task SaveUilmResourceKey_OnlyInserts_CallsInsertMethod()
         {
-            // SaveUilmResourceKey uses InsertUilmResourceKeys for inserts
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            // SaveUilmResourceKey inserts new keys, merging any a concurrent writer created meanwhile
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
@@ -1256,9 +1256,8 @@ namespace XUnitTest
             var task = method.Invoke(_service, new object?[] { new List<BlocksLanguageKey>(), inserts, null }) as Task;
             await task!;
 
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.Is<List<BlocksLanguageKey>>(keys => keys.Count == 1), 
-                It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(
+                It.Is<List<BlocksLanguageKey>>(keys => keys.Count == 1)), Times.Once);
         }
 
         [Fact]
@@ -1293,8 +1292,8 @@ namespace XUnitTest
         [Fact]
         public async Task SaveUilmResourceKey_CreatesTimelineForInserts()
         {
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
@@ -1322,8 +1321,8 @@ namespace XUnitTest
             // SaveUilmResourceKey uses the separate update and insert methods
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1L);
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
@@ -1347,7 +1346,7 @@ namespace XUnitTest
 
             // Verify both the update and insert methods are called
             _keyRepositoryMock.Verify(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()), Times.Once);
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()), Times.Once);
         }
 
         #endregion
@@ -1376,7 +1375,7 @@ namespace XUnitTest
                 new() { ItemId = "m2", ModuleName = "core" }
             };
 
-            var task = method.Invoke(_service, new object[] { inserts, updates }) as Task;
+            var task = method.Invoke(_service, new object[] { inserts, updates, false }) as Task;
             await task!;
 
             _keyRepositoryMock.Verify(r => r.InsertUilmApplications(It.IsAny<List<BlocksLanguageModule>>(), It.IsAny<string>()), Times.Once);
@@ -2301,8 +2300,8 @@ namespace XUnitTest
                 It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(), It.IsAny<string>()))
                 .ReturnsAsync((BlocksLanguageKey?)null);
 
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
             _keyRepositoryMock.Setup(r => r.GetUilmApplications<BlocksLanguageModule>(
                 It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageModule, bool>>>()))
@@ -2389,9 +2388,9 @@ namespace XUnitTest
                 .ReturnsAsync((BlocksLanguageKey?)null); // No existing keys
 
             List<BlocksLanguageKey>? capturedKeys = null;
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Callback((IEnumerable<BlocksLanguageKey> keys, string _) => capturedKeys = keys.ToList())
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .Callback((List<BlocksLanguageKey> keys) => capturedKeys = keys.ToList())
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
@@ -2424,9 +2423,9 @@ namespace XUnitTest
                 .ReturnsAsync((BlocksLanguageKey?)null);
 
             List<BlocksLanguageKey>? capturedKeys = null;
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Callback((IEnumerable<BlocksLanguageKey> keys, string _) => capturedKeys = keys.ToList())
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .Callback((List<BlocksLanguageKey> keys) => capturedKeys = keys.ToList())
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
@@ -2598,9 +2597,9 @@ namespace XUnitTest
         [Fact]
         public async Task SaveUilmResourceKey_LogsInsertResults()
         {
-            // SaveUilmResourceKey uses InsertUilmResourceKeys for new keys
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            // SaveUilmResourceKey inserts new keys, merging any a concurrent writer created meanwhile
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
             _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
@@ -2621,8 +2620,7 @@ namespace XUnitTest
             await task!;
 
             // Verify insert was called
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.IsAny<List<BlocksLanguageKey>>(), It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()), Times.Once);
         }
 
         #endregion
@@ -3908,8 +3906,8 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.UpsertResourceKeysWithMergeAsync(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string>()))
                 .ReturnsAsync((1L, 0L));
 
-            _keyRepositoryMock.Setup(r => r.InsertUilmApplications(It.IsAny<List<BlocksLanguageModule>>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.InsertModulesSkippingTakenNamesAsync(It.IsAny<List<BlocksLanguageModule>>()))
+                .ReturnsAsync(new List<BlocksLanguageModule>());
 
             _keyRepositoryMock.Setup(r => r.UpdateKeysCountOfAppAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(true);
@@ -3931,9 +3929,8 @@ namespace XUnitTest
             await task!;
 
             // Should insert the new module
-            _keyRepositoryMock.Verify(r => r.InsertUilmApplications(
-                It.Is<List<BlocksLanguageModule>>(modules => modules.Any(m => m.ModuleName == "newModule")), 
-                It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertModulesSkippingTakenNamesAsync(
+                It.Is<List<BlocksLanguageModule>>(modules => modules.Any(m => m.ModuleName == "newModule"))), Times.Once);
         }
 
         [Fact]

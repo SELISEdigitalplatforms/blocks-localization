@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 
 namespace Eurolm.DomainService.Services
@@ -38,6 +39,12 @@ namespace Eurolm.DomainService.Services
             {
                 var repoModule = await MappedIntoRepoModuleAsync(module);
                 await _moduleRepository.SaveAsync(repoModule);
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique module-name index caught a concurrent save; answer as ModuleValidator would.
+                _logger.LogWarning("A module save was rejected by the unique module-name index");
+                return new ApiResponse(string.Empty, [new ValidationFailure(nameof(SaveModuleRequest.ModuleName), "Module name must be unique.")]);
             }
             catch (Exception ex)
             {
