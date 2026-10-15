@@ -143,6 +143,23 @@ describe("modals/delete-module-modal", () => {
     );
   });
 
+  it("should show a loading placeholder instead of the move step while the key count loads", () => {
+    setKeyCount(undefined, true);
+    render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
+    expect(screen.getByTestId("module-key-count-loading").getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByRole("combobox", { name: "Target module" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "View keys" })).toBeNull();
+  });
+
+  it("should show the key count badge and View keys next to the move label", () => {
+    setKeyCount(3);
+    render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
+    expect(screen.getByText("Move all keys to")).toBeTruthy();
+    expect(screen.getByText("3 keys")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View keys" })).toBeTruthy();
+    expect(screen.queryByTestId("module-key-count-loading")).toBeNull();
+  });
+
   it.each([
     [1, "has 1 key."],
     [3, "has 3 keys."],

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
-import { Check, ChevronsUpDown, Info } from "lucide-react";
+import { Check, ChevronsUpDown, Eye, Info } from "lucide-react";
+import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -19,6 +20,7 @@ import {
   CommandList,
 } from "@/components/ui-kits/command/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
+import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { cn } from "@/lib/utils";
 import {
   useDeleteLanguageModule,
@@ -118,18 +120,57 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     );
   };
 
+  // Mirrors the layout of the move-keys section so the dialog does not jump once the count arrives.
+  const renderKeyCountLoading = () => (
+    <div className="space-y-3" aria-busy="true" data-testid="module-key-count-loading">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-6 w-14 rounded-full" />
+        </div>
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <Skeleton className="h-[37px] w-full" />
+    </div>
+  );
+
+  // Count badge next to the section label, with the shortcut to the module's keys on the right.
+  const renderKeysHeader = (label?: string) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-2">
+        {label && <p className="text-sm font-medium text-high-emphasis">{label}</p>}
+        <Badge variant="warning" className="shrink-0 rounded-full font-normal">
+          {keyCount} {keyLabel}
+        </Badge>
+      </div>
+      <Button
+        type="button"
+        variant="link"
+        className="h-auto shrink-0 gap-1.5 p-0 text-primary"
+        disabled={isPending}
+        onClick={handleViewKeys}
+      >
+        <Eye className="h-4 w-4" />
+        View keys
+      </Button>
+    </div>
+  );
+
   const renderMoveKeys = () => {
     if (targetModules.length === 0) {
       return (
-        <p className="text-sm text-medium-emphasis">
-          There is no other module to move the keys to. View the keys to delete them instead.
-        </p>
+        <div className="space-y-3">
+          {renderKeysHeader()}
+          <p className="text-sm text-medium-emphasis">
+            There is no other module to move the keys to. View the keys to delete them instead.
+          </p>
+        </div>
       );
     }
 
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium text-high-emphasis">Move all keys to</p>
+        {renderKeysHeader("Move all keys to")}
         <Popover open={isTargetPickerOpen} onOpenChange={setIsTargetPickerOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -199,7 +240,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         <DialogDescription>{renderDescription()}</DialogDescription>
       </DialogHeader>
 
-      {hasKeys && renderMoveKeys()}
+      {isKeyCountLoading ? renderKeyCountLoading() : hasKeys && renderMoveKeys()}
 
       <DialogFooter className="mt-6">
         <Button
@@ -211,21 +252,16 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           Cancel
         </Button>
         {hasKeys ? (
-          <>
-            <Button type="button" variant="outline" disabled={isPending} onClick={handleViewKeys}>
-              View keys
+          targetModules.length > 0 && (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!selectedTarget || isPending}
+              onClick={() => handleSubmit(selectedTarget)}
+            >
+              {isPending ? "Moving & deleting..." : "Move keys & delete module"}
             </Button>
-            {targetModules.length > 0 && (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={!selectedTarget || isPending}
-                onClick={() => handleSubmit(selectedTarget)}
-              >
-                {isPending ? "Moving & deleting..." : "Move keys & delete module"}
-              </Button>
-            )}
-          </>
+          )
         ) : (
           <Button
             variant="destructive"
