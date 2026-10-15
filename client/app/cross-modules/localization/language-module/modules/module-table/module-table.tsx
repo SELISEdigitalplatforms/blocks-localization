@@ -32,15 +32,8 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { getModuleBadgeStyle } from "../../language-table/hooks/use-language-table-columns";
+import { getPageSizeOptions } from "../../language-table/language-table.utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
-
-const getPageSizeOptions = (totalCount: number) => {
-  const fixedOptions = [10, 30, 50, 100];
-  if (totalCount > 100) return [...fixedOptions, totalCount];
-  if (totalCount > 0)
-    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
-  return [10];
-};
 
 const compareStrings = (a: string, b: string): number => {
   if (a < b) return -1;
