@@ -33,7 +33,6 @@ vi.mock("@blocks-localization/components/modals/edit-module/edit-module", () => 
 vi.mock("@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal", () => ({
   default: () => null,
 }));
-// Capture the props so the test can assert which modules the dialog receives.
 vi.mock("@blocks-localization/components/modals/delete-module-modal/delete-module-modal", () => ({
   default: (props: { module: { moduleName: string }; onClose: () => void }) => {
     deleteModalProps(props);

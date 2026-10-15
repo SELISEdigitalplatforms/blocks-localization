@@ -63,7 +63,6 @@ namespace Eurolm.DomainService.Repositories
 
             var filter = getAllKeysFilter(request);
 
-            // A blank sort field is not a valid Mongo field path, so it falls back to KeyName like null does.
             var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
             var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(hasSortProperty ? request.SortProperty : "KeyName");
 
@@ -340,7 +339,6 @@ namespace Eurolm.DomainService.Repositories
             var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
             var filter = Builders<BlocksLanguageKey>.Filter.Eq(k => k.ModuleId, moduleId);
 
-            // Existence check only: stop counting at the first match.
             var count = await collection.CountDocumentsAsync(filter, new CountOptions { Limit = 1 });
             return count > 0;
         }

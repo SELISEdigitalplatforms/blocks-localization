@@ -19,7 +19,6 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
     isPending: false,
     mutateAsync: deleteModuleMock,
   }),
-  // An empty module, so the Delete button is offered.
   useGetModuleKeyCount: () => ({ data: 0, isLoading: false, refetch: vi.fn() }),
 }));
 

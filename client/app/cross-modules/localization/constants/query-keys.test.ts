@@ -181,7 +181,6 @@ describe("localization/constants/query-keys", () => {
     });
   });
 
-  // ─── languageKeys.countByModule ───────────────────────────────────────────
   describe("languageKeys.countByModule", () => {
     it("should sit under the languageKeys.all prefix so key mutations invalidate it", () => {
       const key = localizationQueryKeys.languageKeys.countByModule("t1", "m1");

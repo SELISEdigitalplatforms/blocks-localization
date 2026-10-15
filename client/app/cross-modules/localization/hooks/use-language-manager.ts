@@ -164,7 +164,6 @@ export const useSaveLanguageModule = () => {
   });
 };
 
-// Only the total is needed, so a single-row page keeps the request cheap.
 export const useGetModuleKeyCount = (moduleId: string) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -196,7 +195,6 @@ export const useDeleteLanguageModule = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
       });
-      // Keys were moved to another module or deleted, so key lists and their history changed too.
       if (payload.targetModuleId || payload.deleteKeys) {
         queryClient.invalidateQueries({
           queryKey: localizationQueryKeys.languageKeys.all,

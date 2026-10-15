@@ -32,7 +32,6 @@ import { toast } from "@/hooks/use-toast";
 import { getHttpErrorMessage } from "@/lib/error";
 import { IModuleGets } from "@blocks-localization/models/language";
 
-// What happens to the keys of a module that still has keys.
 type KeyAction = "move" | "delete";
 
 interface DeleteModuleModalProps {
@@ -53,17 +52,14 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     refetch: refetchKeyCount,
   } = useGetModuleKeyCount(module.itemId);
 
-  // The server enforces the rule too; if the count could not be loaded, let it decide.
   const hasKeys = (keyCount ?? 0) > 0;
   const keyLabel = keyCount === 1 ? "key" : "keys";
   const targetModules = modules.filter((m) => m.itemId !== module.itemId);
   const selectedTarget = targetModules.find((m) => m.itemId === targetModuleId);
-  // Moving is optional; with no other module to move to, deleting the keys is the only way forward.
   const canMove = targetModules.length > 0;
   const [chosenKeyAction, setChosenKeyAction] = useState<KeyAction>("move");
   const keyAction: KeyAction = canMove ? chosenKeyAction : "delete";
 
-  // The translations table filtered to this module, where its keys can be deleted.
   const handleViewKeys = () => {
     onClose(false);
     navigate(scoped(`services/language?moduleIds=${encodeURIComponent(module.itemId)}`));
@@ -78,8 +74,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     return "Module deleted";
   };
 
-  // Without a target or deleteKeys the module must already be empty; otherwise the server moves
-  // or deletes its keys first.
   const handleSubmit = async (
     target?: Pick<IModuleGets, "itemId" | "moduleName">,
     deleteKeys?: boolean,
@@ -110,7 +104,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         title: "Error",
         description: getHttpErrorMessage(error),
       });
-      // Keys may have been added since the dialog opened; refresh so it can show the blocked state.
       void refetchKeyCount();
     }
   };
@@ -141,7 +134,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     );
   };
 
-  // Mirrors the layout of the move-keys section so the dialog does not jump once the count arrives.
   const renderKeyCountLoading = () => (
     <div className="space-y-3" aria-busy="true" data-testid="module-key-count-loading">
       <div className="flex items-center justify-between gap-4">
@@ -155,7 +147,6 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     </div>
   );
 
-  // Count badge next to the section label, with the shortcut to the module's keys on the right.
   const renderKeysHeader = (label?: string) => (
     <div className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-2">
@@ -248,8 +239,9 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
             </Label>
           </div>
           {!canMove && (
-            <p className="pl-6 text-xs text-medium-emphasis">
-              There is no other module to move the keys to.
+            <p className="flex items-center gap-1.5 pl-6 text-xs text-primary">
+              <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>There is no other module to move the keys to.</span>
             </p>
           )}
         </div>
@@ -273,8 +265,8 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           </div>
         </>
       ) : (
-        <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2.5 text-sm text-high-emphasis">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
           <p>
             {keyCount} {keyLabel} and all of their translations are permanently deleted with the
             module, and this cannot be undone. Publish changes afterwards to update the language

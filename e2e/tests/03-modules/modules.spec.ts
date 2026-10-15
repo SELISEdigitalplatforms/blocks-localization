@@ -132,7 +132,6 @@ test.describe("Modules", () => {
 
       await test.step("Confirming deletes the module", async () => {
         await modules.confirmDeleteModuleButton.click();
-        // Success toast, dialog closes, and the row disappears after the list refresh.
         await modules.expectModuleDeleted(moduleName);
         pendingCleanup = pendingCleanup.filter((name) => name !== moduleName);
       });

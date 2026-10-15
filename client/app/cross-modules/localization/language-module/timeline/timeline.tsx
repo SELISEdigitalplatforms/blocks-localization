@@ -50,7 +50,6 @@ const getCultures = (
   return Array.from(new Set([...prevCultures, ...currCultures]));
 };
 
-// Revert restores content, not the module, so a move cannot be reverted from here.
 const canRevert = (event: TimelineEvents) =>
   !!event.previousData && event.logFrom !== "KeyController.BulkMove";
 

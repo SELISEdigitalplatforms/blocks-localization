@@ -106,7 +106,6 @@ namespace Eurolm.DomainService.Services
                 if (request.DeleteKeys)
                     await DeleteAllKeysAsync(request.ItemId);
 
-                // A module is only deletable once it is empty; this also catches a key added during the move.
                 if (await _keyRepository.HasKeysInModuleAsync(request.ItemId))
                     return DeleteModuleFailure(ItemIdErrorKey, "Module has keys. Please delete or move all keys to another module before deleting it.");
 
@@ -120,10 +119,6 @@ namespace Eurolm.DomainService.Services
             }
         }
 
-        /// <summary>
-        /// Moves every key of the source module to the target module. All-or-nothing: returns an error
-        /// message, and moves nothing, when the target is missing or already has a key with the same name.
-        /// </summary>
         private async Task<string?> MoveAllKeysAsync(string sourceModuleId, string targetModuleId)
         {
             var targetModule = await _moduleRepository.GetByIdAsync(targetModuleId);
@@ -135,7 +130,6 @@ namespace Eurolm.DomainService.Services
             if (keysToMove.Count == 0)
                 return null;
 
-            // A module cannot hold two keys with the same name.
             var conflictingNames = (await _keyRepository.GetKeysByKeyNamesAsync(
                     keysToMove.Select(k => k.KeyName).Distinct().ToArray(), targetModuleId))
                 .Select(k => k.KeyName)
@@ -151,9 +145,6 @@ namespace Eurolm.DomainService.Services
             return null;
         }
 
-        /// <summary>
-        /// Deletes every key of the module, recording each one in its history like a bulk key delete.
-        /// </summary>
         private async Task DeleteAllKeysAsync(string moduleId)
         {
             var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
@@ -188,7 +179,6 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                // The keys are already deleted; a missing history entry must not fail the operation.
                 _logger.LogError(ex, "Failed to create delete timeline entries for {Count} keys", deletedKeys.Count);
             }
         }
@@ -216,7 +206,6 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                // The keys are already moved; a missing history entry must not fail the operation.
                 _logger.LogError(ex, "Failed to create move timeline entries for {Count} keys", movedKeys.Count);
             }
         }

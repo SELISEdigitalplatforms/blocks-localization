@@ -188,10 +188,6 @@ export const formatErrorMessage = (error: unknown): string => {
   return UNEXPECTED_ERROR_MESSAGE;
 };
 
-/**
- * Message for a failed mutation request. genesis-os HttpError's `message` is a JSON dump of
- * `errors`, so the record is read directly; the 403 check only sees `status` and `errors`.
- */
 export const getHttpErrorMessage = (error: unknown): string => {
   if (!isErrorWithErrors(error)) {
     return getForbiddenErrorMessage(error) ?? formatErrorMessage(error);

@@ -148,7 +148,6 @@ export class ModulesPage {
     return this.deleteModuleDialog.getByRole("button", { name: "Go to module" });
   }
 
-  /** An empty module gets a plain confirmation once its key count has loaded. */
   async expectDeleteConfirmationForEmptyModule(moduleName: string) {
     await expect(
       this.deleteModuleDialog.getByText(`Are you sure you want to delete ${moduleName}?`),
@@ -166,7 +165,6 @@ export class ModulesPage {
     await expect(this.getModuleRow(moduleName)).toHaveCount(0, { timeout: 15_000 });
   }
 
-  /** Best-effort delete of an empty module for test cleanup; never throws. */
   async deleteModuleIfPresent(moduleName: string) {
     try {
       await this.searchModules(moduleName);

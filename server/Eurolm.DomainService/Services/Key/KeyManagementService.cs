@@ -46,7 +46,6 @@ namespace Eurolm.DomainService.Services
         private const string DateTimeFormat = "yyyyMMddHHmmss";
         private const string ItemIdErrorKey = "ItemId";
 
-        // Column headers of imported CSV and Excel files.
         private const string ItemIdColumn = "ItemId";
         private const string ModuleIdColumn = "ModuleId";
         private const string ModuleColumn = "Module";
@@ -2669,7 +2668,6 @@ namespace Eurolm.DomainService.Services
                     };
                 }
 
-                // Rollback restores content, not the module; a move is undone by moving the keys back.
                 if (timeline.LogFrom == LogFromConstants.KeyBulkMove)
                 {
                     _logger.LogWarning("Rollback rejected - Move entries cannot be rolled back. ItemId: {ItemId}", request.ItemId);
