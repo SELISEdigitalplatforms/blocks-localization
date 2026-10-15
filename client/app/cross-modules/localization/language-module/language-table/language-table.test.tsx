@@ -331,6 +331,21 @@ describe("language-module/language-table", () => {
     });
   });
 
+  it("should hand key details the live query string, which nuqs updates outside the router", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    const previous = window.location.href;
+    window.history.replaceState(null, "", "/list?search=greet&duplicates=true&pageNumber=1");
+    try {
+      renderWithProviders(<LanguageTable />);
+      fireEvent.click(screen.getByText("greeting"));
+      expect(navigate).toHaveBeenLastCalledWith("/scoped/services/language/translations/k1", {
+        state: { returnSearch: "?search=greet&duplicates=true&pageNumber=1" },
+      });
+    } finally {
+      window.history.replaceState(null, "", previous);
+    }
+  });
+
   it("should show the bulk action bar when a row is selected", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,

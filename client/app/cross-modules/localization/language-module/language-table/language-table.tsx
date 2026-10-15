@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
 import { useScopedPath, useProjectStore } from "@seliseblocks/genesis-os";
@@ -321,7 +321,6 @@ export function LanguageTable() {
   }, [languageListData]);
 
   const navigate = useNavigate();
-  const location = useLocation();
   const scoped = useScopedPath();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -541,10 +540,12 @@ export function LanguageTable() {
     (keyId: number | string) => {
       // Key details returns here with the same filters (including duplicates) after a delete.
       navigate(scoped(`services/language/translations/${keyId}`), {
-        state: { returnSearch: location.search },
+        // nuqs writes the filters straight to the browser URL, so React Router's location can be
+        // stale here; read the live query string.
+        state: { returnSearch: window.location.search },
       });
     },
-    [navigate, scoped, location.search],
+    [navigate, scoped],
   );
 
   const onPageChangeHandler = (pageNumber: number) => {
