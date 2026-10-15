@@ -1,6 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Eurolm.DomainService.Repositories
@@ -286,6 +287,18 @@ namespace Eurolm.DomainService.Repositories
             }
         }
 
+        public async Task<long> CountUntrimmedKeyNamesAsync(IEnumerable<string> moduleIds, string tenantId)
+        {
+            var database = _dbContextProvider.GetDatabase(tenantId);
+            var collection = database.GetCollection<BlocksLanguageKey>(_keysCollectionName);
+
+            var filter = Builders<BlocksLanguageKey>.Filter.And(
+                Builders<BlocksLanguageKey>.Filter.In(k => k.ModuleId, moduleIds),
+                Builders<BlocksLanguageKey>.Filter.Regex(k => k.KeyName, new BsonRegularExpression(@"^\s|\s$")));
+
+            return await collection.CountDocumentsAsync(filter);
+        }
+
         public async Task<BulkUpsertResult> BulkUpsertKeysByModuleNameAndKeyNameAsync(
             List<BlocksLanguageKey> keys,
             List<BlocksLanguageKey> existingTargetKeys,
@@ -329,7 +342,8 @@ namespace Eurolm.DomainService.Repositories
                     return new ReplaceOneModel<BlocksLanguageKey>(filter, key) { IsUpsert = true };
                 }).ToList();
 
-                await collection.BulkWriteAsync(bulkOps);
+                // With the unique key index, a concurrent writer can win the insert; the retry then matches its row.
+                await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps);
 
                 // When shouldOverwrite is true, all keys are considered "upserted" for timeline purposes
                 result.UpsertedKeys = keysToUpsert.ToList();
@@ -367,7 +381,7 @@ namespace Eurolm.DomainService.Repositories
                         return new UpdateOneModel<BlocksLanguageKey>(filter, update) { IsUpsert = true };
                     }).ToList();
 
-                    await collection.BulkWriteAsync(bulkOps);
+                    await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps);
                 }
 
                 // Only the keys that were actually inserted should be in the result

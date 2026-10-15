@@ -11,6 +11,7 @@ using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Shared.Utilities;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -123,6 +124,12 @@ namespace Eurolm.DomainService.Services
                     }
                 }
             }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique index caught a concurrent save of the same new key; answer as the validator would.
+                _logger.LogWarning("Duplicate key rejected by the unique index: Key '{KeyName}' in Module '{ModuleId}'", key.KeyName, key.ModuleId);
+                return new ApiResponse(string.Empty, [DuplicateKeyFailure()]);
+            }
             catch (Exception ex)
             {
                 _logger.LogError("Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
@@ -195,6 +202,12 @@ namespace Eurolm.DomainService.Services
 
                     successCount++;
                 }
+                catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+                {
+                    _logger.LogWarning("Duplicate key rejected by the unique index: Key '{KeyName}' in Module '{ModuleId}'", key.KeyName, key.ModuleId);
+                    var failure = DuplicateKeyFailure();
+                    errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}");
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError("Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
@@ -235,6 +248,24 @@ namespace Eurolm.DomainService.Services
         public async Task<GetKeysQueryResponse> GetKeysAsync(GetKeysRequest query)
         {
             return await _keyRepository.GetAllKeysAsync(query);
+        }
+
+        // Same property and message as KeyValidator's key-pair rule, so the failure looks the
+        // same whether the validator or the unique index catches it.
+        public const string DuplicateKeyMessage = "KeyName and ModuleId combination must not already exist for this key.";
+
+        private static ValidationFailure DuplicateKeyFailure() => new(nameof(Key.IsNewKey), DuplicateKeyMessage);
+
+        public async Task<GetDuplicateSummaryResponse> GetDuplicateSummaryAsync()
+        {
+            return await _serviceProvider.GetRequiredService<ILocalizationUniquenessRepository>()
+                .GetDuplicateSummaryAsync(CurrentTenantId);
+        }
+
+        public async Task<EnforceUniquenessResponse> EnforceUniquenessAsync()
+        {
+            return await _serviceProvider.GetRequiredService<ILocalizationUniquenessRepository>()
+                .EnsureUniqueIndexesAsync(CurrentTenantId);
         }
 
         public async Task<GetKeysByKeyNamesResponse> GetKeysByKeyNamesAsync(GetKeysByKeyNamesRequest request)

@@ -44,6 +44,7 @@ namespace XUnitTest
 
             AssertRegistration<IKeyManagementService, KeyManagementService>(services, ServiceLifetime.Singleton);
             AssertRegistration<IKeyRepository, KeyRepository>(services, ServiceLifetime.Singleton);
+            AssertRegistration<ILocalizationUniquenessRepository, LocalizationUniquenessRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<IKeyTimelineRepository, KeyTimelineRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<ILanguageFileGenerationHistoryRepository, LanguageFileGenerationHistoryRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<IValidator<Key>, KeyValidator>(services, ServiceLifetime.Singleton);

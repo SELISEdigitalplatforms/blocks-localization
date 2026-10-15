@@ -16,6 +16,7 @@ namespace XUnitTest
         private readonly Mock<IEnvironmentDataMigrationRepository> _migrationRepository = new();
         private readonly Mock<ILogger<EuroLMEnvironmentDataMigrationEventConsumer>> _logger = new();
         private readonly Mock<IMessageClient> _messageClient = new();
+        private readonly Mock<ILocalizationUniquenessRepository> _uniquenessRepository = new();
         private readonly EuroLMEnvironmentDataMigrationEventConsumer _consumer;
 
         public EuroLMEnvironmentDataMigrationEventConsumerTests()
@@ -24,7 +25,8 @@ namespace XUnitTest
                 _keyManagementService.Object,
                 _migrationRepository.Object,
                 _logger.Object,
-                _messageClient.Object);
+                _messageClient.Object,
+                _uniquenessRepository.Object);
         }
 
         private static EnvironmentDataMigrationEvent Event(bool overwrite = false, string? trackerId = "tracker-1") =>

@@ -17,6 +17,8 @@ namespace Eurolm.DomainService.Services
         public ResourceSearchFilter[]? ResourceSearchFilters { get; set; }
         public DateRange? LastUpdateDateRange { get; set; }
         public string? GlossaryId { get; set; }
+        /// <summary>When true, only keys that belong to a duplicate group (same ModuleId and KeyName) are returned.</summary>
+        public bool OnlyDuplicates { get; set; }
     }
 
     public class ResourceSearchFilter
