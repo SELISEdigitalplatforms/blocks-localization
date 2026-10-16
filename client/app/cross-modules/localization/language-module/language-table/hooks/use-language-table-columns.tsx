@@ -12,8 +12,6 @@ import type {
   IModuleGets,
 } from "@blocks-localization/models/language";
 
-// Hue is derived only from the module's own id so a module keeps its color
-// regardless of which other modules are added or removed.
 const getModuleHue = (moduleId: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < moduleId.length; index++) {

@@ -38,8 +38,6 @@ export function Pagination({
     if (onPageSizeChange) onPageSizeChange(+value);
   };
 
-  // When totalCount shrinks (e.g. after a delete) the current pageSize may no longer be an
-  // option; show the smallest option that still covers what is displayed instead of a blank select.
   const selectedPageSize =
     pageSizeOptions?.includes(pageSize) || !pageSizeOptions?.length
       ? pageSize
