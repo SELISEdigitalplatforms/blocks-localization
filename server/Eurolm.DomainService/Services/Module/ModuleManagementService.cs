@@ -43,7 +43,10 @@ namespace Eurolm.DomainService.Services
             catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
             {
                 // The unique module-name index caught a concurrent save; answer as ModuleValidator would.
+                // The exception is not logged because its message repeats the duplicate ModuleName.
+#pragma warning disable S6667
                 _logger.LogWarning("A module save was rejected by the unique module-name index");
+#pragma warning restore S6667
                 return new ApiResponse(string.Empty, [new ValidationFailure(nameof(SaveModuleRequest.ModuleName), "Module name must be unique.")]);
             }
             catch (Exception ex)

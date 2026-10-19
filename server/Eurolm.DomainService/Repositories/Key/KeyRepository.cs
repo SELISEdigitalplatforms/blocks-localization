@@ -563,8 +563,6 @@ namespace Eurolm.DomainService.Repositories
                 return (0, 0);
             }
 
-            // Once the unique key index exists, a concurrent import can lose the insert race;
-            // its retry then matches the winner's row.
             var result = await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps);
 
             // Now merge resources in a second pass for keys that have resources

@@ -156,70 +156,14 @@ namespace Eurolm.DomainService.Services
 
             foreach (var key in keys)
             {
-                try
+                var error = await SaveKeyInBulkAsync(key, bulkOperationId);
+                if (error != null)
                 {
-                    var validationResult = await _validator.ValidateAsync(key);
-
-                    if (!validationResult.IsValid)
-                    {
-                        var validationErrors = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
-                        errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {validationErrors}");
-                        continue;
-                    }
-
-                    // Get existing key for timeline tracking
-                    var existingRepoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
-                    BlocksLanguageKey? previousKey = null;
-                    bool isNewKey = existingRepoKey == null;
-
-                    if (!isNewKey && existingRepoKey != null)
-                    {
-                        previousKey = existingRepoKey;
-                    }
-
-                    var repoKey = await MappedIntoRepoKeyAsync(key);
-                    await _keyRepository.SaveKeyAsync(repoKey);
-
-                    if (key.ShouldPublish == true)
-                    {
-                        var request = new GenerateUilmFilesRequest
-                        {
-                            Guid = key.ItemId,
-                            ModuleId = key.ModuleId,
-                            ProjectKey = BlocksContext.GetContext().TenantId??""
-                        };
-                        await SendGenerateUilmFilesEvent(request);
-                    }
-
-                    // Create timeline entry
-                    if (repoKey != null)
-                    {
-                        if (isNewKey)
-                        {
-                            await CreateKeyTimelineEntryAsync(null, repoKey, LogFromConstants.KeyBulkCreate, bulkOperationId);
-                        }
-                        else
-                        {
-                            await CreateKeyTimelineEntryAsync(previousKey, repoKey, LogFromConstants.KeyBulkSave, bulkOperationId);
-                        }
-                    }
-
+                    errors.Add(error);
+                }
+                else
+                {
                     successCount++;
-                }
-                catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
-                {
-                    // User-supplied names stay out of the log; the response carries the details.
-                    // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
-#pragma warning disable S6667
-                    _logger.LogWarning("A key save was rejected by the unique key index");
-#pragma warning restore S6667
-                    var failure = DuplicateKeyFailure();
-                    errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError("Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
-                    errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}");
                 }
             }
 
@@ -232,6 +176,77 @@ namespace Eurolm.DomainService.Services
             }
 
             return new ApiResponse();
+        }
+
+        /// <summary>
+        /// Validates and saves a single key as part of a bulk save.
+        /// Returns the error line for the bulk response, or null when the key was saved.
+        /// </summary>
+        private async Task<string?> SaveKeyInBulkAsync(Key key, string bulkOperationId)
+        {
+            try
+            {
+                var validationResult = await _validator.ValidateAsync(key);
+
+                if (!validationResult.IsValid)
+                {
+                    var validationErrors = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
+                    return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {validationErrors}";
+                }
+
+                // Get existing key for timeline tracking
+                var previousKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
+
+                var repoKey = await MappedIntoRepoKeyAsync(key);
+                await _keyRepository.SaveKeyAsync(repoKey);
+
+                if (key.ShouldPublish == true)
+                {
+                    var request = new GenerateUilmFilesRequest
+                    {
+                        Guid = key.ItemId,
+                        ModuleId = key.ModuleId,
+                        ProjectKey = BlocksContext.GetContext().TenantId??""
+                    };
+                    await SendGenerateUilmFilesEvent(request);
+                }
+
+                await CreateBulkKeyTimelineEntryAsync(previousKey, repoKey, bulkOperationId);
+
+                return null;
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // User-supplied names stay out of the log; the response carries the details.
+                // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
+#pragma warning disable S6667
+                _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
+                var failure = DuplicateKeyFailure();
+                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
+                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}";
+            }
+        }
+
+        private async Task CreateBulkKeyTimelineEntryAsync(BlocksLanguageKey? previousKey, BlocksLanguageKey? repoKey, string bulkOperationId)
+        {
+            if (repoKey == null)
+            {
+                return;
+            }
+
+            if (previousKey == null)
+            {
+                await CreateKeyTimelineEntryAsync(null, repoKey, LogFromConstants.KeyBulkCreate, bulkOperationId);
+            }
+            else
+            {
+                await CreateKeyTimelineEntryAsync(previousKey, repoKey, LogFromConstants.KeyBulkSave, bulkOperationId);
+            }
         }
 
         private async Task<BlocksLanguageKey> MappedIntoRepoKeyAsync(Key key)
