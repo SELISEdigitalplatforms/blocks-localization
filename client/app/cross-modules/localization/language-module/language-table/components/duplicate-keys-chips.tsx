@@ -100,8 +100,8 @@ export function DuplicateKeysChips() {
               onClick={toggle}
               className={cn(
                 badgeVariants({ variant: "warning" }),
-                "gap-1.5 rounded-full",
-                active && "ring-2 ring-ring",
+                "gap-1.5 rounded-full focus:ring-icon-warning",
+                active && "ring-2 ring-icon-warning",
               )}
             >
               <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -111,7 +111,7 @@ export function DuplicateKeysChips() {
               {keyText}
             </button>
           </TooltipTrigger>
-          <TooltipContent>{keyTooltip}</TooltipContent>
+          <TooltipContent className="max-w-xs">{keyTooltip}</TooltipContent>
         </Tooltip>
       )}
       {summary.extraModuleCount > 0 && (
@@ -129,7 +129,7 @@ export function DuplicateKeysChips() {
               {moduleText}
             </span>
           </TooltipTrigger>
-          <TooltipContent>{DUPLICATE_MODULES_TOOLTIP}</TooltipContent>
+          <TooltipContent className="max-w-xs">{DUPLICATE_MODULES_TOOLTIP}</TooltipContent>
         </Tooltip>
       )}
     </>

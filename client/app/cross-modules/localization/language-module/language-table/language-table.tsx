@@ -22,6 +22,12 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui-kits/badge/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui-kits/tooltip/tooltip";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
@@ -911,12 +917,23 @@ export function LanguageTable() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                   {!isLoading && (
-                    <Badge
-                      variant="outline"
-                      className="rounded-full border-transparent bg-secondary text-secondary-foreground"
-                    >
-                      {stableTotalCount.toLocaleString()} keys
-                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger
+                          type="button"
+                          className="inline-flex cursor-default rounded-full"
+                          aria-label={`${stableTotalCount.toLocaleString()} keys. Total keys`}
+                        >
+                          <Badge
+                            variant="outline"
+                            className="rounded-full border-transparent bg-secondary text-secondary-foreground"
+                          >
+                            {stableTotalCount.toLocaleString()} keys
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>Total keys</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   <DuplicateKeysChips />
                 </div>
