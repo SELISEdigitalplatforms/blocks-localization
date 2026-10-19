@@ -12,13 +12,19 @@ import type {
   IModuleGets,
 } from "@blocks-localization/models/language";
 
-export const getModuleBadgeStyle = (moduleId: string, allModuleIds: string[]): CSSProperties => {
-  const sortedIds = Array.from(new Set(allModuleIds)).sort((a, b) => a.localeCompare(b));
-  const total = sortedIds.length || 1;
-  const index = Math.max(sortedIds.indexOf(moduleId), 0);
-  const hue = Math.round((index * 360) / total);
-  return { backgroundColor: `hsl(${hue}, 70%, 55%)`, color: "#111827" };
+const getModuleHue = (moduleId: string): number => {
+  let hash = 2166136261;
+  for (let index = 0; index < moduleId.length; index++) {
+    hash ^= moduleId.codePointAt(index) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 360;
 };
+
+export const getModuleBadgeStyle = (moduleId: string): CSSProperties => ({
+  backgroundColor: `hsl(${getModuleHue(moduleId)}, 70%, 55%)`,
+  color: "#111827",
+});
 
 const COMPLETENESS_BADGE_VARIANT: Record<
   string,
@@ -173,11 +179,6 @@ export const useLanguageTableColumns = ({
   sortQueryParams,
   translatingKeys,
 }: UseLanguageTableColumnsOptions) => {
-  const allModuleIds = useMemo(
-    () => (languageModules ?? []).map((languageModule) => languageModule.itemId),
-    [languageModules],
-  );
-
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
@@ -262,7 +263,7 @@ export const useLanguageTableColumns = ({
               label="module name"
               className="ml-2 sm:ml-0 sm:w-[150px]"
               valueClassName="inline-block truncate rounded-full px-2 py-0.5 text-xs font-medium"
-              valueStyle={getModuleBadgeStyle(keyModule.itemId, allModuleIds)}
+              valueStyle={getModuleBadgeStyle(keyModule.itemId)}
             />
           );
         },
@@ -332,7 +333,6 @@ export const useLanguageTableColumns = ({
         : []),
     ],
     [
-      allModuleIds,
       expandedRowId,
       languageListData,
       languageModules,

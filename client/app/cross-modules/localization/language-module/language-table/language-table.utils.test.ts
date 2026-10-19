@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getPageSizeOptions,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
@@ -54,5 +55,23 @@ describe("getStretchedColumnWidths", () => {
     expect(widths).toEqual({ keyName: 464, moduleId: 364, "resources_en-US": 464 });
     expect(widths.select).toBeUndefined();
     expect(widths.actions).toBeUndefined();
+  });
+});
+
+describe("getPageSizeOptions", () => {
+  it("returns only the smallest option when everything fits on one page", () => {
+    expect(getPageSizeOptions(0)).toEqual([10]);
+    expect(getPageSizeOptions(7)).toEqual([10]);
+    expect(getPageSizeOptions(10)).toEqual([10]);
+  });
+
+  it("does not list totalCount twice when it equals a fixed option", () => {
+    expect(getPageSizeOptions(30)).toEqual([10, 30]);
+    expect(getPageSizeOptions(100)).toEqual([10, 30, 50, 100]);
+  });
+
+  it("appends totalCount as the all option", () => {
+    expect(getPageSizeOptions(25)).toEqual([10, 25]);
+    expect(getPageSizeOptions(250)).toEqual([10, 30, 50, 100, 250]);
   });
 });

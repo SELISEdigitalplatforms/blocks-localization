@@ -38,19 +38,28 @@ export function Pagination({
     if (onPageSizeChange) onPageSizeChange(+value);
   };
 
+  const selectedPageSize =
+    pageSizeOptions?.includes(pageSize) || !pageSizeOptions?.length
+      ? pageSize
+      : (pageSizeOptions.find((option) => option >= Math.min(pageSize, totalCount)) ??
+        pageSize);
+  const smallestPageSizeOption = pageSizeOptions?.length ? Math.min(...pageSizeOptions) : 0;
+
   return (
     <div className="flex flex-col gap-0 md:flex-row md:gap-8">
       {pageSizeOptions && pageSizeOptions?.length > 0 ? (
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">Rows per page</p>
-          <Select value={`${pageSize}`} onValueChange={onPageSizeChangeHandler}>
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={pageSize} />
+          <Select value={`${selectedPageSize}`} onValueChange={onPageSizeChangeHandler}>
+            <SelectTrigger className="h-8 w-auto min-w-[70px] gap-2 whitespace-nowrap">
+              <SelectValue placeholder={selectedPageSize} />
             </SelectTrigger>
             <SelectContent side="top">
               {pageSizeOptions?.map((pageSize) => (
                 <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize === totalCount ? `All (${totalCount})` : pageSize}
+                  {pageSize === totalCount && pageSize > smallestPageSizeOption
+                    ? `All (${totalCount})`
+                    : pageSize}
                 </SelectItem>
               ))}
             </SelectContent>
