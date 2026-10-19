@@ -1,13 +1,23 @@
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
-export const MARKER_PATTERN = /\s*⟦rule:[^⟧]*⟧\s*$/u;
+const MARKER_OPEN = "⟦rule:";
+const MARKER_CLOSE = "⟧";
 export const MARKER_MAX_LENGTH = 500;
 const MARKER_VALUE_MAX_LENGTH = 80;
 
-/** Removes one trailing `⟦rule: …⟧` marker and trims. Used wherever `context` is shown. */
-export const stripRuleMarker = (context?: string): string =>
-  (context ?? "").replace(MARKER_PATTERN, "").trim();
+/**
+ * Removes one trailing `⟦rule: …⟧` marker and trims. Used wherever `context` is shown.
+ * Linear string scan instead of a regex, so untrusted text can't trigger backtracking.
+ */
+export const stripRuleMarker = (context?: string): string => {
+  const text = (context ?? "").trimEnd();
+  if (!text.endsWith(MARKER_CLOSE)) return text.trim();
+  // The marker body can't contain `⟧`, so it opens after the previous `⟧` (if any).
+  const previousClose = text.slice(0, -MARKER_CLOSE.length).lastIndexOf(MARKER_CLOSE);
+  const markerStart = text.indexOf(MARKER_OPEN, previousClose + 1);
+  return (markerStart === -1 ? text : text.slice(0, markerStart)).trim();
+};
 
 const sanitizeMarkerValue = (value: string): string =>
   value
