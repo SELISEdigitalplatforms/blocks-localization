@@ -77,7 +77,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
         });
         void refetchUsageCount();
       }
-    } catch (_error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",

@@ -845,10 +845,12 @@ export const useDeleteGlossaryWithCascade = () => {
       };
 
       try {
-        for (let iteration = 0; remaining > 0; iteration++) {
+        let iteration = 0;
+        while (remaining > 0) {
           if (iteration >= maxIterations) {
             return await keysFailed("iteration-limit");
           }
+          iteration++;
 
           const page = await fetchKeysTaggedWithGlossary(glossaryId, GLOSSARY_CASCADE_BATCH_SIZE);
           const keys = page.keys ?? [];

@@ -97,6 +97,88 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     glossary.language ??
     "-";
 
+  const renderTaggedKeysContent = () => {
+    if (isTaggedKeysLoading) {
+      return (
+        <div className="flex flex-col gap-2 px-6 pb-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full rounded-sm" />
+          ))}
+        </div>
+      );
+    }
+
+    if (isTaggedKeysError || !taggedKeysData) {
+      return <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>;
+    }
+
+    if (!taggedKeysData.keys?.length) {
+      return (
+        <p className="px-6 pb-6 text-sm text-medium-emphasis">
+          No keys are tagged with this glossary.
+        </p>
+      );
+    }
+
+    return (
+      <>
+        <div className="w-full overflow-x-auto">
+          <Table className="text-sm">
+            <TableHeader>
+              <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="font-bold text-medium-emphasis">Key Name</TableHead>
+                <TableHead className="font-bold text-medium-emphasis">Module</TableHead>
+                <TableHead className="font-bold text-medium-emphasis">
+                  {defaultLanguage
+                    ? `${defaultLanguage.languageName} (Default)`
+                    : "Default Language"}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {taggedKeysData.keys.map((key) => {
+                const mod = moduleListData?.find((m) => m.itemId === key.moduleId);
+                const defaultResource = key.resources?.find(
+                  (r) => r.culture === defaultLanguage?.languageCode,
+                );
+                return (
+                  <TableRow
+                    key={key.itemId}
+                    className="cursor-pointer font-normal text-medium-emphasis"
+                    onClick={() => navigate(scoped(`services/language/translations/${key.itemId}`))}
+                  >
+                    <TableCell className="font-mono text-xs text-high-emphasis">
+                      {key.keyName}
+                    </TableCell>
+                    <TableCell>{mod?.moduleName ?? key.moduleId}</TableCell>
+                    <TableCell className="line-clamp-2">{defaultResource?.value || "-"}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
+          <span className="text-sm text-medium-emphasis">
+            {taggedKeysData.totalCount} key
+            {taggedKeysData.totalCount !== 1 ? "s" : ""} total
+          </span>
+          <Pagination
+            page={keysPage}
+            pageSize={keysPageSize}
+            totalCount={taggedKeysData.totalCount ?? 0}
+            pageSizeOptions={TAGGED_KEYS_PAGE_SIZE_OPTIONS}
+            onChange={setKeysPage}
+            onPageSizeChange={(size) => {
+              setKeysPageSize(size);
+              setKeysPage(0);
+            }}
+          />
+        </div>
+      </>
+    );
+  };
+
   return (
     <div>
       <div className="hidden md:flex">
@@ -234,81 +316,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <CardHeader>
           <CardTitle className="text-xl">Tagged Keys</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          {isTaggedKeysLoading ? (
-            <div className="flex flex-col gap-2 px-6 pb-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-sm" />
-              ))}
-            </div>
-          ) : isTaggedKeysError || !taggedKeysData ? (
-            <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>
-          ) : !taggedKeysData.keys?.length ? (
-            <p className="px-6 pb-6 text-sm text-medium-emphasis">
-              No keys are tagged with this glossary.
-            </p>
-          ) : (
-            <>
-              <div className="w-full overflow-x-auto">
-                <Table className="text-sm">
-                  <TableHeader>
-                    <TableRow className="border-none hover:bg-transparent">
-                      <TableHead className="font-bold text-medium-emphasis">Key Name</TableHead>
-                      <TableHead className="font-bold text-medium-emphasis">Module</TableHead>
-                      <TableHead className="font-bold text-medium-emphasis">
-                        {defaultLanguage
-                          ? `${defaultLanguage.languageName} (Default)`
-                          : "Default Language"}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {taggedKeysData.keys.map((key) => {
-                      const mod = moduleListData?.find((m) => m.itemId === key.moduleId);
-                      const defaultResource = key.resources?.find(
-                        (r) => r.culture === defaultLanguage?.languageCode,
-                      );
-                      return (
-                        <TableRow
-                          key={key.itemId}
-                          className="cursor-pointer font-normal text-medium-emphasis"
-                          onClick={() =>
-                            navigate(scoped(`services/language/translations/${key.itemId}`))
-                          }
-                        >
-                          <TableCell className="font-mono text-xs text-high-emphasis">
-                            {key.keyName}
-                          </TableCell>
-                          <TableCell>{mod?.moduleName ?? key.moduleId}</TableCell>
-                          <TableCell className="line-clamp-2">
-                            {defaultResource?.value || "-"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
-                <span className="text-sm text-medium-emphasis">
-                  {taggedKeysData.totalCount} key
-                  {taggedKeysData.totalCount !== 1 ? "s" : ""} total
-                </span>
-                <Pagination
-                  page={keysPage}
-                  pageSize={keysPageSize}
-                  totalCount={taggedKeysData.totalCount ?? 0}
-                  pageSizeOptions={TAGGED_KEYS_PAGE_SIZE_OPTIONS}
-                  onChange={setKeysPage}
-                  onPageSizeChange={(size) => {
-                    setKeysPageSize(size);
-                    setKeysPage(0);
-                  }}
-                />
-              </div>
-            </>
-          )}
-        </CardContent>
+        <CardContent className="p-0">{renderTaggedKeysContent()}</CardContent>
       </Card>
     </div>
   );
