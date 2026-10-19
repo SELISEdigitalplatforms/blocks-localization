@@ -35,6 +35,11 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 
 const TAGGED_KEYS_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+const TAGGED_KEYS_SKELETON_ROW_KEYS = Array.from(
+  { length: 5 },
+  (_, rowNumber) => `tagged-key-row-skeleton-${rowNumber}`,
+);
+
 interface GlossaryDetailsProps {
   itemId: string;
 }
@@ -101,8 +106,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     if (isTaggedKeysLoading) {
       return (
         <div className="flex flex-col gap-2 px-6 pb-6">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-sm" />
+          {TAGGED_KEYS_SKELETON_ROW_KEYS.map((rowKey) => (
+            <Skeleton key={rowKey} className="h-10 w-full rounded-sm" />
           ))}
         </div>
       );
@@ -161,7 +166,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
           <span className="text-sm text-medium-emphasis">
             {taggedKeysData.totalCount} key
-            {taggedKeysData.totalCount !== 1 ? "s" : ""} total
+            {taggedKeysData.totalCount === 1 ? "" : "s"} total
           </span>
           <Pagination
             page={keysPage}
