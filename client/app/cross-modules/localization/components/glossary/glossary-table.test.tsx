@@ -2,7 +2,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
-import { useGetGlossaries } from "@blocks-localization/hooks/use-language-manager";
+import { useGetGlossaries, useGetLanguages } from "@blocks-localization/hooks/use-language-manager";
 import GlossaryTable from "./glossary-table";
 
 const navigate = vi.fn();
@@ -16,9 +16,23 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
+  useGetLanguages: vi.fn(),
 }));
-vi.mock("@blocks-localization/components/modals/glossary/add-edit-glossary", () => ({
-  default: () => null,
+vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
+  default: ({
+    open,
+    onOpenChange,
+    trigger,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    trigger?: React.ReactNode;
+  }) => (
+    <>
+      {trigger && <span onClickCapture={() => onOpenChange(true)}>{trigger}</span>}
+      {open && <div>editor-open</div>}
+    </>
+  ),
 }));
 vi.mock("@blocks-localization/components/modals/glossary/delete-glossary", () => ({
   default: () => null,
@@ -39,7 +53,16 @@ const mockFilterableGlossaries = () => {
 };
 
 describe("components/glossary/glossary-table", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useGetLanguages).mockReturnValue({
+      data: [
+        { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
+        { itemId: "2", languageCode: "de-DE", languageName: "German" },
+        { itemId: "3", languageCode: "fr-FR", languageName: "French" },
+      ],
+    } as never);
+  });
   afterEach(() => vi.useRealTimers());
 
   it("should render skeletons while loading", () => {
@@ -141,8 +164,9 @@ describe("components/glossary/glossary-table", () => {
       isLoading: false,
     } as never);
     renderWithProviders(<GlossaryTable />);
+    expect(screen.queryByText("editor-open")).toBeNull();
     fireEvent.click(screen.getByText("New Glossary"));
-    expect(screen.getByText("Glossary Management")).toBeTruthy();
+    expect(screen.getByText("editor-open")).toBeTruthy();
   });
 
   it("should show pagination when total exceeds page size", () => {

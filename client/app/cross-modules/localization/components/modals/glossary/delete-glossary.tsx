@@ -66,7 +66,10 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
         toast({
           variant: "destructive",
           title: "Error",
-          description: `Removed from ${res.removedCount} of ${res.totalCount} keys; glossary not deleted. Try again.`,
+          description:
+            res.reason === "iteration-limit"
+              ? `Some keys still reference this glossary after repeated attempts (removed from ${res.removedCount} of ${res.totalCount} keys); glossary not deleted.`
+              : `Removed from ${res.removedCount} of ${res.totalCount} keys; glossary not deleted. Try again.`,
         });
         void refetchUsageCount();
       } else {

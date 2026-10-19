@@ -166,6 +166,28 @@ describe("modals/glossary/delete-glossary", () => {
     expect(refetchUsage).toHaveBeenCalled();
   });
 
+  it("should explain when keys still reference the glossary after the retry limit", async () => {
+    cascadeAsync.mockResolvedValue({
+      status: "keys-failed",
+      reason: "iteration-limit",
+      removedCount: 2,
+      totalCount: 3,
+    });
+    const onClose = vi.fn();
+    renderDialog(onClose);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          description:
+            "Some keys still reference this glossary after repeated attempts (removed from 2 of 3 keys); glossary not deleted.",
+        }),
+      ),
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("should toast the server error when the glossary delete fails", async () => {
     cascadeAsync.mockResolvedValue({ status: "delete-failed", errors: {} });
     const onClose = vi.fn();

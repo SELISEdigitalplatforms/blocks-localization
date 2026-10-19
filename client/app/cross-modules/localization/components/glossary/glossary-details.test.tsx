@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -20,8 +20,8 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
   useGetKeysByGlossaryId: vi.fn(),
 }));
-vi.mock("@blocks-localization/components/modals/glossary/add-edit-glossary", () => ({
-  default: () => null,
+vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
+  default: ({ trigger }: { trigger?: React.ReactNode }) => <>{trigger}</>,
 }));
 vi.mock("@blocks-localization/components/modals/glossary/delete-glossary", () => ({
   default: () => null,
@@ -31,7 +31,11 @@ const h = vi.mocked(hooks);
 
 const setDefaults = () => {
   h.useGetLanguages.mockReturnValue({
-    data: [{ languageCode: "en-US", languageName: "English", isDefault: true }],
+    data: [
+      { languageCode: "en-US", languageName: "English", isDefault: true },
+      { languageCode: "de-DE", languageName: "German" },
+      { languageCode: "fr-FR", languageName: "French" },
+    ],
   } as never);
   h.useGetLanguageModules.mockReturnValue({
     data: [{ itemId: "m1", moduleName: "UILM" }],
@@ -159,7 +163,8 @@ describe("components/glossary/glossary-details", () => {
     renderWithProviders(<GlossaryDetails itemId="g1" />, {
       route: "/app/abc/services/glossary/g1",
     });
-    const names = screen
+    const taggedKeysTable = screen.getByText("Key Name").closest("table")!;
+    const names = within(taggedKeysTable)
       .getAllByRole("row")
       .slice(1)
       .map((row) => row.textContent);
@@ -189,5 +194,79 @@ describe("components/glossary/glossary-details", () => {
     // The rest of the page stays usable.
     expect(screen.getByRole("heading", { name: "Widget" })).toBeTruthy();
     expect(screen.getByText("Edit")).toBeTruthy();
+  });
+
+  describe("terminology display", () => {
+    const renderGlossary = (overrides: Record<string, unknown>) => {
+      h.useGetGlossaryById.mockReturnValue({
+        data: { itemId: "g1", name: "Workspace", createDate: "2026-01-01", ...overrides },
+        isLoading: false,
+      } as never);
+      return renderWithProviders(<GlossaryDetails itemId="g1" />, {
+        route: "/app/abc/services/glossary/g1",
+      });
+    };
+
+    it("should show rule, scope and case-sensitive badges instead of Is Global (H9)", () => {
+      renderGlossary({
+        isGlobal: true,
+        additionalNote:
+          '@@glossary-meta:v1@@{"rule":"keep","caseSensitive":true,"variants":["SELISE AG"]}',
+      });
+      expect(screen.getByText("Keep")).toBeTruthy();
+      expect(screen.getByText("Whole project")).toBeTruthy();
+      expect(screen.getByText("Case-sensitive")).toBeTruthy();
+      expect(screen.getByText("SELISE AG")).toBeTruthy();
+      expect(screen.queryByText("Is Global")).toBeNull();
+      expect(screen.getByText("Kept as-is in all languages.")).toBeTruthy();
+    });
+
+    it("should show the module count as scope and hide case-sensitive when unset", () => {
+      renderGlossary({ isGlobal: false, moduleIds: ["m1"] });
+      expect(screen.getByText("1 module")).toBeTruthy();
+      expect(screen.queryByText("Case-sensitive")).toBeNull();
+    });
+
+    it("should show the Translations card first with values, Missing and forbidden (H7, H9)", () => {
+      renderGlossary({
+        additionalNote:
+          '@@glossary-meta:v1@@{"rule":"translate","translations":{"de-DE":"Arbeitsbereich"},"forbidden":{"de-DE":["Werkbereich"]}}',
+      });
+      const titles = screen
+        .getAllByText(/^(Translations|Details|Definition|Internal Note|Tagged Keys)$/)
+        .map((element) => element.textContent);
+      expect(titles[0]).toBe("Translations");
+      expect(screen.getByText("German (de-DE)")).toBeTruthy();
+      expect(screen.getByText("Arbeitsbereich")).toBeTruthy();
+      expect(screen.getByText("Werkbereich")).toBeTruthy();
+      expect(screen.getByText("French (fr-FR)")).toBeTruthy();
+      expect(screen.getByText("Missing")).toBeTruthy();
+      expect(screen.queryByText("English (en-US)")).toBeNull();
+    });
+
+    it("should show the definition without the marker and the parsed internal note (H8)", () => {
+      renderGlossary({
+        context: "A container. ⟦rule: de-DE→Arbeitsbereich⟧",
+        additionalNote: '@@glossary-meta:v1@@{"rule":"translate","note":"team only"}',
+      });
+      expect(screen.getByText("A container.")).toBeTruthy();
+      expect(screen.queryByText(/⟦rule/)).toBeNull();
+      expect(screen.getByText("team only")).toBeTruthy();
+      expect(screen.queryByText(/@@glossary-meta/)).toBeNull();
+    });
+
+    it("should keep showing a legacy plain note", () => {
+      renderGlossary({ additionalNote: "legacy note" });
+      expect(screen.getByText("legacy note")).toBeTruthy();
+      expect(screen.getByText("Translate")).toBeTruthy();
+    });
+
+    it("should not guess the terminology of a newer format", () => {
+      renderGlossary({ additionalNote: "@@glossary-meta:v2@@{}" });
+      expect(screen.queryByText("Translate")).toBeNull();
+      expect(
+        screen.getByText("This term was saved by a newer version and can't be shown here."),
+      ).toBeTruthy();
+    });
   });
 });

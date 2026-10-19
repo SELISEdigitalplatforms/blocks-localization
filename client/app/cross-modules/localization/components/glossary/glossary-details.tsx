@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
-import { CircleAlert, Pencil, Trash } from "lucide-react";
+import { CircleAlert, Pencil, Trash, TriangleAlert } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import {
@@ -29,7 +29,15 @@ import {
   useGetLanguageModules,
   useGetLanguages,
 } from "@blocks-localization/hooks/use-language-manager";
-import AddEditGlossary from "@blocks-localization/components/modals/glossary/add-edit-glossary";
+import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
+import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
+import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+import { ILanguageConfig } from "@blocks-localization/models/language";
+import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import {
+  getTargetLanguages,
+  stripRuleMarker,
+} from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 
@@ -42,6 +50,98 @@ const TAGGED_KEYS_SKELETON_ROW_KEYS = Array.from(
 
 interface GlossaryDetailsProps {
   itemId: string;
+}
+
+const ForbiddenList = ({ values }: Readonly<{ values: string[] }>) =>
+  values.length > 0 ? (
+    <div className="flex flex-wrap gap-1">
+      {values.map((value) => (
+        <Badge key={value} variant="error">
+          {value}
+        </Badge>
+      ))}
+    </div>
+  ) : (
+    <span>-</span>
+  );
+
+function renderTranslationsTable(meta: GlossaryMeta, targets: ILanguageConfig[]) {
+  const showTranslation = meta.rule === "translate";
+  return (
+    <div className="w-full overflow-x-auto">
+      <Table className="text-sm">
+        <TableHeader>
+          <TableRow className="border-none hover:bg-transparent">
+            <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+            {showTranslation && (
+              <TableHead className="font-bold text-medium-emphasis">Translation</TableHead>
+            )}
+            <TableHead className="font-bold text-medium-emphasis">Forbidden alternatives</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {targets.map(({ languageCode, languageName }) => {
+            const value = meta.translations[languageCode];
+            return (
+              <TableRow key={languageCode} className="font-normal text-medium-emphasis">
+                <TableCell className="text-high-emphasis">
+                  {languageName} ({languageCode})
+                </TableCell>
+                {showTranslation && (
+                  <TableCell>
+                    {value ? (
+                      <span className="text-high-emphasis">{value}</span>
+                    ) : (
+                      <Badge variant="warning" className="w-fit gap-1">
+                        <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                        Missing
+                      </Badge>
+                    )}
+                  </TableCell>
+                )}
+                <TableCell>
+                  <ForbiddenList values={meta.forbidden[languageCode] ?? []} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function renderTranslationsContent(
+  parsed: ReturnType<typeof parseGlossaryMeta>,
+  languages: ILanguageConfig[] | undefined,
+) {
+  const { meta, status } = parsed;
+  if (status === "unsupported-version") {
+    return (
+      <p className="px-6 pb-6 text-sm text-medium-emphasis">
+        This term was saved by a newer version and can&apos;t be shown here.
+      </p>
+    );
+  }
+  if (meta.rule === "keep") {
+    return <p className="px-6 pb-6 text-sm text-medium-emphasis">Kept as-is in all languages.</p>;
+  }
+  const targets = getTargetLanguages(languages);
+  if (targets.length === 0) {
+    return (
+      <p className="px-6 pb-6 text-sm text-medium-emphasis">
+        The project has no languages to translate into.
+      </p>
+    );
+  }
+  return (
+    <>
+      {meta.rule === "forbidden" && (
+        <p className="px-6 pb-4 text-sm text-medium-emphasis">Do not use this term.</p>
+      )}
+      {renderTranslationsTable(meta, targets)}
+    </>
+  );
 }
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
@@ -96,6 +196,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   }
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
+  const parsedMeta = parseGlossaryMeta(glossary.additionalNote);
+  const { meta } = parsedMeta;
+  const moduleCount = glossary.moduleIds?.length ?? 0;
+  const scopeLabel = glossary.isGlobal
+    ? "Whole project"
+    : `${moduleCount} module${moduleCount === 1 ? "" : "s"}`;
+  const definition = stripRuleMarker(glossary.context);
 
   const resolvedLanguage =
     languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ??
@@ -193,17 +300,17 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       <div className="mt-5 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{glossary.name}</h1>
         <div className="flex gap-2">
-          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-            <DialogTrigger asChild>
+          <GlossaryEditorSheet
+            open={editModalOpen}
+            onOpenChange={setEditModalOpen}
+            glossary={glossary}
+            trigger={
               <Button size="default" variant="outline" className="gap-2">
                 <Pencil className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
               </Button>
-            </DialogTrigger>
-            {editModalOpen && (
-              <AddEditGlossary glossary={glossary} onClose={() => setEditModalOpen(false)} />
-            )}
-          </Dialog>
+            }
+          />
 
           <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
             <DialogTrigger asChild>
@@ -228,7 +335,38 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         </div>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {parsedMeta.status !== "unsupported-version" && <GlossaryRuleBadge rule={meta.rule} />}
+        <Badge variant="outline" className="w-fit">
+          {scopeLabel}
+        </Badge>
+        {meta.caseSensitive && (
+          <Badge variant="outline" className="w-fit">
+            Case-sensitive
+          </Badge>
+        )}
+      </div>
+      {meta.variants.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-medium-emphasis">Variants:</span>
+          {meta.variants.map((variant) => (
+            <Badge key={variant} variant="secondary" className="w-fit">
+              {variant}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card className="rounded-sm shadow-none lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-xl">Translations</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {renderTranslationsContent(parsedMeta, languageListData)}
+          </CardContent>
+        </Card>
+
         <Card className="h-min rounded-sm shadow-none">
           <CardHeader>
             <CardTitle className="text-xl">Details</CardTitle>
@@ -245,12 +383,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Is Global</h3>
-                <p className="text-base font-normal text-high-emphasis">
-                  {glossary.isGlobal ? "True" : "False"}
-                </p>
-              </div>
               <div className="grid gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
                 <p className="text-base font-normal text-high-emphasis">
@@ -280,11 +412,11 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <div className="flex flex-col gap-6">
           <Card className="rounded-sm shadow-none">
             <CardHeader>
-              <CardTitle className="text-xl">Context</CardTitle>
+              <CardTitle className="text-xl">Definition</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-base text-medium-emphasis">
-                {glossary.context || "No context provided."}
+                {definition || "No definition provided."}
               </p>
             </CardContent>
           </Card>
@@ -296,7 +428,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-flex w-fit cursor-help items-center gap-1.5">
-                        Additional Notes
+                        Internal Note
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </span>
                     </TooltipTrigger>
@@ -309,9 +441,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-base text-medium-emphasis">
-                {glossary.additionalNote || "No additional user notes."}
-              </p>
+              <p className="text-base text-medium-emphasis">{meta.note || "No internal note."}</p>
             </CardContent>
           </Card>
         </div>
