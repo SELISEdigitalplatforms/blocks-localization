@@ -136,7 +136,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
                 return new ApiResponse(ex.Message);
             }
 
@@ -227,7 +227,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
+                _logger.LogError(ex, "Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
                 return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}";
             }
         }
@@ -430,7 +430,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to get key data for timeline before deletion {KeyId}: {Error}", key.ItemId, ex.Message);
+                _logger.LogError(ex, "Failed to get key data for timeline before deletion {KeyId}: {Error}", key.ItemId, ex.Message);
             }
 
             await _keyRepository.DeleteAsync(request.ItemId);
@@ -444,7 +444,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to create timeline entry for deleted Key {KeyId}: {Error}", key.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to create timeline entry for deleted Key {KeyId}: {Error}", key.ItemId, ex.Message);
                 }
             }
 
@@ -477,7 +477,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
+                        _logger.LogError(ex, "Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
                     }
 
                     await _keyRepository.DeleteAsync(itemId);
@@ -490,13 +490,13 @@ namespace Eurolm.DomainService.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError("Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
+                            _logger.LogError(ex, "Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
+                    _logger.LogError(ex, "Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
                     errors[itemId] = ex.Message;
                 }
             }
@@ -816,7 +816,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to create timeline entry for Key {KeyId} during TranslateAll: {Error}", resourceKey.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to create timeline entry for Key {KeyId} during TranslateAll: {Error}", resourceKey.ItemId, ex.Message);
                 }
             }
 
@@ -857,7 +857,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to publish keys for module {ModuleId}: {Error}", application.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to publish keys for module {ModuleId}: {Error}", application.ItemId, ex.Message);
                     failedKeys.AddRange(resourceKeys);
                 }
             }
@@ -1919,7 +1919,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for updated Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for updated Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -1931,7 +1931,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for new Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for new Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -2162,7 +2162,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for updated Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for updated Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -2189,7 +2189,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for new Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for new Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -2397,7 +2397,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("SaveUilmFile: Failed to create UilmExportedFile entry for fileId={FileId}, Error: {Error}", fileId, ex.Message);
+                _logger.LogError(ex, "SaveUilmFile: Failed to create UilmExportedFile entry for fileId={FileId}, Error: {Error}", fileId, ex.Message);
                 // Don't fail the entire operation if just the DB entry creation fails
             }
         }
@@ -2609,7 +2609,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("WriteToXlf: Error updating XLF template: {Error}", ex.Message);
+                _logger.LogError(ex, "WriteToXlf: Error updating XLF template: {Error}", ex.Message);
                 return new MemoryStream();
             }
         }
@@ -2878,7 +2878,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create timeline entry for Key {KeyId}: {Error}", entityId ?? currentKey?.ItemId ?? previousKey?.ItemId, ex.Message);
+                _logger.LogError(ex, "Failed to create timeline entry for Key {KeyId}: {Error}", entityId ?? currentKey?.ItemId ?? previousKey?.ItemId, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2908,7 +2908,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
+                _logger.LogError(ex, "Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2941,7 +2941,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
+                _logger.LogError(ex, "Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2968,7 +2968,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create no-change publish timeline entry: {Error}", ex.Message);
+                _logger.LogError(ex, "Failed to create no-change publish timeline entry: {Error}", ex.Message);
             }
         }
 
