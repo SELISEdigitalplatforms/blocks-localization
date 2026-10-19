@@ -105,10 +105,10 @@ export const getStretchedColumnWidths = (
   );
 };
 
-export const getPageSizeOptions =(totalCount: number) => {
+export const getPageSizeOptions = (totalCount: number) => {
   const fixedOptions = [10, 30, 50, 100];
-  if (totalCount > 100) return [...fixedOptions, totalCount];
-  if (totalCount > 0)
-    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
-  return [10];
+  // A single page already shows everything, so no "All" option is needed.
+  if (totalCount <= fixedOptions[0]) return [fixedOptions[0]];
+  // Exclude options equal to totalCount so it is not listed twice.
+  return fixedOptions.filter((option) => option < totalCount).concat(totalCount);
 };
