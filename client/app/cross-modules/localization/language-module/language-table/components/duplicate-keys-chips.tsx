@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useProjectStore } from "@seliseblocks/genesis-os";
-import { Badge, badgeVariants } from "@/components/ui-kits/badge/badge";
+import { badgeVariants } from "@/components/ui-kits/badge/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui-kits/tooltip/tooltip";
 import { cn } from "@/lib/utils";
 import { useKeysFilterQueryParams } from "@blocks-localization/components/language-table-toolbar/language-table-toolbar";
@@ -27,7 +27,7 @@ const plural = (count: number, one: string, many: string) =>
 
 const readRequested = (key: string): Collection[] => {
   try {
-    const value = window.sessionStorage.getItem(key);
+    const value = globalThis.sessionStorage.getItem(key);
     return value
       ? (value.split(",").filter((c) => c === "keys" || c === "modules") as Collection[])
       : [];
@@ -38,7 +38,7 @@ const readRequested = (key: string): Collection[] => {
 
 const writeRequested = (key: string, collections: Collection[]) => {
   try {
-    window.sessionStorage.setItem(key, collections.join(","));
+    globalThis.sessionStorage.setItem(key, collections.join(","));
   } catch {
     // Without storage the request may repeat on a later visit; enforcement is idempotent.
   }
@@ -73,7 +73,7 @@ export function DuplicateKeysChips() {
 
   // Once the last duplicate is gone, the filter has nothing left to show.
   useEffect(() => {
-    if (active && summary && summary.extraKeyCount === 0) {
+    if (active && summary?.extraKeyCount === 0) {
       setQueryParams((prev) => ({ ...prev, duplicates: null, pageNumber: 0 }));
     }
   }, [active, summary, setQueryParams]);
@@ -116,20 +116,17 @@ export function DuplicateKeysChips() {
       )}
       {summary.extraModuleCount > 0 && (
         <Tooltip>
-          {/* Badge does not forward refs, so a focusable span carries the tooltip. */}
-          <TooltipTrigger asChild>
+          {/* The trigger's own button keeps the tooltip keyboard-reachable; it has no click action. */}
+          <TooltipTrigger
+            type="button"
+            className="inline-flex cursor-default rounded-full"
+            aria-label={`${moduleText}. ${DUPLICATE_MODULES_TOOLTIP}`}
+          >
             <span
-              tabIndex={0}
-              className="inline-flex rounded-full"
-              aria-label={`${moduleText}. ${DUPLICATE_MODULES_TOOLTIP}`}
+              className={cn(badgeVariants({ variant: "warning" }), "rounded-full")}
+              data-testid="duplicate-modules-badge"
             >
-              <Badge
-                variant="warning"
-                className="rounded-full"
-                data-testid="duplicate-modules-badge"
-              >
-                {moduleText}
-              </Badge>
+              {moduleText}
             </span>
           </TooltipTrigger>
           <TooltipContent>{DUPLICATE_MODULES_TOOLTIP}</TooltipContent>

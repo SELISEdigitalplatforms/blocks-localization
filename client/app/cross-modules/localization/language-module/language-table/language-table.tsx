@@ -538,11 +538,8 @@ export function LanguageTable() {
 
   const handleRowClick = useCallback(
     (keyId: number | string) => {
-      // Key details returns here with the same filters (including duplicates) after a delete.
       navigate(scoped(`services/language/translations/${keyId}`), {
-        // nuqs writes the filters straight to the browser URL, so React Router's location can be
-        // stale here; read the live query string.
-        state: { returnSearch: window.location.search },
+        state: { returnSearch: globalThis.location.search },
       });
     },
     [navigate, scoped],
