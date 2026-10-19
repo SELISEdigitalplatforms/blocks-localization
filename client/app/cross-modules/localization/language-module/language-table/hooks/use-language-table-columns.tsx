@@ -15,7 +15,7 @@ import type {
 const getModuleHue = (moduleId: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < moduleId.length; index++) {
-    hash ^= moduleId.charCodeAt(index);
+    hash ^= moduleId.codePointAt(index) ?? 0;
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0) % 360;
