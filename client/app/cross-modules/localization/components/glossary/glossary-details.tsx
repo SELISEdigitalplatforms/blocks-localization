@@ -199,9 +199,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const parsedMeta = parseGlossaryMeta(glossary.additionalNote);
   const { meta } = parsedMeta;
   const moduleCount = glossary.moduleIds?.length ?? 0;
-  const scopeLabel = glossary.isGlobal
-    ? "Whole project"
-    : `${moduleCount} module${moduleCount === 1 ? "" : "s"}`;
+  const moduleSuffix = moduleCount === 1 ? "" : "s";
+  const scopeLabel = glossary.isGlobal ? "Whole project" : `${moduleCount} module${moduleSuffix}`;
   const definition = stripRuleMarker(glossary.context);
 
   const resolvedLanguage =

@@ -57,10 +57,9 @@ const toRule = (value: unknown): GlossaryRule =>
  * notes, hand-edited or broken JSON and unknown versions, because other clients (the
  * browser extension, the CLI) edit the same field as raw text.
  */
-export const parseGlossaryMeta = (additionalNote?: string): ParsedGlossaryMeta => {
-  const raw = additionalNote ?? "";
+export const parseGlossaryMeta = (raw = ""): ParsedGlossaryMeta => {
   if (!raw) {
-    return { meta: createDefaultGlossaryMeta(), status: "plain", raw };
+    return { meta: createDefaultGlossaryMeta(), status: "plain", raw: "" };
   }
 
   const match = GLOSSARY_META_PREFIX_PATTERN.exec(raw);

@@ -113,6 +113,11 @@ interface GlossaryEditorValues {
 
 const RULE_OPTIONS: GlossaryRule[] = ["translate", "keep", "forbidden"];
 
+const withoutValue = (values: string[], value: string) => values.filter((item) => item !== value);
+
+const toggleValue = (values: string[], value: string) =>
+  values.includes(value) ? withoutValue(values, value) : [...values, value];
+
 const firstVariantError = (variants: string[], name: string): string | undefined => {
   if (variants.length > GLOSSARY_LIMITS.variants) {
     return `Add at most ${GLOSSARY_LIMITS.variants} variants`;
@@ -889,7 +894,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                     type="button"
                                     aria-label={`Remove module ${mod?.moduleName ?? id}`}
                                     onClick={() => {
-                                      field.onChange(moduleIds.filter((mid) => mid !== id));
+                                      field.onChange(withoutValue(moduleIds, id));
                                       void form.trigger("moduleIds");
                                     }}
                                     className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -935,11 +940,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                           .toLowerCase()}
                                         keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
                                         onSelect={() => {
-                                          const current = form.getValues("moduleIds");
                                           field.onChange(
-                                            current.includes(mod.itemId)
-                                              ? current.filter((id) => id !== mod.itemId)
-                                              : [...current, mod.itemId],
+                                            toggleValue(form.getValues("moduleIds"), mod.itemId),
                                           );
                                           void form.trigger("moduleIds");
                                         }}

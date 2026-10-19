@@ -781,6 +781,53 @@ export interface GlossaryCascadeVariables {
   onProgress?: (removedCount: number, totalCount: number) => void;
 }
 
+type CascadeBatchSaveResult = { success: true } | { success: false; errorMessage?: string };
+
+type TaggedKeysPage = Awaited<ReturnType<typeof fetchKeysTaggedWithGlossary>>;
+
+const buildCascadeBatch = (
+  keys: NonNullable<TaggedKeysPage["keys"]>,
+  glossaryId: string,
+): ISaveBlocksLanguageKeyPayload[] =>
+  keys.map((key) => ({
+    itemId: key.itemId,
+    keyName: key.keyName,
+    moduleId: key.moduleId,
+    resources: key.resources,
+    context: key.context,
+    isPartiallyTranslated: key.isPartiallyTranslated,
+    routes: key.routes ?? [],
+    glossaryIds: (key.glossaryIds ?? []).filter((id) => id !== glossaryId),
+    isNewKey: false,
+  }));
+
+const saveCascadeBatch = async (
+  batch: ISaveBlocksLanguageKeyPayload[],
+): Promise<CascadeBatchSaveResult> => {
+  try {
+    const saveResponse = await languageManagerService.saveBlocksLanguageKeys(batch);
+    if (saveResponse?.success) return { success: true };
+    return { success: false, errorMessage: saveResponse?.errorMessage || undefined };
+  } catch (error) {
+    return { success: false, errorMessage: error instanceof Error ? error.message : undefined };
+  }
+};
+
+/** A failed batch may have partly succeeded, so re-count what is still tagged. */
+const recountRemovedKeys = async (
+  glossaryId: string,
+  totalCount: number,
+  knownRemoved: number,
+): Promise<number> => {
+  try {
+    const recount = await fetchKeysTaggedWithGlossary(glossaryId, 1);
+    return Math.max(0, totalCount - (recount.totalCount ?? 0));
+  } catch {
+    // Keep the count of keys from batches known to have succeeded.
+    return knownRemoved;
+  }
+};
+
 /**
  * Removes the glossary id from every key tagged with it (sequential batches of 100,
  * always re-reading page 0 because cleaned keys drop out of the filter) and only
@@ -832,23 +879,13 @@ export const useDeleteGlossaryWithCascade = () => {
       const keysFailed = async (
         reason: "save-failed" | "iteration-limit",
         errorMessage?: string,
-      ): Promise<GlossaryCascadeResult> => {
-        // A failed batch may have partly succeeded, so re-count what is still tagged.
-        let removed = removedCount;
-        try {
-          const recount = await fetchKeysTaggedWithGlossary(glossaryId, 1);
-          removed = Math.max(0, totalCount - (recount.totalCount ?? 0));
-        } catch {
-          // Keep the count of keys from batches known to have succeeded.
-        }
-        return {
-          status: "keys-failed",
-          reason,
-          removedCount: removed,
-          totalCount,
-          errorMessage,
-        };
-      };
+      ): Promise<GlossaryCascadeResult> => ({
+        status: "keys-failed",
+        reason,
+        removedCount: await recountRemovedKeys(glossaryId, totalCount, removedCount),
+        totalCount,
+        errorMessage,
+      });
 
       try {
         let iteration = 0;
@@ -873,33 +910,10 @@ export const useDeleteGlossaryWithCascade = () => {
             continue;
           }
 
-          const batch: ISaveBlocksLanguageKeyPayload[] = keys.map((key) => ({
-            itemId: key.itemId,
-            keyName: key.keyName,
-            moduleId: key.moduleId,
-            resources: key.resources,
-            context: key.context,
-            isPartiallyTranslated: key.isPartiallyTranslated,
-            routes: key.routes ?? [],
-            glossaryIds: (key.glossaryIds ?? []).filter((id) => id !== glossaryId),
-            isNewKey: false,
-          }));
-
-          let saveResponse: Awaited<
-            ReturnType<typeof languageManagerService.saveBlocksLanguageKeys>
-          >;
-          try {
-            saveResponse = await languageManagerService.saveBlocksLanguageKeys(batch);
-          } catch (error) {
-            savedAny = true;
-            return await keysFailed(
-              "save-failed",
-              error instanceof Error ? error.message : undefined,
-            );
-          }
+          const saveResult = await saveCascadeBatch(buildCascadeBatch(keys, glossaryId));
           savedAny = true;
-          if (!saveResponse?.success) {
-            return await keysFailed("save-failed", saveResponse?.errorMessage || undefined);
+          if (!saveResult.success) {
+            return await keysFailed("save-failed", saveResult.errorMessage);
           }
 
           const pageIds = new Set(keys.map((key) => key.itemId));
