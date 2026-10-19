@@ -308,11 +308,11 @@ namespace Eurolm.DomainService.Repositories
                 .GroupBy(k => (k.ModuleId, k.KeyName))
                 .ToDictionary(g => g.Key, g => g.First().ItemId);
 
-            foreach (var replacement in replacements)
+            foreach (var key in replacements.Select(replacement => replacement.Replacement))
             {
-                if (idByKey.TryGetValue((replacement.Replacement.ModuleId, replacement.Replacement.KeyName), out var itemId))
+                if (idByKey.TryGetValue((key.ModuleId, key.KeyName), out var itemId))
                 {
-                    replacement.Replacement.ItemId = itemId;
+                    key.ItemId = itemId;
                 }
             }
 

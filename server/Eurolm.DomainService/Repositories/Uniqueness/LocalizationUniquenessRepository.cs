@@ -191,14 +191,14 @@ namespace Eurolm.DomainService.Repositories
             }
             catch (MongoCommandException ex) when (ex.Code == DuplicateKeyCode)
             {
-                _logger.LogWarning(
+                _logger.LogWarning(ex,
                     "Unique index {IndexName} not created for tenant {TenantId}: duplicates appeared in {Collection} while it was being built",
                     indexName, tenantId, collectionName);
             }
             catch (MongoCommandException ex) when (ex.Code is IndexOptionsConflictCode or IndexKeySpecsConflictCode)
             {
                 var conflicting = await DescribeConflictingIndexesAsync(collection, indexName, fields);
-                _logger.LogWarning(
+                _logger.LogWarning(ex,
                     "Unique index {IndexName} not created for tenant {TenantId}: {Collection} already has a conflicting index ({ErrorCode}): {ExistingIndexes}. Manual review required.",
                     indexName, tenantId, collectionName, ex.Code, conflicting);
             }

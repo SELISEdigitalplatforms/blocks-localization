@@ -41,10 +41,16 @@ namespace Eurolm.DomainService.Repositories
             }
         }
 
-        private static (long Upserted, long Modified) Counts<T>(BulkWriteResult<T>? result) =>
-            result is { IsAcknowledged: true }
-                ? (result.Upserts?.Count ?? 0, result.IsModifiedCountAvailable ? result.ModifiedCount : 0)
-                : (0, 0);
+        private static (long Upserted, long Modified) Counts<T>(BulkWriteResult<T>? result)
+        {
+            if (result is not { IsAcknowledged: true })
+            {
+                return (0, 0);
+            }
+
+            long modified = result.IsModifiedCountAvailable ? result.ModifiedCount : 0;
+            return (result.Upserts?.Count ?? 0, modified);
+        }
 
         // MongoDB retries an upsert itself when its filter matches the unique index fields. If the
         // concurrent writer's row then has a different _id than the replacement, the conflict

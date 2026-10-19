@@ -12,6 +12,7 @@ namespace Eurolm.DomainService.Repositories
         private readonly IDbContextProvider _dbContextProvider;
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
+        private const string KeyNameField = "KeyName";
 
         public KeyRepository(IDbContextProvider dbContextProvider)
         {
@@ -63,7 +64,7 @@ namespace Eurolm.DomainService.Repositories
 
             var filter = getAllKeysFilter(request);
 
-            var sort = !string.IsNullOrWhiteSpace(request.SortProperty) && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(request.SortProperty ?? "KeyName");
+            var sort = !string.IsNullOrWhiteSpace(request.SortProperty) && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(request.SortProperty ?? KeyNameField);
 
             var duplicatesTruncated = false;
             if (request.OnlyDuplicates)
@@ -124,11 +125,11 @@ namespace Eurolm.DomainService.Repositories
             new BsonDocument("$match", new BsonDocument
             {
                 { "ModuleId", new BsonDocument("$type", "string") },
-                { "KeyName", new BsonDocument("$type", "string") },
+                { KeyNameField, new BsonDocument("$type", "string") },
             }),
             new BsonDocument("$group", new BsonDocument
             {
-                { "_id", new BsonDocument { { "ModuleId", "$ModuleId" }, { "KeyName", "$KeyName" } } },
+                { "_id", new BsonDocument { { "ModuleId", "$ModuleId" }, { KeyNameField, "$KeyName" } } },
                 { "count", new BsonDocument("$sum", 1) },
                 { "members", new BsonDocument("$push", new BsonDocument { { "id", "$_id" }, { "created", "$CreateDate" } }) },
             }),
@@ -151,7 +152,7 @@ namespace Eurolm.DomainService.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.KeySearchText))
             {
-                var keyNameFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i"));
+                var keyNameFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i"));
                 var resourceValueFilter = filterBuilder.ElemMatch(x => x.Resources,
                     Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i")));
                 matchFilters.Add(filterBuilder.Or(keyNameFilter, resourceValueFilter));
@@ -159,7 +160,7 @@ namespace Eurolm.DomainService.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.SearchKey))
             {
-                var searchKeyFilter = filterBuilder.Regex("KeyName", new BsonRegularExpression($".*{Regex.Escape(query.SearchKey)}.*", "i"));
+                var searchKeyFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.SearchKey)}.*", "i"));
                 matchFilters.Add(searchKeyFilter);
             }
 

@@ -128,7 +128,10 @@ namespace Eurolm.DomainService.Services
             {
                 // The unique index caught a concurrent save of the same new key; answer as the validator would.
                 // User-supplied names stay out of the log; the response carries the details.
+                // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
+#pragma warning disable S6667
                 _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
                 return new ApiResponse(string.Empty, [DuplicateKeyFailure()]);
             }
             catch (Exception ex)
@@ -206,7 +209,10 @@ namespace Eurolm.DomainService.Services
                 catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
                 {
                     // User-supplied names stay out of the log; the response carries the details.
-                _logger.LogWarning("A key save was rejected by the unique key index");
+                    // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
+#pragma warning disable S6667
+                    _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
                     var failure = DuplicateKeyFailure();
                     errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}");
                 }
