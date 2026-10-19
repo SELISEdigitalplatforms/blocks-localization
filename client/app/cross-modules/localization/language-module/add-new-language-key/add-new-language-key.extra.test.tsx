@@ -168,6 +168,57 @@ describe("add-new-language-key (extra coverage)", () => {
     );
   });
 
+  it("sends module context and the real default language as the source", async () => {
+    const languages = [
+      { languageCode: "en-US", languageName: "English", isDefault: false },
+      { languageCode: "de-DE", languageName: "German", isDefault: true },
+    ];
+    const cachedOrder = languages.map((l) => l.languageCode);
+    h.useGetLanguages.mockReturnValue({ isLoading: false, data: languages } as never);
+    autoTranslateAsync.mockResolvedValue({ content: "Hello" });
+    renderWithProviders(<AddNewLanguageKey />, { route });
+    fillValidForm();
+    // German (default) is the source; English is the only translation row.
+    expect(screen.getByText(/Default value \(German\)/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
+    await waitFor(() => expect(autoTranslateAsync).toHaveBeenCalled());
+    expect(autoTranslateAsync).toHaveBeenCalledWith({
+      sourceText: "Hello",
+      destinationLanguage: "English",
+      currentLanguage: "German",
+      temperature: 0.1,
+      moduleId: "m1",
+      destinationLanguageCode: "en-US",
+    });
+    // The React Query cached array is never sorted in place.
+    expect(languages.map((l) => l.languageCode)).toEqual(cachedOrder);
+  });
+
+  it("falls back to the first language when none is marked default", async () => {
+    h.useGetLanguages.mockReturnValue({
+      isLoading: false,
+      data: [
+        { languageCode: "fr-FR", languageName: "French", isDefault: false },
+        { languageCode: "en-US", languageName: "English", isDefault: false },
+      ],
+    } as never);
+    autoTranslateAsync.mockResolvedValue({ content: "Hello" });
+    renderWithProviders(<AddNewLanguageKey />, { route });
+    fireEvent.change(screen.getByPlaceholderText("Enter default value"), {
+      target: { value: "Bonjour" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
+    await waitFor(() => expect(autoTranslateAsync).toHaveBeenCalled());
+    expect(autoTranslateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentLanguage: "French",
+        destinationLanguage: "English",
+        destinationLanguageCode: "en-US",
+        moduleId: undefined,
+      }),
+    );
+  });
+
   it("toasts an error when auto-translate returns no content", async () => {
     autoTranslateAsync.mockResolvedValue({ content: "", errors: ["x"] });
     renderWithProviders(<AddNewLanguageKey />, { route });

@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui-kits/table/table";
+import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { CircleAlert, Pencil, Trash } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
@@ -31,6 +32,8 @@ import {
 import AddEditGlossary from "@blocks-localization/components/modals/glossary/add-edit-glossary";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+
+const TAGGED_KEYS_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 interface GlossaryDetailsProps {
   itemId: string;
@@ -45,12 +48,12 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [keysPage, setKeysPage] = useState(0);
-  const PAGE_SIZE = 10;
+  const [keysPageSize, setKeysPageSize] = useState(TAGGED_KEYS_PAGE_SIZE_OPTIONS[0]);
   const {
     data: taggedKeysData,
     isLoading: isTaggedKeysLoading,
     isError: isTaggedKeysError,
-  } = useGetKeysByGlossaryId(itemId, glossary?.moduleIds ?? [], keysPage, PAGE_SIZE);
+  } = useGetKeysByGlossaryId(itemId, keysPage, keysPageSize);
 
   if (glossary?.name) {
     // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
@@ -124,14 +127,16 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                 </span>
               </Button>
             </DialogTrigger>
-            <DeleteGlossary
-              itemId={glossary.itemId}
-              glossaryName={glossary.name}
-              onClose={() => {
-                setDeleteModalOpen(false);
-                navigate(scoped("services/glossary"));
-              }}
-            />
+            {deleteModalOpen && (
+              <DeleteGlossary
+                itemId={glossary.itemId}
+                glossaryName={glossary.name}
+                onClose={() => {
+                  setDeleteModalOpen(false);
+                  navigate(scoped("services/glossary"));
+                }}
+              />
+            )}
           </Dialog>
         </div>
       </div>
@@ -240,7 +245,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>
           ) : !taggedKeysData.keys?.length ? (
             <p className="px-6 pb-6 text-sm text-medium-emphasis">
-              No keys tagged with this glossary.
+              No keys are tagged with this glossary.
             </p>
           ) : (
             <>
@@ -284,29 +289,22 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between border-t px-6 py-3">
+              <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
                 <span className="text-sm text-medium-emphasis">
                   {taggedKeysData.totalCount} key
                   {taggedKeysData.totalCount !== 1 ? "s" : ""} total
                 </span>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={keysPage === 0}
-                    onClick={() => setKeysPage((p) => p - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={(keysPage + 1) * PAGE_SIZE >= (taggedKeysData.totalCount ?? 0)}
-                    onClick={() => setKeysPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
+                <Pagination
+                  page={keysPage}
+                  pageSize={keysPageSize}
+                  totalCount={taggedKeysData.totalCount ?? 0}
+                  pageSizeOptions={TAGGED_KEYS_PAGE_SIZE_OPTIONS}
+                  onChange={setKeysPage}
+                  onPageSizeChange={(size) => {
+                    setKeysPageSize(size);
+                    setKeysPage(0);
+                  }}
+                />
               </div>
             </>
           )}

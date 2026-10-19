@@ -6,6 +6,7 @@ import {
   IGlossary,
   ILanguageConfig,
   IKeyUilmExport,
+  ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect } from "react";
@@ -709,49 +710,200 @@ export const useGetGlossariesByIds = (itemIds: string[], enabled: boolean) => {
 
 export const useGetKeysByGlossaryId = (
   glossaryId: string,
-  moduleIds: string[],
   pageNumber: number,
   pageSize: number,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-
-  const queryKey = localizationQueryKeys.languageKeys.byGlossary(
-    tenantId,
-    glossaryId,
-    pageNumber,
-    pageSize,
-  );
-
   return useQuery({
-    queryKey,
-    queryFn: async () => {
-      // Fetch keys by moduleIds
-      const result = await languageManagerService.fetchBlocksLanguageKey({
-        pageNumber: 0, // Fetch from page 0 to get all keys for filtering
-        pageSize: 1000, // Large page size to get all keys
+    queryKey: localizationQueryKeys.languageKeys.byGlossary(
+      tenantId,
+      glossaryId,
+      pageNumber,
+      pageSize,
+    ),
+    queryFn: () =>
+      languageManagerService.fetchBlocksLanguageKey({
+        pageNumber,
+        pageSize,
         searchKey: "",
-        moduleIds: moduleIds,
+        moduleIds: [],
         isPartiallyTranslated: false,
         sortProperty: "KeyName",
         isDescending: false,
-      });
-
-      // Show keys that belong to the glossary's modules (not filtered by glossaryId on keys)
-      // The glossary's moduleIds indicates which modules this glossary is associated with
-      const filteredKeys = result.keys;
-
-      // Return paginated result from filtered keys
-      const startIndex = pageNumber * pageSize;
-      const paginatedKeys = filteredKeys.slice(startIndex, startIndex + pageSize);
-
-      return {
-        totalCount: filteredKeys.length,
-        keys: paginatedKeys,
-      };
-    },
-    enabled: !!glossaryId && !!tenantId && moduleIds.length > 0,
+        glossaryId,
+      }),
+    enabled: !!glossaryId && !!tenantId,
     staleTime: 0,
     refetchOnMount: true,
+  });
+};
+
+export const GLOSSARY_CASCADE_BATCH_SIZE = 100;
+
+const fetchKeysTaggedWithGlossary = (glossaryId: string, pageSize: number) =>
+  languageManagerService.fetchBlocksLanguageKey({
+    pageNumber: 0,
+    pageSize,
+    searchKey: "",
+    moduleIds: [],
+    isPartiallyTranslated: false,
+    sortProperty: "KeyName",
+    isDescending: false,
+    glossaryId,
+  });
+
+export const useGetGlossaryUsageCount = (glossaryId: string, enabled = true) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.glossaryUsage(tenantId, glossaryId),
+    queryFn: async () => (await fetchKeysTaggedWithGlossary(glossaryId, 1)).totalCount ?? 0,
+    enabled: enabled && !!glossaryId && !!tenantId,
+    staleTime: 0,
+    refetchOnMount: true,
+    retry: false,
+  });
+};
+
+export type GlossaryCascadeResult =
+  | { status: "deleted" }
+  | {
+      status: "keys-failed";
+      reason: "save-failed" | "iteration-limit";
+      removedCount: number;
+      totalCount: number;
+      errorMessage?: string;
+    }
+  | { status: "delete-failed"; errors: unknown };
+
+export interface GlossaryCascadeVariables {
+  glossaryId: string;
+  initialCount: number;
+  onProgress?: (removedCount: number, totalCount: number) => void;
+}
+
+/**
+ * Removes the glossary id from every key tagged with it (sequential batches of 100,
+ * always re-reading page 0 because cleaned keys drop out of the filter) and only
+ * deletes the glossary once every batch has succeeded.
+ */
+export const useDeleteGlossaryWithCascade = () => {
+  const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  const invalidateKeys = () => {
+    queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+  };
+
+  const invalidateGlossaries = () => {
+    [
+      localizationQueryKeys.glossaries.all,
+      localizationQueryKeys.glossaries.globalPrefix,
+      localizationQueryKeys.glossaries.modulePrefix,
+      localizationQueryKeys.glossaries.searchPrefix,
+      localizationQueryKeys.glossaries.detailPrefix,
+      localizationQueryKeys.glossaries.suggestedPrefix,
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+  };
+
+  return useMutation({
+    mutationKey: ["glossary", "delete-with-cascade"],
+    mutationFn: async ({
+      glossaryId,
+      initialCount,
+      onProgress,
+    }: GlossaryCascadeVariables): Promise<GlossaryCascadeResult> => {
+      if (!tenantId) {
+        throw new Error("No project selected");
+      }
+
+      let removedCount = 0;
+      let remaining = initialCount;
+      let savedAny = false;
+      const maxIterations = Math.ceil(initialCount / GLOSSARY_CASCADE_BATCH_SIZE) + 2;
+      onProgress?.(0, initialCount);
+
+      const keysFailed = async (
+        reason: "save-failed" | "iteration-limit",
+        errorMessage?: string,
+      ): Promise<GlossaryCascadeResult> => {
+        // A failed batch may have partly succeeded, so re-count what is still tagged.
+        let removed = removedCount;
+        try {
+          const { totalCount } = await fetchKeysTaggedWithGlossary(glossaryId, 1);
+          removed = Math.max(0, initialCount - (totalCount ?? 0));
+        } catch {
+          // Keep the count of keys from batches known to have succeeded.
+        }
+        return {
+          status: "keys-failed",
+          reason,
+          removedCount: removed,
+          totalCount: initialCount,
+          errorMessage,
+        };
+      };
+
+      try {
+        for (let iteration = 0; remaining > 0; iteration++) {
+          if (iteration >= maxIterations) {
+            return await keysFailed("iteration-limit");
+          }
+
+          const page = await fetchKeysTaggedWithGlossary(glossaryId, GLOSSARY_CASCADE_BATCH_SIZE);
+          const keys = page.keys ?? [];
+          if (keys.length === 0) {
+            break;
+          }
+
+          const batch: ISaveBlocksLanguageKeyPayload[] = keys.map((key) => ({
+            itemId: key.itemId,
+            keyName: key.keyName,
+            moduleId: key.moduleId,
+            resources: key.resources,
+            context: key.context,
+            isPartiallyTranslated: key.isPartiallyTranslated,
+            routes: key.routes ?? [],
+            glossaryIds: (key.glossaryIds ?? []).filter((id) => id !== glossaryId),
+            isNewKey: false,
+          }));
+
+          let saveResponse: Awaited<
+            ReturnType<typeof languageManagerService.saveBlocksLanguageKeys>
+          >;
+          try {
+            saveResponse = await languageManagerService.saveBlocksLanguageKeys(batch);
+          } catch (error) {
+            savedAny = true;
+            return await keysFailed(
+              "save-failed",
+              error instanceof Error ? error.message : undefined,
+            );
+          }
+          savedAny = true;
+          if (!saveResponse?.success) {
+            return await keysFailed("save-failed", saveResponse?.errorMessage || undefined);
+          }
+
+          removedCount = Math.min(initialCount, removedCount + keys.length);
+          remaining = Math.max(0, (page.totalCount ?? keys.length) - keys.length);
+          onProgress?.(removedCount, initialCount);
+        }
+      } finally {
+        if (savedAny) {
+          invalidateKeys();
+        }
+      }
+
+      const deleteResponse = await languageManagerService.deleteGlossary({ itemId: glossaryId });
+      if (!deleteResponse?.isSuccess) {
+        return { status: "delete-failed", errors: deleteResponse?.errors };
+      }
+
+      invalidateGlossaries();
+      invalidateKeys();
+      return { status: "deleted" };
+    },
   });
 };
 

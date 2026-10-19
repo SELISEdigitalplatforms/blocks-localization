@@ -226,4 +226,32 @@ export class GlossaryPage {
   async confirmDeleteGlossary() {
     await this.deleteDialog.getByRole("button", { name: "Delete" }).click();
   }
+
+  async expectNoTaggedKeys() {
+    await expect(
+      this.page.getByText("No keys are tagged with this glossary.", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByText("Failed to load tagged keys.", { exact: true })).toBeHidden();
+  }
+
+  async expectDeleteUsage(text: string | RegExp) {
+    await expect(this.deleteDialog.getByText(text)).toBeVisible({ timeout: 15_000 });
+  }
+
+  async expectDuplicateNameWarning(existingName: string) {
+    await expect(this.page.getByText(`'${existingName}' already exists.`)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(this.page.getByRole("button", { name: "Open it" })).toBeVisible();
+  }
+
+  async expectNoDuplicateNameWarning() {
+    // The check is debounced by 300 ms; give it time to settle before asserting absence.
+    await this.page.waitForTimeout(1_000);
+    await expect(this.page.getByText(/already exists\./)).toBeHidden();
+  }
+
+  async openDuplicateGlossary() {
+    await this.page.getByRole("button", { name: "Open it" }).click();
+  }
 }

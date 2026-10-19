@@ -1,4 +1,6 @@
 import { FC, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -19,6 +21,7 @@ import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -47,7 +50,9 @@ import {
   useGetLanguageModules,
   useGetLanguages,
   useSaveGlossary,
+  useSearchGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
+import { findDuplicateGlossary } from "@blocks-localization/utils/glossary-name";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { z } from "zod";
@@ -58,6 +63,8 @@ import {
   IGlossaryFormData,
   GLOSSARY_TYPE_OPTIONS,
 } from "@blocks-localization/models/language";
+
+const DUPLICATE_CHECK_DEBOUNCE_MS = 300;
 
 interface AddEditGlossaryProps {
   onClose: () => void;
@@ -87,6 +94,8 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
   const { data: moduleListData } = useGetLanguageModules();
   const [languageOpen, setLanguageOpen] = useState(false);
   const [modulePopoverOpen, setModulePopoverOpen] = useState(false);
+  const navigate = useNavigate();
+  const scoped = useScopedPath();
 
   const form = useForm<IGlossaryFormData>({
     defaultValues: {
@@ -131,6 +140,29 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
 
   // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() drives the re-render when the language changes.
   const selectedLanguage = form.watch("language");
+  const trimmedName = (form.watch("name") ?? "").trim();
+  const [debouncedName, setDebouncedName] = useState(trimmedName);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedName(trimmedName), DUPLICATE_CHECK_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [trimmedName]);
+
+  // Advisory only: the warning never blocks submit, and a failed or superseded check shows nothing.
+  const isNameSettled = (isOpen ?? true) && !!debouncedName && debouncedName === trimmedName;
+  const { data: nameMatches, isError: isDuplicateCheckError } = useSearchGlossaries(
+    debouncedName,
+    isNameSettled,
+  );
+  const duplicateGlossary =
+    isNameSettled && !isDuplicateCheckError
+      ? findDuplicateGlossary(debouncedName, nameMatches?.items, glossary?.itemId)
+      : undefined;
+
+  const openDuplicateGlossary = (itemId: string) => {
+    onClose();
+    navigate(scoped(`services/glossary/${itemId}`));
+  };
 
   const formSubmitHandler = async (data: IGlossaryFormData) => {
     try {
@@ -193,6 +225,18 @@ const AddEditGlossary: FC<AddEditGlossaryProps> = ({ onClose, glossary, isOpen }
                     {...field}
                   />
                 </FormControl>
+                {duplicateGlossary && (
+                  <FormDescription className="text-warning-700">
+                    &apos;{duplicateGlossary.name}&apos; already exists.{" "}
+                    <button
+                      type="button"
+                      className="font-medium underline underline-offset-4 hover:no-underline"
+                      onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
+                    >
+                      Open it
+                    </button>
+                  </FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}
