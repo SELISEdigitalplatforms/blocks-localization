@@ -4,7 +4,15 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Check, ChevronDown, ChevronsUpDown, LoaderCircle, TriangleAlert, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  Info,
+  LoaderCircle,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   Sheet,
@@ -47,8 +55,13 @@ import {
 } from "@/components/ui-kits/select/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui-kits/tooltip/tooltip";
+import {
   Command,
-  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -330,6 +343,24 @@ const ChipInput = ({
   );
 };
 
+/** Info icon beside a field label; hovering or focusing it explains the field. */
+const FieldInfo = ({ label, children }: Readonly<{ label: string; children: ReactNode }>) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        type="button"
+        aria-label={`About ${label}`}
+        className="inline-flex shrink-0 rounded-full text-medium-emphasis hover:text-high-emphasis focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        <Info className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="top" align="start" className="max-w-72 text-left text-xs font-normal">
+      {children}
+    </TooltipContent>
+  </Tooltip>
+);
+
 const FieldError = ({ message }: Readonly<{ message?: string }>) =>
   message ? <p className="text-sm font-medium text-destructive">{message}</p> : null;
 
@@ -517,18 +548,24 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
         />
         <FieldError message={translationError(code)} />
         <Collapsible defaultOpen={forbiddenValues.length > 0}>
-          <CollapsibleTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 w-fit gap-1 px-2 text-medium-emphasis"
-            >
-              Forbidden alternatives
-              {forbiddenValues.length > 0 && ` (${forbiddenValues.length})`}
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
+          <div className="flex items-center gap-1">
+            <CollapsibleTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-fit gap-1 px-2 text-medium-emphasis"
+              >
+                Forbidden alternatives
+                {forbiddenValues.length > 0 && ` (${forbiddenValues.length})`}
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CollapsibleTrigger>
+            <FieldInfo label="forbidden alternatives">
+              Translations to avoid in {language.languageName}, e.g. outdated or competitor wording.
+              The AI is told not to use them.
+            </FieldInfo>
+          </div>
           <CollapsibleContent className="pt-2">{forbiddenInput}</CollapsibleContent>
         </Collapsible>
         <FieldError message={forbiddenError(code)} />
@@ -565,359 +602,111 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
         </SheetDescription>
       </SheetHeader>
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(formSubmitHandler)}
-          className="flex min-h-0 flex-1 flex-col"
-          noValidate
-        >
-          <ScrollArea className="min-h-0 flex-1">
-            <fieldset disabled={isReadOnly} className="grid min-w-0 gap-6 px-6 pb-6">
-              {parsed.status === "corrupt" && (
-                <Alert className="border-warning-200 bg-warning-50 text-warning-700">
-                  <TriangleAlert />
-                  <AlertDescription className="text-warning-700">
-                    Stored terminology data could not be read. Saving will replace it.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {isReadOnly && (
-                <Alert className="border-warning-200 bg-warning-50 text-warning-700">
-                  <TriangleAlert />
-                  <AlertDescription className="text-warning-700">
-                    This term was saved by a newer version and can&apos;t be edited here.
-                  </AlertDescription>
-                </Alert>
-              )}
+      <TooltipProvider delayDuration={200}>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(formSubmitHandler)}
+            className="flex min-h-0 flex-1 flex-col"
+            noValidate
+          >
+            <ScrollArea className="min-h-0 flex-1">
+              <fieldset disabled={isReadOnly} className="grid min-w-0 gap-6 px-6 pb-6">
+                {parsed.status === "corrupt" && (
+                  <Alert className="border-warning-200 bg-warning-50 text-warning-700">
+                    <TriangleAlert />
+                    <AlertDescription className="text-warning-700">
+                      Stored terminology data could not be read. Saving will replace it.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {isReadOnly && (
+                  <Alert className="border-warning-200 bg-warning-50 text-warning-700">
+                    <TriangleAlert />
+                    <AlertDescription className="text-warning-700">
+                      This term was saved by a newer version and can&apos;t be edited here.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-              {/* Term */}
-              <section className="grid gap-4" aria-labelledby="glossary-section-term">
-                <h3 id="glossary-section-term" className="text-sm font-medium text-high-emphasis">
-                  Term
-                </h3>
-                <FormField
-                  name="name"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Name <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter glossary name"
-                          className="border-default border shadow-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      {duplicateGlossary && (
-                        <FormDescription className="text-warning-700">
-                          &apos;{duplicateGlossary.name}&apos; already exists.{" "}
-                          <button
-                            type="button"
-                            className="font-medium underline underline-offset-4 hover:no-underline"
-                            onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
-                          >
-                            Open it
-                          </button>
-                        </FormDescription>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  name="language"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Language
-                      </FormLabel>
-                      <FormControl>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-between"
-                          onClick={() => setLanguageOpen(true)}
-                        >
-                          {selectedLanguage
-                            ? (languageListData?.find(
-                                (lang) => lang.languageCode === selectedLanguage,
-                              )?.languageName ?? selectedLanguage)
-                            : "Select language"}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                      <CommandDialog open={languageOpen} onOpenChange={setLanguageOpen}>
-                        <CommandInput placeholder="Search language..." />
-                        <CommandList>
-                          <CommandEmpty>No language found.</CommandEmpty>
-                          <CommandGroup>
-                            {languageListData?.map((language) => (
-                              <CommandItem
-                                key={language.languageCode}
-                                onSelect={() => {
-                                  field.onChange(language.languageCode);
-                                  setLanguageOpen(false);
-                                }}
-                              >
-                                {language.languageName}
-                                {selectedLanguage === language.languageCode && (
-                                  <Check className="ml-auto h-4 w-4" />
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </CommandDialog>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  name="rule"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Rule
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isReadOnly}
-                          className="flex flex-wrap gap-4"
-                        >
-                          {RULE_OPTIONS.map((option) => (
-                            <div key={option} className="flex items-center gap-2">
-                              <RadioGroupItem value={option} id={`glossary-rule-${option}`} />
-                              <Label htmlFor={`glossary-rule-${option}`} className="cursor-pointer">
-                                {GLOSSARY_RULE_LABELS[option]}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  name="caseSensitive"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isReadOnly}
-                        />
-                      </FormControl>
-                      <FormLabel className="cursor-pointer text-left font-medium text-high-emphasis">
-                        Case-sensitive
-                      </FormLabel>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  name="variants"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        htmlFor="glossary-variants"
-                        className="text-left font-medium text-high-emphasis"
-                      >
-                        Variants
-                      </FormLabel>
-                      <ChipInput
-                        id="glossary-variants"
-                        values={field.value}
-                        onChange={field.onChange}
-                        placeholder="Plurals, synonyms… press Enter or comma"
-                        removeLabel={(value) => `Remove variant ${value}`}
-                        disabled={isReadOnly}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </section>
-
-              {rule !== "keep" && (
-                <>
-                  <Separator />
-                  <section className="grid gap-4" aria-labelledby="glossary-section-translations">
-                    <h3
-                      id="glossary-section-translations"
-                      className="text-sm font-medium text-high-emphasis"
-                    >
-                      Translations
-                    </h3>
-                    {renderTranslationsBody()}
-                  </section>
-                </>
-              )}
-
-              <Separator />
-
-              {/* Meaning */}
-              <section className="grid gap-4" aria-labelledby="glossary-section-meaning">
-                <h3
-                  id="glossary-section-meaning"
-                  className="text-sm font-medium text-high-emphasis"
-                >
-                  Meaning
-                </h3>
-                <FormField
-                  name="type"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Type
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isReadOnly}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {GLOSSARY_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  name="definition"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Definition
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="What the term means"
-                          className="border-default resize-none border shadow-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>Sent to the AI</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </section>
-
-              <Separator />
-
-              {/* Scope */}
-              <section className="grid gap-4" aria-labelledby="glossary-section-scope">
-                <h3 id="glossary-section-scope" className="text-sm font-medium text-high-emphasis">
-                  Scope
-                </h3>
-                <FormField
-                  name="scope"
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            if (formState.isSubmitted) void form.trigger("moduleIds");
-                          }}
-                          disabled={isReadOnly}
-                          aria-label="Scope"
-                          className="flex flex-wrap gap-4"
-                        >
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value="project" id="glossary-scope-project" />
-                            <Label htmlFor="glossary-scope-project" className="cursor-pointer">
-                              Whole project
-                            </Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value="modules" id="glossary-scope-modules" />
-                            <Label htmlFor="glossary-scope-modules" className="cursor-pointer">
-                              Specific modules
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      {scope === "project" && legacyModuleCount > 0 && (
-                        <FormDescription>
-                          Also linked to {legacyModuleCount} module
-                          {legacyModuleCount === 1 ? "" : "s"}. Saving as Whole project removes
-                          those links.
-                        </FormDescription>
-                      )}
-                    </FormItem>
-                  )}
-                />
-
-                {scope === "modules" && (
+                {/* Term */}
+                <section className="grid gap-4" aria-labelledby="glossary-section-term">
+                  <h3 id="glossary-section-term" className="text-sm font-medium text-high-emphasis">
+                    Term
+                  </h3>
                   <FormField
-                    name="moduleIds"
+                    name="name"
                     control={control}
                     render={({ field }) => (
                       <FormItem>
-                        {(moduleIds?.length ?? 0) > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {moduleIds.map((id) => {
-                              const mod = moduleListData?.find((m) => m.itemId === id);
-                              return (
-                                <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                                  {mod?.moduleName ?? id}
-                                  <button
-                                    type="button"
-                                    aria-label={`Remove module ${mod?.moduleName ?? id}`}
-                                    onClick={() => {
-                                      field.onChange(withoutValue(moduleIds, id));
-                                      void form.trigger("moduleIds");
-                                    }}
-                                    className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel className="text-left font-medium text-high-emphasis">
+                            Name <span className="text-destructive">*</span>
+                          </FormLabel>
+                          <FieldInfo label="name">
+                            <>
+                              The word or phrase to look for in your source text, e.g.
+                              &quot;Workspace&quot;. Only whole words are matched.
+                            </>
+                          </FieldInfo>
+                        </div>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter glossary name"
+                            className="border-default border shadow-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        {duplicateGlossary && (
+                          <FormDescription className="text-warning-700">
+                            &apos;{duplicateGlossary.name}&apos; already exists.{" "}
+                            <button
                               type="button"
-                              variant="outline"
-                              role="combobox"
-                              aria-label="Tag modules"
-                              className="w-full justify-between font-normal"
+                              className="font-medium underline underline-offset-4 hover:no-underline"
+                              onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
                             >
-                              Tag modules...
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
+                              Open it
+                            </button>
+                          </FormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    name="language"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel className="text-left font-medium text-high-emphasis">
+                            Language
+                          </FormLabel>
+                          <FieldInfo label="language">
+                            <>
+                              The language the term is written in, usually your project&apos;s
+                              source language.
+                            </>
+                          </FieldInfo>
+                        </div>
+                        <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={languageOpen}
+                                className="w-full justify-between font-normal"
+                              >
+                                {selectedLanguage
+                                  ? (languageListData?.find(
+                                      (lang) => lang.languageCode === selectedLanguage,
+                                    )?.languageName ?? selectedLanguage)
+                                  : "Select language"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
                           </PopoverTrigger>
                           <PopoverContent
                             portalled={false}
@@ -925,32 +714,25 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             align="start"
                           >
                             <Command>
-                              <CommandInput placeholder="Search modules..." />
+                              <CommandInput placeholder="Search language..." />
                               <CommandList>
-                                <CommandEmpty>No modules found.</CommandEmpty>
+                                <CommandEmpty>No language found.</CommandEmpty>
                                 <CommandGroup>
-                                  {moduleListData?.map((mod) => {
-                                    const isSelected = moduleIds.includes(mod.itemId);
-                                    return (
-                                      <CommandItem
-                                        key={mod.itemId}
-                                        value={[mod.moduleName, mod.itemId]
-                                          .filter(Boolean)
-                                          .join(" ")
-                                          .toLowerCase()}
-                                        keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
-                                        onSelect={() => {
-                                          field.onChange(
-                                            toggleValue(form.getValues("moduleIds"), mod.itemId),
-                                          );
-                                          void form.trigger("moduleIds");
-                                        }}
-                                      >
-                                        {mod.moduleName}
-                                        {isSelected && <Check className="ml-auto h-4 w-4" />}
-                                      </CommandItem>
-                                    );
-                                  })}
+                                  {languageListData?.map((language) => (
+                                    <CommandItem
+                                      key={language.languageCode}
+                                      value={`${language.languageName} ${language.languageCode}`}
+                                      onSelect={() => {
+                                        field.onChange(language.languageCode);
+                                        setLanguageOpen(false);
+                                      }}
+                                    >
+                                      {language.languageName}
+                                      {selectedLanguage === language.languageCode && (
+                                        <Check className="ml-auto h-4 w-4" />
+                                      )}
+                                    </CommandItem>
+                                  ))}
                                 </CommandGroup>
                               </CommandList>
                             </Command>
@@ -960,63 +742,417 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                       </FormItem>
                     )}
                   />
-                )}
-              </section>
 
-              <Separator />
-
-              {/* Internal note */}
-              <Collapsible open={noteOpen} onOpenChange={setNoteOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-auto w-full justify-between p-0 text-sm font-medium text-high-emphasis hover:bg-transparent"
-                  >
-                    Internal note
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${noteOpen ? "rotate-180" : ""}`}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4">
                   <FormField
-                    name="note"
+                    name="rule"
                     control={control}
                     render={({ field }) => (
                       <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel className="text-left font-medium text-high-emphasis">
+                            Rule
+                          </FormLabel>
+                          <FieldInfo label="rule">
+                            <ul className="grid gap-1">
+                              <li>
+                                <strong>Translate:</strong> always use the approved translation for
+                                each language.
+                              </li>
+                              <li>
+                                <strong>Keep:</strong> leave the term unchanged in every language,
+                                e.g. brand or product names.
+                              </li>
+                              <li>
+                                <strong>Forbidden:</strong> the term must not be used in
+                                translations.
+                              </li>
+                            </ul>
+                          </FieldInfo>
+                        </div>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isReadOnly}
+                            className="flex flex-wrap gap-4"
+                          >
+                            {RULE_OPTIONS.map((option) => (
+                              <div key={option} className="flex items-center gap-2">
+                                <RadioGroupItem value={option} id={`glossary-rule-${option}`} />
+                                <Label
+                                  htmlFor={`glossary-rule-${option}`}
+                                  className="cursor-pointer"
+                                >
+                                  {GLOSSARY_RULE_LABELS[option]}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    name="caseSensitive"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isReadOnly}
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-left font-medium text-high-emphasis">
+                          Case-sensitive
+                        </FormLabel>
+                        <FieldInfo label="case-sensitive matching">
+                          When on, the term only matches with the same capitalisation, e.g.
+                          &quot;Apple&quot; but not &quot;apple&quot;.
+                        </FieldInfo>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    name="variants"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel
+                            htmlFor="glossary-variants"
+                            className="text-left font-medium text-high-emphasis"
+                          >
+                            Variants
+                          </FormLabel>
+                          <FieldInfo label="variants">
+                            Other forms that should match this term too, such as plurals or
+                            synonyms, e.g. &quot;workspaces&quot;. Up to {GLOSSARY_LIMITS.variants}.
+                          </FieldInfo>
+                        </div>
+                        <ChipInput
+                          id="glossary-variants"
+                          values={field.value}
+                          onChange={field.onChange}
+                          placeholder="Plurals, synonyms… press Enter or comma"
+                          removeLabel={(value) => `Remove variant ${value}`}
+                          disabled={isReadOnly}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </section>
+
+                {rule !== "keep" && (
+                  <>
+                    <Separator />
+                    <section className="grid gap-4" aria-labelledby="glossary-section-translations">
+                      <div className="flex items-center gap-1.5">
+                        <h3
+                          id="glossary-section-translations"
+                          className="text-sm font-medium text-high-emphasis"
+                        >
+                          Translations
+                        </h3>
+                        <FieldInfo label="translations">
+                          {rule === "forbidden"
+                            ? "Words that must not be used in each language instead of this term."
+                            : "The approved translation for each project language. The AI must use it wherever the term appears."}
+                        </FieldInfo>
+                      </div>
+                      {renderTranslationsBody()}
+                    </section>
+                  </>
+                )}
+
+                <Separator />
+
+                {/* Meaning */}
+                <section className="grid gap-4" aria-labelledby="glossary-section-meaning">
+                  <h3
+                    id="glossary-section-meaning"
+                    className="text-sm font-medium text-high-emphasis"
+                  >
+                    Meaning
+                  </h3>
+                  <FormField
+                    name="type"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel className="text-left font-medium text-high-emphasis">
+                            Type
+                          </FormLabel>
+                          <FieldInfo label="type">
+                            <>
+                              What kind of term this is, e.g. an acronym or a phrase. Helps your
+                              team understand and review it.
+                            </>
+                          </FieldInfo>
+                        </div>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isReadOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GLOSSARY_TYPE_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="definition"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel className="text-left font-medium text-high-emphasis">
+                            Definition
+                          </FormLabel>
+                          <FieldInfo label="definition">
+                            <>
+                              What the term means in your product. It is sent to the AI as context,
+                              so keep it short and clear.
+                            </>
+                          </FieldInfo>
+                        </div>
                         <FormControl>
                           <Textarea
-                            aria-label="Internal note"
-                            placeholder="Notes for your team"
+                            placeholder="What the term means"
                             className="border-default resize-none border shadow-none"
                             rows={3}
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription>Not sent to the AI</FormDescription>
+                        <FormDescription>Sent to the AI</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </CollapsibleContent>
-              </Collapsible>
+                </section>
 
-              <FieldError message={formState.errors.root?.serialized?.message} />
-            </fieldset>
-          </ScrollArea>
+                <Separator />
 
-          <SheetFooter className="gap-2 border-t bg-background px-6 py-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending || isReadOnly}>
-              {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              Save
-            </Button>
-          </SheetFooter>
-        </form>
-      </Form>
+                {/* Scope */}
+                <section className="grid gap-4" aria-labelledby="glossary-section-scope">
+                  <div className="flex items-center gap-1.5">
+                    <h3
+                      id="glossary-section-scope"
+                      className="text-sm font-medium text-high-emphasis"
+                    >
+                      Scope
+                    </h3>
+                    <FieldInfo label="scope">
+                      Where the term applies. <strong>Whole project</strong> covers every key;{" "}
+                      <strong>Specific modules</strong> only covers keys in the modules you tag.
+                    </FieldInfo>
+                  </div>
+                  <FormField
+                    name="scope"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              if (formState.isSubmitted) void form.trigger("moduleIds");
+                            }}
+                            disabled={isReadOnly}
+                            aria-label="Scope"
+                            className="flex flex-wrap gap-4"
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="project" id="glossary-scope-project" />
+                              <Label htmlFor="glossary-scope-project" className="cursor-pointer">
+                                Whole project
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="modules" id="glossary-scope-modules" />
+                              <Label htmlFor="glossary-scope-modules" className="cursor-pointer">
+                                Specific modules
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        {scope === "project" && legacyModuleCount > 0 && (
+                          <FormDescription>
+                            Also linked to {legacyModuleCount} module
+                            {legacyModuleCount === 1 ? "" : "s"}. Saving as Whole project removes
+                            those links.
+                          </FormDescription>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  {scope === "modules" && (
+                    <FormField
+                      name="moduleIds"
+                      control={control}
+                      render={({ field }) => (
+                        <FormItem>
+                          {(moduleIds?.length ?? 0) > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {moduleIds.map((id) => {
+                                const mod = moduleListData?.find((m) => m.itemId === id);
+                                return (
+                                  <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                                    {mod?.moduleName ?? id}
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove module ${mod?.moduleName ?? id}`}
+                                      onClick={() => {
+                                        field.onChange(withoutValue(moduleIds, id));
+                                        void form.trigger("moduleIds");
+                                      }}
+                                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                aria-label="Tag modules"
+                                className="w-full justify-between font-normal"
+                              >
+                                Tag modules...
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              portalled={false}
+                              className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
+                              align="start"
+                            >
+                              <Command>
+                                <CommandInput placeholder="Search modules..." />
+                                <CommandList>
+                                  <CommandEmpty>No modules found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {moduleListData?.map((mod) => {
+                                      const isSelected = moduleIds.includes(mod.itemId);
+                                      return (
+                                        <CommandItem
+                                          key={mod.itemId}
+                                          value={[mod.moduleName, mod.itemId]
+                                            .filter(Boolean)
+                                            .join(" ")
+                                            .toLowerCase()}
+                                          keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
+                                          onSelect={() => {
+                                            field.onChange(
+                                              toggleValue(form.getValues("moduleIds"), mod.itemId),
+                                            );
+                                            void form.trigger("moduleIds");
+                                          }}
+                                        >
+                                          {mod.moduleName}
+                                          {isSelected && <Check className="ml-auto h-4 w-4" />}
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </section>
+
+                <Separator />
+
+                {/* Internal note */}
+                <Collapsible open={noteOpen} onOpenChange={setNoteOpen}>
+                  <div className="flex items-center gap-1.5">
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto gap-1 p-0 text-sm font-medium text-high-emphasis hover:bg-transparent"
+                      >
+                        Internal note
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${noteOpen ? "rotate-180" : ""}`}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <FieldInfo label="internal note">
+                      Notes for your team, such as where the term came from or who approved it.
+                      Never sent to the AI.
+                    </FieldInfo>
+                  </div>
+                  <CollapsibleContent className="pt-4">
+                    <FormField
+                      name="note"
+                      control={control}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              aria-label="Internal note"
+                              placeholder="Notes for your team"
+                              className="border-default resize-none border shadow-none"
+                              rows={3}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Not sent to the AI</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <FieldError message={formState.errors.root?.serialized?.message} />
+              </fieldset>
+            </ScrollArea>
+
+            <SheetFooter className="gap-2 border-t bg-background px-6 py-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending || isReadOnly}>
+                {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                Save
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
+      </TooltipProvider>
     </>
   );
 };
