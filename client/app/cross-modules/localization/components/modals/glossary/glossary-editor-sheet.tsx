@@ -643,10 +643,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             Name <span className="text-destructive">*</span>
                           </FormLabel>
                           <FieldInfo label="name">
-                            <>
-                              The word or phrase to look for in your source text, e.g.
-                              &quot;Workspace&quot;. Only whole words are matched.
-                            </>
+                            The word or phrase to look for in your source text, e.g.
+                            &quot;Workspace&quot;. Only whole words are matched.
                           </FieldInfo>
                         </div>
                         <FormControl>
@@ -683,10 +681,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             Language
                           </FormLabel>
                           <FieldInfo label="language">
-                            <>
-                              The language the term is written in, usually your project&apos;s
-                              source language.
-                            </>
+                            The language the term is written in, usually your project&apos;s source
+                            language.
                           </FieldInfo>
                         </div>
                         <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
@@ -890,10 +886,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             Type
                           </FormLabel>
                           <FieldInfo label="type">
-                            <>
-                              What kind of term this is, e.g. an acronym or a phrase. Helps your
-                              team understand and review it.
-                            </>
+                            What kind of term this is, e.g. an acronym or a phrase. Helps your team
+                            understand and review it.
                           </FieldInfo>
                         </div>
                         <Select
@@ -928,10 +922,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             Definition
                           </FormLabel>
                           <FieldInfo label="definition">
-                            <>
-                              What the term means in your product. It is sent to the AI as context,
-                              so keep it short and clear.
-                            </>
+                            What the term means in your product. It is sent to the AI as context, so
+                            keep it short and clear.
                           </FieldInfo>
                         </div>
                         <FormControl>
