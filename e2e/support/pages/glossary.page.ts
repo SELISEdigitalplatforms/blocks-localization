@@ -96,9 +96,14 @@ export class GlossaryPage {
   }
 
   async selectLanguage(language: string) {
-    const languageField = this.addGlossaryDialog.getByRole("button", { name: "Language" });
+    // The trigger is a combobox; a "Language" button match would hit the "About language" info icon.
+    const languageField = this.addGlossaryDialog.getByRole("combobox", {
+      name: "Language",
+      exact: true,
+    });
     await expect(languageField).toBeVisible();
     await languageField.click();
+    await expect(languageField).toHaveAttribute("aria-expanded", "true");
     await expect(this.page.getByRole("option", { name: language })).toBeVisible({
       timeout: 10_000,
     });
@@ -179,6 +184,15 @@ export class GlossaryPage {
       await this.editorSheet.getByRole("button", { name: "Internal Note" }).click();
     }
     await this.internalNoteInput.fill(text);
+  }
+
+  /**
+   * Closes the editor without saving. The sheet focuses the first info icon on open, so its
+   * tooltip takes the first Escape; Cancel closes the sheet directly.
+   */
+  async cancelEditor() {
+    await this.editorSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(this.editorSheet).toBeHidden();
   }
 
   async clickSaveButton() {

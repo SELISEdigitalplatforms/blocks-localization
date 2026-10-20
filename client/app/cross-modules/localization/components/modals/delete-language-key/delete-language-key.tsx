@@ -11,7 +11,16 @@ import { Button } from "@/components/ui-kits/button/button";
 import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
 import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+
+/**
+ * The query string the Translations table had when it opened this key, so a delete returns to
+ * the same filtered list. Only a "?..." string is trusted; other entry points carry no state.
+ */
+export const getReturnSearch = (state: unknown): string => {
+  const returnSearch = (state as { returnSearch?: unknown } | null)?.returnSearch;
+  return typeof returnSearch === "string" && returnSearch.startsWith("?") ? returnSearch : "";
+};
 
 interface DeleteLanguageKeyProps {
   itemId: string;
@@ -20,6 +29,7 @@ interface DeleteLanguageKeyProps {
 
 const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const scoped = useScopedPath();
   const { isPending, mutateAsync } = useDeleteLanguageKey();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
@@ -42,7 +52,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
           title: "Success",
           description: "Key deleted successfully.",
         });
-        navigate(scoped("services/language"), { replace: true });
+        navigate(scoped("services/language") + getReturnSearch(location.state), { replace: true });
         onClose();
       } else {
         const rawErrors = res?.errors;

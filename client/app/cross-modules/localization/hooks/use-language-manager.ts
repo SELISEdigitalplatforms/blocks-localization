@@ -30,6 +30,7 @@ export const useGetBlocksLanguageKey = (
   lastUpdateDateRange?: { startDate: string; endDate: string },
   resourceSearchFilters?: { culture: string; searchText: string }[],
   missingLanguages?: string[],
+  onlyDuplicates = false,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -48,6 +49,7 @@ export const useGetBlocksLanguageKey = (
       lastUpdateDateRange?.endDate ?? "",
       resourceSearchFilters ?? [],
       missingLanguages ?? [],
+      onlyDuplicates,
     ),
     queryFn: () =>
       languageManagerService.fetchBlocksLanguageKey({
@@ -62,10 +64,36 @@ export const useGetBlocksLanguageKey = (
         lastUpdateDateRange: lastUpdateDateRange,
         resourceSearchFilters: resourceSearchFilters,
         missingLanguages: missingLanguages,
+        ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
       }),
     placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnMount: true,
+  });
+};
+
+export const useGetDuplicateSummary = () => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.duplicateSummary(tenantId),
+    queryFn: () => languageManagerService.fetchDuplicateSummary(),
+    enabled: !!tenantId,
+    // A failed summary only hides the chips; it is not worth retrying or surfacing.
+    retry: false,
+  });
+};
+
+export const useEnforceUniqueness = () => {
+  const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useMutation({
+    mutationKey: ["language-keys", "enforce-uniqueness"],
+    mutationFn: () => languageManagerService.enforceUniqueness(),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.duplicateSummary(tenantId),
+      });
+    },
   });
 };
 
@@ -195,6 +223,10 @@ export const useDeleteLanguageModule = () => {
     onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
+      });
+      // Deleting a module can clear a duplicate module name, even when it has no keys.
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.duplicateSummaryPrefix,
       });
       if (payload.targetModuleId || payload.deleteKeys) {
         queryClient.invalidateQueries({
