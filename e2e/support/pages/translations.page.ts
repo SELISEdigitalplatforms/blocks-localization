@@ -430,7 +430,8 @@ export class TranslationsPage {
 
   async goToNextPage() {
     const next = this.page.getByRole("button", { name: "Go to next page" });
-    if (await next.isVisible().catch(() => false)) {
+    // The button is always rendered and is disabled while everything fits on one page.
+    if (await next.isEnabled({ timeout: 5_000 }).catch(() => false)) {
       await next.click();
       await expect(this.page.getByRole("button", { name: "Go to previous page" })).toBeEnabled();
     }
@@ -486,7 +487,11 @@ export class TranslationsPage {
   }
 
   async expectActionsColumnLeftOfKeyColumn() {
-    const headers = this.translationKeysTable().locator("thead tr").first().locator("th");
+    // Skip the trailing aria-hidden filler header the table appends after the data columns.
+    const headers = this.translationKeysTable()
+      .locator("thead tr")
+      .first()
+      .locator("th:not([aria-hidden='true'])");
     const count = await headers.count();
     expect(count).toBeGreaterThanOrEqual(3);
 
@@ -655,6 +660,36 @@ export class TranslationsPage {
   async changePageSize(size: number) {
     await this.page.getByText("Rows per page").locator("..").getByRole("combobox").click();
     await this.page.getByRole("option", { name: String(size), exact: true }).click();
+  }
+
+  /**
+   * Opens the Rows per page select and returns its option labels, leaving it open.
+   * Options depend on the key count: 10, then 30/50/100 below the total, then
+   * the total itself as "All (N)". A project with 10 keys or fewer offers only 10.
+   */
+  async openPageSizeOptions(): Promise<string[]> {
+    await this.page.getByText("Rows per page").locator("..").getByRole("combobox").click();
+    const options = this.page.getByRole("listbox").getByRole("option");
+    await expect(options.first()).toBeVisible();
+    return (await options.allInnerTexts()).map((label) => label.trim());
+  }
+
+  async choosePageSizeOption(label: string) {
+    await this.page.getByRole("option", { name: label, exact: true }).click();
+  }
+
+  /** Waits until the "N keys" badge reports at least minCount, reloading while an import is still processing. */
+  async waitForTotalKeyCountAtLeast(minCount: number) {
+    const badge = this.page.getByText(/^[\d,]+ keys$/).first();
+    const readCount = async () => Number(((await badge.textContent()) ?? "").replace(/\D/g, ""));
+    await expect(async () => {
+      await expect(badge).toBeVisible({ timeout: 15_000 });
+      if ((await readCount()) < minCount) {
+        await this.page.reload();
+        await expect(badge).toBeVisible({ timeout: 15_000 });
+      }
+      expect(await readCount()).toBeGreaterThanOrEqual(minCount);
+    }).toPass({ timeout: 90_000, intervals: [2_000, 5_000] });
   }
 
   async expectRowCountAtLeast(minCount: number) {
