@@ -269,16 +269,6 @@ export interface IGlossary {
   lastUpdateDate: string;
 }
 
-export interface IGlossaryFormData {
-  name: string;
-  language?: string;
-  type?: string;
-  context?: string;
-  additionalNote?: string;
-  isGlobal?: boolean;
-  moduleIds?: string[];
-}
-
 export interface IGetGlossariesResponse {
   items: IGlossary[];
   totalCount: number;

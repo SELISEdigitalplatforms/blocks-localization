@@ -31,15 +31,8 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { getModuleBadgeStyle } from "../../language-table/hooks/use-language-table-columns";
+import { getPageSizeOptions } from "../../language-table/language-table.utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
-
-const getPageSizeOptions = (totalCount: number) => {
-  const fixedOptions = [10, 30, 50, 100];
-  if (totalCount > 100) return [...fixedOptions, totalCount];
-  if (totalCount > 0)
-    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
-  return [10];
-};
 
 const compareStrings = (a: string, b: string): number => {
   if (a < b) return -1;
@@ -76,7 +69,6 @@ const getUserDisplayNameFromUser = (
 
 interface RenderModuleRowsParams {
   modules: IModuleGets[];
-  allModuleIds: string[];
   getUserDisplayNameById: (userId: string | null) => string;
   isUserLoading: (userId: string | null) => boolean;
   scoped: (path: string) => string;
@@ -89,7 +81,6 @@ interface RenderModuleRowsParams {
 
 function renderModuleRows({
   modules,
-  allModuleIds,
   getUserDisplayNameById,
   isUserLoading,
   scoped,
@@ -121,7 +112,7 @@ function renderModuleRows({
       <TableCell className="truncate">
         <span
           className="inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium"
-          style={getModuleBadgeStyle(module.itemId, allModuleIds)}
+          style={getModuleBadgeStyle(module.itemId)}
         >
           {module.moduleName}
         </span>
@@ -287,11 +278,6 @@ export function ModuleTable() {
     !isModulesLoading && searchValue.length === 0 && (modulesData?.length ?? 0) === 0;
   const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
 
-  const allModuleIds = useMemo(
-    () => (modulesData ?? []).map((module) => module.itemId),
-    [modulesData],
-  );
-
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
   };
@@ -363,7 +349,6 @@ export function ModuleTable() {
                       ))
                     : renderModuleRows({
                         modules: paginatedModules,
-                        allModuleIds,
                         getUserDisplayNameById,
                         isUserLoading,
                         scoped,
