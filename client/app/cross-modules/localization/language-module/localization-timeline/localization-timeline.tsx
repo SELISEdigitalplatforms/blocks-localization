@@ -50,6 +50,8 @@ function getOperationDescription(logFrom: string, userName: string): string {
       return `Key created by ${userName}`;
     case "KeyController.BulkCreate":
       return `Bulk created by ${userName}`;
+    case "KeyController.BulkMove":
+      return `Moved to another module by ${userName}`;
     case "UilmImport.Update":
       return `Updated by import by ${userName}`;
     case "UilmImport.Insert":

@@ -45,6 +45,28 @@ describe("language-module/timeline", () => {
     } as never);
   });
 
+  it("should not offer Revert for a move entry", () => {
+    render(
+      <Timeline
+        events={
+          [
+            {
+              id: "e3",
+              date: "2026-01-03",
+              time: "12:00",
+              description: "Moved to another module",
+              logFrom: "KeyController.BulkMove",
+              previousData: [{ moduleId: "m1", resources: [] }],
+              currentData: [{ moduleId: "m2", resources: [] }],
+            },
+          ] as never
+        }
+      />,
+    );
+    expect(screen.getByText("Moved to another module")).toBeTruthy();
+    expect(screen.queryByText("Revert")).toBeNull();
+  });
+
   it("should render each event description", () => {
     render(<Timeline events={events} />);
     expect(screen.getByText("Created key")).toBeTruthy();

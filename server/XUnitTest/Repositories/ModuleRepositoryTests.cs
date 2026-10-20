@@ -8,6 +8,7 @@ using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
 using Moq;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Xunit;
 using XUnitTest.Shared;
@@ -136,6 +137,31 @@ namespace XUnitTest.Repositories
             var result = await _repo.GetAllAsync();
 
             result.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region DeleteAsync
+
+        [Fact]
+        public async Task DeleteAsync_DeletesOneModuleByItemIdInTheTenantDatabase()
+        {
+            FilterDefinition<BlocksLanguageModule>? captured = null;
+            _collection.Setup(x => x.DeleteOneAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageModule>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageModule>, CancellationToken>((f, _) => captured = f)
+                .ReturnsAsync(Mock.Of<DeleteResult>());
+
+            await _repo.DeleteAsync("m1");
+
+            _dbContextProvider.Verify(x => x.GetDatabase("test-tenant"), Times.Once);
+            var registry = BsonSerializer.SerializerRegistry;
+            captured!.Render(new RenderArgs<BlocksLanguageModule>(registry.GetSerializer<BlocksLanguageModule>(), registry))
+                .ToString().Should().Be("{ \"_id\" : \"m1\" }");
+            _collection.Verify(x => x.DeleteOneAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageModule>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         #endregion

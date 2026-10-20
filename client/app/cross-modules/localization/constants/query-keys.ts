@@ -81,6 +81,8 @@ export const localizationQueryKeys = {
       ] as const,
     glossaryUsage: (tenantId: string, glossaryId: string) =>
       ["get-glossary-usage-count", tenantId, glossaryId] as const,
+    countByModule: (tenantId: string, moduleId: string) =>
+      ["get-blocksLanguageKeys", tenantId, "count-by-module", moduleId] as const,
   },
   languages: {
     all: ["get-languages"] as const,

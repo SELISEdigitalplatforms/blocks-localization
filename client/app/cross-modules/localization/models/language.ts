@@ -146,6 +146,7 @@ export interface IModuleGets {
 export interface IDeleteModuleRequest {
   itemId: string;
   targetModuleId?: string;
+  deleteKeys?: boolean;
 }
 
 export interface ITagGlossaryRequest {
