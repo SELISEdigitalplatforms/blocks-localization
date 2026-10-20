@@ -83,7 +83,7 @@ export class GlossaryPage {
   async expectEditorSectionsInOrder() {
     const headings = this.editorSheet.getByRole("heading", { level: 3 });
     await expect(headings).toHaveText(["Term", "Translations", "Meaning", "Scope"]);
-    await expect(this.editorSheet.getByRole("button", { name: "Additional note" })).toBeVisible();
+    await expect(this.editorSheet.getByRole("button", { name: "Internal Note" })).toBeVisible();
   }
 
   async expectAddGlossaryDialogLoaded() {
@@ -176,7 +176,7 @@ export class GlossaryPage {
 
   async fillInternalNote(text: string) {
     if (!(await this.internalNoteInput.isVisible())) {
-      await this.editorSheet.getByRole("button", { name: "Additional note" }).click();
+      await this.editorSheet.getByRole("button", { name: "Internal Note" }).click();
     }
     await this.internalNoteInput.fill(text);
   }

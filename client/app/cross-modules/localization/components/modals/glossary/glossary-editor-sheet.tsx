@@ -1011,7 +1011,6 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
 
                 <Separator />
 
-                {/* Additional note */}
                 <Collapsible open={noteOpen} onOpenChange={setNoteOpen}>
                   <div className="flex items-center gap-1.5">
                     <CollapsibleTrigger asChild>
@@ -1020,7 +1019,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                         variant="ghost"
                         className="h-auto gap-1 p-0 text-sm font-medium text-high-emphasis hover:bg-transparent"
                       >
-                        Additional note
+                        Internal Note
                         <ChevronDown
                           className={`h-4 w-4 transition-transform ${noteOpen ? "rotate-180" : ""}`}
                         />

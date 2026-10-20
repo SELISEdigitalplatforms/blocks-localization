@@ -137,7 +137,7 @@ test.describe("Glossary — visual evidence", () => {
         const section = active?.closest("section");
         const heading = section?.querySelector("h3")?.textContent;
         if (heading) return heading;
-        if (active?.textContent?.trim() === "Additional note") return "Additional note";
+        if (active?.textContent?.trim() === "Internal Note") return "Internal Note";
         return active?.getAttribute("aria-label") ?? active?.textContent?.trim() ?? "";
       });
     const visited: string[] = [];
@@ -147,7 +147,7 @@ test.describe("Glossary — visual evidence", () => {
       if (visited.at(-1) !== section) visited.push(section);
       if (section === "Save") break;
     }
-    const order = ["Term", "Translations", "Meaning", "Scope", "Additional note"].filter((name) =>
+    const order = ["Term", "Translations", "Meaning", "Scope", "Internal Note"].filter((name) =>
       visited.includes(name),
     );
     expect(order.slice(0, 1)).toEqual(["Term"]);

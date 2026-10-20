@@ -104,7 +104,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       .map((heading) => heading.textContent);
     expect(headings).toEqual(["Term", "Translations", "Meaning", "Scope"]);
     const scope = screen.getByRole("heading", { name: "Scope" });
-    const note = screen.getByRole("button", { name: "Additional note" });
+    const note = screen.getByRole("button", { name: "Internal Note" });
     expect(scope.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("dialog").className).toContain("sm:max-w-xl");
   });
