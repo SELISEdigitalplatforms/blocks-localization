@@ -26,7 +26,7 @@ test.describe("Glossary", () => {
     await test.step("Open Add Glossary and fill in the name", async () => {
       await glossary.openNewGlossaryDialog();
       await glossary.expectAddGlossaryDialogLoaded();
-      // The sheet shows Term → Translations → Meaning → Scope → Internal note (H1).
+      // The sheet shows Term → Translations → Meaning → Scope → Additional note (H1).
       await glossary.expectEditorSectionsInOrder();
       await glossary.fillGlossaryName(glossaryName);
     });
@@ -42,9 +42,8 @@ test.describe("Glossary", () => {
     // Project languages differ per environment: use the editor's own translation rows.
     let translationCodes: string[] = [];
 
-    await test.step("Fill rule, variant, translations and forbidden alternatives", async () => {
+    await test.step("Fill rule, translations and forbidden alternatives", async () => {
       await glossary.setRule("Translate");
-      await glossary.addVariant(`${glossaryName}s`);
       translationCodes = await glossary.getTranslationCodes();
       if (translationCodes.length > 0) {
         await glossary.fillTranslation(translationCodes[0], "Arbeitsbereich");
@@ -56,18 +55,19 @@ test.describe("Glossary", () => {
       await glossary.setScope("Specific modules");
     });
 
-    await test.step("Fill Definition and Internal note", async () => {
+    await test.step("Fill Definition and Additional note", async () => {
       await glossary.fillDefinition("This is a Testing context.");
       await glossary.fillInternalNote("This is Additional Notes");
     });
 
-    await test.step("Add glossary and verify the saved terminology data (H3, H11, H12)", async () => {
+    await test.step("Add glossary and verify the saved terminology data (H3, H11)", async () => {
       const payload = await glossary.saveAndCapturePayload();
       await glossary.expectAddSuccess(glossaryName);
 
       const meta = parseMeta(payload.additionalNote);
       expect(meta.rule).toBe("translate");
-      expect(meta.variants).toEqual([`${glossaryName}s`]);
+      // Variants are not editable until Phase 3, so a new term stores none.
+      expect(meta.variants ?? []).toEqual([]);
       expect(meta.note).toBe("This is Additional Notes");
       expect(payload.isGlobal).toBe(false);
       expect((payload.moduleIds as string[]).length).toBe(1);
@@ -155,20 +155,13 @@ test.describe("Glossary", () => {
       await page.keyboard.press("Escape");
     });
 
-    await test.step("Editor validation blocks invalid terminology (C4, C5, C12)", async () => {
+    await test.step("Editor validation blocks invalid terminology (C5, C12)", async () => {
       await glossary.clickEditButton();
       let saveRequests = 0;
       const onRequest = (request: import("@playwright/test").Request) => {
         if (/\/Glossary\/Save/.test(request.url())) saveRequests++;
       };
       page.on("request", onRequest);
-
-      await glossary.addVariant(glossaryName.toLowerCase());
-      await glossary.clickSaveButton();
-      await glossary.expectFieldError("Variant can't be the same as the term");
-      await glossary.editorSheet
-        .getByRole("button", { name: `Remove variant ${glossaryName.toLowerCase()}` })
-        .click();
 
       if (translationCodes.length > 0) {
         await glossary.addForbidden(translationCodes[0], "arbeitsbereich");

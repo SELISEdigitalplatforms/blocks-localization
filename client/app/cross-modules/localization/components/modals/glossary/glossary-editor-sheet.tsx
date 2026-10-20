@@ -26,7 +26,6 @@ import {
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { Separator } from "@/components/ui-kits/separator/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
-import { Switch } from "@/components/ui-kits/switch/switch";
 import { Label } from "@/components/ui-kits/label/label";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Alert, AlertDescription } from "@/components/ui-kits/alert/alert";
@@ -99,7 +98,6 @@ const DUPLICATE_CHECK_DEBOUNCE_MS = 300;
 
 export const GLOSSARY_LIMITS = {
   name: 200,
-  variants: 20,
   value: 200,
   forbiddenPerLanguage: 10,
   definition: 1000,
@@ -114,8 +112,6 @@ interface GlossaryEditorValues {
   language: string;
   type: string;
   rule: GlossaryRule;
-  caseSensitive: boolean;
-  variants: string[];
   translations: Record<string, string>;
   forbidden: Record<string, string[]>;
   definition: string;
@@ -130,24 +126,6 @@ const withoutValue = (values: string[], value: string) => values.filter((item) =
 
 const toggleValue = (values: string[], value: string) =>
   values.includes(value) ? withoutValue(values, value) : [...values, value];
-
-const firstVariantError = (variants: string[], name: string): string | undefined => {
-  if (variants.length > GLOSSARY_LIMITS.variants) {
-    return `Add at most ${GLOSSARY_LIMITS.variants} variants`;
-  }
-  const normalizedName = normalizeGlossaryName(name);
-  const seen = new Set<string>();
-  for (const variant of variants) {
-    if (variant.trim().length > GLOSSARY_LIMITS.value) {
-      return `Variant must be ${GLOSSARY_LIMITS.value} characters or fewer`;
-    }
-    const normalized = normalizeGlossaryName(variant);
-    if (normalized === normalizedName) return "Variant can't be the same as the term";
-    if (seen.has(normalized)) return "Variant already listed";
-    seen.add(normalized);
-  }
-  return undefined;
-};
 
 const firstForbiddenError = (
   values: string[],
@@ -187,8 +165,6 @@ const buildSchema = (targetCodes: string[]) =>
       language: z.string(),
       type: z.string(),
       rule: z.enum(["translate", "keep", "forbidden"]),
-      caseSensitive: z.boolean(),
-      variants: z.array(z.string()),
       translations: z.record(z.string(), z.string()),
       forbidden: z.record(z.string(), z.array(z.string())),
       definition: z.string().max(GLOSSARY_LIMITS.definition, {
@@ -201,11 +177,6 @@ const buildSchema = (targetCodes: string[]) =>
       }),
     })
     .superRefine((values, ctx) => {
-      const variantError = firstVariantError(values.variants, values.name);
-      if (variantError) {
-        ctx.addIssue({ code: "custom", path: ["variants"], message: variantError });
-      }
-
       for (const code of targetCodes) {
         const translation = values.translations[code];
         if (
@@ -249,8 +220,6 @@ const getInitialValues = (glossary: IGlossary | undefined, meta: GlossaryMeta, n
   language: glossary?.language ?? "",
   type: glossary?.type ?? "",
   rule: meta.rule,
-  caseSensitive: meta.caseSensitive,
-  variants: [...meta.variants],
   translations: { ...meta.translations },
   forbidden: Object.fromEntries(
     Object.entries(meta.forbidden).map(([code, values]) => [code, [...values]]),
@@ -350,7 +319,7 @@ const FieldInfo = ({ label, children }: Readonly<{ label: string; children: Reac
       <button
         type="button"
         aria-label={`About ${label}`}
-        className="inline-flex shrink-0 rounded-full text-medium-emphasis hover:text-high-emphasis focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="inline-flex shrink-0 rounded-full text-blue-600 hover:text-blue-800 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:text-blue-400 dark:hover:text-blue-300"
       >
         <Info className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -449,8 +418,9 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   const formSubmitHandler = async (data: GlossaryEditorValues) => {
     const meta: GlossaryMeta = {
       rule: data.rule,
-      caseSensitive: data.caseSensitive,
-      variants: data.variants,
+      // Not edited in this phase (they need matching, Phase 3): keep the stored values.
+      caseSensitive: parsed.meta.caseSensitive,
+      variants: parsed.meta.variants,
       translations: data.translations,
       forbidden: data.forbidden,
       note: data.note,
@@ -596,7 +566,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   return (
     <>
       <SheetHeader className="px-6 pt-6 pb-4">
-        <SheetTitle>{isEditMode ? "Edit term" : "Add term"}</SheetTitle>
+        <SheetTitle>{isEditMode ? "Edit Glossary" : "Add Glossary"}</SheetTitle>
         <SheetDescription className="sr-only">
           Define the term, its translations, meaning and scope.
         </SheetDescription>
@@ -643,8 +613,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             Name <span className="text-destructive">*</span>
                           </FormLabel>
                           <FieldInfo label="name">
-                            The word or phrase to look for in your source text, e.g.
-                            &quot;Workspace&quot;. Only whole words are matched.
+                            The word or phrase this glossary entry is about, e.g.
+                            &quot;Workspace&quot;.
                           </FieldInfo>
                         </div>
                         <FormControl>
@@ -685,55 +655,58 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             language.
                           </FieldInfo>
                         </div>
-                        <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={languageOpen}
-                                className="w-full justify-between font-normal"
-                              >
-                                {selectedLanguage
-                                  ? (languageListData?.find(
-                                      (lang) => lang.languageCode === selectedLanguage,
-                                    )?.languageName ?? selectedLanguage)
-                                  : "Select language"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            portalled={false}
-                            className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
-                            align="start"
-                          >
-                            <Command>
-                              <CommandInput placeholder="Search language..." />
-                              <CommandList>
-                                <CommandEmpty>No language found.</CommandEmpty>
-                                <CommandGroup>
-                                  {languageListData?.map((language) => (
-                                    <CommandItem
-                                      key={language.languageCode}
-                                      value={`${language.languageName} ${language.languageCode}`}
-                                      onSelect={() => {
-                                        field.onChange(language.languageCode);
-                                        setLanguageOpen(false);
-                                      }}
-                                    >
-                                      {language.languageName}
-                                      {selectedLanguage === language.languageCode && (
-                                        <Check className="ml-auto h-4 w-4" />
-                                      )}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        {/* Wrapper keeps space-y margins stable when the dropdown mounts. */}
+                        <div>
+                          <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={languageOpen}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  {selectedLanguage
+                                    ? (languageListData?.find(
+                                        (lang) => lang.languageCode === selectedLanguage,
+                                      )?.languageName ?? selectedLanguage)
+                                    : "Select language"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              portalled={false}
+                              className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
+                              align="start"
+                            >
+                              <Command>
+                                <CommandInput placeholder="Search language..." />
+                                <CommandList>
+                                  <CommandEmpty>No language found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {languageListData?.map((language) => (
+                                      <CommandItem
+                                        key={language.languageCode}
+                                        value={`${language.languageName} ${language.languageCode}`}
+                                        onSelect={() => {
+                                          field.onChange(language.languageCode);
+                                          setLanguageOpen(false);
+                                        }}
+                                      >
+                                        {language.languageName}
+                                        {selectedLanguage === language.languageCode && (
+                                          <Check className="ml-auto h-4 w-4" />
+                                        )}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -785,59 +758,6 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             ))}
                           </RadioGroup>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    name="caseSensitive"
-                    control={control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isReadOnly}
-                          />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer text-left font-medium text-high-emphasis">
-                          Case-sensitive
-                        </FormLabel>
-                        <FieldInfo label="case-sensitive matching">
-                          When on, the term only matches with the same capitalisation, e.g.
-                          &quot;Apple&quot; but not &quot;apple&quot;.
-                        </FieldInfo>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    name="variants"
-                    control={control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel
-                            htmlFor="glossary-variants"
-                            className="text-left font-medium text-high-emphasis"
-                          >
-                            Variants
-                          </FormLabel>
-                          <FieldInfo label="variants">
-                            Other forms that should match this term too, such as plurals or
-                            synonyms, e.g. &quot;workspaces&quot;. Up to {GLOSSARY_LIMITS.variants}.
-                          </FieldInfo>
-                        </div>
-                        <ChipInput
-                          id="glossary-variants"
-                          values={field.value}
-                          onChange={field.onChange}
-                          placeholder="Plurals, synonyms… press Enter or comma"
-                          removeLabel={(value) => `Remove variant ${value}`}
-                          disabled={isReadOnly}
-                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1027,56 +947,61 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                               })}
                             </div>
                           )}
-                          <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                role="combobox"
-                                aria-label="Tag modules"
-                                className="w-full justify-between font-normal"
+                          <div>
+                            <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-label="Tag modules"
+                                  className="w-full justify-between font-normal"
+                                >
+                                  Tag modules...
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                portalled={false}
+                                className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
+                                align="start"
                               >
-                                Tag modules...
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              portalled={false}
-                              className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
-                              align="start"
-                            >
-                              <Command>
-                                <CommandInput placeholder="Search modules..." />
-                                <CommandList>
-                                  <CommandEmpty>No modules found.</CommandEmpty>
-                                  <CommandGroup>
-                                    {moduleListData?.map((mod) => {
-                                      const isSelected = moduleIds.includes(mod.itemId);
-                                      return (
-                                        <CommandItem
-                                          key={mod.itemId}
-                                          value={[mod.moduleName, mod.itemId]
-                                            .filter(Boolean)
-                                            .join(" ")
-                                            .toLowerCase()}
-                                          keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
-                                          onSelect={() => {
-                                            field.onChange(
-                                              toggleValue(form.getValues("moduleIds"), mod.itemId),
-                                            );
-                                            void form.trigger("moduleIds");
-                                          }}
-                                        >
-                                          {mod.moduleName}
-                                          {isSelected && <Check className="ml-auto h-4 w-4" />}
-                                        </CommandItem>
-                                      );
-                                    })}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
+                                <Command>
+                                  <CommandInput placeholder="Search modules..." />
+                                  <CommandList>
+                                    <CommandEmpty>No modules found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {moduleListData?.map((mod) => {
+                                        const isSelected = moduleIds.includes(mod.itemId);
+                                        return (
+                                          <CommandItem
+                                            key={mod.itemId}
+                                            value={[mod.moduleName, mod.itemId]
+                                              .filter(Boolean)
+                                              .join(" ")
+                                              .toLowerCase()}
+                                            keywords={[mod.moduleName ?? "", mod.itemId ?? ""]}
+                                            onSelect={() => {
+                                              field.onChange(
+                                                toggleValue(
+                                                  form.getValues("moduleIds"),
+                                                  mod.itemId,
+                                                ),
+                                              );
+                                              void form.trigger("moduleIds");
+                                            }}
+                                          >
+                                            {mod.moduleName}
+                                            {isSelected && <Check className="ml-auto h-4 w-4" />}
+                                          </CommandItem>
+                                        );
+                                      })}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1086,7 +1011,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
 
                 <Separator />
 
-                {/* Internal note */}
+                {/* Additional note */}
                 <Collapsible open={noteOpen} onOpenChange={setNoteOpen}>
                   <div className="flex items-center gap-1.5">
                     <CollapsibleTrigger asChild>
@@ -1095,13 +1020,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                         variant="ghost"
                         className="h-auto gap-1 p-0 text-sm font-medium text-high-emphasis hover:bg-transparent"
                       >
-                        Internal note
+                        Additional note
                         <ChevronDown
                           className={`h-4 w-4 transition-transform ${noteOpen ? "rotate-180" : ""}`}
                         />
                       </Button>
                     </CollapsibleTrigger>
-                    <FieldInfo label="internal note">
+                    <FieldInfo label="additional note">
                       Notes for your team, such as where the term came from or who approved it.
                       Never sent to the AI.
                     </FieldInfo>
@@ -1114,14 +1039,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                         <FormItem>
                           <FormControl>
                             <Textarea
-                              aria-label="Internal note"
+                              aria-label="Additional note"
                               placeholder="Notes for your team"
                               className="border-default resize-none border shadow-none"
                               rows={3}
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>Not sent to the AI</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

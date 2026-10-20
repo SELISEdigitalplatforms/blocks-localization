@@ -98,13 +98,13 @@ describe("modals/glossary/glossary-editor-sheet", () => {
 
   it("should open a right-side sheet with the sections in order (H1)", () => {
     renderSheet();
-    expect(screen.getByRole("heading", { name: "Add term" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Add Glossary" })).toBeTruthy();
     const headings = screen
       .getAllByRole("heading", { level: 3 })
       .map((heading) => heading.textContent);
     expect(headings).toEqual(["Term", "Translations", "Meaning", "Scope"]);
     const scope = screen.getByRole("heading", { name: "Scope" });
-    const note = screen.getByRole("button", { name: "Internal note" });
+    const note = screen.getByRole("button", { name: "Additional note" });
     expect(scope.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("dialog").className).toContain("sm:max-w-xl");
   });
@@ -149,11 +149,11 @@ describe("modals/glossary/glossary-editor-sheet", () => {
 
   it("should open a plain-text note as Translate with the note unchanged (H4)", () => {
     renderSheet(makeGlossary({ additionalNote: "legacy note" }));
-    expect(screen.getByRole("heading", { name: "Edit term" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Edit Glossary" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Translate" }).getAttribute("aria-checked")).toBe(
       "true",
     );
-    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(
       "legacy note",
     );
   });
@@ -173,7 +173,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(
       screen.getByText("Stored terminology data could not be read. Saving will replace it."),
     ).toBeTruthy();
-    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(raw);
+    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(raw);
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     const saved: string = lastPayload().additionalNote;
@@ -212,34 +212,18 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(lastPayload().context).toBe("⟦rule: do not use this term; avoid de-DE: Werkraum⟧");
   });
 
-  it("should add variants with Enter or comma as removable chips (H12)", async () => {
-    renderSheet(makeGlossary());
-    const input = screen.getByLabelText("Variants");
-    addChip(input, "workspaces");
-    fireEvent.change(input, { target: { value: "work area,team space," } });
-    expect(screen.getByText("workspaces")).toBeTruthy();
-    expect(screen.getByText("work area")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Remove variant work area" }));
+  it("should not show Variants or Case-sensitive and keep their stored values on save", async () => {
+    const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"],"translations":{"de-DE":"Arbeitsbereich"}}`;
+    renderSheet(makeGlossary({ additionalNote }));
+    expect(screen.queryByLabelText("Variants")).toBeNull();
+    expect(screen.queryByText("Case-sensitive")).toBeNull();
+    fireEvent.change(screen.getByLabelText("German (de-DE)"), { target: { value: "Arbeitsraum" } });
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(JSON.parse(lastPayload().additionalNote.slice(PREFIX.length)).variants).toEqual([
-      "workspaces",
-      "team space",
-    ]);
-  });
-
-  it("should block duplicate variants and a variant equal to the term (C4)", async () => {
-    renderSheet(makeGlossary());
-    const input = screen.getByLabelText("Variants");
-    addChip(input, "workspace ");
-    save();
-    expect(await screen.findByText("Variant can't be the same as the term")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Remove variant workspace" }));
-    addChip(input, "Area");
-    addChip(input, "area");
-    save();
-    expect(await screen.findByText("Variant already listed")).toBeTruthy();
-    expect(saveGlossaryAsync).not.toHaveBeenCalled();
+    const saved = JSON.parse(lastPayload().additionalNote.slice(PREFIX.length));
+    expect(saved.caseSensitive).toBe(true);
+    expect(saved.variants).toEqual(["workspaces"]);
+    expect(saved.translations["de-DE"]).toBe("Arbeitsraum");
   });
 
   it("should block a forbidden alternative equal to the translation (C5)", async () => {

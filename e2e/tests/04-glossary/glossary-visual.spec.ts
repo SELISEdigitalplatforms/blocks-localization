@@ -137,7 +137,7 @@ test.describe("Glossary — visual evidence", () => {
         const section = active?.closest("section");
         const heading = section?.querySelector("h3")?.textContent;
         if (heading) return heading;
-        if (active?.textContent?.trim() === "Internal note") return "Internal note";
+        if (active?.textContent?.trim() === "Additional note") return "Additional note";
         return active?.getAttribute("aria-label") ?? active?.textContent?.trim() ?? "";
       });
     const visited: string[] = [];
@@ -147,7 +147,7 @@ test.describe("Glossary — visual evidence", () => {
       if (visited.at(-1) !== section) visited.push(section);
       if (section === "Save") break;
     }
-    const order = ["Term", "Translations", "Meaning", "Scope", "Internal note"].filter((name) =>
+    const order = ["Term", "Translations", "Meaning", "Scope", "Additional note"].filter((name) =>
       visited.includes(name),
     );
     expect(order.slice(0, 1)).toEqual(["Term"]);
@@ -155,16 +155,22 @@ test.describe("Glossary — visual evidence", () => {
     expect([...indexes].sort((a, b) => a - b)).toEqual(indexes);
 
     // Enter adds a chip; its remove button is labelled and reachable by keyboard.
-    const variants = sheet.getByRole("textbox", { name: "Variants" });
-    await variants.focus();
-    await page.keyboard.type("workspaces");
-    await page.keyboard.press("Enter");
-    const remove = sheet.getByRole("button", { name: "Remove variant workspaces" });
-    await expect(remove).toBeVisible();
-    await remove.focus();
-    await expect(remove).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(remove).toHaveCount(0);
+    // Forbidden alternatives are the chip input here (the Forbidden rule shows them directly).
+    await glossary.setRule("Forbidden");
+    const forbiddenInput = sheet.locator('input[id^="glossary-forbidden-"]').first();
+    if ((await forbiddenInput.count()) > 0) {
+      await forbiddenInput.focus();
+      await page.keyboard.type("Werkbereich");
+      await page.keyboard.press("Enter");
+      const remove = sheet.getByRole("button", {
+        name: /^Remove forbidden alternative Werkbereich for /,
+      });
+      await expect(remove).toBeVisible();
+      await remove.focus();
+      await expect(remove).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(remove).toHaveCount(0);
+    }
 
     // Escape closes the sheet and focus returns to the trigger.
     await page.keyboard.press("Escape");

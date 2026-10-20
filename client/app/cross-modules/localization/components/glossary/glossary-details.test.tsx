@@ -207,7 +207,7 @@ describe("components/glossary/glossary-details", () => {
       });
     };
 
-    it("should show rule, scope and case-sensitive badges instead of Is Global (H9)", () => {
+    it("should show rule and scope badges instead of Is Global (H9)", () => {
       renderGlossary({
         isGlobal: true,
         additionalNote:
@@ -215,16 +215,16 @@ describe("components/glossary/glossary-details", () => {
       });
       expect(screen.getByText("Keep")).toBeTruthy();
       expect(screen.getByText("Whole project")).toBeTruthy();
-      expect(screen.getByText("Case-sensitive")).toBeTruthy();
-      expect(screen.getByText("SELISE AG")).toBeTruthy();
+      // Case-sensitive and variants are stored but not shown until Phase 3.
+      expect(screen.queryByText("Case-sensitive")).toBeNull();
+      expect(screen.queryByText("SELISE AG")).toBeNull();
       expect(screen.queryByText("Is Global")).toBeNull();
       expect(screen.getByText("Kept as-is in all languages.")).toBeTruthy();
     });
 
-    it("should show the module count as scope and hide case-sensitive when unset", () => {
+    it("should show the module count as scope", () => {
       renderGlossary({ isGlobal: false, moduleIds: ["m1"] });
       expect(screen.getByText("1 module")).toBeTruthy();
-      expect(screen.queryByText("Case-sensitive")).toBeNull();
     });
 
     it("should show the Translations card first with values, Missing and forbidden (H7, H9)", () => {

@@ -24,11 +24,11 @@ export class GlossaryPage {
     this.glossaryDescription = page.getByText("Glossaries help keep");
     this.noGlossariesMessage = page.getByText("No glossaries yet");
     this.firstGlossaryRow = page.getByRole("row").nth(1);
-    this.addGlossaryDialog = page.getByRole("dialog", { name: "Add term" });
+    this.addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
     this.glossaryNameInput = page.getByRole("textbox", { name: "Name *" });
     this.definitionInput = page.getByRole("textbox", { name: "Definition" });
-    this.internalNoteInput = page.getByRole("textbox", { name: "Internal note" });
-    this.editDialog = page.getByRole("dialog", { name: "Edit term" });
+    this.internalNoteInput = page.getByRole("textbox", { name: "Additional note" });
+    this.editDialog = page.getByRole("dialog", { name: "Edit Glossary" });
     this.deleteDialog = page.getByRole("dialog", { name: "Delete Glossary Item" });
   }
 
@@ -77,13 +77,13 @@ export class GlossaryPage {
 
   async openNewGlossaryDialog() {
     await this.newGlossaryButton.click();
-    await expect(this.page.getByRole("heading", { name: "Add term" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: "Add Glossary" })).toBeVisible();
   }
 
   async expectEditorSectionsInOrder() {
     const headings = this.editorSheet.getByRole("heading", { level: 3 });
     await expect(headings).toHaveText(["Term", "Translations", "Meaning", "Scope"]);
-    await expect(this.editorSheet.getByRole("button", { name: "Internal note" })).toBeVisible();
+    await expect(this.editorSheet.getByRole("button", { name: "Additional note" })).toBeVisible();
   }
 
   async expectAddGlossaryDialogLoaded() {
@@ -99,7 +99,9 @@ export class GlossaryPage {
     const languageField = this.addGlossaryDialog.getByRole("button", { name: "Language" });
     await expect(languageField).toBeVisible();
     await languageField.click();
-    await expect(this.page.getByRole("option", { name: language })).toBeVisible({ timeout: 10_000 });
+    await expect(this.page.getByRole("option", { name: language })).toBeVisible({
+      timeout: 10_000,
+    });
     await this.page.getByRole("option", { name: language }).click();
   }
 
@@ -135,13 +137,14 @@ export class GlossaryPage {
 
   /** Culture codes of the translation rows (non-default project languages), in order. */
   async getTranslationCodes(): Promise<string[]> {
-    const labels = await this.editorSheet.getByPlaceholder("Approved translation").evaluateAll(
-      (inputs) =>
+    const labels = await this.editorSheet
+      .getByPlaceholder("Approved translation")
+      .evaluateAll((inputs) =>
         inputs.map((input) => {
           const label = document.querySelector(`label[for="${input.id}"]`)?.textContent ?? "";
           return /\(([^()]+)\)$/.exec(label)?.[1] ?? "";
         }),
-    );
+      );
     return labels.filter(Boolean);
   }
 
@@ -151,12 +154,6 @@ export class GlossaryPage {
 
   async fillTranslation(code: string, value: string) {
     await this.translationInput(code).fill(value);
-  }
-
-  async addVariant(value: string) {
-    const input = this.editorSheet.getByRole("textbox", { name: "Variants" });
-    await input.fill(value);
-    await input.press("Enter");
   }
 
   async addForbidden(code: string, value: string) {
@@ -179,7 +176,7 @@ export class GlossaryPage {
 
   async fillInternalNote(text: string) {
     if (!(await this.internalNoteInput.isVisible())) {
-      await this.editorSheet.getByRole("button", { name: "Internal note" }).click();
+      await this.editorSheet.getByRole("button", { name: "Additional note" }).click();
     }
     await this.internalNoteInput.fill(text);
   }
@@ -268,7 +265,9 @@ export class GlossaryPage {
 
   async openGlossaryDetail(glossaryName: string) {
     await this.page.getByRole("row").filter({ hasText: glossaryName }).click();
-    await expect(this.page.getByRole("heading", { name: glossaryName })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: glossaryName })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async expectDetailSections() {
@@ -300,7 +299,9 @@ export class GlossaryPage {
   }
 
   async expectEditSuccess(name: string) {
-    await expect(this.page.getByText("Glossary item updated successfully.", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(
+      this.page.getByText("Glossary item updated successfully.", { exact: true }),
+    ).toBeVisible({ timeout: 20_000 });
     await expect(this.page.getByRole("heading", { name: name })).toBeVisible({ timeout: 15_000 });
   }
 
