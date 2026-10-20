@@ -4,12 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { toast, showErrorToast } from "@/hooks/use-toast";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
-import DeleteGlossary from "./glossary/delete-glossary";
 import NewModule from "./new-module/new-module";
 import EditModule from "./edit-module/edit-module";
 import GptPrompt from "./gpt-prompt/gpt-prompt";
 
-const deleteGlossaryAsync = vi.fn();
 const saveModuleAsync = vi.fn();
 const saveKeyAsync = vi.fn();
 
@@ -21,7 +19,6 @@ vi.mock("@/hooks/use-toast", () => ({
   showErrorToast: vi.fn(),
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
-  useDeleteGlossary: vi.fn(),
   useSaveLanguageModule: vi.fn(),
   useSaveBlocksLanguageKey: vi.fn(),
 }));
@@ -31,45 +28,6 @@ const withDialog = (node: React.ReactNode) => (
     {node}
   </Dialog>
 );
-
-describe("modals/delete-glossary", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(hooks.useDeleteGlossary).mockReturnValue({
-      isPending: false,
-      mutateAsync: deleteGlossaryAsync,
-    } as never);
-  });
-
-  it("should delete and close on success", async () => {
-    deleteGlossaryAsync.mockResolvedValue({ isSuccess: true });
-    const onClose = vi.fn();
-    render(withDialog(<DeleteGlossary itemId="g1" glossaryName="Widget" onClose={onClose} />));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(deleteGlossaryAsync).toHaveBeenCalledWith({ itemId: "g1" });
-  });
-
-  it("should toast when deletion fails", async () => {
-    deleteGlossaryAsync.mockResolvedValue({ isSuccess: false, errors: {} });
-    render(withDialog(<DeleteGlossary itemId="g1" glossaryName="Widget" onClose={vi.fn()} />));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
-    );
-  });
-
-  it("should handle a thrown error", async () => {
-    deleteGlossaryAsync.mockRejectedValue(new Error("x"));
-    render(withDialog(<DeleteGlossary itemId="g1" glossaryName="Widget" onClose={vi.fn()} />));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "Failed to delete glossary item" }),
-      ),
-    );
-  });
-});
 
 describe("modals/new-module", () => {
   beforeEach(() => {
@@ -207,7 +165,9 @@ describe("modals/gpt-prompt", () => {
 
   it("should save the prompt as key context", async () => {
     saveKeyAsync.mockResolvedValue({ success: true });
-    render(withDialog(<GptPrompt keyDetails={keyDetails} defaultValue="Custom" onClose={vi.fn()} />));
+    render(
+      withDialog(<GptPrompt keyDetails={keyDetails} defaultValue="Custom" onClose={vi.fn()} />),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
@@ -231,9 +191,7 @@ describe("modals/gpt-prompt", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
       await waitFor(() =>
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({ variant: "success" }),
-        ),
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })),
       );
       expect(onClose).toHaveBeenCalledWith(false);
     });

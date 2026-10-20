@@ -14,18 +14,27 @@ namespace Eurolm.DomainService.Services
         private readonly ILogger<ModuleManagementService> _logger;
         //private readonly Lazy<IKeyBulkOperationsService> _keyBulkOperationsService;
         private readonly IGlossaryRepository _glossaryRepository;
+        private readonly IKeyRepository _keyRepository;
+        private readonly IKeyTimelineRepository _keyTimelineRepository;
+
+        private const string ItemIdErrorKey = "ItemId";
+        private const string TargetModuleIdErrorKey = "TargetModuleId";
 
         public ModuleManagementService(IValidator<Module> validator,
                                       IModuleRepository moduleRepository,
                                       ILogger<ModuleManagementService> logger,
                                       //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
-                                      IGlossaryRepository glossaryRepository)
+                                      IGlossaryRepository glossaryRepository,
+                                      IKeyRepository keyRepository,
+                                      IKeyTimelineRepository keyTimelineRepository)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
             _logger = logger;
             //_keyBulkOperationsService = keyBulkOperationsService;
             _glossaryRepository = glossaryRepository;
+            _keyRepository = keyRepository;
+            _keyTimelineRepository = keyTimelineRepository;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -51,7 +60,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while saving BlocksLanguageModule {ErrorMessage}", ex.Message);
                 return new ApiResponse(ex.Message);
             }
 
@@ -79,28 +88,161 @@ namespace Eurolm.DomainService.Services
             return module != null ? new List<BlocksLanguageModule> { module } : new List<BlocksLanguageModule>();
         }
 
-        //public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(request.TargetModuleId))
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkDeleteByModuleAsync(request.ItemId, request.ProjectKey ?? "");
-        //        }
-        //        else
-        //        {
-        //            await _keyBulkOperationsService.Value.BulkMoveByModuleAsync(request.ItemId, request.TargetModuleId, request.ProjectKey ?? "");
-        //        }
+        public async Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.ItemId))
+                return new BaseMutationResponse { IsSuccess = false };
 
-        //        await _moduleRepository.DeleteAsync(request.ItemId);
-        //        return new BaseMutationResponse { IsSuccess = true };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError("Error while deleting BlocksLanguageModule {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
-        //        return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
-        //    }
-        //}
+            var isMove = !string.IsNullOrWhiteSpace(request.TargetModuleId);
+            if (isMove && request.DeleteKeys)
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Either move the keys or delete them, not both");
+
+            if (isMove && request.TargetModuleId == request.ItemId)
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Choose a different module to move the keys to");
+
+            try
+            {
+                var module = await _moduleRepository.GetByIdAsync(request.ItemId);
+                if (module == null)
+                    return DeleteModuleFailure(ItemIdErrorKey, "Module not found");
+
+                if (isMove)
+                {
+                    var moveError = await MoveAllKeysAsync(request.ItemId, request.TargetModuleId!);
+                    if (moveError != null)
+                        return DeleteModuleFailure(TargetModuleIdErrorKey, moveError);
+                }
+
+                if (request.DeleteKeys)
+                    await DeleteAllKeysAsync(request.ItemId);
+
+                if (await _keyRepository.HasKeysInModuleAsync(request.ItemId))
+                    return DeleteModuleFailure(ItemIdErrorKey, "Module has keys. Please delete or move all keys to another module before deleting it.");
+
+                await _moduleRepository.DeleteAsync(request.ItemId);
+                return new BaseMutationResponse { IsSuccess = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while deleting BlocksLanguageModule {ErrorMessage}", ex.Message);
+                return DeleteModuleFailure("Error", "An unexpected error occurred");
+            }
+        }
+
+        private async Task<string?> MoveAllKeysAsync(string sourceModuleId, string targetModuleId)
+        {
+            var targetModule = await _moduleRepository.GetByIdAsync(targetModuleId);
+            if (targetModule == null)
+                return "Target module not found";
+
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var keysToMove = await _keyRepository.GetUilmResourceKeys(k => k.ModuleId == sourceModuleId, tenantId);
+            if (keysToMove.Count == 0)
+                return null;
+
+            var conflictingNames = (await _keyRepository.GetKeysByKeyNamesAsync(
+                    keysToMove.Select(k => k.KeyName).Distinct().ToArray(), targetModuleId))
+                .Select(k => k.KeyName)
+                .Distinct()
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToList();
+
+            if (conflictingNames.Count > 0)
+                return $"Keys with these names already exist in {targetModule.ModuleName}: {string.Join(", ", conflictingNames)}. Rename or delete them before moving";
+
+            await _keyRepository.MoveKeysAsync(keysToMove.Select(k => k.ItemId).ToList(), targetModuleId);
+            await CreateMoveTimelinesAsync(keysToMove, targetModuleId, tenantId);
+            return null;
+        }
+
+        private async Task DeleteAllKeysAsync(string moduleId)
+        {
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var keysToDelete = await _keyRepository.GetUilmResourceKeys(k => k.ModuleId == moduleId, tenantId);
+            if (keysToDelete.Count == 0)
+                return;
+
+            await _keyRepository.DeleteKeysAsync(keysToDelete.Select(k => k.ItemId).ToList());
+            await CreateDeleteTimelinesAsync(keysToDelete, tenantId);
+        }
+
+        private async Task CreateDeleteTimelinesAsync(List<BlocksLanguageKey> deletedKeys, string tenantId)
+        {
+            try
+            {
+                var userId = BlocksContext.GetContext()?.UserId ?? "System";
+                var operationId = Guid.NewGuid().ToString();
+                var deletedAt = DateTime.UtcNow;
+                var timelines = deletedKeys.Select(key => new KeyTimeline
+                {
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = null,
+                    LogFrom = LogFromConstants.KeyBulkDelete,
+                    UserId = userId,
+                    CreateDate = deletedAt,
+                    LastUpdateDate = deletedAt,
+                    OperationId = operationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create delete timeline entries for {Count} keys", deletedKeys.Count);
+            }
+        }
+
+        private async Task CreateMoveTimelinesAsync(List<BlocksLanguageKey> movedKeys, string targetModuleId, string tenantId)
+        {
+            try
+            {
+                var userId = BlocksContext.GetContext()?.UserId ?? "System";
+                var operationId = Guid.NewGuid().ToString();
+                var movedAt = DateTime.UtcNow;
+                var timelines = movedKeys.Select(key => new KeyTimeline
+                {
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = CloneWithModule(key, targetModuleId, movedAt),
+                    LogFrom = LogFromConstants.KeyBulkMove,
+                    UserId = userId,
+                    CreateDate = movedAt,
+                    LastUpdateDate = movedAt,
+                    OperationId = operationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create move timeline entries for {Count} keys", movedKeys.Count);
+            }
+        }
+
+        private static BlocksLanguageKey CloneWithModule(BlocksLanguageKey key, string moduleId, DateTime lastUpdateDate) => new BlocksLanguageKey
+        {
+            ItemId = key.ItemId,
+            TenantId = key.TenantId,
+            CreateDate = key.CreateDate,
+            CreatedBy = key.CreatedBy,
+            LastUpdateDate = lastUpdateDate,
+            LastUpdatedBy = key.LastUpdatedBy,
+            KeyName = key.KeyName,
+            ModuleId = moduleId,
+            Value = key.Value,
+            Resources = key.Resources,
+            Routes = key.Routes,
+            GlossaryIds = key.GlossaryIds,
+            Context = key.Context,
+            IsPartiallyTranslated = key.IsPartiallyTranslated
+        };
+
+        private static BaseMutationResponse DeleteModuleFailure(string field, string message) => new BaseMutationResponse
+        {
+            IsSuccess = false,
+            Errors = new Dictionary<string, string> { { field, message } }
+        };
 
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {
@@ -136,7 +278,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error while tagging glossary for module {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while tagging glossary for module {ErrorMessage}", ex.Message);
                 return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
             }
         }

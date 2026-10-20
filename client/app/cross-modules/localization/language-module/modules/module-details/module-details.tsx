@@ -21,6 +21,7 @@ import {
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
+import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
 const hasDisplayValue = (value: unknown): value is string =>
@@ -100,7 +101,7 @@ function renderGlossaryTable(
               )}
               {visibleColumns.context && (
                 <TableCell className="max-w-[200px] truncate">
-                  {hasDisplayValue(glossary.context) ? glossary.context : "—"}
+                  {stripRuleMarker(glossary.context) || "—"}
                 </TableCell>
               )}
               {visibleColumns.createDate && (
@@ -149,7 +150,7 @@ function ModuleDetailsContent({
     return {
       language: glossaries.some((glossary) => hasDisplayValue(glossary.language)),
       type: glossaries.some((glossary) => hasDisplayValue(glossary.type)),
-      context: glossaries.some((glossary) => hasDisplayValue(glossary.context)),
+      context: glossaries.some((glossary) => hasDisplayValue(stripRuleMarker(glossary.context))),
       createDate: glossaries.some((glossary) => hasDisplayValue(glossary.createDate)),
     };
   }, [glossariesData?.items]);

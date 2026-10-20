@@ -338,7 +338,10 @@ export function BulkEditKeysDialog({
             )}
           </section>
 
-          <section aria-labelledby="bulk-glossary-heading" className="space-y-3 border-t pt-5">
+          <section
+            aria-labelledby="bulk-glossary-heading"
+            className="flex flex-col gap-3 border-t pt-5"
+          >
             <div>
               <h3 id="bulk-glossary-heading" className="text-sm font-semibold text-high-emphasis">
                 Apply glossaries to all keys

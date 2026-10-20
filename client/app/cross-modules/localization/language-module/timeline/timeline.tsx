@@ -50,6 +50,9 @@ const getCultures = (
   return Array.from(new Set([...prevCultures, ...currCultures]));
 };
 
+const canRevert = (event: TimelineEvents) =>
+  !!event.previousData && event.logFrom !== "KeyController.BulkMove";
+
 const Timeline = (props: TimelineProps) => {
   const isMobile = useIsMobile();
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
@@ -143,7 +146,7 @@ const Timeline = (props: TimelineProps) => {
                         {event.description}
                       </p>
 
-                      {isMobile && event.previousData ? (
+                      {isMobile && canRevert(event) ? (
                         <div className="flex w-[25%] justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -172,7 +175,7 @@ const Timeline = (props: TimelineProps) => {
                         </div>
                       ) : (
                         <div className="flex w-[45%] justify-end">
-                          {event.previousData && (
+                          {canRevert(event) && (
                             <Button
                               size="default"
                               variant="outline"

@@ -167,7 +167,8 @@ namespace XUnitTest.Services.Key
             var repository = new Mock<IModuleRepository>();
             repository.Setup(r => r.SaveAsync(It.IsAny<BlocksLanguageModule>())).ThrowsAsync(MongoExceptionFactory.DuplicateKeyWrite());
             var service = new ModuleManagementService(validator.Object, repository.Object,
-                new Mock<ILogger<ModuleManagementService>>().Object, new Mock<IGlossaryRepository>().Object);
+                new Mock<ILogger<ModuleManagementService>>().Object, new Mock<IGlossaryRepository>().Object,
+                new Mock<IKeyRepository>().Object, new Mock<IKeyTimelineRepository>().Object);
 
             var response = await service.SaveModuleAsync(new SaveModuleRequest { ModuleName = "common" });
 

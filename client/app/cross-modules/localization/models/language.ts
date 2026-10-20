@@ -164,6 +164,7 @@ export interface IModuleGets {
 export interface IDeleteModuleRequest {
   itemId: string;
   targetModuleId?: string;
+  deleteKeys?: boolean;
 }
 
 export interface ITagGlossaryRequest {
@@ -284,16 +285,6 @@ export interface IGlossary {
   moduleIds?: string[];
   createDate: string;
   lastUpdateDate: string;
-}
-
-export interface IGlossaryFormData {
-  name: string;
-  language?: string;
-  type?: string;
-  context?: string;
-  additionalNote?: string;
-  isGlobal?: boolean;
-  moduleIds?: string[];
 }
 
 export interface IGetGlossariesResponse {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
+import { Plus, Pencil, Tag, Trash, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -23,8 +23,7 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import EditModule from "@blocks-localization/components/modals/edit-module/edit-module";
 import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal";
-// TODO: Enable delete module feature — import DeleteModuleModal when backend is ready
-// import DeleteModuleModal from "@blocks-localization/components/modals/delete-module-modal/delete-module-modal";
+import DeleteModuleModal from "@blocks-localization/components/modals/delete-module-modal/delete-module-modal";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
@@ -77,6 +76,7 @@ interface RenderModuleRowsParams {
   searchText: string;
   onEditModule: (module: IModuleGets) => void;
   onTagGlossaryModule: (module: IModuleGets) => void;
+  onDeleteModule: (module: IModuleGets) => void;
 }
 
 function renderModuleRows({
@@ -88,6 +88,7 @@ function renderModuleRows({
   searchText,
   onEditModule,
   onTagGlossaryModule,
+  onDeleteModule,
 }: RenderModuleRowsParams) {
   if (modules.length === 0) {
     return (
@@ -130,6 +131,7 @@ function renderModuleRows({
         <RowActionsCell
           onEdit={() => onEditModule(module)}
           onTagGlossary={() => onTagGlossaryModule(module)}
+          onDelete={() => onDeleteModule(module)}
         />
       </TableCell>
     </TableRow>
@@ -140,11 +142,11 @@ function renderModuleRows({
 const RowActionsCell = ({
   onEdit,
   onTagGlossary,
-  // onDelete: () => void;
+  onDelete,
 }: {
   onEdit: () => void;
   onTagGlossary: () => void;
-  // onDelete: () => void;
+  onDelete: () => void;
 }) => (
   <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
@@ -179,11 +181,16 @@ const RowActionsCell = ({
         <Tag className="mr-2 h-4 w-4" />
         <span>Tag glossary</span>
       </DropdownMenuItem>
-      {/* TODO: Enable delete module feature — restore this item when backend is ready */}
-      {/* <DropdownMenuItem className="cursor-pointer text-error" onClick={onDelete}>
+      <DropdownMenuItem
+        className="cursor-pointer text-error"
+        onClick={(e) => {
+          e.preventDefault();
+          onDelete();
+        }}
+      >
         <Trash className="mr-2 h-4 w-4" />
         <span>Delete</span>
-      </DropdownMenuItem> */}
+      </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 );
@@ -197,8 +204,7 @@ export function ModuleTable() {
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
-  // TODO: Enable delete module feature — restore this state when backend is ready
-  // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
 
   // Pagination state
   const [pageNumber, setPageNumber] = useState(0);
@@ -350,6 +356,7 @@ export function ModuleTable() {
                         searchText: searchValue,
                         onEditModule: setEditTarget,
                         onTagGlossaryModule: setTagTarget,
+                        onDeleteModule: setDeleteTarget,
                       })}
                 </TableBody>
               </Table>
@@ -395,16 +402,16 @@ export function ModuleTable() {
           {tagTarget && <TagGlossaryModal module={tagTarget} onClose={() => setTagTarget(null)} />}
         </Dialog>
 
-        {/* TODO: Enable delete module feature — restore this dialog when backend is ready */}
-        {/* <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        {/* Delete Module Dialog — offers every module as a move target, regardless of search */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           {deleteTarget && (
             <DeleteModuleModal
               module={deleteTarget}
-              allModules={modulesList}
+              modules={modulesData ?? []}
               onClose={() => setDeleteTarget(null)}
             />
           )}
-        </Dialog> */}
+        </Dialog>
       </div>
     </main>
   );

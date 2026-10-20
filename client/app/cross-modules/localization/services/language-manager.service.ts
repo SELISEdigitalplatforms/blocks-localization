@@ -144,6 +144,9 @@ export class LanguageManagerService {
     if (payload.targetModuleId) {
       params.set("targetModuleId", payload.targetModuleId);
     }
+    if (payload.deleteKeys) {
+      params.set("deleteKeys", "true");
+    }
     return this.httpClient
       .delete<{
         errors: unknown;
