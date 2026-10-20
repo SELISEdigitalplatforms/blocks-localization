@@ -64,7 +64,8 @@ namespace Eurolm.DomainService.Repositories
             var filter = getAllKeysFilter(request);
 
             var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
-            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(hasSortProperty ? request.SortProperty : "KeyName");
+            var sortProperty = hasSortProperty ? request.SortProperty : "KeyName";
+            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(sortProperty) : Builders<Key>.Sort.Ascending(sortProperty);
 
             var findKeysTask = collection
                 .Find(filter)
