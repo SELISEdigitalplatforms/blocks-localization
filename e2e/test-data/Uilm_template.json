@@ -1,0 +1,20 @@
+[
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_GREETING",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "Hello", "Culture": "en-US", "CharacterLength": 5 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_FAREWELL",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "Goodbye", "Culture": "en-US", "CharacterLength": 7 }
+    ]
+  }
+]

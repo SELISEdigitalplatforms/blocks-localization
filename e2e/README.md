@@ -233,6 +233,7 @@ e2e/
     run-outcome.ts
     test-base.ts
   fixtures/                           # gitignored (localization-session.json + localization-project.json)
+  test-data/                          # committed upload inputs (Uilm_template.json for the JSON key import step)
   SPEC-multi-env.md
   playwright.config.ts
 ```

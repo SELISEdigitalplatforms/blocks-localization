@@ -88,7 +88,7 @@ test.describe("Translations", () => {
     });
 
     await test.step("Upload a JSON file, remove it, then re-upload it", async () => {
-      const jsonFile = path.resolve(__dirname, "../../fixtures/Uilm_template.json");
+      const jsonFile = path.resolve(__dirname, "../../test-data/Uilm_template.json");
       await translations.uploadJsonFile(jsonFile);
       await translations.removeUploadedFile();
       await translations.resetFileInput(jsonFile);
