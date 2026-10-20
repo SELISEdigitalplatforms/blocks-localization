@@ -198,7 +198,7 @@ describe("modals/delete-module-modal", () => {
   ])("should ask what to do with the keys when the module has %i key(s)", (count, text) => {
     setKeyCount(count);
     render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
-    expect(screen.getByText(new RegExp(text))).toBeTruthy();
+    expect(screen.getByText(text, { exact: false })).toBeTruthy();
     expect(
       screen.getByText(/Move them to another module or delete them together with the module\./),
     ).toBeTruthy();

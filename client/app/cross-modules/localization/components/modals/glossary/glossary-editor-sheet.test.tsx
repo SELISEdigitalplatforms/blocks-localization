@@ -65,7 +65,7 @@ const addChip = (input: HTMLElement, value: string) => {
 };
 
 const openForbidden = (code: string) => {
-  const row = screen.getByLabelText(new RegExp(`\\(${code}\\)$`)).closest("div")!;
+  const row = screen.getByLabelText((label) => label.endsWith(`(${code})`)).closest("div")!;
   fireEvent.click(within(row).getByRole("button", { name: /Forbidden alternatives/ }));
 };
 
