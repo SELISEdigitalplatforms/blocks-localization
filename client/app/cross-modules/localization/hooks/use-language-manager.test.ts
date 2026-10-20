@@ -513,7 +513,7 @@ describe("localization/hooks/use-language-manager", () => {
     );
   });
 
-  it("useDeleteLanguageModule without a target module should only refresh the modules", async () => {
+  it("useDeleteLanguageModule without a target module should only refresh the modules and the duplicate summary", async () => {
     svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
     const { queryClient, wrapper } = createQueryWrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
@@ -523,6 +523,7 @@ describe("localization/hooks/use-language-manager", () => {
 
     expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
       ["get-language-modules"],
+      ["get-blocksLanguageKeys", "duplicate-summary"],
     ]);
   });
 

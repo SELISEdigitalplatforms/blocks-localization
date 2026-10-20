@@ -122,6 +122,16 @@ namespace Eurolm.DomainService.Services
                 await _moduleRepository.DeleteAsync(request.ItemId);
                 return new BaseMutationResponse { IsSuccess = true };
             }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique key index rejected the move: a key with the same name reached the target
+                // module after the name check. The module is kept. The exception is not logged because
+                // its message repeats the duplicate KeyName.
+#pragma warning disable S6667
+                _logger.LogWarning("A module delete was rejected because the unique key index blocked moving its keys");
+#pragma warning restore S6667
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Keys with the same names now exist in the target module. Rename or delete them before moving");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while deleting BlocksLanguageModule {ErrorMessage}", ex.Message);

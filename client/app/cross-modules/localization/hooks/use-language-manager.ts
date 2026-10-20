@@ -224,6 +224,10 @@ export const useDeleteLanguageModule = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
       });
+      // Deleting a module can clear a duplicate module name, even when it has no keys.
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.duplicateSummaryPrefix,
+      });
       if (payload.targetModuleId || payload.deleteKeys) {
         queryClient.invalidateQueries({
           queryKey: localizationQueryKeys.languageKeys.all,
