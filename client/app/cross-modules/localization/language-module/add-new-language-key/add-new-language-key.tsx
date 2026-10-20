@@ -166,6 +166,14 @@ function AddNewLanguageKeySkeleton() {
 function AddNewLanguageKey() {
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
+  // Sort a copy so the React Query cached language array is never mutated in place.
+  const sortedLanguages = React.useMemo(
+    () =>
+      languageListData
+        ? [...languageListData].sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault))
+        : undefined,
+    [languageListData],
+  );
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = React.useState(false);
@@ -206,7 +214,7 @@ function AddNewLanguageKey() {
   });
 
   React.useEffect(() => {
-    if (!languageListData?.length) {
+    if (!sortedLanguages?.length) {
       return;
     }
 
@@ -214,7 +222,7 @@ function AddNewLanguageKey() {
 
     if (existingResources.length === 0) {
       replaceResources(
-        languageListData.map((lang: ILanguageConfig) => ({
+        sortedLanguages.map((lang: ILanguageConfig) => ({
           value: "",
           culture: lang.languageCode || "",
         })),
@@ -223,20 +231,20 @@ function AddNewLanguageKey() {
     }
 
     if (
-      existingResources.length !== languageListData.length ||
-      languageListData.some(
+      existingResources.length !== sortedLanguages.length ||
+      sortedLanguages.some(
         (lang: ILanguageConfig, index: number) =>
           existingResources[index]?.culture !== (lang.languageCode || ""),
       )
     ) {
-      const mergedResources = languageListData.map((lang: ILanguageConfig, index: number) => ({
+      const mergedResources = sortedLanguages.map((lang: ILanguageConfig, index: number) => ({
         value: existingResources[index]?.value ?? "",
         culture: lang.languageCode || "",
       }));
 
       replaceResources(mergedResources);
     }
-  }, [form, languageListData, replaceResources]);
+  }, [form, sortedLanguages, replaceResources]);
 
   const formSubmitHandler = async (data: FormValues) => {
     try {
@@ -299,14 +307,19 @@ function AddNewLanguageKey() {
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
+    destinationLanguageCode?: string,
   ): Promise<void> {
     setLoadingIndex(index);
     try {
+      const defaultLanguage =
+        languageListData?.find((lang) => lang.isDefault) ?? languageListData?.[0];
       const payload = {
         sourceText: defaultLanguageText,
         destinationLanguage: destinationLanguage || "English",
-        currentLanguage: languageListData?.[0]?.languageName || "English",
+        currentLanguage: defaultLanguage?.languageName ?? "English",
         temperature: 0.1,
+        moduleId: form.getValues("moduleId") || undefined,
+        destinationLanguageCode,
       };
       const res = await autoTranslateAsync(payload);
       if (res.content) {
@@ -338,10 +351,16 @@ function AddNewLanguageKey() {
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
+    destinationLanguageCode?: string,
   ): React.MouseEventHandler<HTMLButtonElement> {
     return (e) => {
       e.preventDefault();
-      void runAutoTranslate(destinationLanguage, defaultLanguageText, index);
+      void runAutoTranslate(
+        destinationLanguage,
+        defaultLanguageText,
+        index,
+        destinationLanguageCode,
+      );
     };
   }
 
@@ -349,7 +368,6 @@ function AddNewLanguageKey() {
     return <AddNewLanguageKeySkeleton />;
   }
 
-  languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">
@@ -524,7 +542,7 @@ function AddNewLanguageKey() {
                       render={({ field }) => (
                         <FormItem className="space-y-1">
                           <FormLabel htmlFor="defaultValue">
-                            Default value ({languageListData?.[0]?.languageName}){" "}
+                            Default value ({sortedLanguages?.[0]?.languageName}){" "}
                             <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
@@ -570,7 +588,7 @@ function AddNewLanguageKey() {
                     {resourceFields.slice(1).map((field, index) => (
                       <div key={field.id} className="grid gap-3">
                         <div className="grid grid-cols-2">
-                          <Label>{languageListData?.[index + 1]?.languageName} Translation</Label>
+                          <Label>{sortedLanguages?.[index + 1]?.languageName} Translation</Label>
                           <div className="flex justify-end gap-4">
                             <Button
                               size="sm"
@@ -579,9 +597,10 @@ function AddNewLanguageKey() {
                               // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() keeps the button state in sync with the source value.
                               disabled={loadingIndex === index || !form.watch().resources[0].value} // Disable only the clicked button.
                               onClick={autoTranslate(
-                                languageListData?.[index + 1]?.languageName,
+                                sortedLanguages?.[index + 1]?.languageName,
                                 form.getValues().resources[0].value,
                                 index,
+                                sortedLanguages?.[index + 1]?.languageCode,
                               )}
                             >
                               <Wand className="h-3.5 w-3.5" />

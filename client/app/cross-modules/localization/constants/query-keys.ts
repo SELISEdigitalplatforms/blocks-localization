@@ -71,7 +71,16 @@ export const localizationQueryKeys = {
       pageSize: number,
     ) => ["get-timeline-by-operation", tenantId, operationId, pageNumber, pageSize] as const,
     byGlossary: (tenantId: string, glossaryId: string, pageNumber: number, pageSize: number) =>
-      ["get-keys-by-glossary", tenantId, glossaryId, pageNumber, pageSize] as const,
+      [
+        "get-blocksLanguageKeys",
+        "by-glossary",
+        tenantId,
+        glossaryId,
+        pageNumber,
+        pageSize,
+      ] as const,
+    glossaryUsage: (tenantId: string, glossaryId: string) =>
+      ["get-glossary-usage-count", tenantId, glossaryId] as const,
   },
   languages: {
     all: ["get-languages"] as const,
@@ -99,12 +108,15 @@ export const localizationQueryKeys = {
     list: (tenantId: string, pageNumber: number, pageSize: number, searchText: string) =>
       ["get-glossaries", tenantId, pageNumber, pageSize, searchText] as const,
     global: (tenantId: string) => ["get-glossaries-global", tenantId] as const,
+    globalPrefix: ["get-glossaries-global"] as const,
     module: (tenantId: string, moduleId: string) =>
       ["get-glossaries-module", tenantId, moduleId] as const,
+    modulePrefix: ["get-glossaries-module"] as const,
     suggested: (tenantId: string, itemId: string) =>
       ["get-suggested-glossaries", tenantId, itemId] as const,
     search: (tenantId: string, searchText: string) =>
       ["search-glossaries", tenantId, searchText] as const,
+    searchPrefix: ["search-glossaries"] as const,
     detail: (tenantId: string, itemId: string) => ["get-glossary", tenantId, itemId] as const,
     detailPrefix: ["get-glossary"] as const,
     suggestedPrefix: ["get-suggested-glossaries"] as const,
