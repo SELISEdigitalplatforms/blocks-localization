@@ -499,6 +499,19 @@ namespace XUnitTest
         }
 
         [Fact]
+        public void ExtractModelsFromCsv_EmptyCharacterLength_DefaultsToZero()
+        {
+            var csv = "ItemId,ModuleId,Module,KeyName,bn-BD,bn-BD_CharacterLength,de-DE,de-DE_CharacterLength,en-US\n" +
+                      "1,m1,app-pricing,ADMIN_APPROVAL_NEEDED,,,Freigabe benötigt,0,Admin approval needed\n";
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+            var method = GetStaticMethod("ExtractModelsFromCsv");
+            var result = method.Invoke(null, new object[] { stream }) as List<LanguageJsonModel>;
+            result.Should().HaveCount(1);
+            result![0].Resources.Should().HaveCount(3);
+            result[0].Resources.Should().OnlyContain(r => r.CharacterLength == 0);
+        }
+
+        [Fact]
         public void ExtractModelsFromCsv_EmptyStream_ReturnsEmpty()
         {
             var csv = "ItemId,ModuleId,Module,KeyName\n";

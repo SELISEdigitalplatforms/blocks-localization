@@ -1247,7 +1247,8 @@ namespace Eurolm.DomainService.Services
                             var resource = new Resource();
                             resource.Culture = culture.Key;
                             resource.Value = csv.GetField<string>(culture.Key);
-                            resource.CharacterLength = string.IsNullOrEmpty(culture.Value) ? 0 : csv.GetField<int>(culture.Value);
+                            // Export writes an empty CharacterLength when the key has no resource for this culture
+                            resource.CharacterLength = !string.IsNullOrEmpty(culture.Value) && int.TryParse(csv.GetField<string>(culture.Value), out var characterLength) ? characterLength : 0;
 
                             resources.Add(resource);
                         }
