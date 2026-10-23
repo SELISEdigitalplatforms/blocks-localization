@@ -80,7 +80,7 @@ public class MigrationPlacementTests : IDisposable
         {
             TestBlocksContext.Set(owner);
             await gate.Task;
-            await repository.UpdateMigrationTrackerAsync("same-tracker", new ServiceMigrationStatus { QueueName = owner });
+            await repository.UpdateMigrationTrackerAsync("same-tracker", new ServiceMigrationStatus { ErrorMessage = owner });
         }
         var dev = Update("dev");
         var other = Update("other");
@@ -90,7 +90,7 @@ public class MigrationPlacementTests : IDisposable
         {
             var tracker = await _fixture.Provider.GetDatabase(owner).GetCollection<MigrationTracker>("MigrationTrackers")
                 .Find(t => t.ItemId == "same-tracker").SingleAsync();
-            Assert.Equal(owner, tracker.LanguageService!.QueueName);
+            Assert.Equal(owner, tracker.LanguageService!.ErrorMessage);
         }
         Assert.Equal(0, await _fixture.Main.GetCollection<MigrationTracker>("MigrationTrackers").CountDocumentsAsync(t => true));
     }
