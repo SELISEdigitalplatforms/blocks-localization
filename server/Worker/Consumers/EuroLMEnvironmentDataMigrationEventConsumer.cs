@@ -1,6 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Utilities;
 using Microsoft.Extensions.Logging;
@@ -30,53 +31,67 @@ namespace Worker.Consumers
 
         public async Task Consume(EnvironmentDataMigrationEvent @event)
         {
+            _logger.LogInformation("Starting environment data migration from {ProjectKey} to {TargetedProjectKey}. OverwriteExisting: {ShouldOverwrite}",
+                @event.ProjectKey, @event.TargetedProjectKey, @event.ShouldOverWriteExistingData);
+
             try
             {
-                _logger.LogInformation("Starting environment data migration from {ProjectKey} to {TargetedProjectKey}. OverwriteExisting: {ShouldOverwrite}",
-                    @event.ProjectKey, @event.TargetedProjectKey, @event.ShouldOverWriteExistingData);
-
                 // Migrate BlocksLanguageModule first (as Keys depend on Modules)
                 await MigrateModulesAsync(@event);
 
                 // Then migrate BlocksLanguageKey
                 await MigrateKeysAsync(@event);
-
-                // Update migration tracker for LanguageService completion
-                if (!string.IsNullOrEmpty(@event.TrackerId))
-                {
-                    await NotifyMigrationCompletion(@event.TrackerId, isSuccess: true);
-                    _logger.LogInformation("Updated migration tracker {TrackerId} for LanguageService completion", @event.TrackerId);
-                }
-
-                _logger.LogInformation("Environment data migration completed successfully from {ProjectKey} to {TargetedProjectKey}",
-                    @event.ProjectKey, @event.TargetedProjectKey);
             }
             catch (Exception ex)
             {
-                // Update migration tracker with error status if TrackerId is provided
-                if (!string.IsNullOrEmpty(@event.TrackerId))
-                {
-                    try
-                    {
-                        _logger.LogInformation("Updated migration tracker {TrackerId} with error status", @event.TrackerId);
-                    }
-                    catch (Exception trackerEx)
-                    {
-                        _logger.LogError(trackerEx, "Failed to update migration tracker {TrackerId} with error status", @event.TrackerId);
-                    }
-                }
-
-                // Send notification for failed migration
-                await NotifyMigrationCompletion(@event.TrackerId, isSuccess: false, errorMessage: ex.Message);
-                await _keyManagementService.PublishEnvironmentDataMigrationNotification(
-                    response: false,
-                    messageCoRelationId: @event.TrackerId,
-                    projectKey: @event.ProjectKey,
-                    targetedProjectKey: @event.TargetedProjectKey);
-
-                _logger.LogError(ex, "Environment data migration failed from {ProjectKey} to {TargetedProjectKey}",
-                    @event.ProjectKey, @event.TargetedProjectKey);
+                // Only the data copy decides failure. The rethrown error is logged by the global handler.
+                await ReportOutcomeAsync(@event, isSuccess: false, errorMessage: ex.Message);
                 throw;
+            }
+
+            _logger.LogInformation("Environment data migration completed successfully from {ProjectKey} to {TargetedProjectKey}",
+                @event.ProjectKey, @event.TargetedProjectKey);
+
+            // The data is already copied: a failing report must not turn this run into a failed migration.
+            if (!string.IsNullOrEmpty(@event.TrackerId))
+            {
+                await ReportOutcomeAsync(@event, isSuccess: true, errorMessage: null);
+            }
+        }
+
+        // Each report step runs on its own, so one failing step never hides the others or the original error.
+        private async Task ReportOutcomeAsync(EnvironmentDataMigrationEvent @event, bool isSuccess, string? errorMessage)
+        {
+            var trackerId = @event.TrackerId;
+
+            if (!string.IsNullOrEmpty(trackerId))
+            {
+                var status = new ServiceMigrationStatus
+                {
+                    IsCompleted = isSuccess,
+                    CompletedAt = isSuccess ? DateTime.UtcNow : null,
+                    ErrorMessage = errorMessage
+                };
+                await TryReportStepAsync("tracker update", trackerId, () => _migrationRepository.UpdateMigrationTrackerAsync(trackerId, status));
+                await TryReportStepAsync("completion event", trackerId, () => NotifyMigrationCompletion(trackerId, isSuccess, errorMessage));
+            }
+
+            await TryReportStepAsync("notification", trackerId, () => _keyManagementService.PublishEnvironmentDataMigrationNotification(
+                response: isSuccess,
+                messageCoRelationId: trackerId,
+                projectKey: @event.ProjectKey,
+                targetedProjectKey: @event.TargetedProjectKey));
+        }
+
+        private async Task TryReportStepAsync(string step, string? trackerId, Func<Task> action)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Migration report step {Step} failed for tracker {TrackerId}", step, trackerId);
             }
         }
 
