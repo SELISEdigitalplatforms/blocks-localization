@@ -316,41 +316,45 @@ function TimelineEntry({
   return (
     <button
       type="button"
-      className="flex min-h-[66px] w-full cursor-pointer appearance-none rounded-md border-0 bg-transparent p-0 text-left hover:bg-muted/50"
+      className="block w-full cursor-pointer appearance-none rounded-md border-0 bg-transparent p-0 text-left hover:bg-muted/50"
       onClick={selectEntry}
     >
-      {/* Left: time/date */}
-      <div
-        className={`${isMobile ? "w-[30%]" : "w-[16%]"} shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
-      >
-        <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
-          {time}
-        </p>
-        <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
-          {date}
-        </p>
-      </div>
-
-      {/* Center: dot + line */}
-      <div className="relative shrink-0">
-        {index !== entryCount - 1 && (
-          <div className="absolute bottom-[-10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-[#D9D9D9]" />
-        )}
-        <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
-      </div>
-
-      {/* Right: description + badge */}
-      <div className="w-full pl-[18px] pt-[2px] md:pl-[20px]">
-        <div className="flex w-full flex-row items-start justify-between gap-2">
-          <p className="w-[65%] text-[12px] font-medium leading-[20px] text-medium-emphasis md:text-[14px] md:leading-[24px]">
-            {description}
+      {/* WebKit does not stretch the children of a flex <button>, which collapses the connector
+          line on iOS. A plain div as the flex container keeps the center column full height. */}
+      <div className="flex min-h-[66px] w-full">
+        {/* Left: time/date */}
+        <div
+          className={`${isMobile ? "w-[30%]" : "w-[16%]"} shrink-0 pr-[6px] pt-[2px] text-right md:pr-[8px] lg:pr-[10px] xl:pr-[18px]`}
+        >
+          <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
+            {time}
           </p>
-          <div className="flex items-center gap-2">
-            {entry.affectedKeysCount > 1 && (
-              <Badge variant="secondary" className="text-xs">
-                {entry.affectedKeysCount} keys
-              </Badge>
-            )}
+          <p className="text-[10px] font-medium leading-[16px] text-medium-emphasis xl:text-[12px] xl:leading-[20px]">
+            {date}
+          </p>
+        </div>
+
+        {/* Center: dot + line */}
+        <div className="relative shrink-0">
+          {index !== entryCount - 1 && (
+            <div className="absolute bottom-[-10px] left-1/2 top-[10px] w-[4px] -translate-x-1/2 bg-[#D9D9D9]" />
+          )}
+          <div className="relative z-10 mt-[2px] h-[16px] w-[16px] rounded-full bg-primary" />
+        </div>
+
+        {/* Right: description + badge */}
+        <div className="w-full pl-[18px] pt-[2px] md:pl-[20px]">
+          <div className="flex w-full flex-row items-start justify-between gap-2">
+            <p className="w-[65%] text-[12px] font-medium leading-[20px] text-medium-emphasis md:text-[14px] md:leading-[24px]">
+              {description}
+            </p>
+            <div className="flex items-center gap-2">
+              {entry.affectedKeysCount > 1 && (
+                <Badge variant="secondary" className="text-xs">
+                  {entry.affectedKeysCount} keys
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>

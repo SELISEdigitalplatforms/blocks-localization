@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui-kits/button/button";
@@ -29,6 +36,10 @@ const copyText = async (value: string): Promise<void> => {
   throw new Error("Clipboard API not available");
 };
 
+// Touch devices have no hover, so the copy button is revealed by a long press instead.
+const LONG_PRESS_DELAY_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+
 export function CopyableTableValue({
   value,
   displayValue,
@@ -39,7 +50,12 @@ export function CopyableTableValue({
   valueTooltip,
 }: Readonly<CopyableTableValueProps>) {
   const [isCopied, setIsCopied] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didLongPressRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const copyValue = value ?? "";
   const renderedValue = (
     <span className={cn("min-w-0 max-w-full", valueClassName)} style={valueStyle}>
@@ -50,9 +66,65 @@ export function CopyableTableValue({
   useEffect(
     () => () => {
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     },
     [],
   );
+
+  // Hide the long-press revealed button again once the user taps anywhere else.
+  useEffect(() => {
+    if (!isRevealed) return;
+
+    const handleOutsidePointerDown = (event: globalThis.PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsRevealed(false);
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [isRevealed]);
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+    longPressStartRef.current = null;
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    didLongPressRef.current = false;
+    if (!copyValue || event.pointerType === "mouse") return;
+
+    cancelLongPress();
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      longPressTimerRef.current = null;
+      setIsRevealed(true);
+    }, LONG_PRESS_DELAY_MS);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = longPressStartRef.current;
+    if (!start) return;
+
+    const movedX = Math.abs(event.clientX - start.x);
+    const movedY = Math.abs(event.clientY - start.y);
+    if (movedX > LONG_PRESS_MOVE_TOLERANCE_PX || movedY > LONG_PRESS_MOVE_TOLERANCE_PX) {
+      cancelLongPress();
+    }
+  };
+
+  // A long press must only reveal the button, not open the row it sits in.
+  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!didLongPressRef.current) return;
+
+    didLongPressRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    if (longPressStartRef.current || didLongPressRef.current) event.preventDefault();
+  };
 
   const handleCopy = async () => {
     if (!copyValue) return;
@@ -61,7 +133,10 @@ export function CopyableTableValue({
       await copyText(copyValue);
       setIsCopied(true);
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = setTimeout(() => setIsCopied(false), 2000);
+      resetTimerRef.current = setTimeout(() => {
+        setIsCopied(false);
+        setIsRevealed(false);
+      }, 2000);
     } catch {
       setIsCopied(false);
     }
@@ -69,7 +144,20 @@ export function CopyableTableValue({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn("group/copy flex min-w-0 items-center gap-1", className)}>
+      <div
+        ref={containerRef}
+        className={cn(
+          "group/copy flex min-w-0 items-center gap-1 [@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]",
+          className,
+        )}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={cancelLongPress}
+        onPointerCancel={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onClickCapture={handleClickCapture}
+        onContextMenu={handleContextMenu}
+      >
         {valueTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild>{renderedValue}</TooltipTrigger>
@@ -85,7 +173,8 @@ export function CopyableTableValue({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:pointer-events-none md:opacity-0 md:group-hover/copy:pointer-events-auto md:group-hover/copy:opacity-100 md:group-focus-within/copy:pointer-events-auto md:group-focus-within/copy:opacity-100"
+                data-revealed={isRevealed}
+                className="pointer-events-none h-7 w-7 shrink-0 opacity-0 transition-opacity group-focus-within/copy:pointer-events-auto group-focus-within/copy:opacity-100 data-[revealed=true]:pointer-events-auto data-[revealed=true]:opacity-100 [@media(hover:hover)]:group-hover/copy:pointer-events-auto [@media(hover:hover)]:group-hover/copy:opacity-100"
                 aria-label={`${isCopied ? "Copied" : "Copy"} ${label}`}
                 onClick={(event) => {
                   event.stopPropagation();
