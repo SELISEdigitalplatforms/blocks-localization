@@ -68,12 +68,10 @@ export const ExportHistory = () => {
   const { refetch } = useGetFilesDownload(downloadMeta, { enabled: false });
 
   const downloadSelectedFile = async (fileId: string) => {
-    // force React to apply the new meta immediately
     flushSync(() => {
       setDownloadMeta({ fileId, projectKey });
     });
 
-    // now refetch uses the updated meta inside the hook
     const { data: result } = await refetch();
 
     const url = result?.url;
@@ -88,6 +86,11 @@ export const ExportHistory = () => {
   };
 
   const columns = ["File Name", "Date", "Download"];
+  const columnClassNames: Record<string, string> = {
+    "File Name": "",
+    Date: "w-[140px] sm:w-[200px]",
+    Download: "w-[96px] text-center sm:w-[120px]",
+  };
   const totalCount = exportHistoryData?.totalCount ?? 0;
 
   const formatExportDate = (dateStr: string | undefined | null): string => {
@@ -104,11 +107,15 @@ export const ExportHistory = () => {
       if (isLoadingExportHistory) {
         return Array.from({ length: pageSize }).map((_) => (
           <TableRow key={crypto.randomUUID()}>
-            {columns.map((_) => (
-              <TableCell key={crypto.randomUUID()}>
-                <Skeleton className="h-6 w-full rounded" />
-              </TableCell>
-            ))}
+            <TableCell>
+              <Skeleton className="h-5 w-[60%] rounded" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-5 w-24 rounded" />
+            </TableCell>
+            <TableCell className="text-center">
+              <Skeleton className="mx-auto h-10 w-10 rounded-md" />
+            </TableCell>
           </TableRow>
         ));
       }
@@ -130,9 +137,11 @@ export const ExportHistory = () => {
     }
     return exportHistoryData?.uilmExportedFiles?.map((item: IExportFileDetails) => (
       <TableRow key={crypto.randomUUID()}>
-        <TableCell>{item.fileName || "--"}</TableCell>
-        <TableCell>{formatExportDate(item.createDate)}</TableCell>
-        <TableCell>
+        <TableCell className="truncate" title={item.fileName || undefined}>
+          {item.fileName || "--"}
+        </TableCell>
+        <TableCell className="whitespace-nowrap">{formatExportDate(item.createDate)}</TableCell>
+        <TableCell className="text-center">
           <Button
             onClick={(e) => {
               e.stopPropagation();
@@ -174,15 +183,15 @@ export const ExportHistory = () => {
           />
         )}
 
-        {/* Table */}
         <ScrollArea className="h-[calc(100vh-370px)] pr-2">
-          <Table className="text-sm">
-            {/* Show header when loading or when there is data; hide if empty */}
+          <Table className="table-fixed text-sm">
             {(isLoadingExportHistory || totalCount > 0) && (
               <TableHeader>
                 <TableRow>
                   {columns.map((c) => (
-                    <TableHead key={c}>{c}</TableHead>
+                    <TableHead key={c} className={columnClassNames[c]}>
+                      {c}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -190,8 +199,6 @@ export const ExportHistory = () => {
             <TableBody>{renderTableContent()}</TableBody>
           </Table>
         </ScrollArea>
-
-        {/* Pagination Footer */}
         <div className="mt-4 flex items-center justify-end">
           {!isLoadingExportHistory && exportHistoryData && totalCount > pageSize && (
             <Pagination

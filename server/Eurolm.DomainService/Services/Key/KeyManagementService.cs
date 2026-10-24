@@ -44,6 +44,12 @@ namespace Eurolm.DomainService.Services
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a key.");
         private const string DateTimeFormat = "yyyyMMddHHmmss";
+        private const string ItemIdErrorKey = "ItemId";
+
+        private const string ItemIdColumn = "ItemId";
+        private const string ModuleIdColumn = "ModuleId";
+        private const string ModuleColumn = "Module";
+        private const string KeyNameColumn = "KeyName";
 
         public KeyManagementService(
             IKeyRepository keyRepository,
@@ -362,7 +368,7 @@ namespace Eurolm.DomainService.Services
                     IsSuccess = false,
                     Errors = new Dictionary<string, string>
                     {
-                        { "ItemId", "Key not found" }
+                        { ItemIdErrorKey, "Key not found" }
                     }
                 };
             }
@@ -884,7 +890,11 @@ namespace Eurolm.DomainService.Services
                 Dictionary<string, object> dictionary = new Dictionary<string, object>();
                 if (language.LanguageCode == "key")
                 {
-                    AssignResourceKeysToDictionaryForKeyMode(resourceKeys, dictionary);
+                    var flattenedKeys = AssignResourceKeysToDictionaryForKeyMode(resourceKeys, dictionary);
+                    if (flattenedKeys > 0)
+                    {
+                        _logger.LogWarning("Key-mode file for module {ModuleName}: {Count} keys overlap another key's path and were written as flat top-level entries.", application.ModuleName, flattenedKeys);
+                    }
                 }
                 else
                 {
@@ -918,47 +928,54 @@ namespace Eurolm.DomainService.Services
             });
         }
 
-        private void AssignResourceKeysToDictionaryForKeyMode(
+        // The key-mode file is nested by '.' (external consumers read it that way). Nesting cannot hold a key
+        // that is also a prefix of another key ("crm.customers" and "crm.customers.noCode"), so the key that
+        // does not fit is written as a flat top-level entry instead of being dropped. Keys are sorted so the
+        // result does not depend on the order the database returns them in: the shorter key always stays nested.
+        // Returns how many keys were written flat.
+        private static int AssignResourceKeysToDictionaryForKeyMode(
            List<Key> resourceKeys,
            Dictionary<string, object> dictionary)
         {
-            resourceKeys.ForEach((Key resourceKey) =>
+            var flattened = 0;
+            foreach (var keyName in resourceKeys.Select(k => k.KeyName).Where(k => !string.IsNullOrEmpty(k)).OrderBy(k => k, StringComparer.Ordinal))
             {
-                AssignToDictionary(dictionary: dictionary, keyPath: resourceKey.KeyName, value: resourceKey.KeyName);
-            });
+                if (TryAssignNested(dictionary, keyName))
+                {
+                    continue;
+                }
+                dictionary[keyName] = keyName;
+                flattened++;
+            }
+            return flattened;
         }
 
-        private void AssignToDictionary(
-            Dictionary<string, object> dictionary,
-            string keyPath,
-            string value)
+        private static bool TryAssignNested(Dictionary<string, object> dictionary, string keyName)
         {
-            try
+            string[] segments = keyName.Split('.');
+            Dictionary<string, object> current = dictionary;
+
+            for (int i = 0; i < segments.Length - 1; i++)
             {
-                string[] keys = keyPath.Split('.');
-
-                Dictionary<string, object> current = dictionary;
-
-                for (int i = 0; i < keys.Length - 1; i++)
+                if (!current.TryGetValue(segments[i], out var next))
                 {
-                    if (current.ContainsKey(keys[i]))
-                    {
-                        current = (Dictionary<string, object>)current[keys[i]];
-                    }
-                    else
-                    {
-                        Dictionary<string, object> next = new Dictionary<string, object>();
-                        current[keys[i]] = next;
-                        current = next;
-                    }
+                    next = new Dictionary<string, object>();
+                    current[segments[i]] = next;
                 }
+                if (next is not Dictionary<string, object> nested)
+                {
+                    return false; // a shorter key already occupies this path
+                }
+                current = nested;
+            }
 
-                current[keys[keys.Length - 1]] = value;
-            }
-            catch (Exception ex)
+            var leaf = segments[^1];
+            if (current.TryGetValue(leaf, out var existing) && existing is Dictionary<string, object>)
             {
-                _logger.LogError("Error in AssignToDictionary, keyPath: {KeyPath},  exception: {Ex}", keyPath, JsonConvert.SerializeObject(ex));
+                return false; // longer keys already live under this path
             }
+            current[leaf] = keyName;
+            return true;
         }
 
         public async Task<bool> SaveUniqeFiles(List<UilmFile> uilmfiles)
@@ -1215,11 +1232,11 @@ namespace Eurolm.DomainService.Services
 
                         var languageJsonModel = new LanguageJsonModel
                         {
-                            _id = csv.GetField<string>("ItemId"),
-                            Module = csv.GetField<string>("Module"),
-                            KeyName = csv.GetField<string>("KeyName"),
+                            _id = csv.GetField<string>(ItemIdColumn),
+                            Module = csv.GetField<string>(ModuleColumn),
+                            KeyName = csv.GetField<string>(KeyNameColumn),
                             // Resources will be populated from individual culture columns below
-                            ModuleId = csv.GetField<string>("ModuleId"),
+                            ModuleId = csv.GetField<string>(ModuleIdColumn),
                             IsPartiallyTranslated = TryGetField<bool>("IsPartiallyTranslated", out bool isPartiallyTranslated) ? isPartiallyTranslated : false,
                         };
 
@@ -1230,7 +1247,8 @@ namespace Eurolm.DomainService.Services
                             var resource = new Resource();
                             resource.Culture = culture.Key;
                             resource.Value = csv.GetField<string>(culture.Key);
-                            resource.CharacterLength = string.IsNullOrEmpty(culture.Value) ? 0 : csv.GetField<int>(culture.Value);
+                            // Export writes an empty CharacterLength when the key has no resource for this culture
+                            resource.CharacterLength = !string.IsNullOrEmpty(culture.Value) && int.TryParse(csv.GetField<string>(culture.Value), out var characterLength) ? characterLength : 0;
 
                             resources.Add(resource);
                         }
@@ -1419,7 +1437,7 @@ namespace Eurolm.DomainService.Services
                 Dictionary<string, string> columns = new Dictionary<string, string>();
                 Dictionary<string, string> languages = new Dictionary<string, string>();
 
-                List<string> systemColumns = new List<string>() { "ItemId", "ModuleId", "Module", "KeyName" };
+                List<string> systemColumns = new List<string>() { ItemIdColumn, ModuleIdColumn, ModuleColumn, KeyNameColumn };
                 List<BlocksLanguageKey> blocksLanguageKeys = new List<BlocksLanguageKey>();
 
                 foreach (IXLColumn col in worksheet.Columns())
@@ -1447,7 +1465,7 @@ namespace Eurolm.DomainService.Services
                 _logger.LogInformation("ImportExcelFile: Detected {LanguagesCount} cultures={Cultures} in FileName={FileDataName}", languages.Count, string.Join(", ", languages.Select(x => x.Key).ToList()), fileData.Name);
 
                 // Validate required columns exist
-                var requiredColumns = new[] { "ItemId", "ModuleId", "Module", "KeyName" };
+                var requiredColumns = new[] { ItemIdColumn, ModuleIdColumn, ModuleColumn, KeyNameColumn };
                 var missingColumns = requiredColumns.Where(col => !columns.ContainsKey(col)).ToList();
                 if (missingColumns.Any())
                 {
@@ -1889,10 +1907,10 @@ namespace Eurolm.DomainService.Services
 
             for (int i = 2; i <= excelRows; i++)
             {
-                string id = worksheet.Cell(i, columns["ItemId"]).Value.ToString();
-                string moduleId = worksheet.Cell(i, columns["ModuleId"]).Value.ToString();
-                string moduleName = worksheet.Cell(i, columns["Module"]).Value.ToString();
-                string keyName = worksheet.Cell(i, columns["KeyName"]).Value.ToString();
+                string id = worksheet.Cell(i, columns[ItemIdColumn]).Value.ToString();
+                string moduleId = worksheet.Cell(i, columns[ModuleIdColumn]).Value.ToString();
+                string moduleName = worksheet.Cell(i, columns[ModuleColumn]).Value.ToString();
+                string keyName = worksheet.Cell(i, columns[KeyNameColumn]).Value.ToString();
                 // Note: Resources column is not required as resources are populated from language columns
                 moduleId = HandleUilmApplication(dbApplications, uilmApplicationsToBeInserted, uilmApplicationsToBeUpdated, moduleId, false, moduleName);
 
@@ -2646,7 +2664,20 @@ namespace Eurolm.DomainService.Services
                         IsSuccess = false,
                         Errors = new Dictionary<string, string>
                         {
-                            { "ItemId", "No timeline found for the specified key" }
+                            { ItemIdErrorKey, "No timeline found for the specified key" }
+                        }
+                    };
+                }
+
+                if (timeline.LogFrom == LogFromConstants.KeyBulkMove)
+                {
+                    _logger.LogWarning("Rollback rejected - Move entries cannot be rolled back. ItemId: {ItemId}", request.ItemId);
+                    return new BaseMutationResponse
+                    {
+                        IsSuccess = false,
+                        Errors = new Dictionary<string, string>
+                        {
+                            { ItemIdErrorKey, "A move cannot be reverted. Move the keys back to their previous module instead." }
                         }
                     };
                 }

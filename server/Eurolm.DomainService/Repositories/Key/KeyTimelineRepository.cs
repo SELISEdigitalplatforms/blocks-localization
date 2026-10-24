@@ -368,13 +368,19 @@ namespace Eurolm.DomainService.Repositories
                 Builders<KeyTimeline>.Filter.Eq(t => t.LogFrom, LogFromConstants.Published)
             );
 
+            // Pick the latest publish per entity on the server. Loading every historical publish entry
+            // (keys x publishes, each with full resource snapshots) exhausted worker memory.
+            // PreviousData is dropped because callers only compare against CurrentData.
             var timelines = await collection
-                .Find(filter)
-                .Sort(Builders<KeyTimeline>.Sort.Descending(t => t.CreateDate))
+                .Aggregate(new AggregateOptions { AllowDiskUse = true })
+                .Match(filter)
+                .Project<KeyTimeline>(Builders<KeyTimeline>.Projection.Exclude(t => t.PreviousData))
+                .Sort(Builders<KeyTimeline>.Sort.Ascending(t => t.EntityId).Descending(t => t.CreateDate))
+                .Group(t => t.EntityId, g => g.First())
                 .ToListAsync();
 
-            // Group by EntityId, take latest (first after descending sort) for each
             return timelines
+                .Where(t => t.EntityId != null)
                 .GroupBy(t => t.EntityId!)
                 .ToDictionary(g => g.Key, g => g.First());
         }

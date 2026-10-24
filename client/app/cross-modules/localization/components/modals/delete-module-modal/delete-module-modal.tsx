@@ -1,7 +1,8 @@
-// TODO: Enable delete module feature — uncomment this component and its usage in module-table.tsx
-// when the delete module backend (Phase A of plan-modulesTab) is ready.
-
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { useScopedPath } from "@seliseblocks/genesis-os";
+import { AlertTriangle, Check, ChevronsUpDown, Eye, Info } from "lucide-react";
+import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -10,8 +11,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui-kits/dialog/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
-import { Label } from "@/components/ui-kits/label/label";
 import {
   Command,
   CommandEmpty,
@@ -20,45 +19,76 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui-kits/command/command";
+import { Label } from "@/components/ui-kits/label/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
+import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { cn } from "@/lib/utils";
-import { useDeleteLanguageModule } from "@blocks-localization/hooks/use-language-manager";
+import {
+  useDeleteLanguageModule,
+  useGetModuleKeyCount,
+} from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
+import { getHttpErrorMessage } from "@/lib/error";
 import { IModuleGets } from "@blocks-localization/models/language";
+
+type KeyAction = "move" | "delete";
 
 interface DeleteModuleModalProps {
   module: IModuleGets;
-  allModules: IModuleGets[];
+  modules: Pick<IModuleGets, "itemId" | "moduleName">[];
   onClose: (open: boolean) => void;
 }
 
-const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModules, onClose }) => {
-  const [deleteMode, setDeleteMode] = useState<"cascade" | "move">("cascade");
-  const [targetModuleId, setTargetModuleId] = useState<string>("");
-  const [comboOpen, setComboOpen] = useState(false);
-  const inputRef = useRef(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, onClose }) => {
+  const navigate = useNavigate();
+  const scoped = useScopedPath();
+  const [targetModuleId, setTargetModuleId] = useState("");
+  const [isTargetPickerOpen, setIsTargetPickerOpen] = useState(false);
   const { isPending, mutateAsync } = useDeleteLanguageModule();
+  const {
+    data: keyCount,
+    isLoading: isKeyCountLoading,
+    refetch: refetchKeyCount,
+  } = useGetModuleKeyCount(module.itemId);
 
-  const availableModules = allModules.filter((m) => m.itemId !== module.itemId);
+  const hasKeys = (keyCount ?? 0) > 0;
+  const keyLabel = keyCount === 1 ? "key" : "keys";
+  const targetModules = modules.filter((m) => m.itemId !== module.itemId);
+  const selectedTarget = targetModules.find((m) => m.itemId === targetModuleId);
+  const canMove = targetModules.length > 0;
+  const [chosenKeyAction, setChosenKeyAction] = useState<KeyAction>("move");
+  const keyAction: KeyAction = canMove ? chosenKeyAction : "delete";
 
-  const canSubmit =
-    !isPending && (deleteMode === "cascade" || (deleteMode === "move" && !!targetModuleId));
+  const handleViewKeys = () => {
+    onClose(false);
+    navigate(scoped(`services/language?moduleIds=${encodeURIComponent(module.itemId)}`));
+  };
 
-  const handleSubmit = async () => {
+  const getSuccessMessage = (
+    target?: Pick<IModuleGets, "itemId" | "moduleName">,
+    deleteKeys?: boolean,
+  ) => {
+    if (target) return `Module deleted. Its keys were moved to ${target.moduleName}.`;
+    if (deleteKeys) return "Module and its keys deleted";
+    return "Module deleted";
+  };
+
+  const handleSubmit = async (
+    target?: Pick<IModuleGets, "itemId" | "moduleName">,
+    deleteKeys?: boolean,
+  ) => {
     try {
-      const payload = {
+      const res = await mutateAsync({
         itemId: module.itemId,
-        ...(deleteMode === "move" && { targetModuleId }),
-      };
-      const res = await mutateAsync(payload);
+        ...(target && { targetModuleId: target.itemId }),
+        ...(deleteKeys && { deleteKeys: true }),
+      });
       if (res?.isSuccess) {
         toast({
           variant: "success",
           title: "Success",
-          description: "Module deleted",
+          description: getSuccessMessage(target, deleteKeys),
         });
         onClose(false);
       } else {
@@ -72,91 +102,210 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
       toast({
         variant: "destructive",
         title: "Error",
-        description: JSON.stringify(error),
+        description: getHttpErrorMessage(error),
       });
+      void refetchKeyCount();
     }
   };
 
-  const selectedTarget = availableModules.find((m) => m.itemId === targetModuleId);
+  const renderDescription = () => {
+    if (isKeyCountLoading) {
+      return (
+        <>
+          Checking keys in <span className="font-semibold">{module.moduleName}</span>...
+        </>
+      );
+    }
+
+    if (hasKeys) {
+      return (
+        <>
+          <span className="font-semibold">{module.moduleName}</span> has {keyCount} {keyLabel}. Move
+          them to another module or delete them together with the module.
+        </>
+      );
+    }
+
+    return (
+      <>
+        Are you sure you want to delete <span className="font-semibold">{module.moduleName}</span>?
+        This action cannot be undone.
+      </>
+    );
+  };
+
+  const renderKeyCountLoading = () => (
+    <div className="space-y-3" aria-busy="true" data-testid="module-key-count-loading">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-6 w-14 rounded-full" />
+        </div>
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <Skeleton className="h-[37px] w-full" />
+    </div>
+  );
+
+  const renderKeysHeader = (label?: string) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-2">
+        {label && <p className="text-sm font-medium text-high-emphasis">{label}</p>}
+        <Badge variant="warning" className="shrink-0 rounded-full font-normal">
+          {keyCount} {keyLabel}
+        </Badge>
+      </div>
+      <Button
+        type="button"
+        variant="link"
+        className="h-auto shrink-0 gap-1.5 p-0 text-primary"
+        disabled={isPending}
+        onClick={handleViewKeys}
+      >
+        <Eye className="h-4 w-4" />
+        View keys
+      </Button>
+    </div>
+  );
+
+  const renderTargetPicker = () => (
+    <Popover open={isTargetPickerOpen} onOpenChange={setIsTargetPickerOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-label="Target module"
+          aria-expanded={isTargetPickerOpen}
+          className="h-[37px] w-full justify-between font-normal shadow-none"
+          disabled={isPending}
+        >
+          <span className="truncate">
+            {selectedTarget?.moduleName ?? "Select target module..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) p-0"
+        portalled={false}
+      >
+        <Command>
+          <CommandInput placeholder="Search module..." />
+          <CommandList>
+            <CommandEmpty>No module found.</CommandEmpty>
+            <CommandGroup>
+              {targetModules.map((m) => (
+                <CommandItem
+                  key={m.itemId}
+                  value={m.moduleName}
+                  onSelect={() => {
+                    setTargetModuleId(m.itemId);
+                    setIsTargetPickerOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      targetModuleId === m.itemId ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <span className="truncate">{m.moduleName}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+
+  const renderKeyActions = () => (
+    <div className="space-y-3">
+      {renderKeysHeader("What should happen to the keys?")}
+      <RadioGroup
+        value={keyAction}
+        onValueChange={(value) => setChosenKeyAction(value as KeyAction)}
+        aria-label="What should happen to the keys?"
+        className="gap-3"
+        disabled={isPending}
+      >
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="move" id="delete-module-move-keys" disabled={!canMove} />
+            <Label htmlFor="delete-module-move-keys" className={cn(!canMove && "opacity-50")}>
+              Move all keys to another module
+            </Label>
+          </div>
+          {!canMove && (
+            <p className="flex items-center gap-1.5 pl-6 text-xs text-primary">
+              <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>There is no other module to move the keys to.</span>
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <RadioGroupItem value="delete" id="delete-module-delete-keys" />
+          <Label htmlFor="delete-module-delete-keys">Delete all keys with the module</Label>
+        </div>
+      </RadioGroup>
+
+      {keyAction === "move" ? (
+        <>
+          {renderTargetPicker()}
+          <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
+            <p>
+              The module is deleted once its keys are moved, and this cannot be undone. Translations
+              and glossaries tagged on the keys are kept; the target module&apos;s glossaries apply
+              instead of this module&apos;s. Publish changes afterwards to update the language
+              files.
+            </p>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
+          <p>
+            {keyCount} {keyLabel} and all of their translations are permanently deleted with the
+            module, and this cannot be undone. Publish changes afterwards to update the language
+            files.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderKeyActionButton = () =>
+    keyAction === "move" ? (
+      <Button
+        type="button"
+        variant="destructive"
+        disabled={!selectedTarget || isPending}
+        onClick={() => handleSubmit(selectedTarget)}
+      >
+        {isPending ? "Moving & deleting..." : "Move keys & delete module"}
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="destructive"
+        disabled={isPending}
+        onClick={() => handleSubmit(undefined, true)}
+      >
+        {isPending ? "Deleting..." : "Delete module & keys"}
+      </Button>
+    );
 
   return (
     <DialogContent>
       <DialogHeader>
         <DialogTitle>Delete module</DialogTitle>
-        <DialogDescription>
-          Choose what to do with the keys in{" "}
-          <span className="font-semibold">{module.moduleName}</span>.
-        </DialogDescription>
+        <DialogDescription>{renderDescription()}</DialogDescription>
       </DialogHeader>
 
-      <RadioGroup
-        value={deleteMode}
-        onValueChange={(v) => {
-          setDeleteMode(v as "cascade" | "move");
-          setTargetModuleId("");
-        }}
-        className="mt-2 gap-4"
-      >
-        <div className="flex items-center gap-3">
-          <RadioGroupItem value="cascade" id="cascade" />
-          <Label htmlFor="cascade" className="cursor-pointer">
-            Delete keys along with the module
-          </Label>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <RadioGroupItem value="move" id="move" />
-            <Label htmlFor="move" className="cursor-pointer">
-              Move keys to another module
-            </Label>
-          </div>
-          {deleteMode === "move" && (
-            <div className="ml-7">
-              <Popover open={comboOpen} onOpenChange={setComboOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={comboOpen}
-                    className="h-[37px] w-full justify-between text-low-emphasis shadow-none"
-                  >
-                    {selectedTarget?.moduleName ?? "Select target module..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0">
-                  <Command>
-                    <CommandInput placeholder="Search module..." ref={inputRef} />
-                    <CommandList>
-                      <CommandEmpty>No module found.</CommandEmpty>
-                      <CommandGroup>
-                        {availableModules.map((m) => (
-                          <CommandItem
-                            key={m.itemId}
-                            value={m.moduleName}
-                            onSelect={() => {
-                              setTargetModuleId(m.itemId === targetModuleId ? "" : m.itemId);
-                              setComboOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                targetModuleId === m.itemId ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            {m.moduleName}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-        </div>
-      </RadioGroup>
+      {isKeyCountLoading ? renderKeyCountLoading() : hasKeys && renderKeyActions()}
 
       <DialogFooter className="mt-6">
         <Button
@@ -167,9 +316,17 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, allModule
         >
           Cancel
         </Button>
-        <Button variant="destructive" disabled={!canSubmit} onClick={handleSubmit}>
-          {isPending ? "Deleting..." : "Delete"}
-        </Button>
+        {hasKeys ? (
+          renderKeyActionButton()
+        ) : (
+          <Button
+            variant="destructive"
+            disabled={isPending || isKeyCountLoading}
+            onClick={() => handleSubmit()}
+          >
+            {isPending ? "Deleting..." : "Delete"}
+          </Button>
+        )}
       </DialogFooter>
     </DialogContent>
   );

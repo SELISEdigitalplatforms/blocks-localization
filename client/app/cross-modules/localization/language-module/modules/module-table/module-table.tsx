@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Pencil, Tag, EllipsisVertical } from "lucide-react";
+import { Plus, Pencil, Tag, Trash, EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -23,8 +23,7 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import EditModule from "@blocks-localization/components/modals/edit-module/edit-module";
 import TagGlossaryModal from "@blocks-localization/components/modals/tag-glossary-modal/tag-glossary-modal";
-// TODO: Enable delete module feature — import DeleteModuleModal when backend is ready
-// import DeleteModuleModal from "@blocks-localization/components/modals/delete-module-modal/delete-module-modal";
+import DeleteModuleModal from "@blocks-localization/components/modals/delete-module-modal/delete-module-modal";
 import { useGetLanguageModules } from "@blocks-localization/hooks/use-language-manager";
 import { IModuleGets } from "@blocks-localization/models/language";
 import { FilterControls } from "@/components/filter-toolbar";
@@ -32,15 +31,8 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { getModuleBadgeStyle } from "../../language-table/hooks/use-language-table-columns";
+import { getPageSizeOptions } from "../../language-table/language-table.utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
-
-const getPageSizeOptions = (totalCount: number) => {
-  const fixedOptions = [10, 30, 50, 100];
-  if (totalCount > 100) return [...fixedOptions, totalCount];
-  if (totalCount > 0)
-    return fixedOptions.filter((option) => option <= totalCount).concat(totalCount);
-  return [10];
-};
 
 const compareStrings = (a: string, b: string): number => {
   if (a < b) return -1;
@@ -77,24 +69,26 @@ const getUserDisplayNameFromUser = (
 
 interface RenderModuleRowsParams {
   modules: IModuleGets[];
-  allModuleIds: string[];
   getUserDisplayNameById: (userId: string | null) => string;
+  isUserLoading: (userId: string | null) => boolean;
   scoped: (path: string) => string;
   navigate: (path: string) => void | Promise<void>;
   searchText: string;
   onEditModule: (module: IModuleGets) => void;
   onTagGlossaryModule: (module: IModuleGets) => void;
+  onDeleteModule: (module: IModuleGets) => void;
 }
 
 function renderModuleRows({
   modules,
-  allModuleIds,
   getUserDisplayNameById,
+  isUserLoading,
   scoped,
   navigate,
   searchText,
   onEditModule,
   onTagGlossaryModule,
+  onDeleteModule,
 }: RenderModuleRowsParams) {
   if (modules.length === 0) {
     return (
@@ -118,12 +112,18 @@ function renderModuleRows({
       <TableCell className="truncate">
         <span
           className="inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium"
-          style={getModuleBadgeStyle(module.itemId, allModuleIds)}
+          style={getModuleBadgeStyle(module.itemId)}
         >
           {module.moduleName}
         </span>
       </TableCell>
-      <TableCell className="truncate">{getUserDisplayNameById(module.createdBy)}</TableCell>
+      <TableCell className="truncate">
+        {isUserLoading(module.createdBy) ? (
+          <Skeleton className="h-6 w-full rounded" />
+        ) : (
+          getUserDisplayNameById(module.createdBy)
+        )}
+      </TableCell>
       <TableCell className="whitespace-nowrap">
         {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
       </TableCell>
@@ -131,6 +131,7 @@ function renderModuleRows({
         <RowActionsCell
           onEdit={() => onEditModule(module)}
           onTagGlossary={() => onTagGlossaryModule(module)}
+          onDelete={() => onDeleteModule(module)}
         />
       </TableCell>
     </TableRow>
@@ -141,11 +142,11 @@ function renderModuleRows({
 const RowActionsCell = ({
   onEdit,
   onTagGlossary,
-  // onDelete: () => void;
+  onDelete,
 }: {
   onEdit: () => void;
   onTagGlossary: () => void;
-  // onDelete: () => void;
+  onDelete: () => void;
 }) => (
   <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
@@ -180,11 +181,16 @@ const RowActionsCell = ({
         <Tag className="mr-2 h-4 w-4" />
         <span>Tag glossary</span>
       </DropdownMenuItem>
-      {/* TODO: Enable delete module feature — restore this item when backend is ready */}
-      {/* <DropdownMenuItem className="cursor-pointer text-error" onClick={onDelete}>
+      <DropdownMenuItem
+        className="cursor-pointer text-error"
+        onClick={(e) => {
+          e.preventDefault();
+          onDelete();
+        }}
+      >
         <Trash className="mr-2 h-4 w-4" />
         <span>Delete</span>
-      </DropdownMenuItem> */}
+      </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 );
@@ -194,12 +200,11 @@ export function ModuleTable() {
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isLoading: isModulesLoading, data: modulesData, refetch } = useGetLanguageModules();
-  const { data: currentUser } = useCurrentUser();
+  const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUser();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IModuleGets | null>(null);
   const [tagTarget, setTagTarget] = useState<IModuleGets | null>(null);
-  // TODO: Enable delete module feature — restore this state when backend is ready
-  // const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<IModuleGets | null>(null);
 
   // Pagination state
   const [pageNumber, setPageNumber] = useState(0);
@@ -235,9 +240,10 @@ export function ModuleTable() {
     staleTime: Infinity,
   });
 
-  // Helper function to get user display name
+  const isUserLoading = (userId: string | null): boolean =>
+    userId ? isUsersLoading : !!isCurrentUserLoading;
+
   const getUserDisplayNameById = (userId: string | null): string => {
-    if (isUsersLoading) return "—";
     const user = userId ? userMap?.[userId] : currentUser;
     const resolvedUser = user ?? (currentUser?.itemId === userId ? currentUser : undefined);
     return getUserDisplayNameFromUser(resolvedUser);
@@ -268,12 +274,9 @@ export function ModuleTable() {
   }, [filteredModules, pageNumber, pageSize]);
 
   const totalCount = filteredModules.length;
+  const isUnfilteredEmpty =
+    !isModulesLoading && searchValue.length === 0 && (modulesData?.length ?? 0) === 0;
   const pageSizeOptions = useMemo(() => getPageSizeOptions(totalCount), [totalCount]);
-
-  const allModuleIds = useMemo(
-    () => (modulesData ?? []).map((module) => module.itemId),
-    [modulesData],
-  );
 
   const handleNewModuleClick = () => {
     setIsNewModuleDialogOpen(true);
@@ -311,6 +314,7 @@ export function ModuleTable() {
                   onChange={onSearchChangeHandler}
                   placeholder="Search modules..."
                   className="h-9 w-full"
+                  disabled={isUnfilteredEmpty}
                 />
               </div>
             </div>
@@ -345,13 +349,14 @@ export function ModuleTable() {
                       ))
                     : renderModuleRows({
                         modules: paginatedModules,
-                        allModuleIds,
                         getUserDisplayNameById,
+                        isUserLoading,
                         scoped,
                         navigate,
                         searchText: searchValue,
                         onEditModule: setEditTarget,
                         onTagGlossaryModule: setTagTarget,
+                        onDeleteModule: setDeleteTarget,
                       })}
                 </TableBody>
               </Table>
@@ -397,16 +402,16 @@ export function ModuleTable() {
           {tagTarget && <TagGlossaryModal module={tagTarget} onClose={() => setTagTarget(null)} />}
         </Dialog>
 
-        {/* TODO: Enable delete module feature — restore this dialog when backend is ready */}
-        {/* <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        {/* Delete Module Dialog — offers every module as a move target, regardless of search */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           {deleteTarget && (
             <DeleteModuleModal
               module={deleteTarget}
-              allModules={modulesList}
+              modules={modulesData ?? []}
               onClose={() => setDeleteTarget(null)}
             />
           )}
-        </Dialog> */}
+        </Dialog>
       </div>
     </main>
   );

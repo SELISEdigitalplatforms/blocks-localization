@@ -15,6 +15,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
   useGetLanguages: vi.fn(),
   useGetGlossaries: vi.fn(),
+  useGetGlossariesByIds: vi.fn(() => []),
   useGetSuggestedGlossaries: vi.fn(),
   useGetGlobalGlossaries: vi.fn(),
   useGetModuleGlossaries: vi.fn(),

@@ -35,6 +35,7 @@ def main():
     junit_path, out_path = sys.argv[1], sys.argv[2]
     prefix = sys.argv[3].strip("/") if len(sys.argv) > 3 else ""
 
+    # nosemgrep: python.lang.security.use-defused-xml-parse.use-defused-xml-parse -- input is the CI's own vitest report; defusedxml is not installed on the runner.
     root = ET.parse(junit_path).getroot()
     suites = root.iter("testsuite") if root.tag == "testsuites" else [root]
 

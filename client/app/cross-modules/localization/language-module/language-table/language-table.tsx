@@ -77,10 +77,7 @@ import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
-import {
-  getCompletenessCellValue,
-  useLanguageTableColumns,
-} from "./hooks/use-language-table-columns";
+import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
 import {
   getImportFileLabel,
   useLanguageImportProgress,
@@ -93,6 +90,7 @@ import {
   getResourceSearchFilters,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
+  getStretchedColumnWidths,
   parseResourceSearch,
   updateResourceSearchValue,
 } from "./language-table.utils";
@@ -587,14 +585,6 @@ export function LanguageTable() {
     return blocksLanguageKeyData?.keys || [];
   }, [blocksLanguageKeyData]);
 
-  const partiallyTranslatedCount = useMemo(
-    () =>
-      tableData.filter(
-        (key) => getCompletenessCellValue(key.resources, languageListData) === "Partial",
-      ).length,
-    [tableData, languageListData],
-  );
-
   const requestedPageSize = queryParams.pageSize ?? 10;
   const requestedPageNumber = queryParams.pageNumber ?? 0;
   const skeletonRowCount =
@@ -608,6 +598,18 @@ export function LanguageTable() {
   const showLoadingSkeleton =
     isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
   const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
+  const tableViewportRef = useRef<HTMLDivElement>(null);
+  const [tableViewportWidth, setTableViewportWidth] = useState(0);
+
+  useEffect(() => {
+    const element = tableViewportRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      setTableViewportWidth(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -621,6 +623,12 @@ export function LanguageTable() {
     onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
   });
+
+  const stretchedColumnWidths = getStretchedColumnWidths(
+    table.getVisibleLeafColumns().map((column) => column.id),
+    tableViewportWidth,
+    globalThis.window?.innerWidth ?? 0,
+  );
 
   const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
   const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
@@ -750,7 +758,7 @@ export function LanguageTable() {
   const selectAll = () => {
     setSelectedLanguages(
       selectedLanguages.length === languageListData?.length
-        ? []
+        ? languageListData.filter((lang) => lang.isDefault).map((lang) => lang.languageCode)
         : languageListData?.map((lang) => lang.languageCode) || [],
     );
   };
@@ -898,23 +906,12 @@ export function LanguageTable() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
                   {!isLoading && (
-                    <>
-                      <Badge
-                        variant="outline"
-                        className="rounded-full border-transparent bg-secondary text-secondary-foreground"
-                      >
-                        {stableTotalCount.toLocaleString()} keys
-                      </Badge>
-                      {partiallyTranslatedCount > 0 && (
-                        <Badge variant="warning" className="gap-1.5 rounded-full">
-                          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-icon-warning opacity-75" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-icon-warning" />
-                          </span>
-                          {partiallyTranslatedCount.toLocaleString()} partial
-                        </Badge>
-                      )}
-                    </>
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-transparent bg-secondary text-secondary-foreground"
+                    >
+                      {stableTotalCount.toLocaleString()} keys
+                    </Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1046,15 +1043,25 @@ export function LanguageTable() {
               </div>
               <CardContent>
                 <div
-                  className="language-table-scrollbar w-full overflow-x-auto [container-type:inline-size] [&>div]:overflow-visible"
+                  className="language-table-scrollbar w-full overflow-x-auto @container [&>div]:overflow-visible"
                   style={{ minHeight: `${tableViewportMinHeight}px` }}
                   data-testid="language-table-viewport"
+                  ref={tableViewportRef}
                 >
                   <Table className="table-fixed text-sm">
                     <colgroup>
                       {table.getVisibleLeafColumns().map((column) => (
-                        <col key={column.id} className={getTableColumnClassName(column.id)} />
+                        <col
+                          key={column.id}
+                          className={getTableColumnClassName(column.id)}
+                          style={
+                            stretchedColumnWidths[column.id]
+                              ? { width: `${stretchedColumnWidths[column.id]}px` }
+                              : undefined
+                          }
+                        />
                       ))}
+                      <col />
                     </colgroup>
                     <TableHeader>
                       {table.getHeaderGroups().map((headerGroup) => (
@@ -1069,6 +1076,7 @@ export function LanguageTable() {
                                 : flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                           ))}
+                          <TableHead aria-hidden="true" className="h-0 p-0" />
                         </TableRow>
                       ))}
 
@@ -1119,6 +1127,7 @@ export function LanguageTable() {
                             />
                           );
                         })}
+                        <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1133,6 +1142,7 @@ export function LanguageTable() {
                                   <Skeleton className={getTableSkeletonClassName(column.id)} />
                                 </TableCell>
                               ))}
+                              <TableCell aria-hidden="true" className="p-0" />
                             </TableRow>
                           ))
                         : (() => {
@@ -1159,11 +1169,12 @@ export function LanguageTable() {
                                           )}
                                         </TableCell>
                                       ))}
+                                      <TableCell aria-hidden="true" className="p-0" />
                                     </TableRow>
                                     {isRowExpanded && (
                                       <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
                                         <TableCell
-                                          colSpan={table.getVisibleLeafColumns().length}
+                                          colSpan={table.getVisibleLeafColumns().length + 1}
                                           className="p-0"
                                         >
                                           <InlineKeyDetails
@@ -1185,7 +1196,7 @@ export function LanguageTable() {
                             ) : (
                               <TableRow>
                                 <TableCell
-                                  colSpan={table.getVisibleLeafColumns().length}
+                                  colSpan={table.getVisibleLeafColumns().length + 1}
                                   className="h-24 text-center"
                                 >
                                   <LanguageTableEmptyState

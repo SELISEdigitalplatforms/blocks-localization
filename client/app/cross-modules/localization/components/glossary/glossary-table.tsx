@@ -14,7 +14,7 @@ import {
 } from "@/components/ui-kits/table/table";
 import { Button } from "@/components/ui-kits/button/button";
 import { FilterControls } from "@/components/filter-toolbar";
-import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
+import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,24 +23,34 @@ import {
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { useGetGlossaries } from "@blocks-localization/hooks/use-language-manager";
-import { IGlossary } from "@blocks-localization/models/language";
-import AddEditGlossary from "@blocks-localization/components/modals/glossary/add-edit-glossary";
+import { useGetGlossaries, useGetLanguages } from "@blocks-localization/hooks/use-language-manager";
+import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
+import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
+import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
+import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
-const ContextHeader = () => (
+const DefinitionHeader = () => (
   <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Context</span>
+    <span className="font-bold text-medium-emphasis">Definition</span>
   </div>
 );
 
-const AdditionalNoteHeader = () => (
+const RuleHeader = () => (
   <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Additional Note</span>
+    <span className="font-bold text-medium-emphasis">Rule</span>
+  </div>
+);
+
+const TranslationsHeader = () => (
+  <div className="flex items-center">
+    <span className="font-bold text-medium-emphasis">Translations</span>
   </div>
 );
 
@@ -50,24 +60,29 @@ const ActionsHeader = () => (
   </div>
 );
 
-function renderContextCell(row: { original: IGlossary }) {
-  const context = getOptionalCellText(row.original.context);
+function renderDefinitionCell(row: { original: IGlossary }) {
+  const definition = getOptionalCellText(stripRuleMarker(row.original.context));
   return (
-    <div className="max-w-[200px] truncate" title={context === "-" ? undefined : context}>
-      {context}
+    <div className="max-w-[200px] truncate" title={definition === "-" ? undefined : definition}>
+      {definition}
     </div>
   );
 }
 
-function renderAdditionalNoteCell(row: { original: IGlossary }) {
-  const additionalNote = getOptionalCellText(row.original.additionalNote);
-  return (
-    <div
-      className="max-w-[200px] truncate"
-      title={additionalNote === "-" ? undefined : additionalNote}
-    >
-      {additionalNote}
-    </div>
+function renderRuleCell(row: { original: IGlossary }) {
+  const { meta, status } = parseGlossaryMeta(row.original.additionalNote);
+  return status === "unsupported-version" ? <span>—</span> : <GlossaryRuleBadge rule={meta.rule} />;
+}
+
+function renderTranslationsCell(
+  row: { original: IGlossary },
+  languages: ILanguageConfig[] | undefined,
+) {
+  const { meta, status } = parseGlossaryMeta(row.original.additionalNote);
+  return status === "unsupported-version" ? (
+    <span>—</span>
+  ) : (
+    <GlossaryTranslationChips meta={meta} languages={languages} />
   );
 }
 
@@ -144,6 +159,7 @@ const GlossaryTable = () => {
   }, []);
 
   const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, searchText);
+  const { data: languageListData } = useGetLanguages();
 
   const handleEditClick = useCallback((glossary: IGlossary) => {
     setEditGlossary(glossary);
@@ -171,6 +187,16 @@ const GlossaryTable = () => {
         ),
       },
       {
+        id: "rule",
+        header: RuleHeader,
+        cell: ({ row }) => renderRuleCell(row),
+      },
+      {
+        id: "translations",
+        header: TranslationsHeader,
+        cell: ({ row }) => renderTranslationsCell(row, languageListData),
+      },
+      {
         accessorKey: "language",
         header: () => (
           <div className="flex items-center">
@@ -181,7 +207,8 @@ const GlossaryTable = () => {
           <div className="flex items-center">
             <span>
               {langConfigureData.find((lang) => lang.languageCode === row.original.language)
-                ?.languageName ?? "-"}
+                ?.languageName ??
+                (row.original.language || "-")}
             </span>
           </div>
         ),
@@ -201,13 +228,8 @@ const GlossaryTable = () => {
       },
       {
         accessorKey: "context",
-        header: ContextHeader,
-        cell: ({ row }) => renderContextCell(row),
-      },
-      {
-        accessorKey: "additionalNote",
-        header: AdditionalNoteHeader,
-        cell: ({ row }) => renderAdditionalNoteCell(row),
+        header: DefinitionHeader,
+        cell: ({ row }) => renderDefinitionCell(row),
       },
       {
         accessorKey: "createDate",
@@ -268,9 +290,10 @@ const GlossaryTable = () => {
         ),
       },
     ],
-    [handleEditClick, handleDeleteClick],
+    [handleEditClick, handleDeleteClick, languageListData],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable is the table API this component is built on.
   const table = useReactTable({
     data: data?.items ?? [],
     columns,
@@ -285,8 +308,10 @@ const GlossaryTable = () => {
     <div>
       <div className="flex items-end justify-between">
         <h1 className="text-2xl font-semibold">Glossary Management</h1>
-        <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
-          <DialogTrigger asChild>
+        <GlossaryEditorSheet
+          open={addModalOpen}
+          onOpenChange={setAddModalOpen}
+          trigger={
             <Button
               size="sm"
               variant="default"
@@ -295,9 +320,8 @@ const GlossaryTable = () => {
               <Plus className="mr-2 h-5 w-5" />
               <span className="sr-only sm:not-sr-only">New Glossary</span>
             </Button>
-          </DialogTrigger>
-          <AddEditGlossary onClose={() => setAddModalOpen(false)} isOpen={addModalOpen} />
-        </Dialog>
+          }
+        />
       </div>
 
       <Card className="mt-6 rounded-sm border border-border shadow-none">
@@ -306,40 +330,34 @@ const GlossaryTable = () => {
             Glossary
           </CardTitle>
         </CardHeader>
-        {!isUnfilteredEmpty && (
-          <div className="mb-4 w-full sm:w-[300px]">
-            <FilterControls.SearchInput
-              placeholder="Search glossary..."
-              value={searchText}
-              onChange={handleSearchChange}
-              className="h-9 w-full"
-            />
-          </div>
-        )}
+        <div className="mb-4 w-full sm:w-[300px]">
+          <FilterControls.SearchInput
+            placeholder="Search glossary..."
+            value={searchText}
+            onChange={handleSearchChange}
+            className="h-9 w-full"
+            disabled={isUnfilteredEmpty}
+          />
+        </div>
         <CardContent>
-          {isUnfilteredEmpty ? (
-            <div className="flex h-40 items-center justify-center text-center">
-              <GlossaryEmptyState searchQuery="" />
-            </div>
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <Table className="text-sm">
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} className="font-bold text-medium-emphasis">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 10 }).map((_, index) => (
+          <div className="w-full overflow-x-auto">
+            <Table className="text-sm">
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {isLoading
+                  ? Array.from({ length: 10 }).map((_, index) => (
                       <TableRow key={index}>
                         {columns.map((_, colIndex) => (
                           <TableCell key={colIndex}>
@@ -348,13 +366,10 @@ const GlossaryTable = () => {
                         ))}
                       </TableRow>
                     ))
-                  ) : (
-                    renderTableRows(tableRows, columns, scoped, navigate, searchText)
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                  : renderTableRows(tableRows, columns, scoped, navigate, searchText)}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
         {!isLoading && (data?.totalCount ?? 0) > pageSize && (
           <div className="mt-5 flex items-center md:justify-end">
@@ -373,18 +388,15 @@ const GlossaryTable = () => {
         )}
       </Card>
 
-      {/* Edit Modal */}
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        {editModalOpen && editGlossary && (
-          <AddEditGlossary
-            glossary={editGlossary}
-            onClose={() => {
-              setEditModalOpen(false);
-              setEditGlossary(undefined);
-            }}
-          />
-        )}
-      </Dialog>
+      {/* Edit Sheet */}
+      <GlossaryEditorSheet
+        open={editModalOpen && !!editGlossary}
+        glossary={editGlossary}
+        onOpenChange={(open) => {
+          setEditModalOpen(open);
+          if (!open) setEditGlossary(undefined);
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

@@ -72,26 +72,35 @@ jobs:
       dotnet_version: ${{ steps.config.outputs.dotnet_version }}
       has_submodules: ${{ steps.config.outputs.has_submodules }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       # Load shared variables first (if enabled)
       - name: Load Shared Configuration
         if: env.LOAD_CUSTOM_VARS == 'true'
-        uses: SELISEdigitalplatforms/blocks-inventory/.github/actions/setvars@main
+        uses: SELISEdigitalplatforms/blocks-inventory/.github/actions/setvars@main  # nosemgrep: github-actions-mutable-action-tag -- tracks the org's main branch in lockstep with the blocks-inventory reusable workflows used at @main
         with:
           varFilePath: ./.github/variables/
 
       - name: Set Configuration Outputs
         id: config
+        env:
+          RUN_TESTS: ${{ env.RUN_TESTS }}
+          RUN_SONARQUBE: ${{ env.RUN_SONARQUBE }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          CLUSTER_NAME: ${{ env.CLUSTER_NAME }}
+          LOAD_CUSTOM_VARS: ${{ env.LOAD_CUSTOM_VARS }}
+          TAG_STRATEGY: ${{ env.TAG_STRATEGY }}
+          RUN_SCA_SCAN: ${{ env.RUN_SCA_SCAN }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           # From workflow env (environment-specific)
-          echo "run_tests=${{ env.RUN_TESTS }}" >> $GITHUB_OUTPUT
-          echo "run_sonarqube=${{ env.RUN_SONARQUBE }}" >> $GITHUB_OUTPUT
-          echo "environment=${{ env.ENVIRONMENT }}" >> $GITHUB_OUTPUT
-          echo "cluster_name=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
-          echo "load_custom_vars=${{ env.LOAD_CUSTOM_VARS }}" >> $GITHUB_OUTPUT
-          echo "tag_strategy=${{ env.TAG_STRATEGY }}" >> $GITHUB_OUTPUT
-          echo "run_sca_scan=${{ env.RUN_SCA_SCAN }}" >> $GITHUB_OUTPUT
+          echo "run_tests=${RUN_TESTS}" >> $GITHUB_OUTPUT
+          echo "run_sonarqube=${RUN_SONARQUBE}" >> $GITHUB_OUTPUT
+          echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
+          echo "load_custom_vars=${LOAD_CUSTOM_VARS}" >> $GITHUB_OUTPUT
+          echo "tag_strategy=${TAG_STRATEGY}" >> $GITHUB_OUTPUT
+          echo "run_sca_scan=${RUN_SCA_SCAN}" >> $GITHUB_OUTPUT
 
           # From vars.env (if loaded) or fallback to defaults
           echo "client_dockerfile_path=${DOCKERFILE_CLIENT:-./Dockerfile}" >> $GITHUB_OUTPUT
@@ -106,7 +115,7 @@ jobs:
           # SCA Scan Configuration
           echo "sca_project_server=${SCA_PROJECT_SERVER:-blocks-localization-server}" >> $GITHUB_OUTPUT
           echo "sca_project_client=${SCA_PROJECT_CLIENT:-blocks-localization-client}" >> $GITHUB_OUTPUT
-          echo "project_version=${PROJECT_VERSION:-${{ github.ref_name }}}" >> $GITHUB_OUTPUT
+          echo "project_version=${PROJECT_VERSION:-${REF_NAME}}" >> $GITHUB_OUTPUT
           echo "dependency_track_host=${DEPENDENCY_TRACK_HOST:-api-dt.seliseblocks.com}" >> $GITHUB_OUTPUT
           echo "dependency_track_frontend_url=${DEPENDENCY_TRACK_FRONTEND_URL:-sca.seliseblocks.com}" >> $GITHUB_OUTPUT
 
@@ -118,7 +127,7 @@ jobs:
           echo "working_directory=${WORKING_DIRECTORY:-./server}" >> $GITHUB_OUTPUT
 
           # Version based on environment (from versions.env)
-          ENVIRONMENT="${{ env.ENVIRONMENT }}"
+          ENVIRONMENT="${ENVIRONMENT}"
           case "$ENVIRONMENT" in
             "dev")
               VERSION="${DEV_VERSION:-}"
@@ -142,12 +151,12 @@ jobs:
           echo "- **Service**: ${SERVICE_NAME:-'Not set'}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version Suffix**: ${VERSION:-'None'}" >> $GITHUB_STEP_SUMMARY
           echo "- **Type**: ${SERVICE_TYPE:-'Not set'}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Tag Strategy**: ${{ env.TAG_STRATEGY }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cluster**: ${{ env.CLUSTER_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tests Enabled**: ${{ env.RUN_TESTS }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **SonarQube Enabled**: ${{ env.RUN_SONARQUBE }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **SCA Scan Enabled**: ${{ env.RUN_SCA_SCAN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag Strategy**: ${TAG_STRATEGY}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${CLUSTER_NAME}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tests Enabled**: ${RUN_TESTS}" >> $GITHUB_STEP_SUMMARY
+          echo "- **SonarQube Enabled**: ${RUN_SONARQUBE}" >> $GITHUB_STEP_SUMMARY
+          echo "- **SCA Scan Enabled**: ${RUN_SCA_SCAN}" >> $GITHUB_STEP_SUMMARY
 
   # # Run tests and checks on PRs only (optional)
   # pr-checks:

@@ -33,7 +33,7 @@ import {
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
+import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   useGetLanguageModules,
@@ -88,9 +88,92 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const TRANSLATION_SKELETON_COUNT = 2;
+
+const FieldSkeleton = ({
+  controlClassName,
+  labelClassName = "w-24",
+}: {
+  controlClassName: string;
+  labelClassName?: string;
+}) => (
+  <div className="space-y-1">
+    <Skeleton className={cn("h-[14px] rounded", labelClassName)} />
+    <Skeleton className={cn("w-full rounded-md", controlClassName)} />
+  </div>
+);
+
+function AddNewLanguageKeySkeleton() {
+  return (
+    <div>
+      <div className="hidden pl-5 md:flex">
+        <PageBreadcrumb />
+      </div>
+      <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
+        <div className="flex-1 pl-5 pr-5">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold">Create new key</h1>
+            <Skeleton className="h-10 w-[66px] rounded-md" />
+          </div>
+          <Card className="mt-6 rounded-sm border border-border shadow-none">
+            <CardHeader>
+              <CardTitle>About the key</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <FieldSkeleton labelClassName="w-20" controlClassName="h-10" />
+                  <FieldSkeleton labelClassName="w-16" controlClassName="h-[37px]" />
+                </div>
+                <FieldSkeleton labelClassName="w-40" controlClassName="h-20" />
+                <FieldSkeleton labelClassName="w-24" controlClassName="h-20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="mt-4 rounded-sm border border-border shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Translations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                {Array.from({ length: TRANSLATION_SKELETON_COUNT }, (_, index) => (
+                  <div key={index} className="grid gap-3">
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-[14px] w-32 rounded" />
+                      <Skeleton className="h-7 w-[118px] rounded-md" />
+                    </div>
+                    <Skeleton className="h-20 w-full rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="mt-4 rounded-sm border border-border shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Routes</CardTitle>
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-10 w-[150px] rounded-md" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddNewLanguageKey() {
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
+  // Sort a copy so the React Query cached language array is never mutated in place.
+  const sortedLanguages = React.useMemo(
+    () =>
+      languageListData
+        ? [...languageListData].sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault))
+        : undefined,
+    [languageListData],
+  );
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = React.useState(false);
@@ -101,7 +184,6 @@ function AddNewLanguageKey() {
   const { mutateAsync: autoTranslateAsync } = useGetTranslationSuggestion();
 
   const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
@@ -122,7 +204,6 @@ function AddNewLanguageKey() {
     name: "resources",
   });
 
-  // Field array for routes
   const {
     fields: routeFields,
     append: appendRoute,
@@ -133,7 +214,7 @@ function AddNewLanguageKey() {
   });
 
   React.useEffect(() => {
-    if (!languageListData?.length) {
+    if (!sortedLanguages?.length) {
       return;
     }
 
@@ -141,7 +222,7 @@ function AddNewLanguageKey() {
 
     if (existingResources.length === 0) {
       replaceResources(
-        languageListData.map((lang: ILanguageConfig) => ({
+        sortedLanguages.map((lang: ILanguageConfig) => ({
           value: "",
           culture: lang.languageCode || "",
         })),
@@ -150,20 +231,20 @@ function AddNewLanguageKey() {
     }
 
     if (
-      existingResources.length !== languageListData.length ||
-      languageListData.some(
+      existingResources.length !== sortedLanguages.length ||
+      sortedLanguages.some(
         (lang: ILanguageConfig, index: number) =>
           existingResources[index]?.culture !== (lang.languageCode || ""),
       )
     ) {
-      const mergedResources = languageListData.map((lang: ILanguageConfig, index: number) => ({
+      const mergedResources = sortedLanguages.map((lang: ILanguageConfig, index: number) => ({
         value: existingResources[index]?.value ?? "",
         culture: lang.languageCode || "",
       }));
 
       replaceResources(mergedResources);
     }
-  }, [form, languageListData, replaceResources]);
+  }, [form, sortedLanguages, replaceResources]);
 
   const formSubmitHandler = async (data: FormValues) => {
     try {
@@ -226,66 +307,67 @@ function AddNewLanguageKey() {
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
+    destinationLanguageCode?: string,
   ): Promise<void> {
-    {
-      setLoadingIndex(index); // Set the loading state for the clicked button
-      try {
-        const payload = {
-          sourceText: defaultLanguageText,
-          destinationLanguage: destinationLanguage || "English",
-          currentLanguage: "English",
-          temperature: 0.1,
-        };
-        const res = await autoTranslateAsync(payload);
-        if (res.content) {
-          toast({
-            variant: "success",
-            title: "Success",
-            description: "Translated successfully",
-          });
-          // Update the resource at the given index + 1 (translations)
-          form.setValue(`resources.${index + 1}.value`, res.content);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: JSON.stringify(res?.errors),
-          });
-        }
-      } catch (error) {
+    setLoadingIndex(index);
+    try {
+      const defaultLanguage =
+        languageListData?.find((lang) => lang.isDefault) ?? languageListData?.[0];
+      const payload = {
+        sourceText: defaultLanguageText,
+        destinationLanguage: destinationLanguage || "English",
+        currentLanguage: defaultLanguage?.languageName ?? "English",
+        temperature: 0.1,
+        moduleId: form.getValues("moduleId") || undefined,
+        destinationLanguageCode,
+      };
+      const res = await autoTranslateAsync(payload);
+      if (res.content) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: "Translated successfully",
+        });
+        form.setValue(`resources.${index + 1}.value`, res.content);
+      } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: JSON.stringify(error),
+          description: JSON.stringify(res?.errors),
         });
-      } finally {
-        setLoadingIndex(null); // Reset the loading state.
       }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: JSON.stringify(error),
+      });
+    } finally {
+      setLoadingIndex(null);
     }
   }
 
-  // The handler itself must return void: a promise handed back to React is never
-  // awaited, so a rejection would surface as an unhandled rejection instead.
   function autoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
     index: number,
+    destinationLanguageCode?: string,
   ): React.MouseEventHandler<HTMLButtonElement> {
     return (e) => {
       e.preventDefault();
-      void runAutoTranslate(destinationLanguage, defaultLanguageText, index);
+      void runAutoTranslate(
+        destinationLanguage,
+        defaultLanguageText,
+        index,
+        destinationLanguageCode,
+      );
     };
   }
 
   if (isLanguageModulesLoading || isLanguageListLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <AddNewLanguageKeySkeleton />;
   }
 
-  languageListData?.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
   return (
     <div className="">
       <div className="hidden pl-5 md:flex">
@@ -306,8 +388,6 @@ function AddNewLanguageKey() {
       </div> */}
       <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
         <div className="flex-1 pl-5 pr-5">
-          {/* <div className="mt-10 md:mt-24"> */}
-
           <Form {...form}>
             <form onSubmit={form.handleSubmit(formSubmitHandler)}>
               <div className="flex items-center justify-between">
@@ -462,7 +542,7 @@ function AddNewLanguageKey() {
                       render={({ field }) => (
                         <FormItem className="space-y-1">
                           <FormLabel htmlFor="defaultValue">
-                            Default value ({languageListData?.[0]?.languageName}){" "}
+                            Default value ({sortedLanguages?.[0]?.languageName}){" "}
                             <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
@@ -508,17 +588,19 @@ function AddNewLanguageKey() {
                     {resourceFields.slice(1).map((field, index) => (
                       <div key={field.id} className="grid gap-3">
                         <div className="grid grid-cols-2">
-                          <Label>{languageListData?.[index + 1]?.languageName} Translation</Label>
+                          <Label>{sortedLanguages?.[index + 1]?.languageName} Translation</Label>
                           <div className="flex justify-end gap-4">
                             <Button
                               size="sm"
                               variant="outline"
                               className="h-7 gap-1"
+                              // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() keeps the button state in sync with the source value.
                               disabled={loadingIndex === index || !form.watch().resources[0].value} // Disable only the clicked button.
                               onClick={autoTranslate(
-                                languageListData?.[index + 1]?.languageName,
+                                sortedLanguages?.[index + 1]?.languageName,
                                 form.getValues().resources[0].value,
                                 index,
+                                sortedLanguages?.[index + 1]?.languageCode,
                               )}
                             >
                               <Wand className="h-3.5 w-3.5" />

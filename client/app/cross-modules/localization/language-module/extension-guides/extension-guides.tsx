@@ -115,7 +115,7 @@ export const ExtensionGuides = () => {
                     {item.images.map((image) => (
                       <figure
                         key={image.src}
-                        className="mt-4 w-52 max-w-full overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-sm"
+                        className="mt-4 w-52 max-w-full overflow-hidden rounded-xl border bg-muted/30 p-2 shadow-xs"
                       >
                         <img
                           src={image.src}

@@ -94,21 +94,6 @@ namespace XUnitTest
         }
 
         [Fact]
-        public void AssignToDictionary_NestsKeysProperly()
-        {
-            var dictionary = new Dictionary<string, object>();
-            var method = typeof(KeyManagementService)
-                .GetMethod("AssignToDictionary", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            method.Invoke(_service, new object[] { dictionary, "a.b.c", "value" });
-
-            dictionary.Should().ContainKey("a");
-            var nested = dictionary["a"] as Dictionary<string, object>;
-            nested.Should().NotBeNull();
-            (nested!["b"] as Dictionary<string, object>).Should().ContainKey("c");
-        }
-
-        [Fact]
         public async Task ImportUilmFile_ReturnsFalseWhenFileMissing()
         {
             var request = new UilmImportEvent

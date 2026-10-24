@@ -113,7 +113,7 @@ function EditKeyGlossary({
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
       </DialogHeader>
 
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {selectedGlossaries.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {selectedGlossaries.map((glossary) => (

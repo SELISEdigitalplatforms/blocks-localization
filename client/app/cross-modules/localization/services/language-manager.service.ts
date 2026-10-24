@@ -133,6 +133,9 @@ export class LanguageManagerService {
     if (payload.targetModuleId) {
       params.set("targetModuleId", payload.targetModuleId);
     }
+    if (payload.deleteKeys) {
+      params.set("deleteKeys", "true");
+    }
     return this.httpClient
       .delete<{
         errors: unknown;
@@ -406,7 +409,7 @@ export class LanguageManagerService {
     });
 
     if (request.searchText) {
-      params.append("SearchText", request.searchText);
+      params.append("SearchText", request.searchText.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`));
     }
 
     if (request.isGlobal !== undefined) {

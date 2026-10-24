@@ -181,7 +181,7 @@ describe("components/modals/export-key", () => {
 
     const resetButton = await screen.findByRole("button", { name: "Reset" });
     const popoverContent = resetButton.parentElement?.parentElement;
-    expect(popoverContent?.className).toContain("w-[var(--radix-popover-trigger-width)]");
+    expect(popoverContent?.className).toContain("w-(--radix-popover-trigger-width)");
     expect(popoverContent?.className).toContain("min-w-0");
 
     const futureDate = screen.getByRole("gridcell", { name: "13" });

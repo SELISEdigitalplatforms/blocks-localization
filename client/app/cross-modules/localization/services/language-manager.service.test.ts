@@ -386,7 +386,7 @@ describe("LanguageManagerService", () => {
 
   // ─── deleteLanguageModule ────────────────────────────────────────────────
   describe("deleteLanguageModule", () => {
-    it("should DELETE without targetModuleId when not provided", async () => {
+    it("should DELETE with the module id in the query string", async () => {
       const response = { errors: null, isSuccess: true };
       vi.mocked(http.delete).mockResolvedValue(response);
 
@@ -397,24 +397,27 @@ describe("LanguageManagerService", () => {
       ).resolves.toBe(response);
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
-      expect(calledUrl).toContain(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?`);
-      expect(calledUrl).toContain("itemId=mod-1");
-      expect(calledUrl).not.toContain("targetModuleId");
+      expect(calledUrl).toBe(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1`);
     });
 
-    it("should include targetModuleId in query string when provided", async () => {
-      vi.mocked(http.delete).mockResolvedValue({
-        errors: null,
-        isSuccess: true,
-      });
+    it("should include targetModuleId in the query string when moving the keys", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true });
 
-      await service.deleteLanguageModule({
-        itemId: "mod-1",
-        targetModuleId: "mod-2",
-      });
+      await service.deleteLanguageModule({ itemId: "mod-1", targetModuleId: "mod-2" });
 
       const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
-      expect(calledUrl).toContain("targetModuleId=mod-2");
+      expect(calledUrl).toBe(
+        `${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1&targetModuleId=mod-2`,
+      );
+    });
+
+    it("should include deleteKeys in the query string when deleting the keys with the module", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true });
+
+      await service.deleteLanguageModule({ itemId: "mod-1", deleteKeys: true });
+
+      const calledUrl = vi.mocked(http.delete).mock.calls[0][0];
+      expect(calledUrl).toBe(`${LANGUAGE_MODULE_ENDPOINTS.DELETE}?itemId=mod-1&deleteKeys=true`);
     });
   });
 
@@ -846,6 +849,21 @@ describe("LanguageManagerService", () => {
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain("SearchText=term");
+    });
+
+    it("should escape regex characters in SearchText", async () => {
+      vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
+
+      await service.fetchGlossaries({
+        projectKey,
+        pageNumber: 0,
+        pageSize: 20,
+        searchText: "C++ (beta)",
+      });
+
+      const url = vi.mocked(http.get).mock.calls[0][0];
+      const params = new URLSearchParams(url.split("?")[1]);
+      expect(params.get("SearchText")).toBe("C\\+\\+ \\(beta\\)");
     });
 
     it("should include IsGlobal when explicitly provided (true)", async () => {

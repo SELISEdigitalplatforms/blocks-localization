@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "@seliseblocks/genesis-os/lib";
 
 import {
   FORBIDDEN_ERROR_MESSAGE,
   formatErrorMessage,
   getErrorMessage,
   getForbiddenErrorMessage,
+  getHttpErrorMessage,
   handleErrorMessages,
   isErrorWithErrors,
 } from "@/lib/error";
@@ -183,6 +185,26 @@ describe("lib/error", () => {
         expect(typeof result).toBe("string");
         expect(result.length).toBeGreaterThan(0);
       });
+    });
+  });
+
+  describe("getHttpErrorMessage", () => {
+    it.each([
+      [
+        "an HttpError 400 → the API error text, not the JSON dump",
+        new HttpError(400, { errors: { ItemId: "Module not found" } }),
+        "Module not found",
+      ],
+      [
+        "an HttpError 403 with no errors → the forbidden message",
+        new HttpError(403, { errors: {} }),
+        FORBIDDEN_ERROR_MESSAGE,
+      ],
+      ["an Error → its message", new Error("network down"), "network down"],
+      ["a string → the trimmed string", "  offline  ", "offline"],
+      ["null → the fallback", null, UNEXPECTED_ERROR_MESSAGE],
+    ])("returns %s", (_label, error, expected) => {
+      expect(getHttpErrorMessage(error)).toBe(expected);
     });
   });
 });

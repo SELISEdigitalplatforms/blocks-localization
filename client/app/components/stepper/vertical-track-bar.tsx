@@ -11,7 +11,7 @@ const StepVerticalTrackBar = () => {
       {steps.map((step, i) => {
         return (
           <div
-            className={cn("relative flex flex-col [&:not(:last-child)]:flex-1")}
+            className={cn("relative flex flex-col not-last:flex-1")}
             key={step.id}
             data-completed={completedSteps[i] ? true : false}
           >
@@ -44,7 +44,7 @@ const StepVerticalTrackBar = () => {
             {i !== totalSteps - 1 && (
               <div
                 className={cn(
-                  "solid-line my-2 ml-4 h-11 w-[1px] bg-gray-300",
+                  "solid-line my-2 ml-4 h-11 w-px bg-gray-300",
                   "data-[completed=true]:bg-gray-700",
                 )}
                 data-current={currentStep - 1 === i}

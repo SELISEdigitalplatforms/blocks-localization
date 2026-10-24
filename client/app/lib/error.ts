@@ -187,3 +187,15 @@ export const formatErrorMessage = (error: unknown): string => {
 
   return UNEXPECTED_ERROR_MESSAGE;
 };
+
+export const getHttpErrorMessage = (error: unknown): string => {
+  if (!isErrorWithErrors(error)) {
+    return getForbiddenErrorMessage(error) ?? formatErrorMessage(error);
+  }
+
+  const { status } = error as { status?: unknown };
+  return (
+    getForbiddenErrorMessage({ status, errors: error.errors }) ??
+    formatErrorMessage({ errors: error.errors })
+  );
+};

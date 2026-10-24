@@ -70,5 +70,14 @@ namespace Eurolm.DomainService.Repositories
             );
 
         }
+
+        public async Task DeleteAsync(string itemId)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageModule>(_collectionName);
+
+            var filter = Builders<BlocksLanguageModule>.Filter.Eq(mc => mc.ItemId, itemId);
+            await collection.DeleteOneAsync(filter);
+        }
     }
 }
