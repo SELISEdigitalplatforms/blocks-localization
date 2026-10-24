@@ -1484,6 +1484,50 @@ namespace XUnitTest
             insertList.Should().HaveCount(1);
             insertList[0].ItemId.Should().Be("new-id");
         }
+
+        [Fact]
+        public void HandleApplicationWithAppId_NewApp_SetsCreateDateAndAuditFields()
+        {
+            var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithAppId",
+                BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+            var insertList = new List<BlocksLanguageModule>();
+            var before = DateTime.UtcNow;
+
+            method.Invoke(_service, new object?[]
+            {
+                new List<BlocksLanguageModule>(), insertList, new List<BlocksLanguageModule>(), "new-id", "newModule"
+            });
+
+            var module = insertList.Should().ContainSingle().Subject;
+            module.CreateDate.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+            module.LastUpdateDate.Should().Be(module.CreateDate);
+            module.CreatedBy.Should().Be("test-user");
+            module.TenantId.Should().Be("proj");
+        }
+
+        [Fact]
+        public void HandleApplicationWithoutAppId_NewApp_SetsCreateDateAndAuditFields()
+        {
+            var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithoutAppId",
+                BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+            var insertList = new List<BlocksLanguageModule>();
+            var before = DateTime.UtcNow;
+
+            var appId = method.Invoke(_service, new object?[]
+            {
+                new List<BlocksLanguageModule>(), insertList, new List<BlocksLanguageModule>(), "newModule"
+            }) as string;
+
+            var module = insertList.Should().ContainSingle().Subject;
+            module.ItemId.Should().Be(appId);
+            module.ModuleName.Should().Be("newModule");
+            module.CreateDate.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+            module.LastUpdateDate.Should().Be(module.CreateDate);
+            module.CreatedBy.Should().Be("test-user");
+            module.TenantId.Should().Be("proj");
+        }
         #endregion
 
         #region GetUilmResourceKey (private)
