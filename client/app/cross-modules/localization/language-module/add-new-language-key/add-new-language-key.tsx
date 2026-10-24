@@ -76,7 +76,7 @@ const schema = z.object({
     .superRefine((resources, ctx) => {
       if (!resources[0]?.value) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Default value is required",
           path: [0, "value"], // Path to the first resource's value
         });

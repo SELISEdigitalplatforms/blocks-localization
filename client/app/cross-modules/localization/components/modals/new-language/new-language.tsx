@@ -62,14 +62,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       if (!value.isCustom) return;
       if (value.languageName.length < 2 || value.languageName.length > 100) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           path: ["languageName"],
           message: "Language name must be between 2 and 100 characters",
         });
       }
       if (!CUSTOM_LANGUAGE_CODE_PATTERN.test(value.languageCode)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           path: ["languageCode"],
           message: "Use a code like en-US, zho-CN or en-x-cave",
         });
