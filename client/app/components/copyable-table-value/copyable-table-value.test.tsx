@@ -119,4 +119,29 @@ describe("CopyableTableValue", () => {
       vi.useRealTimers();
     }
   });
+
+  it("copies when the revealed button is held on touch instead of treating it as a long press", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard({ writeText });
+
+    try {
+      renderWithProviders(<CopyableTableValue value="welcome.title" label="key" />);
+
+      const value = screen.getByText("welcome.title");
+      fireEvent.pointerDown(value, { pointerType: "touch", clientX: 10, clientY: 10 });
+      act(() => vi.advanceTimersByTime(500));
+      fireEvent.pointerUp(value, { pointerType: "touch" });
+
+      const button = screen.getByRole("button", { name: "Copy key" });
+      fireEvent.pointerDown(button, { pointerType: "touch", clientX: 40, clientY: 10 });
+      act(() => vi.advanceTimersByTime(500));
+      fireEvent.pointerUp(button, { pointerType: "touch" });
+      fireEvent.click(button);
+
+      expect(writeText).toHaveBeenCalledWith("welcome.title");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

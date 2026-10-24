@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type MouseEvent,
-  type PointerEvent,
-} from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui-kits/button/button";
@@ -56,6 +49,7 @@ export function CopyableTableValue({
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const didLongPressRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
   const copyValue = value ?? "";
   const renderedValue = (
     <span className={cn("min-w-0 max-w-full", valueClassName)} style={valueStyle}>
@@ -83,48 +77,74 @@ export function CopyableTableValue({
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [isRevealed]);
 
-  const cancelLongPress = () => {
-    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = null;
-    longPressStartRef.current = null;
-  };
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !copyValue) return;
 
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    didLongPressRef.current = false;
-    if (!copyValue || event.pointerType === "mouse") return;
-
-    cancelLongPress();
-    longPressStartRef.current = { x: event.clientX, y: event.clientY };
-    longPressTimerRef.current = setTimeout(() => {
-      didLongPressRef.current = true;
+    const cancelLongPress = () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
-      setIsRevealed(true);
-    }, LONG_PRESS_DELAY_MS);
-  };
+      longPressStartRef.current = null;
+    };
 
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const start = longPressStartRef.current;
-    if (!start) return;
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
+      didLongPressRef.current = false;
+      if (event.pointerType === "mouse") return;
+      // Presses on the copy button itself must not start a long press.
+      if (copyButtonRef.current?.contains(event.target as Node)) return;
 
-    const movedX = Math.abs(event.clientX - start.x);
-    const movedY = Math.abs(event.clientY - start.y);
-    if (movedX > LONG_PRESS_MOVE_TOLERANCE_PX || movedY > LONG_PRESS_MOVE_TOLERANCE_PX) {
       cancelLongPress();
-    }
-  };
+      longPressStartRef.current = { x: event.clientX, y: event.clientY };
+      longPressTimerRef.current = setTimeout(() => {
+        didLongPressRef.current = true;
+        longPressTimerRef.current = null;
+        setIsRevealed(true);
+      }, LONG_PRESS_DELAY_MS);
+    };
 
-  // A long press must only reveal the button, not open the row it sits in.
-  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
-    if (!didLongPressRef.current) return;
+    const handlePointerMove = (event: globalThis.PointerEvent) => {
+      const start = longPressStartRef.current;
+      if (!start) return;
 
-    didLongPressRef.current = false;
-    event.preventDefault();
-    event.stopPropagation();
-  };
+      const movedX = Math.abs(event.clientX - start.x);
+      const movedY = Math.abs(event.clientY - start.y);
+      if (movedX > LONG_PRESS_MOVE_TOLERANCE_PX || movedY > LONG_PRESS_MOVE_TOLERANCE_PX) {
+        cancelLongPress();
+      }
+    };
 
-  const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
-    if (longPressStartRef.current || didLongPressRef.current) event.preventDefault();
-  };
+    // A long press must only reveal the button, not open the row it sits in.
+    const handleClickCapture = (event: globalThis.MouseEvent) => {
+      if (!didLongPressRef.current) return;
+
+      didLongPressRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const handleContextMenu = (event: globalThis.MouseEvent) => {
+      if (longPressStartRef.current || didLongPressRef.current) event.preventDefault();
+    };
+
+    container.addEventListener("pointerdown", handlePointerDown);
+    container.addEventListener("pointermove", handlePointerMove);
+    container.addEventListener("pointerup", cancelLongPress);
+    container.addEventListener("pointercancel", cancelLongPress);
+    container.addEventListener("pointerleave", cancelLongPress);
+    container.addEventListener("click", handleClickCapture, true);
+    container.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      cancelLongPress();
+      container.removeEventListener("pointerdown", handlePointerDown);
+      container.removeEventListener("pointermove", handlePointerMove);
+      container.removeEventListener("pointerup", cancelLongPress);
+      container.removeEventListener("pointercancel", cancelLongPress);
+      container.removeEventListener("pointerleave", cancelLongPress);
+      container.removeEventListener("click", handleClickCapture, true);
+      container.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [copyValue]);
 
   const handleCopy = async () => {
     if (!copyValue) return;
@@ -150,13 +170,6 @@ export function CopyableTableValue({
           "group/copy flex min-w-0 items-center gap-1 [@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]",
           className,
         )}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={cancelLongPress}
-        onPointerCancel={cancelLongPress}
-        onPointerLeave={cancelLongPress}
-        onClickCapture={handleClickCapture}
-        onContextMenu={handleContextMenu}
       >
         {valueTooltip ? (
           <Tooltip>
@@ -170,6 +183,7 @@ export function CopyableTableValue({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                ref={copyButtonRef}
                 type="button"
                 variant="ghost"
                 size="icon"
