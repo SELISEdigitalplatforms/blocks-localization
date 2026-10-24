@@ -83,8 +83,8 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="request">The module to delete and an optional target module for its keys.</param>
         /// <returns>An <see cref="IActionResult"/> indicating the success or failure of the delete operation.</returns>
         [HttpDelete]
-        [Authorize]
-        //[ProtectedEndPoint($"{Constants.ServiceName}::module::delete")]
+        //[Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::module::delete")]
         public async Task<IActionResult> Delete([FromQuery] DeleteModuleRequest request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.ItemId))
