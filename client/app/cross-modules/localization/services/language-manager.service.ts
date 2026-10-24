@@ -77,7 +77,7 @@ export class LanguageManagerService {
   };
 
   fetchBlocksLanguageModules = (): Promise<IModuleGets[]> => {
-    return this.httpClient.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}`);
+    return this.httpClient.get(`${LANGUAGE_MODULE_ENDPOINTS.GETS}?_=${Date.now()}`);
   };
 
   fetchBlocksLanguages = async (): Promise<ILanguageConfig[]> => {
@@ -409,7 +409,10 @@ export class LanguageManagerService {
     });
 
     if (request.searchText) {
-      params.append("SearchText", request.searchText.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`));
+      params.append(
+        "SearchText",
+        request.searchText.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`),
+      );
     }
 
     if (request.isGlobal !== undefined) {
