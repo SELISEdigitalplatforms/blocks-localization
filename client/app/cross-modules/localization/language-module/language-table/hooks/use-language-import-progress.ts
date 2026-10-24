@@ -22,8 +22,13 @@ interface LanguageModuleItem {
   itemId?: string;
 }
 
-const MODULE_SYNC_MAX_ATTEMPTS = 10;
-const MODULE_SYNC_INTERVAL_MS = 3000;
+// Backs off 2s, 4s, 8s, then every 15s: about 2.5 minutes before giving up.
+const MODULE_SYNC_MAX_ATTEMPTS = 12;
+const MODULE_SYNC_BASE_DELAY_MS = 2000;
+const MODULE_SYNC_MAX_DELAY_MS = 15000;
+
+export const getModuleSyncDelay = (attempt: number) =>
+  Math.min(MODULE_SYNC_BASE_DELAY_MS * 2 ** attempt, MODULE_SYNC_MAX_DELAY_MS);
 
 interface UseLanguageImportProgressOptions {
   totalCount: number;
@@ -101,6 +106,7 @@ export const useLanguageImportProgress = ({
 }: Readonly<UseLanguageImportProgressOptions>) => {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<LanguageImportProgress | null>(null);
+  const [isSyncingModules, setIsSyncingModules] = useState(false);
   const progressRef = useRef<LanguageImportProgress | null>(null);
   const isMountedRef = useRef(true);
 
@@ -128,18 +134,25 @@ export const useLanguageImportProgress = ({
         return [...moduleIds].some((id) => !knownIds.has(id));
       };
 
-      for (let attempt = 0; attempt < MODULE_SYNC_MAX_ATTEMPTS; attempt += 1) {
-        if (!isMountedRef.current || !hasMissingModules()) return;
-        await new Promise((resolve) => setTimeout(resolve, MODULE_SYNC_INTERVAL_MS));
-        if (!isMountedRef.current) return;
-        try {
-          await queryClient.refetchQueries({
-            queryKey: localizationQueryKeys.modules.all,
-            type: "active",
-          });
-        } catch {
-          // Keep retrying through transient module-query failures.
+      if (!hasMissingModules()) return;
+
+      setIsSyncingModules(true);
+      try {
+        for (let attempt = 0; attempt < MODULE_SYNC_MAX_ATTEMPTS; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, getModuleSyncDelay(attempt)));
+          if (!isMountedRef.current) return;
+          try {
+            await queryClient.refetchQueries({
+              queryKey: localizationQueryKeys.modules.all,
+              type: "active",
+            });
+          } catch {
+            // Keep retrying through transient module-query failures.
+          }
+          if (!isMountedRef.current || !hasMissingModules()) return;
         }
+      } finally {
+        if (isMountedRef.current) setIsSyncingModules(false);
       }
     },
     [queryClient],
@@ -313,5 +326,5 @@ export const useLanguageImportProgress = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- polling must restart only on status/baseline changes, not on every progress update.
   }, [progress?.baselineTotalCount, progress?.status, queryClient, refetch, syncModulesForKeys]);
 
-  return { progress, onImportStarted, onImportRequestFailed };
+  return { progress, isSyncingModules, onImportStarted, onImportRequestFailed };
 };

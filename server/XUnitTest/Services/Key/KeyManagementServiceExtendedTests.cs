@@ -1395,6 +1395,27 @@ namespace XUnitTest
             _keyRepositoryMock.Verify(r => r.InsertUilmApplications(It.IsAny<List<BlocksLanguageModule>>(), It.IsAny<string>()), Times.Once);
             _keyRepositoryMock.Verify(r => r.UpdateBulkUilmApplications(
                 It.IsAny<List<BlocksLanguageModule>>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Once);
+            // Counts are refreshed separately, after the keys are saved.
+            _keyRepositoryMock.Verify(r => r.UpdateKeysCountOfAppAsync(
+                It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateUilmApplicationKeyCounts_UpdatesInsertedAndUpdatedModules()
+        {
+            _keyRepositoryMock.Setup(r => r.UpdateKeysCountOfAppAsync(
+                It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
+
+            var method = GetInstanceMethod("UpdateUilmApplicationKeyCounts");
+            var inserts = new List<BlocksLanguageModule> { new() { ItemId = "m1", ModuleName = "auth" } };
+            var updates = new List<BlocksLanguageModule> { new() { ItemId = "m2", ModuleName = "core" } };
+
+            var task = method.Invoke(_service, new object[] { inserts, updates }) as Task;
+            await task!;
+
+            _keyRepositoryMock.Verify(r => r.UpdateKeysCountOfAppAsync("m1", It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.UpdateKeysCountOfAppAsync("m2", It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         #endregion

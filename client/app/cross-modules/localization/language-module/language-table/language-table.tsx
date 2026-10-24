@@ -301,6 +301,7 @@ export function LanguageTable() {
 
   const {
     progress: importProgress,
+    isSyncingModules,
     onImportStarted,
     onImportRequestFailed,
   } = useLanguageImportProgress({
@@ -573,6 +574,7 @@ export function LanguageTable() {
     expandedRowId,
     languageListData,
     languageModules,
+    isLanguageModulesPending: isLanguageModulesLoading || isSyncingModules,
     onSortChange: handleSortChange,
     onToggleExpanded: handleToggleExpanded,
     selectedLanguages,
