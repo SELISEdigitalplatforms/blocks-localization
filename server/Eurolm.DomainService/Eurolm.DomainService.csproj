@@ -11,5 +11,6 @@
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="SeliseBlocks.Genesis.OS" />
     <PackageReference Include="SeliseBlocks.StorageDriver.OS" />
+    <PackageReference Include="SeliseBlocks.Secrets.OS" />
   </ItemGroup>
 </Project>
