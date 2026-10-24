@@ -6,7 +6,7 @@ import { localizationQueryKeys } from "@blocks-localization/constants/query-keys
 
 import { toast } from "@/hooks/use-toast";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
-import { useLanguageImportProgress } from "./use-language-import-progress";
+import { getModuleSyncDelay, useLanguageImportProgress } from "./use-language-import-progress";
 
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 
@@ -134,5 +134,67 @@ describe("useLanguageImportProgress", () => {
       await vi.advanceTimersByTimeAsync(10_000);
     });
     expect(fetchModules).toHaveBeenCalledTimes(callsAfterSync);
+  });
+
+  it("backs off module sync delays and caps them at 15 seconds", () => {
+    expect([0, 1, 2, 3, 11].map(getModuleSyncDelay)).toEqual([2000, 4000, 8000, 15000, 15000]);
+  });
+
+  it("keeps syncing modules for longer than 30 seconds and reports while it is syncing", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const refetch = vi.fn().mockResolvedValue({
+      data: { totalCount: 1, keys: [{ moduleId: "imported" }] },
+    });
+    let isImportedModuleReadable = false;
+    const fetchModules = vi.fn(async () =>
+      isImportedModuleReadable ? [{ itemId: "imported" }] : [],
+    );
+    const { wrapper } = createQueryWrapper();
+    const { result } = renderHook(
+      () => {
+        const modules = useQuery({
+          queryKey: localizationQueryKeys.modules.list("tenant-1"),
+          queryFn: fetchModules,
+        });
+        return { modules, importProgress: useLanguageImportProgress({ totalCount: 0, refetch }) };
+      },
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.modules.isSuccess).toBe(true));
+
+    act(() => {
+      result.current.importProgress.onImportStarted({
+        correlationId: "correlation-1",
+        fileName: "slow.csv",
+      });
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("language-import-export", {
+          detail: {
+            payload: { responseKey: "correlation-1" },
+            DenormalizedPayload: { IsSuccess: true },
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => expect(result.current.importProgress.progress).toBeNull());
+    await waitFor(() => expect(result.current.importProgress.isSyncingModules).toBe(true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(result.current.importProgress.isSyncingModules).toBe(true);
+    isImportedModuleReadable = true;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    await waitFor(() => expect(result.current.modules.data).toHaveLength(1));
+    await waitFor(() => expect(result.current.importProgress.isSyncingModules).toBe(false));
   });
 });

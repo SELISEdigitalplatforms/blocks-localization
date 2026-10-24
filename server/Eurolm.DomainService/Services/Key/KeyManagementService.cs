@@ -1335,11 +1335,13 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
-            await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
+
+            await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
+            await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
         }
 
         private async Task<List<BlocksLanguageModule>> GetLanguageApplications(List<string> appIds = null)
@@ -1836,11 +1838,13 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
-            await SaveXlfResourceKeys(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
+
+            await SaveXlfResourceKeys(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
+            await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
         }
 
         /// <summary>
@@ -1951,8 +1955,13 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            var distinctUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList();
+            var distinctUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList();
+            await SaveUilmApplication(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated);
+
             await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-            await SaveUilmApplication(uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList(), uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList());
+            await UpdateUilmApplicationKeyCounts(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated);
         }
 
         private static string HandleUilmApplication(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
@@ -2165,14 +2174,23 @@ namespace Eurolm.DomainService.Services
             if (uilmApplicationsToBeUpdated.Any())
             {
                 await _keyRepository.UpdateBulkUilmApplications(uilmApplicationsToBeUpdated, _blocksBaseCommand?.OrganizationId, _blocksBaseCommand?.IsExternal ?? false, _blocksBaseCommand?.ClientTenantId);
-                await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeUpdated);
             }
 
             if (uilmApplicationsToBeInserted.Any())
             {
                 await InsertUilmApplications(uilmApplicationsToBeInserted);
-                await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeInserted);
             }
+        }
+
+        /// <summary>
+        /// Recalculates key counts for imported modules. Must run after the keys are saved,
+        /// because the count is read from the stored keys.
+        /// </summary>
+        private async Task UpdateUilmApplicationKeyCounts(List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+            List<BlocksLanguageModule> uilmApplicationsToBeUpdated)
+        {
+            await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeUpdated);
+            await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeInserted);
         }
 
         private async Task AddNumberOfKeysInUilmApplications(List<BlocksLanguageModule> uilmApplications)
