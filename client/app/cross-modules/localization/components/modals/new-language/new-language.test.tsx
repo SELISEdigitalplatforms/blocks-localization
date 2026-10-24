@@ -85,7 +85,7 @@ describe("components/modals/new-language", () => {
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("should reject a duplicate language", async () => {
+  it("should mark an already added language and not let it be picked", async () => {
     render(
       withDialog(
         <NewLanguage
@@ -96,12 +96,23 @@ describe("components/modals/new-language", () => {
     );
     fireEvent.click(screen.getByText("Select language"));
     const options = await screen.findAllByRole("option");
-    // Find and click the English (en-US) option.
-    const english = options.find((o) => /English/.test(o.textContent ?? ""));
-    fireEvent.click(english ?? options[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    // Either duplicate toast (if en-US selected) or a save; both exercise the flow.
-    await waitFor(() => expect(toast).toHaveBeenCalled());
+    const english = options.find((o) => /^English/.test(o.textContent ?? ""));
+    expect(english?.textContent).toContain("Added");
+    expect(english?.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(english as HTMLElement);
+    // The picker stays open and nothing is selected.
+    expect(screen.getByPlaceholderText("Search by name or code...")).toBeTruthy();
+    expect(english?.querySelector("svg")).toBeNull();
+  });
+
+  it("should find a language by its code", async () => {
+    render(withDialog(<NewLanguage onClose={vi.fn()} />));
+    fireEvent.click(screen.getByText("Select language"));
+    fireEvent.change(await screen.findByPlaceholderText("Search by name or code..."), {
+      target: { value: "bn-BD" },
+    });
+    const options = await screen.findAllByRole("option");
+    expect(options.some((o) => /^Bengali/.test(o.textContent ?? ""))).toBe(true);
   });
 
   describe("H1 — Success closes dialog and shows toast", () => {
@@ -209,9 +220,53 @@ describe("components/modals/new-language", () => {
 
   describe("Custom language", () => {
     const openCustom = async () => {
-      fireEvent.click(screen.getByText("Select language"));
-      fireEvent.click(await screen.findByText("Custom language"));
+      fireEvent.click(screen.getByText("Not in the list? Add a custom language"));
+      await screen.findByPlaceholderText("e.g. gsw-CH");
     };
+
+    it("should offer the searched text as a custom language when nothing matches", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      fireEvent.click(screen.getByText("Select language"));
+      fireEvent.change(await screen.findByPlaceholderText("Search by name or code..."), {
+        target: { value: "Klingon" },
+      });
+      fireEvent.click(await screen.findByText('Add "Klingon" as a custom language'));
+
+      expect((screen.getByPlaceholderText("e.g. Swiss German") as HTMLInputElement).value).toBe(
+        "Klingon",
+      );
+    });
+
+    it("should open the custom form from the picker footer", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      fireEvent.click(screen.getByText("Select language"));
+      fireEvent.click(await screen.findByRole("button", { name: "Add custom language" }));
+
+      expect(screen.getByPlaceholderText("e.g. gsw-CH")).toBeTruthy();
+    });
+
+    it("should fix the letter case of the code when leaving the field", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      await openCustom();
+      const code = screen.getByPlaceholderText("e.g. gsw-CH") as HTMLInputElement;
+
+      fireEvent.change(code, { target: { value: "GSW-ch" } });
+      fireEvent.blur(code);
+      expect(code.value).toBe("gsw-CH");
+
+      fireEvent.change(code, { target: { value: "EN-X-Cave" } });
+      fireEvent.blur(code);
+      expect(code.value).toBe("en-x-Cave");
+    });
+
+    it("should go back to the list", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      await openCustom();
+      fireEvent.click(screen.getByRole("button", { name: "Back to list" }));
+
+      expect(screen.getByText("Select language")).toBeTruthy();
+      expect(screen.queryByPlaceholderText("e.g. gsw-CH")).toBeNull();
+    });
 
     it("should save a custom name and code", async () => {
       saveAsync.mockResolvedValue({ success: true });

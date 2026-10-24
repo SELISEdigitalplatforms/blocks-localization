@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { ArrowLeft, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui-kits/button/button";
@@ -36,6 +36,14 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 
 // Same rule as the server's LanguageValidator, so a bad code fails here, not after the request.
 const CUSTOM_LANGUAGE_CODE_PATTERN = /^([a-z]{2,3}-[A-Z]{2,10}|[a-z]{2,3}-x-[A-Za-z]{1,8})$/;
+
+// Fix the letter case people usually get wrong: "gsw-ch" → "gsw-CH", "EN-X-Cave" → "en-x-Cave".
+const normalizeLanguageCode = (code: string) => {
+  const [language = "", region, ...rest] = code.trim().split("-");
+  if (region === undefined) return language.toLowerCase();
+  if (region.toLowerCase() === "x") return [language.toLowerCase(), "x", ...rest].join("-");
+  return [language.toLowerCase(), region.toUpperCase(), ...rest].join("-");
+};
 
 interface NewLanguageProps {
   onClose: (value?: boolean) => void;
@@ -78,6 +86,12 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   const [open, setOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(form.getValues("languageCode"));
   const [isCustom, setIsCustom] = useState(false);
+  const [search, setSearch] = useState("");
+  const addedCodes = new Set(existingLanguages.map((lang) => lang.languageCode.toLowerCase()));
+  const openPicker = () => {
+    setSearch("");
+    setOpen(true);
+  };
   const selectCatalogLanguage = (languageCode: string) => {
     setIsCustom(false);
     setSelectedLanguage(languageCode);
@@ -86,13 +100,21 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
     form.setValue("languageCode", languageCode, { shouldValidate: true });
     setOpen(false);
   };
-  const selectCustomLanguage = () => {
+  const selectCustomLanguage = (prefillName = "") => {
     setIsCustom(true);
     setSelectedLanguage("");
     form.setValue("isCustom", true);
     form.setValue("languageCode", "");
+    form.setValue("languageName", prefillName.trim());
     form.clearErrors();
     setOpen(false);
+  };
+  const backToList = () => {
+    setIsCustom(false);
+    form.setValue("isCustom", false);
+    form.setValue("languageName", "");
+    form.setValue("languageCode", selectedLanguage);
+    form.clearErrors();
   };
   const formSubmitHandler = async (data: LanguageFormValues) => {
     try {
@@ -145,11 +167,10 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       });
     }
   };
-  const getPickerLabel = () => {
-    if (isCustom) return "Custom language";
-    if (!selectedLanguage) return "Select language";
-    return langConfigureData.find((lang) => lang.languageCode === selectedLanguage)?.languageName;
-  };
+  const selectedName = langConfigureData.find(
+    (lang) => lang.languageCode === selectedLanguage,
+  )?.languageName;
+  const searchText = search.trim();
   return (
     <DialogContent style={{ touchAction: "auto" }}>
       <DialogHeader className="mb-4">
@@ -158,94 +179,156 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       <div className="grid gap-2">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(formSubmitHandler)}>
-            <FormField
-              control={form.control}
-              name="languageCode"
-              render={() => (
-                <FormItem>
-                  <FormLabel className="text-left font-medium text-high-emphasis">
-                    Language <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
+            {isCustom ? (
+              <div className="grid gap-4 rounded-md border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-high-emphasis">Custom language</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={backToList}>
+                    <ArrowLeft className="mr-1 h-4 w-4" />
+                    Back to list
+                  </Button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="languageName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-left font-medium text-high-emphasis">
+                          Language name <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Swiss German" autoFocus {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="languageCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-left font-medium text-high-emphasis">
+                          Language code <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. gsw-CH"
+                            {...field}
+                            onBlur={() => {
+                              field.onChange(normalizeLanguageCode(field.value));
+                              field.onBlur();
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <p className="text-xs text-medium-emphasis">
+                  Code format: language-REGION, like de-CH or gsw-CH. For a private variant use
+                  language-x-name, like en-x-cave.
+                </p>
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name="languageCode"
+                render={() => (
+                  <FormItem>
+                    <FormLabel className="text-left font-medium text-high-emphasis">
+                      Language <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between"
+                        onClick={openPicker}
+                      >
+                        {selectedName ?? "Select language"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                    <FormMessage />
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto justify-start p-0 text-sm"
+                      onClick={() => selectCustomLanguage()}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Not in the list? Add a custom language
+                    </Button>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <CommandDialog open={open} onOpenChange={setOpen}>
+              <CommandInput
+                placeholder="Search by name or code..."
+                value={search}
+                onValueChange={setSearch}
+              />
+              <CommandList>
+                <CommandEmpty>
+                  <div className="flex flex-col items-center gap-3 px-4">
+                    <span className="text-medium-emphasis">
+                      No language matches &quot;{searchText}&quot;.
+                    </span>
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full justify-between"
-                      onClick={() => setOpen(true)}
+                      size="sm"
+                      onClick={() => selectCustomLanguage(searchText)}
                     >
-                      {getPickerLabel()}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add &quot;{searchText}&quot; as a custom language
                     </Button>
-                  </FormControl>
-
-                  <CommandDialog open={open} onOpenChange={setOpen}>
-                    <CommandInput placeholder="Search language..." />
-                    <CommandList>
-                      <CommandEmpty>No language found.</CommandEmpty>
-                      <CommandGroup>
-                        {langConfigureData.map((language) => (
-                          <CommandItem
-                            key={language.languageCode}
-                            onSelect={() => selectCatalogLanguage(language.languageCode)}
-                          >
-                            {language.languageName}
-                            {selectedLanguage === language.languageCode && (
-                              <Check className="ml-auto h-4 w-4" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                      <CommandGroup forceMount>
-                        <CommandItem
-                          value="custom-language"
-                          forceMount
-                          onSelect={selectCustomLanguage}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Custom language
-                        </CommandItem>
-                      </CommandGroup>
-                    </CommandList>
-                  </CommandDialog>
-
-                  {!isCustom && <FormMessage />}
-                </FormItem>
-              )}
-            />
-            {isCustom && (
-              <div className="mt-4 grid gap-4">
-                <FormField
-                  control={form.control}
-                  name="languageName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Language name <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Swiss German" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="languageCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-left font-medium text-high-emphasis">
-                        Language code <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. gsw-CH" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  </div>
+                </CommandEmpty>
+                <CommandGroup>
+                  {langConfigureData.map((language) => {
+                    const isAdded = addedCodes.has(language.languageCode.toLowerCase());
+                    return (
+                      <CommandItem
+                        key={language.languageCode}
+                        value={`${language.languageName} ${language.languageCode}`}
+                        disabled={isAdded}
+                        onSelect={() => selectCatalogLanguage(language.languageCode)}
+                      >
+                        <span>{language.languageName}</span>
+                        <span className="ml-2 text-xs text-medium-emphasis">
+                          {language.languageCode}
+                        </span>
+                        {isAdded && (
+                          <span className="ml-auto text-xs text-medium-emphasis">Added</span>
+                        )}
+                        {!isAdded && selectedLanguage === language.languageCode && (
+                          <Check className="ml-auto h-4 w-4" />
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+              <div className="flex items-center justify-between border-t border-border px-3 py-2">
+                <span className="text-xs text-medium-emphasis">Can&apos;t find your language?</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => selectCustomLanguage(searchText)}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add custom language
+                </Button>
               </div>
-            )}
+            </CommandDialog>
+
             <DialogFooter className="mt-6">
               <DialogTrigger asChild>
                 <Button disabled={isPending} variant="secondary">
@@ -257,12 +340,6 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
           </form>
         </Form>
       </div>
-      {/* <DialogFooter className="mt-6">
-        <DialogTrigger asChild>
-          <Button variant="secondary">Cancel</Button>
-        </DialogTrigger>
-        <Button>Save</Button>
-      </DialogFooter> */}
     </DialogContent>
   );
 };
