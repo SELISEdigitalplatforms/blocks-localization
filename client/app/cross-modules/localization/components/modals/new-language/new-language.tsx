@@ -14,6 +14,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -188,7 +189,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                     Back to list
                   </Button>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <FormField
                     control={form.control}
                     name="languageName"
@@ -222,15 +223,15 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                             }}
                           />
                         </FormControl>
+                        <FormDescription className="text-xs">
+                          Format: language-REGION, like de-CH or gsw-CH. Private variant:
+                          language-x-name, like en-x-cave.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-                <p className="text-xs text-medium-emphasis">
-                  Code format: language-REGION, like de-CH or gsw-CH. For a private variant use
-                  language-x-name, like en-x-cave.
-                </p>
               </div>
             ) : (
               <FormField
