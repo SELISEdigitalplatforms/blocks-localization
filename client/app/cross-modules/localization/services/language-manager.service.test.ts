@@ -242,7 +242,9 @@ describe("LanguageManagerService", () => {
 
       await expect(service.fetchBlocksLanguageModules(projectKey)).resolves.toBe(modules);
 
-      expect(http.get).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.GETS);
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp(`^${LANGUAGE_MODULE_ENDPOINTS.GETS}\\?_=\\d+$`)),
+      );
     });
   });
 
@@ -380,7 +382,9 @@ describe("LanguageManagerService", () => {
 
       await expect(service.getLanguageModule(projectKey)).resolves.toBe(modules);
 
-      expect(http.get).toHaveBeenCalledWith(LANGUAGE_MODULE_ENDPOINTS.GETS);
+      expect(http.get).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp(`^${LANGUAGE_MODULE_ENDPOINTS.GETS}\\?_=\\d+$`)),
+      );
     });
   });
 

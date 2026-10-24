@@ -1955,7 +1955,7 @@ namespace Eurolm.DomainService.Services
             await SaveUilmApplication(uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList(), uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList());
         }
 
-        private string HandleUilmApplication(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+        private static string HandleUilmApplication(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
             List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string appId, bool isPartiallyTranslated, string moduleName)
         {
             if (string.IsNullOrWhiteSpace(appId))
@@ -1970,7 +1970,7 @@ namespace Eurolm.DomainService.Services
             return appId;
         }
 
-        private string HandleApplicationWithoutAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+        private static string HandleApplicationWithoutAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
             List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string moduleName)
         {
             string appId;
@@ -1991,11 +1991,7 @@ namespace Eurolm.DomainService.Services
                 var alreadyInsertedToApp = uilmApplicationsToBeInserted.FirstOrDefault(x => x.ModuleName == moduleName);
                 if (alreadyInsertedToApp is null)
                 {
-                    var app = new BlocksLanguageModule()
-                    {
-                        ItemId = Guid.NewGuid().ToString(),
-                        ModuleName = moduleName,
-                    };
+                    var app = CreateImportedModule(Guid.NewGuid().ToString(), moduleName);
 
                     uilmApplicationsToBeInserted.Add(app);
                     appId = app.ItemId;
@@ -2009,7 +2005,7 @@ namespace Eurolm.DomainService.Services
             return appId;
         }
 
-        private void HandleApplicationWithAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted, List<BlocksLanguageModule> uilmApplicationsToBeUpdated,
+        private static void HandleApplicationWithAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted, List<BlocksLanguageModule> uilmApplicationsToBeUpdated,
             string appId, string moduleName)
         {
             var application = dbApplications?.FirstOrDefault(x => x.ItemId == appId);
@@ -2028,16 +2024,29 @@ namespace Eurolm.DomainService.Services
                 var alreadyAddedToInsertList = uilmApplicationsToBeInserted.FirstOrDefault(x => x.ItemId == appId);
                 if (alreadyAddedToInsertList is null)
                 {
-                    BlocksLanguageModule uilmApplication = new()
-                    {
-                        ItemId = appId,
-                        ModuleName = moduleName,
-                    };
+                    BlocksLanguageModule uilmApplication = CreateImportedModule(appId, moduleName);
 
                     uilmApplicationsToBeInserted.Add(uilmApplication);
 
                 }
             }
+        }
+
+        private static BlocksLanguageModule CreateImportedModule(string itemId, string moduleName)
+        {
+            var context = BlocksContext.GetContext();
+            var now = DateTime.UtcNow;
+
+            return new BlocksLanguageModule
+            {
+                ItemId = itemId,
+                ModuleName = moduleName,
+                CreateDate = now,
+                LastUpdateDate = now,
+                CreatedBy = context?.UserId,
+                LastUpdatedBy = context?.UserId,
+                TenantId = context?.TenantId,
+            };
         }
 
         /// <summary>

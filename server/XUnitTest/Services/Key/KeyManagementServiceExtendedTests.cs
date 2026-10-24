@@ -1405,7 +1405,7 @@ namespace XUnitTest
         public void HandleUilmApplication_WithoutAppId_DelegatesToWithoutAppId()
         {
             var method = typeof(KeyManagementService).GetMethod("HandleUilmApplication",
-                BindingFlags.NonPublic | BindingFlags.Instance)!;
+                BindingFlags.NonPublic | BindingFlags.Static)!;
 
             var dbApps = new List<BlocksLanguageModule>
             {
@@ -1414,7 +1414,7 @@ namespace XUnitTest
             var insertList = new List<BlocksLanguageModule>();
             var updateList = new List<BlocksLanguageModule>();
 
-            var resultAppId = method.Invoke(_service, new object?[]
+            var resultAppId = method.Invoke(null, new object?[]
             {
                 dbApps, insertList, updateList, null, true, "auth"
             }) as string;
@@ -1427,7 +1427,7 @@ namespace XUnitTest
         public void HandleUilmApplication_WithAppId_DelegatesToWithAppId()
         {
             var method = typeof(KeyManagementService).GetMethod("HandleUilmApplication",
-                BindingFlags.NonPublic | BindingFlags.Instance)!;
+                BindingFlags.NonPublic | BindingFlags.Static)!;
 
             var dbApps = new List<BlocksLanguageModule>
             {
@@ -1436,7 +1436,7 @@ namespace XUnitTest
             var insertList = new List<BlocksLanguageModule>();
             var updateList = new List<BlocksLanguageModule>();
 
-            method.Invoke(_service, new object?[]
+            method.Invoke(null, new object?[]
             {
                 dbApps, insertList, updateList, "m1", true, "auth"
             });
@@ -1449,7 +1449,7 @@ namespace XUnitTest
         public void HandleApplicationWithAppId_ExistingApp_AddsToUpdateList()
         {
             var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithAppId",
-                BindingFlags.NonPublic | BindingFlags.Instance)!;
+                BindingFlags.NonPublic | BindingFlags.Static)!;
 
             var dbApps = new List<BlocksLanguageModule>
             {
@@ -1458,7 +1458,7 @@ namespace XUnitTest
             var insertList = new List<BlocksLanguageModule>();
             var updateList = new List<BlocksLanguageModule>();
 
-            method.Invoke(_service, new object?[]
+            method.Invoke(null, new object?[]
             {
                 dbApps, insertList, updateList, "m1", "auth_updated"
             });
@@ -1470,19 +1470,63 @@ namespace XUnitTest
         public void HandleApplicationWithAppId_NewApp_AddsToInsertList()
         {
             var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithAppId",
-                BindingFlags.NonPublic | BindingFlags.Instance)!;
+                BindingFlags.NonPublic | BindingFlags.Static)!;
 
             var dbApps = new List<BlocksLanguageModule>();
             var insertList = new List<BlocksLanguageModule>();
             var updateList = new List<BlocksLanguageModule>();
 
-            method.Invoke(_service, new object?[]
+            method.Invoke(null, new object?[]
             {
                 dbApps, insertList, updateList, "new-id", "newModule"
             });
 
             insertList.Should().HaveCount(1);
             insertList[0].ItemId.Should().Be("new-id");
+        }
+
+        [Fact]
+        public void HandleApplicationWithAppId_NewApp_SetsCreateDateAndAuditFields()
+        {
+            var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithAppId",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+
+            var insertList = new List<BlocksLanguageModule>();
+            var before = DateTime.UtcNow;
+
+            method.Invoke(null, new object?[]
+            {
+                new List<BlocksLanguageModule>(), insertList, new List<BlocksLanguageModule>(), "new-id", "newModule"
+            });
+
+            var module = insertList.Should().ContainSingle().Subject;
+            module.CreateDate.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+            module.LastUpdateDate.Should().Be(module.CreateDate);
+            module.CreatedBy.Should().Be("test-user");
+            module.TenantId.Should().Be("proj");
+        }
+
+        [Fact]
+        public void HandleApplicationWithoutAppId_NewApp_SetsCreateDateAndAuditFields()
+        {
+            var method = typeof(KeyManagementService).GetMethod("HandleApplicationWithoutAppId",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+
+            var insertList = new List<BlocksLanguageModule>();
+            var before = DateTime.UtcNow;
+
+            var appId = method.Invoke(null, new object?[]
+            {
+                new List<BlocksLanguageModule>(), insertList, new List<BlocksLanguageModule>(), "newModule"
+            }) as string;
+
+            var module = insertList.Should().ContainSingle().Subject;
+            module.ItemId.Should().Be(appId);
+            module.ModuleName.Should().Be("newModule");
+            module.CreateDate.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+            module.LastUpdateDate.Should().Be(module.CreateDate);
+            module.CreatedBy.Should().Be("test-user");
+            module.TenantId.Should().Be("proj");
         }
         #endregion
 

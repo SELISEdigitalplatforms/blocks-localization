@@ -213,7 +213,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           />
         </div>
       </DialogHeader>
-      <DialogFooter className="mt-[-14px] flex flex-row gap-2">
+      <DialogFooter className="mt-[-14px] flex gap-2">
         <DialogTrigger asChild>
           <Button variant="outline" size="default">
             Cancel

@@ -33,7 +33,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ data, onConfirm, 
         {data.dialogSubtitle}
       </DialogDescription>
     </DialogHeader>
-    <DialogFooter className="mt-4 flex flex-row gap-2">
+    <DialogFooter className="mt-4 flex gap-2">
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           {data.cancelButton || "Cancel"}
