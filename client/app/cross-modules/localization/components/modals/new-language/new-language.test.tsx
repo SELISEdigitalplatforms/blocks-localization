@@ -206,4 +206,97 @@ describe("components/modals/new-language", () => {
       expect(screen.getByText("English")).toBeTruthy();
     });
   });
+
+  describe("Custom language", () => {
+    const openCustom = async () => {
+      fireEvent.click(screen.getByText("Select language"));
+      fireEvent.click(await screen.findByText("Custom language"));
+    };
+
+    it("should save a custom name and code", async () => {
+      saveAsync.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+      render(withDialog(<NewLanguage onClose={onClose} />));
+      await openCustom();
+
+      fireEvent.change(screen.getByPlaceholderText("e.g. Swiss German"), {
+        target: { value: " Swiss German " },
+      });
+      fireEvent.change(screen.getByPlaceholderText("e.g. gsw-CH"), {
+        target: { value: "gsw-CH" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() =>
+        expect(saveAsync).toHaveBeenCalledWith({
+          languageCode: "gsw-CH",
+          languageName: "Swiss German",
+        }),
+      );
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it("should block a code the server would reject", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      await openCustom();
+
+      fireEvent.change(screen.getByPlaceholderText("e.g. Swiss German"), {
+        target: { value: "Swiss German" },
+      });
+      fireEvent.change(screen.getByPlaceholderText("e.g. gsw-CH"), {
+        target: { value: "swiss" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(await screen.findByText("Use a code like en-US, zho-CN or en-x-cave")).toBeTruthy();
+      expect(saveAsync).not.toHaveBeenCalled();
+    });
+
+    it("should block a name that is too short", async () => {
+      render(withDialog(<NewLanguage onClose={vi.fn()} />));
+      await openCustom();
+
+      fireEvent.change(screen.getByPlaceholderText("e.g. Swiss German"), {
+        target: { value: "S" },
+      });
+      fireEvent.change(screen.getByPlaceholderText("e.g. gsw-CH"), {
+        target: { value: "gsw-CH" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(
+        await screen.findByText("Language name must be between 2 and 100 characters"),
+      ).toBeTruthy();
+      expect(saveAsync).not.toHaveBeenCalled();
+    });
+
+    it("should reject a custom language whose name is already added", async () => {
+      render(
+        withDialog(
+          <NewLanguage
+            onClose={vi.fn()}
+            existingLanguages={[{ languageCode: "de-CH", languageName: "Swiss German" }] as never}
+          />,
+        ),
+      );
+      await openCustom();
+
+      fireEvent.change(screen.getByPlaceholderText("e.g. Swiss German"), {
+        target: { value: "swiss german" },
+      });
+      fireEvent.change(screen.getByPlaceholderText("e.g. gsw-CH"), {
+        target: { value: "gsw-CH" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description: "Language is already added. You can't add this language.",
+          }),
+        ),
+      );
+      expect(saveAsync).not.toHaveBeenCalled();
+    });
+  });
 });

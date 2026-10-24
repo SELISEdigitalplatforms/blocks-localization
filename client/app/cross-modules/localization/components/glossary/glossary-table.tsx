@@ -207,7 +207,8 @@ const GlossaryTable = () => {
           <div className="flex items-center">
             <span>
               {langConfigureData.find((lang) => lang.languageCode === row.original.language)
-                ?.languageName ?? "-"}
+                ?.languageName ??
+                (row.original.language || "-")}
             </span>
           </div>
         ),
