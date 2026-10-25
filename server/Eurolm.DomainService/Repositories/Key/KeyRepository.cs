@@ -63,7 +63,9 @@ namespace Eurolm.DomainService.Repositories
 
             var filter = getAllKeysFilter(request);
 
-            var sort = !string.IsNullOrWhiteSpace(request.SortProperty) && request.IsDescending ? Builders<Key>.Sort.Descending(request.SortProperty) : Builders<Key>.Sort.Ascending(request.SortProperty ?? "KeyName");
+            var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
+            var sortProperty = hasSortProperty ? request.SortProperty : "KeyName";
+            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(sortProperty) : Builders<Key>.Sort.Ascending(sortProperty);
 
             var findKeysTask = collection
                 .Find(filter)
@@ -329,6 +331,47 @@ namespace Eurolm.DomainService.Repositories
             await collection.DeleteOneAsync(filter);
         }
 
+        public async Task<bool> HasKeysInModuleAsync(string moduleId)
+        {
+            // Eq(ModuleId, null) would also match keys with no ModuleId at all.
+            ArgumentException.ThrowIfNullOrWhiteSpace(moduleId);
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.Eq(k => k.ModuleId, moduleId);
+
+            var count = await collection.CountDocumentsAsync(filter, new CountOptions { Limit = 1 });
+            return count > 0;
+        }
+
+        public async Task MoveKeysAsync(IReadOnlyCollection<string> itemIds, string targetModuleId)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            ArgumentException.ThrowIfNullOrWhiteSpace(targetModuleId);
+            if (itemIds.Count == 0) return;
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds);
+            var update = Builders<BlocksLanguageKey>.Update
+                .Set(k => k.ModuleId, targetModuleId)
+                .Set(k => k.LastUpdateDate, DateTime.UtcNow);
+
+            await collection.UpdateManyAsync(filter, update);
+        }
+
+        public async Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            if (itemIds.Count == 0) return;
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds);
+
+            await collection.DeleteManyAsync(filter);
+        }
+
         public async Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys)
         {
             return await UpdateUilmResourceKeys(uilmResourceKeys);
@@ -527,7 +570,8 @@ namespace Eurolm.DomainService.Repositories
                 bulkOpsInt.Add(new UpdateOneModel<BsonDocument>(filter, update));
 
                 var upsert = Builders<BlocksLanguageModule>.Update.Set(x => x.Name, uilmApplication.Name)
-                    .SetOnInsert(x => x.ItemId, Guid.NewGuid().ToString());
+                    .SetOnInsert(x => x.ItemId, Guid.NewGuid().ToString())
+                    .SetOnInsert(x => x.CreateDate, DateTime.UtcNow);
                 var filterForUpsert = Builders<BlocksLanguageModule>.Filter.Eq(x => x.ItemId, uilmApplication.ItemId);
                 bulkOpsExtUpserts.Add(new UpdateOneModel<BlocksLanguageModule>(filterForUpsert, upsert) { IsUpsert = true });
             }

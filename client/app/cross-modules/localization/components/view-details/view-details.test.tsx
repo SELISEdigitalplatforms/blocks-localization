@@ -13,6 +13,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
   useGetLanguages: vi.fn(),
   useGetGlossaries: vi.fn(),
+  useGetGlossariesByIds: vi.fn(() => []),
   useGetSuggestedGlossaries: vi.fn(),
   useGetGlobalGlossaries: vi.fn(),
   useGetModuleGlossaries: vi.fn(),
@@ -102,6 +103,25 @@ describe("components/view-details", () => {
     } as never);
     renderWithProviders(<ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />);
     expect(screen.getByText("Widget")).toBeTruthy();
+    expect(h.useGetGlossariesByIds).toHaveBeenLastCalledWith([], false);
+  });
+
+  it("should fetch tagged glossaries missing from the first page by id", () => {
+    h.useGetLanguages.mockReturnValue({
+      isLoading: false,
+      isFetching: false,
+      data: languages,
+    } as never);
+    h.useGetGlossaries.mockReturnValue({
+      data: { items: [{ itemId: "gl1", name: "Widget" }] },
+    } as never);
+    h.useGetGlossariesByIds.mockReturnValue([{ itemId: "gl200", name: "Gadget" }] as never);
+    renderWithProviders(
+      <ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1", "gl200"] }} />,
+    );
+    expect(h.useGetGlossariesByIds).toHaveBeenLastCalledWith(["gl200"], true);
+    expect(screen.getByText("Widget")).toBeTruthy();
+    expect(screen.getByText("Gadget")).toBeTruthy();
   });
 
   it("should fall back to placeholders for missing translations/dates", () => {

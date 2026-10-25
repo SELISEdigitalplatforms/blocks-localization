@@ -12,13 +12,19 @@ import type {
   IModuleGets,
 } from "@blocks-localization/models/language";
 
-export const getModuleBadgeStyle = (moduleId: string, allModuleIds: string[]): CSSProperties => {
-  const sortedIds = Array.from(new Set(allModuleIds)).sort((a, b) => a.localeCompare(b));
-  const total = sortedIds.length || 1;
-  const index = Math.max(sortedIds.indexOf(moduleId), 0);
-  const hue = Math.round((index * 360) / total);
-  return { backgroundColor: `hsl(${hue}, 70%, 55%)`, color: "#111827" };
+const getModuleHue = (moduleId: string): number => {
+  let hash = 2166136261;
+  for (let index = 0; index < moduleId.length; index++) {
+    hash ^= moduleId.codePointAt(index) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 360;
 };
+
+export const getModuleBadgeStyle = (moduleId: string): CSSProperties => ({
+  backgroundColor: `hsl(${getModuleHue(moduleId)}, 70%, 55%)`,
+  color: "#111827",
+});
 
 const COMPLETENESS_BADGE_VARIANT: Record<
   string,
@@ -67,7 +73,9 @@ const DateCell = ({ value }: { value: string | null | undefined }) => (
   </div>
 );
 
-export const hasNonEmptyValue = (resource: IBlocksLanguageKey["resources"][number] | undefined): boolean =>
+export const hasNonEmptyValue = (
+  resource: IBlocksLanguageKey["resources"][number] | undefined,
+): boolean =>
   resource?.value !== null && resource?.value !== undefined && resource.value.trim() !== "";
 
 export const isKeyComplete = (
@@ -90,8 +98,7 @@ export const getCompletenessCellValue = (
 
   // Check if any resource belongs to an active language and has a non-empty value
   const hasAnyActiveLanguageWithValue = resources.some(
-    (resource) =>
-      languageCodes.includes(resource.culture) && hasNonEmptyValue(resource),
+    (resource) => languageCodes.includes(resource.culture) && hasNonEmptyValue(resource),
   );
 
   // If no active language has a resource with a non-empty value, return "No translation"
@@ -110,6 +117,8 @@ interface UseLanguageTableColumnsOptions {
   expandedRowId: string | null;
   languageListData?: ILanguageConfig[];
   languageModules?: Pick<IModuleGets, "itemId" | "moduleName">[];
+  /** True while the module list may not yet include modules created by an import. */
+  isLanguageModulesPending?: boolean;
   onSortChange: (sort: SortValue) => void;
   onToggleExpanded: (itemId: string) => void;
   selectedLanguages: string[];
@@ -124,9 +133,7 @@ const buildLanguageColumns = (
   translatingKeys?: Set<string>,
 ): ColumnDef<IBlocksLanguageKey>[] =>
   selectedLanguages.map((languageCode) => {
-    const language = languageListData?.find(
-      (candidate) => candidate.languageCode === languageCode,
-    );
+    const language = languageListData?.find((candidate) => candidate.languageCode === languageCode);
     const header = (
       <div className="w-[300px] md:w-[200px]">
         <div className="font-bold text-medium-emphasis flex items-center gap-1">
@@ -166,6 +173,7 @@ export const useLanguageTableColumns = ({
   expandedRowId,
   languageListData,
   languageModules,
+  isLanguageModulesPending = false,
   onSortChange,
   onToggleExpanded,
   selectedLanguages,
@@ -173,11 +181,6 @@ export const useLanguageTableColumns = ({
   sortQueryParams,
   translatingKeys,
 }: UseLanguageTableColumnsOptions) => {
-  const allModuleIds = useMemo(
-    () => (languageModules ?? []).map((languageModule) => languageModule.itemId),
-    [languageModules],
-  );
-
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
@@ -254,7 +257,11 @@ export const useLanguageTableColumns = ({
           const keyModule = languageModules?.find(
             (languageModule) => languageModule.itemId === row.getValue("moduleId"),
           );
-          if (!keyModule) return null;
+          if (!keyModule) {
+            return isLanguageModulesPending ? (
+              <span className="ml-2 sm:ml-0 text-xs text-low-emphasis">Loading…</span>
+            ) : null;
+          }
 
           return (
             <CopyableTableValue
@@ -262,7 +269,7 @@ export const useLanguageTableColumns = ({
               label="module name"
               className="ml-2 sm:ml-0 sm:w-[150px]"
               valueClassName="inline-block truncate rounded-full px-2 py-0.5 text-xs font-medium"
-              valueStyle={getModuleBadgeStyle(keyModule.itemId, allModuleIds)}
+              valueStyle={getModuleBadgeStyle(keyModule.itemId)}
             />
           );
         },
@@ -332,10 +339,10 @@ export const useLanguageTableColumns = ({
         : []),
     ],
     [
-      allModuleIds,
       expandedRowId,
       languageListData,
       languageModules,
+      isLanguageModulesPending,
       onSortChange,
       onToggleExpanded,
       selectedLanguages,

@@ -188,7 +188,7 @@ namespace XUnitTest
                 .ReturnsAsync(new CompleteUploadResponse
                 {
                     IsSuccess = true,
-                    VerificationStatus = Storage.DomainService.Enums.FileVerificationStatus.Verified,
+                    VerificationStatus = Blocks.Genesis.Entities.Data.FileVerificationStatus.Verified,
                 });
 
             var result = await _service.SaveIntoStorage(
@@ -215,7 +215,7 @@ namespace XUnitTest
                 .ReturnsAsync(new CompleteUploadResponse
                 {
                     IsSuccess = true,
-                    VerificationStatus = Storage.DomainService.Enums.FileVerificationStatus.Rejected,
+                    VerificationStatus = Blocks.Genesis.Entities.Data.FileVerificationStatus.Rejected,
                     RejectionReason = "real_file_type_mismatch",
                 });
 

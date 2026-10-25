@@ -19,6 +19,25 @@ import { showErrorToast } from "@/hooks/use-toast";
 
 type DirectionOptions = "rtl" | "ltr" | undefined;
 
+const getNavigationKeys = (
+  orientation: "horizontal" | "vertical",
+  direction: DirectionOptions,
+): { prevKey: string; nextKey: string } => {
+  if (orientation !== "horizontal") {
+    return { prevKey: "ArrowUp", nextKey: "ArrowDown" };
+  }
+  if (direction === "ltr") {
+    return { prevKey: "ArrowLeft", nextKey: "ArrowRight" };
+  }
+  return { prevKey: "ArrowRight", nextKey: "ArrowLeft" };
+};
+
+const getDropzoneBorderClass = (isDragAccept: boolean, isRejected: boolean): string => {
+  if (isDragAccept) return "border-green-500";
+  if (isRejected) return "border-red-500";
+  return "border-gray-300";
+};
+
 type FileUploaderContextType = {
   dropzoneState: DropzoneState;
   isLOF: boolean;
@@ -100,63 +119,6 @@ export const FileUploader = forwardRef<
       }
     }, [isFileTooBig]);
 
-    const handleKeyDown = useCallback(
-      // eslint-disable-next-line no-undef
-      (e: React.KeyboardEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!value) return;
-
-        const moveNext = () => {
-          const nextIndex = activeIndex + 1;
-          setActiveIndex(nextIndex > value.length - 1 ? 0 : nextIndex);
-        };
-
-        const movePrev = () => {
-          const nextIndex = activeIndex - 1;
-          setActiveIndex(nextIndex < 0 ? value.length - 1 : nextIndex);
-        };
-
-        const prevKey =
-          orientation === "horizontal"
-            ? direction === "ltr"
-              ? "ArrowLeft"
-              : "ArrowRight"
-            : "ArrowUp";
-
-        const nextKey =
-          orientation === "horizontal"
-            ? direction === "ltr"
-              ? "ArrowRight"
-              : "ArrowLeft"
-            : "ArrowDown";
-
-        if (e.key === nextKey) {
-          moveNext();
-        } else if (e.key === prevKey) {
-          movePrev();
-        } else if (e.key === "Enter" || e.key === "Space") {
-          if (activeIndex === -1) {
-            dropzoneState.inputRef.current?.click();
-          }
-        } else if (e.key === "Delete" || e.key === "Backspace") {
-          if (activeIndex !== -1) {
-            removeFileFromSet(activeIndex);
-            if (value.length - 1 === 0) {
-              setActiveIndex(-1);
-              return;
-            }
-            movePrev();
-          }
-        } else if (e.key === "Escape") {
-          setActiveIndex(-1);
-        }
-      },
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [value, activeIndex, removeFileFromSet],
-    );
-
     const onDrop = useCallback(
       (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
         const files = acceptedFiles;
@@ -218,6 +180,58 @@ export const FileUploader = forwardRef<
       onDropAccepted: () => setIsFileTooBig(false),
     });
 
+    const handleKeyDown = useCallback(
+      // eslint-disable-next-line no-undef
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!value) return;
+
+        const moveNext = () => {
+          const nextIndex = activeIndex + 1;
+          setActiveIndex(nextIndex > value.length - 1 ? 0 : nextIndex);
+        };
+
+        const movePrev = () => {
+          const nextIndex = activeIndex - 1;
+          setActiveIndex(nextIndex < 0 ? value.length - 1 : nextIndex);
+        };
+
+        const openFilePicker = () => {
+          if (activeIndex === -1) {
+            dropzoneState.inputRef.current?.click();
+          }
+        };
+
+        const removeActiveFile = () => {
+          if (activeIndex === -1) return;
+          removeFileFromSet(activeIndex);
+          if (value.length - 1 === 0) {
+            setActiveIndex(-1);
+            return;
+          }
+          movePrev();
+        };
+
+        const { prevKey, nextKey } = getNavigationKeys(orientation, direction);
+
+        const keyActions: Record<string, () => void> = {
+          Enter: openFilePicker,
+          Space: openFilePicker,
+          Delete: removeActiveFile,
+          Backspace: removeActiveFile,
+          Escape: () => setActiveIndex(-1),
+          [prevKey]: movePrev,
+          [nextKey]: moveNext,
+        };
+
+        keyActions[e.key]?.();
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [value, activeIndex, removeFileFromSet],
+    );
+
     return (
       <FileUploaderContext.Provider
         value={{
@@ -235,7 +249,7 @@ export const FileUploader = forwardRef<
           ref={ref}
           tabIndex={0}
           onKeyDownCapture={handleKeyDown}
-          className={cn("grid w-full overflow-hidden focus:outline-none", className, {
+          className={cn("grid w-full overflow-hidden focus:outline-hidden", className, {
             "gap-2": value && value.length > 0,
           })}
           dir={dir}
@@ -335,13 +349,10 @@ export const FileInput = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       >
         <div
           className={cn(
-            `w-full rounded-lg duration-300 ease-in-out ${
-              dropzoneState.isDragAccept
-                ? "border-green-500"
-                : dropzoneState.isDragReject || isFileTooBig
-                  ? "border-red-500"
-                  : "border-gray-300"
-            }`,
+            `w-full rounded-lg duration-300 ease-in-out ${getDropzoneBorderClass(
+              dropzoneState.isDragAccept,
+              dropzoneState.isDragReject || isFileTooBig,
+            )}`,
             className,
           )}
           {...rootProps}
@@ -349,8 +360,10 @@ export const FileInput = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
           {children}
         </div>
         <Input
+          // eslint-disable-next-line react-hooks/refs -- react-dropzone requires its inputRef to be attached to the input.
           ref={dropzoneState.inputRef}
           disabled={isLOF}
+          // eslint-disable-next-line react-hooks/refs -- react-dropzone's getInputProps must be spread onto the input during render.
           {...dropzoneState.getInputProps()}
           className={`${isLOF ? "cursor-not-allowed" : ""}`}
         />

@@ -73,6 +73,7 @@ const KeyDetails = () => {
 
   // Set breadcrumb title synchronously when key details are available
   if (keyDetails?.keyName) {
+    // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/language/translations/${keyDetails.itemId}`] =
       keyDetails.keyName;
   }
@@ -103,6 +104,8 @@ const KeyDetails = () => {
         return `Key deleted by ${userName}.`;
       case "KeyController.Create":
         return `Key created by ${userName}.`;
+      case "KeyController.BulkMove":
+        return `Moved to another module by ${userName}.`;
       case "Rollback":
         return `Translate rolled back by ${userName}.`;
       case "Published":
@@ -145,6 +148,7 @@ const KeyDetails = () => {
 
   useEffect(() => {
     if (id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keyDetails must keep its last value while id is absent, so it cannot be derived during render.
       setKeyDetails(blocksLanguageKeyData || null);
     }
   }, [id, blocksLanguageKeyData]);
@@ -152,6 +156,7 @@ const KeyDetails = () => {
   useEffect(() => {
     if (tabId === "history" && keyTimelineData) {
       const timelineData = mapTimelineEvents(keyTimelineData);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- events must keep the last history snapshot when the history tab is not active.
       setEvents(timelineData);
     }
   }, [tabId, keyTimelineData, mapTimelineEvents]);
@@ -288,7 +293,7 @@ const KeyDetails = () => {
                 <DialogContent>
                   <DialogHeader className="mb-4">
                     <DialogTitle>Auto-translate this key?</DialogTitle>
-                    <Label className="!mt-[12px] font-normal text-medium-emphasis">
+                    <Label className="mt-[12px]! font-normal text-medium-emphasis">
                       Are you sure you want to automatically translate this key?
                     </Label>
                   </DialogHeader>

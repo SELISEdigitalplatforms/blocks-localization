@@ -99,4 +99,42 @@ test.describe("Modules", () => {
       });
     });
   });
+
+  // Needs blocks-localization::module::delete (seed T6a) on the test role; otherwise the delete is a 403.
+  test.describe("Delete module", () => {
+    // Modules a scenario created and has not yet seen deleted; afterEach removes leftovers.
+    let pendingCleanup: string[] = [];
+
+    test.afterEach(async ({ page }) => {
+      if (pendingCleanup.length === 0) return;
+      const modules = new ModulesPage(page);
+      await openModules(page);
+      for (const name of pendingCleanup) {
+        await modules.deleteModuleIfPresent(name);
+      }
+      pendingCleanup = [];
+    });
+
+    test("Empty module is deleted after confirmation", async ({ page }) => {
+      const modules = new ModulesPage(page);
+      const moduleName = `DeleteEmpty-${Date.now()}`;
+
+      await test.step("Create a throwaway module", async () => {
+        await modules.expectPageLoaded();
+        pendingCleanup.push(moduleName);
+        await modules.createModule(moduleName);
+      });
+
+      await test.step("Row menu Delete opens a plain confirmation for an empty module", async () => {
+        await modules.openDeleteModuleDialog(moduleName);
+        await modules.expectDeleteConfirmationForEmptyModule(moduleName);
+      });
+
+      await test.step("Confirming deletes the module", async () => {
+        await modules.confirmDeleteModuleButton.click();
+        await modules.expectModuleDeleted(moduleName);
+        pendingCleanup = pendingCleanup.filter((name) => name !== moduleName);
+      });
+    });
+  });
 });

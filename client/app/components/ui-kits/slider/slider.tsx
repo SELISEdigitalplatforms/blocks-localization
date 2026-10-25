@@ -25,7 +25,7 @@
 //       min={min}
 //       max={max}
 //       className={cn(
-//         "relative flex w-full touch-none select-none items-center data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col data-[disabled]:opacity-50",
+//         "relative flex w-full touch-none select-none items-center data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col data-disabled:opacity-50",
 //         className,
 //       )}
 //       {...props}
@@ -47,7 +47,7 @@
 //         <SliderPrimitive.Thumb
 //           data-slot="slider-thumb"
 //           key={index}
-//           className="focus-visible:outline-hidden block size-4 shrink-0 rounded-full border border-primary bg-background shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50"
+//           className="focus-visible:outline-hidden block size-4 shrink-0 rounded-full border border-primary bg-background shadow-xs ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50"
 //         />
 //       ))}
 //     </SliderPrimitive.Root>

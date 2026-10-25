@@ -1,7 +1,7 @@
 using DomainService.Storage;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Storage.DomainService.Shared.Enums;
+using Blocks.Genesis.Entities.Data;
 using StorageDriver;
 
 namespace Eurolm.DomainService.Services.HelperService
@@ -72,7 +72,7 @@ namespace Eurolm.DomainService.Services.HelperService
                 FileVersionId = fileInfo.FileVersionId,
             });
 
-            if (completion?.VerificationStatus != Storage.DomainService.Enums.FileVerificationStatus.Verified)
+            if (completion?.VerificationStatus != FileVerificationStatus.Verified)
             {
                 _logger.LogError(
                     "SaveIntoStorage: Upload completion rejected fileId={FileId}, reason={RejectionReason}",

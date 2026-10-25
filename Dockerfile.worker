@@ -44,6 +44,9 @@ RUN apk add --no-cache icu-libs
 COPY --from=publish /app/publish .
 RUN chown -R app:app /app
 
+# The base image defines no healthcheck; NONE states that explicitly, so runtime behavior is unchanged.
+HEALTHCHECK NONE
+
 USER app
 
 ENTRYPOINT ["dotnet", "Worker.dll"]

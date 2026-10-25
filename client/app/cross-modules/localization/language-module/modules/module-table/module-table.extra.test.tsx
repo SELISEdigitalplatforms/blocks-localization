@@ -115,13 +115,23 @@ describe("module-table (extra coverage)", () => {
     expect(await screen.findByText("ada99")).toBeTruthy();
   });
 
+  it("shows a skeleton instead of a dash while creator names are loading", async () => {
+    getUsersByIds.mockReturnValue(new Promise(() => {}));
+    setModules([rowModule]);
+    const { container } = renderWithProviders(<ModuleTable />);
+    expect(await screen.findByText("UILM")).toBeTruthy();
+    await waitFor(() => expect(getUsersByIds).toHaveBeenCalled());
+    expect(container.querySelector("tbody .animate-pulse")).not.toBeNull();
+    expect(screen.queryByText("—")).toBeNull();
+  });
+
   it("shows a dash when the creator is not in the resolved user map", async () => {
     getUsersByIds.mockResolvedValue({ someone: { firstName: "X" } } as never);
     setModules([rowModule]);
     renderWithProviders(<ModuleTable />);
     // The user query resolves without u1, so the cell renders an em dash.
     await waitFor(() => expect(getUsersByIds).toHaveBeenCalled());
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("—")).length).toBeGreaterThan(0);
   });
 
   it("shows the current user when a new module has no createdBy ID", async () => {

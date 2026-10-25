@@ -3,10 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
+import { localizationQueryKeys } from "../constants/query-keys";
 import * as hooks from "./use-language-manager";
 
+const project = vi.hoisted(() => ({ tenantId: "tenant-1" }));
+
 vi.mock("@seliseblocks/genesis-os", () => ({
-  useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
+  useProjectStore: () => ({ selectedProject: { tenantId: project.tenantId } }),
 }));
 
 vi.mock("@blocks-localization/services/language-manager.service", () => ({
@@ -57,6 +60,7 @@ const renderQ = <T>(cb: () => T) => {
 describe("localization/hooks/use-language-manager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    project.tenantId = "tenant-1";
   });
 
   afterEach(() => {
@@ -112,6 +116,27 @@ describe("localization/hooks/use-language-manager", () => {
     const { result } = renderQ(() => hooks.useGetBlocksLanguageKeyById("k1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(svc.fetchBlocksLanguageKeyById).toHaveBeenCalledWith({ itemId: "k1" });
+  });
+
+  it("useGetModuleKeyCount should request a single key of the module and return the total", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [{}] } as never);
+    const { result } = renderQ(() => hooks.useGetModuleKeyCount("m1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe(7);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 0,
+        pageSize: 1,
+        moduleIds: ["m1"],
+        sortProperty: "KeyName",
+      }),
+    );
+  });
+
+  it("useGetModuleKeyCount should stay idle without a module id", () => {
+    const { result } = renderQ(() => hooks.useGetModuleKeyCount(""));
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
   });
 
   it("useGetLanguageModules should fetch modules", async () => {
@@ -212,21 +237,61 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
-  it("useGetKeysByGlossaryId should paginate filtered keys", async () => {
-    svc.fetchBlocksLanguageKey.mockResolvedValue({
-      totalCount: 3,
-      keys: [{ itemId: "a" }, { itemId: "b" }, { itemId: "c" }],
-    } as never);
-    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", ["m1"], 0, 2));
+  it("useGetKeysByGlossaryId should request keys filtered by glossaryId with server paging", async () => {
+    const page = { totalCount: 25, keys: [{ itemId: "b" }, { itemId: "a" }] };
+    svc.fetchBlocksLanguageKey.mockResolvedValue(page as never);
+    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", 2, 10));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toEqual({
-      totalCount: 3,
-      keys: [{ itemId: "a" }, { itemId: "b" }],
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(1);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith({
+      pageNumber: 2,
+      pageSize: 10,
+      searchKey: "",
+      moduleIds: [],
+      isPartiallyTranslated: false,
+      sortProperty: "KeyName",
+      isDescending: false,
+      glossaryId: "g1",
     });
+    expect(result.current.data).toEqual(page);
   });
 
-  it("useGetKeysByGlossaryId should be disabled without moduleIds", () => {
-    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", [], 0, 2));
+  it("useGetKeysByGlossaryId should not depend on moduleIds (global-only glossary)", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
+    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", 0, 10));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ totalCount: 0, keys: [] });
+  });
+
+  it("useGetKeysByGlossaryId should be disabled without a tenant", () => {
+    project.tenantId = "";
+    const { result } = renderQ(() => hooks.useGetKeysByGlossaryId("g1", 0, 10));
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("useGetKeysByGlossaryId should be invalidated by key saves (languageKeys.all prefix)", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => hooks.useGetKeysByGlossaryId("g1", 0, 10), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2);
+  });
+
+  it("useGetGlossaryUsageCount should read totalCount from a 1-item page", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [{}] } as never);
+    const { result } = renderQ(() => hooks.useGetGlossaryUsageCount("g1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe(7);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 0, pageSize: 1, glossaryId: "g1", moduleIds: [] }),
+    );
+  });
+
+  it("useGetGlossaryUsageCount should be disabled without a tenant", () => {
+    project.tenantId = "";
+    const { result } = renderQ(() => hooks.useGetGlossaryUsageCount("g1"));
     expect(result.current.fetchStatus).toBe("idle");
   });
 
@@ -309,6 +374,59 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.deleteLanguageKeys).toHaveBeenCalled();
   });
 
+  it("useDeleteLanguageModule with deleteKeys should also refresh key lists and timelines", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
+
+    await result.current.mutateAsync({ itemId: "m1", deleteKeys: true });
+
+    const invalidatedKeys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+    expect(invalidatedKeys).toEqual(
+      expect.arrayContaining([
+        ["get-language-modules"],
+        ["get-blocksLanguageKeys"],
+        ["get-blocksLanguageKey"],
+        ["get-uilm-timeline"],
+        ["get-localization-timeline"],
+      ]),
+    );
+  });
+
+  it("useDeleteLanguageModule with a target module should also refresh key lists and timelines", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
+
+    await result.current.mutateAsync({ itemId: "m1", targetModuleId: "m2" });
+
+    const invalidatedKeys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+    expect(invalidatedKeys).toEqual(
+      expect.arrayContaining([
+        ["get-language-modules"],
+        ["get-blocksLanguageKeys"],
+        ["get-blocksLanguageKey"],
+        ["get-uilm-timeline"],
+        ["get-localization-timeline"],
+      ]),
+    );
+  });
+
+  it("useDeleteLanguageModule without a target module should only refresh the modules", async () => {
+    svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageModule(), { wrapper });
+
+    await result.current.mutateAsync({ itemId: "m1" });
+
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+      ["get-language-modules"],
+    ]);
+  });
+
   it("useTranslateLanguageKeys should invoke the service", async () => {
     svc.translateLanguageKeys.mockResolvedValue({ isSuccess: true } as never);
     const { result } = renderQ(() => hooks.useTranslateLanguageKeys());
@@ -377,6 +495,251 @@ describe("localization/hooks/use-language-manager", () => {
     const { result } = renderQ(() => hooks.useDeleteGlossary());
     await result.current.mutateAsync({ itemId: "g1" } as never);
     expect(svc.deleteGlossary).toHaveBeenCalled();
+  });
+
+  describe("useDeleteGlossaryWithCascade", () => {
+    const makeKey = (n: number, glossaryIds = ["g1", "other"]) => ({
+      itemId: `k${n}`,
+      keyName: `key.${n}`,
+      moduleId: "m1",
+      resources: [{ culture: "en-US", value: `v${n}` }],
+      routes: n % 2 ? ["r/1"] : undefined,
+      context: `ctx${n}`,
+      isPartiallyTranslated: n % 2 === 0,
+      glossaryIds,
+      createDate: "",
+      lastUpdateDate: "",
+    });
+    const range = (from: number, count: number) =>
+      Array.from({ length: count }, (_, i) => makeKey(from + i));
+
+    /** Simulates the server: keys drop out of the glossaryId filter once saved without it. */
+    const mockServer = (initialCount: number) => {
+      let tagged = range(1, initialCount);
+      svc.fetchBlocksLanguageKey.mockImplementation((async (req: { pageSize: number }) => ({
+        totalCount: tagged.length,
+        keys: tagged.slice(0, req.pageSize),
+      })) as never);
+      svc.saveBlocksLanguageKeys.mockImplementation((async (batch: { itemId: string }[]) => {
+        const ids = new Set(batch.map((k) => k.itemId));
+        tagged = tagged.filter((k) => !ids.has(k.itemId));
+        return { success: true, errorMessage: "", validationErrors: [] };
+      }) as never);
+      svc.deleteGlossary.mockResolvedValue({ isSuccess: true, errors: null } as never);
+    };
+
+    it("should strip only the glossary id and keep the rest of each key unchanged", async () => {
+      mockServer(2);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 2 });
+      expect(res).toEqual({ status: "deleted" });
+      // One 100-key page, then a 1-item re-count that verifies nothing is still tagged.
+      expect(svc.fetchBlocksLanguageKey.mock.calls.map(([req]) => req.pageSize)).toEqual([100, 1]);
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 0, pageSize: 100, glossaryId: "g1" }),
+      );
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledTimes(1);
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledWith([
+        {
+          itemId: "k1",
+          keyName: "key.1",
+          moduleId: "m1",
+          resources: [{ culture: "en-US", value: "v1" }],
+          routes: ["r/1"],
+          context: "ctx1",
+          isPartiallyTranslated: false,
+          glossaryIds: ["other"],
+          isNewKey: false,
+        },
+        {
+          itemId: "k2",
+          keyName: "key.2",
+          moduleId: "m1",
+          resources: [{ culture: "en-US", value: "v2" }],
+          routes: [],
+          context: "ctx2",
+          isPartiallyTranslated: true,
+          glossaryIds: ["other"],
+          isNewKey: false,
+        },
+      ]);
+      expect(svc.deleteGlossary).toHaveBeenCalledWith({ itemId: "g1" });
+      expect(svc.saveBlocksLanguageKeys.mock.invocationCallOrder[0]).toBeLessThan(
+        svc.deleteGlossary.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("should send sequential batches of at most 100 keys (250 → 100, 100, 50)", async () => {
+      mockServer(250);
+      const onProgress = vi.fn();
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({
+        glossaryId: "g1",
+        initialCount: 250,
+        onProgress,
+      });
+      expect(res).toEqual({ status: "deleted" });
+      expect(svc.fetchBlocksLanguageKey.mock.calls.map(([req]) => req.pageSize)).toEqual([
+        100, 100, 100, 1,
+      ]);
+      expect(svc.saveBlocksLanguageKeys.mock.calls.map(([batch]) => batch.length)).toEqual([
+        100, 100, 50,
+      ]);
+      expect(svc.deleteGlossary).toHaveBeenCalledTimes(1);
+      expect(onProgress).toHaveBeenLastCalledWith(250, 250);
+    });
+
+    it("should delete directly when no keys use the glossary", async () => {
+      mockServer(0);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      await result.current.mutateAsync({ glossaryId: "g1", initialCount: 0 });
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(1);
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+        expect.objectContaining({ pageSize: 1, glossaryId: "g1" }),
+      );
+      expect(svc.saveBlocksLanguageKeys).not.toHaveBeenCalled();
+      expect(svc.deleteGlossary).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clean keys tagged after the dialog counted them before deleting", async () => {
+      mockServer(3);
+      const onProgress = vi.fn();
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({
+        glossaryId: "g1",
+        initialCount: 0,
+        onProgress,
+      });
+      expect(res).toEqual({ status: "deleted" });
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledTimes(1);
+      expect(svc.saveBlocksLanguageKeys.mock.calls[0][0]).toHaveLength(3);
+      expect(onProgress).toHaveBeenLastCalledWith(3, 3);
+    });
+
+    it("should not delete when SaveKeys reports success but a key stays tagged", async () => {
+      // e.g. two documents share (KeyName, ModuleId): the server replaces only the first.
+      mockServer(2);
+      const stuck = makeKey(99);
+      const fetchImpl = svc.fetchBlocksLanguageKey.getMockImplementation()!;
+      svc.fetchBlocksLanguageKey.mockImplementation((async (req: { pageSize: number }) => {
+        const real = (await fetchImpl(req as never)) as { totalCount: number; keys: unknown[] };
+        return {
+          totalCount: real.totalCount + 1,
+          keys: [...real.keys, stuck].slice(0, req.pageSize),
+        };
+      }) as never);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 3 });
+      expect(res).toMatchObject({
+        status: "keys-failed",
+        reason: "iteration-limit",
+        removedCount: 2,
+        totalCount: 3,
+      });
+      // ceil(3/100) + 2 = 3 batches at most.
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledTimes(3);
+      expect(svc.deleteGlossary).not.toHaveBeenCalled();
+    });
+
+    it("should stop on a failed batch, re-count, and not delete", async () => {
+      mockServer(250);
+      const save = svc.saveBlocksLanguageKeys.getMockImplementation()!;
+      svc.saveBlocksLanguageKeys
+        .mockImplementationOnce(save)
+        .mockResolvedValueOnce({ success: false, errorMessage: "denied" } as never);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 250 });
+      expect(res).toEqual({
+        status: "keys-failed",
+        reason: "save-failed",
+        removedCount: 100,
+        totalCount: 250,
+        errorMessage: "denied",
+      });
+      expect(svc.deleteGlossary).not.toHaveBeenCalled();
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageSize: 1, glossaryId: "g1" }),
+      );
+    });
+
+    it("should stop at the first batch when SaveKeys is rejected (no permission)", async () => {
+      mockServer(3);
+      svc.saveBlocksLanguageKeys.mockRejectedValueOnce(new Error("Forbidden"));
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 3 });
+      expect(res).toMatchObject({ status: "keys-failed", removedCount: 0, totalCount: 3 });
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledTimes(1);
+      expect(svc.deleteGlossary).not.toHaveBeenCalled();
+    });
+
+    it("should resume from the remaining keys on retry", async () => {
+      mockServer(250);
+      const save = svc.saveBlocksLanguageKeys.getMockImplementation()!;
+      svc.saveBlocksLanguageKeys
+        .mockImplementationOnce(save)
+        .mockResolvedValueOnce({ success: false, errorMessage: "x" } as never);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      await result.current.mutateAsync({ glossaryId: "g1", initialCount: 250 });
+      svc.saveBlocksLanguageKeys.mockClear();
+
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 150 });
+      expect(res).toEqual({ status: "deleted" });
+      expect(svc.saveBlocksLanguageKeys.mock.calls.map(([batch]) => batch.length)).toEqual([
+        100, 50,
+      ]);
+      expect(svc.deleteGlossary).toHaveBeenCalledTimes(1);
+    });
+
+    it("should stop after ceil(N/100) + 2 iterations when keys keep matching", async () => {
+      // The server keeps reporting more matching keys than were cleaned (e.g. concurrent tagging).
+      svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 500, keys: range(1, 5) } as never);
+      svc.saveBlocksLanguageKeys.mockResolvedValue({ success: true } as never);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 5 });
+      expect(res).toMatchObject({ status: "keys-failed", reason: "iteration-limit" });
+      expect(svc.saveBlocksLanguageKeys).toHaveBeenCalledTimes(3);
+      expect(svc.deleteGlossary).not.toHaveBeenCalled();
+    });
+
+    it("should report a failed glossary delete", async () => {
+      mockServer(0);
+      svc.deleteGlossary.mockResolvedValue({ isSuccess: false, errors: "nope" } as never);
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      const res = await result.current.mutateAsync({ glossaryId: "g1", initialCount: 0 });
+      expect(res).toEqual({ status: "delete-failed", errors: "nope" });
+    });
+
+    it("should invalidate glossary and key caches after deleting", async () => {
+      mockServer(1);
+      const { queryClient, wrapper } = createQueryWrapper();
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+      const { result } = renderHook(() => hooks.useDeleteGlossaryWithCascade(), { wrapper });
+      await result.current.mutateAsync({ glossaryId: "g1", initialCount: 1 });
+      const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+      const q = localizationQueryKeys;
+      expect(keys).toEqual(
+        expect.arrayContaining([
+          q.glossaries.all,
+          q.glossaries.globalPrefix,
+          q.glossaries.modulePrefix,
+          q.glossaries.searchPrefix,
+          q.glossaries.detailPrefix,
+          q.glossaries.suggestedPrefix,
+          q.languageKeys.all,
+          q.languageKeys.detailPrefix,
+        ]),
+      );
+    });
+
+    it("should refuse to run without a tenant", async () => {
+      project.tenantId = "";
+      const { result } = renderQ(() => hooks.useDeleteGlossaryWithCascade());
+      await expect(
+        result.current.mutateAsync({ glossaryId: "g1", initialCount: 1 }),
+      ).rejects.toThrow();
+      expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+      expect(svc.deleteGlossary).not.toHaveBeenCalled();
+    });
   });
 
   it("useSaveWebhook should default projectKey to the tenant id", async () => {

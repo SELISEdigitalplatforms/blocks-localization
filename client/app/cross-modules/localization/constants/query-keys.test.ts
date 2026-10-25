@@ -172,12 +172,31 @@ describe("localization/constants/query-keys", () => {
   describe("languageKeys.byGlossary", () => {
     it("should embed tenantId, glossaryId, pageNumber, pageSize", () => {
       expect(localizationQueryKeys.languageKeys.byGlossary("t1", "g1", 0, 25)).toEqual([
-        "get-keys-by-glossary",
+        "get-blocksLanguageKeys",
+        "by-glossary",
         "t1",
         "g1",
         0,
         25,
       ]);
+    });
+  });
+
+  describe("languageKeys.glossaryUsage", () => {
+    it("should embed tenantId and glossaryId", () => {
+      expect(localizationQueryKeys.languageKeys.glossaryUsage("t1", "g1")).toEqual([
+        "get-glossary-usage-count",
+        "t1",
+        "g1",
+      ]);
+    });
+  });
+
+  describe("languageKeys.countByModule", () => {
+    it("should sit under the languageKeys.all prefix so key mutations invalidate it", () => {
+      const key = localizationQueryKeys.languageKeys.countByModule("t1", "m1");
+      expect(key).toEqual(["get-blocksLanguageKeys", "t1", "count-by-module", "m1"]);
+      expect(key[0]).toBe(localizationQueryKeys.languageKeys.all[0]);
     });
   });
 

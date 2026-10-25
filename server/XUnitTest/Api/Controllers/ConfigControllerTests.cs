@@ -170,32 +170,18 @@ namespace XUnitTest
         }
 
         [Fact]
-        public async Task GetWebHook_WithEmptyProjectKey_ReturnsBadRequest()
-        {
-            var result = await _controller.GetWebHook("");
-
-            result.Result.Should().BeOfType<BadRequestObjectResult>();
-        }
-
-        [Fact]
-        public async Task GetWebHook_WithNullProjectKey_ReturnsBadRequest()
-        {
-            var result = await _controller.GetWebHook(null);
-
-            result.Result.Should().BeOfType<BadRequestObjectResult>();
-        }
-
-        [Fact]
-        public async Task GetWebHook_WithValidProjectKey_ReturnsOkWithWebhook()
+#pragma warning disable CS0618 // exercising the obsolete alias on purpose
+        public async Task GetWebHook_ReturnsCurrentTenantWebhook()
         {
             var webhook = new BlocksWebhook { Url = "https://example.com/webhook", ContentType = "application/json", BlocksWebhookSecret = new BlocksWebhookSecret { Secret = "s", HeaderKey = "h" } };
-            _webHookServiceMock.Setup(x => x.GetWebhookAsync("proj-1")).ReturnsAsync(webhook);
+            _webHookServiceMock.Setup(x => x.GetWebhookAsync()).ReturnsAsync(webhook);
 
-            var result = await _controller.GetWebHook("proj-1");
+            var result = await _controller.GetWebHook();
 
-            result.Result.Should().BeOfType<OkObjectResult>();
-            ((OkObjectResult)result.Result!).Value.Should().BeSameAs(webhook);
+            result.Should().BeSameAs(webhook);
+            _webHookServiceMock.Verify(x => x.GetWebhookAsync(), Times.Once);
         }
+#pragma warning restore CS0618
 
         [Fact]
         public async Task SaveWebHook_WithNullWebhook_ReturnsFailureWithoutCallingService()

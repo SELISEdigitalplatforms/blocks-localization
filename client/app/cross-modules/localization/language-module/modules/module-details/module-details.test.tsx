@@ -153,6 +153,52 @@ describe("language-module/module-details", () => {
     expect(screen.getByRole("columnheader", { name: "Context" })).toBeTruthy();
   });
 
+  it("should show glossary context without the rule marker (H8)", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
+      isLoading: false,
+    } as never);
+    h.useGetModuleGlossaries.mockReturnValue({
+      data: {
+        items: [
+          { itemId: "g1", name: "Widget", context: "Navigation ⟦rule: de-DE→Navigation⟧" },
+          { itemId: "g2", name: "Brand", context: "⟦rule: keep as-is in all languages⟧" },
+        ],
+        totalCount: 2,
+      },
+      isLoading: false,
+    } as never);
+
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+      searchParams: "?moduleTab=glossary",
+    });
+
+    expect(screen.getByText("Navigation")).toBeTruthy();
+    expect(screen.queryByText(/⟦rule/)).toBeNull();
+  });
+
+  it("should hide the Context column when contexts only hold a rule marker", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
+      isLoading: false,
+    } as never);
+    h.useGetModuleGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g2", name: "Brand", context: "⟦rule: keep as-is in all languages⟧" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+      searchParams: "?moduleTab=glossary",
+    });
+
+    expect(screen.queryByRole("columnheader", { name: "Context" })).toBeNull();
+  });
+
   it("uses the userLookupService for the users query key", () => {
     h.useGetLanguageModules.mockReturnValue({
       data: [{ itemId: "m1", moduleName: "UILM", createdBy: "u1", lastUpdatedBy: "u2" }],

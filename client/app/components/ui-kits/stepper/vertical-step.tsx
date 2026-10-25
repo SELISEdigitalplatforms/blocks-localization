@@ -16,19 +16,19 @@
 // const verticalStepVariants = cva(
 //   [
 //     "flex flex-col relative",
-//     "data-[completed=true]:[&:not(:last-child)]:after:bg-primary",
-//     "data-[invalid=true]:[&:not(:last-child)]:after:bg-destructive",
+//     "data-[completed=true]:not-last:after:bg-primary",
+//     "data-[invalid=true]:not-last:after:bg-destructive",
 //   ],
 //   {
 //     variants: {
 //       variant: {
 //         circle: cn(
-//           "[&:not(:last-child)]:pb-[var(--step-gap)] [&:not(:last-child)]:gap-[var(--step-gap)]",
-//           "[&:not(:last-child)]:after:content-[''] [&:not(:last-child)]:after:w-[2px] [&:not(:last-child)]:after:bg-border",
-//           "[&:not(:last-child)]:after:inset-x-[calc(var(--step-icon-size)/2)]",
-//           "[&:not(:last-child)]:after:absolute",
-//           "[&:not(:last-child)]:after:top-[calc(var(--step-icon-size)+var(--step-gap))]",
-//           "[&:not(:last-child)]:after:bottom-[var(--step-gap)]",
+//           "not-last:pb-(--step-gap) not-last:gap-(--step-gap)",
+//           "not-last:after:content-[''] not-last:after:w-[2px] not-last:after:bg-border",
+//           "not-last:after:inset-x-[calc(var(--step-icon-size)/2)]",
+//           "not-last:after:absolute",
+//           "not-last:after:top-[calc(var(--step-icon-size)+var(--step-gap))]",
+//           "not-last:after:bottom-(--step-gap)",
 //         ),
 //         line: "flex-1 border-t-0 mb-4",
 //       },
@@ -119,7 +119,7 @@
 //         verticalStepVariants({
 //           variant: variant?.includes("circle") ? "circle" : "line",
 //         }),
-//         isLastStepCurrentStep && "gap-[var(--step-gap)]",
+//         isLastStepCurrentStep && "gap-(--step-gap)",
 //         styles?.["vertical-step"],
 //       )}
 //       data-optional={steps[index || 0]?.optional}
@@ -161,7 +161,7 @@
 //         className={cn(
 //           "stepper__vertical-step-content",
 //           !isLastStep && "min-h-4",
-//           variant !== "line" && "ps-[--step-icon-size]",
+//           variant !== "line" && "ps-(--step-icon-size)",
 //           variant === "line" && orientation === "vertical" && "min-h-0",
 //           styles?.["vertical-step-content"],
 //         )}

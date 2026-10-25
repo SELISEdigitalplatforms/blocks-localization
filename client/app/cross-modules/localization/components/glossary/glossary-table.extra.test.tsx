@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
-import { useGetGlossaries } from "@blocks-localization/hooks/use-language-manager";
+import { useGetGlossaries, useGetLanguages } from "@blocks-localization/hooks/use-language-manager";
 import GlossaryTable from "./glossary-table";
 
 const navigate = vi.fn();
@@ -17,11 +17,11 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
+  useGetLanguages: vi.fn(),
 }));
-vi.mock("@blocks-localization/components/modals/glossary/add-edit-glossary", () => ({
-  default: ({ glossary }: { glossary?: { name: string } }) => (
-    <div>add-edit-{glossary ? glossary.name : "new"}</div>
-  ),
+vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
+  default: ({ open, glossary }: { open: boolean; glossary?: { name: string } }) =>
+    open ? <div>add-edit-{glossary ? glossary.name : "new"}</div> : null,
 }));
 vi.mock("@blocks-localization/components/modals/glossary/delete-glossary", () => ({
   default: ({ glossaryName }: { glossaryName: string }) => <div>delete-{glossaryName}</div>,
@@ -51,7 +51,16 @@ const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe("glossary-table (extra coverage)", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useGetLanguages).mockReturnValue({
+      data: [
+        { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
+        { itemId: "2", languageCode: "de-DE", languageName: "German" },
+        { itemId: "3", languageCode: "fr-FR", languageName: "French" },
+      ],
+    } as never);
+  });
 
   it("renders every populated column value", () => {
     setData([row]);
@@ -59,7 +68,90 @@ describe("glossary-table (extra coverage)", () => {
     expect(screen.getByText("Acme")).toBeTruthy();
     expect(screen.getByText("Acronym")).toBeTruthy();
     expect(screen.getByText("some context")).toBeTruthy();
-    expect(screen.getByText("a note")).toBeTruthy();
+    // The internal note is not a table column any more.
+    expect(screen.queryByText("a note")).toBeNull();
+  });
+
+  it("shows the columns in order without Additional Note (H6)", () => {
+    setData([row]);
+    renderWithProviders(<GlossaryTable />);
+    const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers).toEqual([
+      "Name",
+      "Rule",
+      "Translations",
+      "Language",
+      "Type",
+      "Definition",
+      "Created",
+      "Actions",
+    ]);
+  });
+
+  it("shows the rule badge and a chip per non-default language, warning when missing (H6, H7)", () => {
+    setData([
+      {
+        ...row,
+        additionalNote:
+          '@@glossary-meta:v1@@{"rule":"translate","translations":{"de-DE":"Arbeitsbereich"}}',
+      },
+    ]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Translate")).toBeTruthy();
+    expect(screen.getByText("de-DE")).toBeTruthy();
+    expect(screen.getByText("fr-FR missing")).toBeTruthy();
+    expect(screen.queryByText("en-US missing")).toBeNull();
+  });
+
+  it("shows a dash instead of chips for Keep and Forbidden terms", () => {
+    setData([
+      {
+        ...row,
+        itemId: "k",
+        name: "SELISE",
+        additionalNote: '@@glossary-meta:v1@@{"rule":"keep"}',
+      },
+      {
+        ...row,
+        itemId: "f",
+        name: "Werk",
+        additionalNote: '@@glossary-meta:v1@@{"rule":"forbidden"}',
+      },
+    ]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Keep")).toBeTruthy();
+    expect(screen.getByText("Forbidden")).toBeTruthy();
+    expect(screen.queryByText(/missing/)).toBeNull();
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("limits chips to 4 and summarizes the rest", () => {
+    vi.mocked(useGetLanguages).mockReturnValue({
+      data: ["en-US", "a-A", "b-B", "c-C", "d-D", "e-E", "f-F"].map((code, i) => ({
+        itemId: code,
+        languageCode: code,
+        languageName: code,
+        isDefault: i === 0,
+      })),
+    } as never);
+    setData([row]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getAllByText(/ missing$/)).toHaveLength(4);
+    expect(screen.getByText("+2")).toBeTruthy();
+  });
+
+  it("shows the definition without the rule marker (H8)", () => {
+    setData([{ ...row, context: "A container. ⟦rule: de-DE→Arbeitsbereich⟧" }]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("A container.")).toBeTruthy();
+    expect(screen.queryByText(/⟦rule/)).toBeNull();
+  });
+
+  it("does not guess the rule of a term saved by a newer version", () => {
+    setData([{ ...row, additionalNote: "@@glossary-meta:v2@@{}" }]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.queryByText("Translate")).toBeNull();
+    expect(screen.getAllByText("—")).toHaveLength(2);
   });
 
   it("falls back to dashes for null, empty, and whitespace-only optional fields", () => {
@@ -76,8 +168,17 @@ describe("glossary-table (extra coverage)", () => {
     ]);
     renderWithProviders(<GlossaryTable />);
     expect(screen.getByText("Bare")).toBeTruthy();
-    // Unknown language, missing type/date, and blank text fields all render a dash.
-    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(5);
+    // A language not in the catalog (a custom one) shows its code.
+    expect(screen.getByText("zz-ZZ")).toBeTruthy();
+    // Missing type/date and blank text fields render a dash.
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("falls back to a dash when the language is empty", () => {
+    setData([{ ...row, itemId: "g3", name: "NoLang", language: "" }]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("NoLang")).toBeTruthy();
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(1);
   });
 
   it("opens the edit dialog from the row menu", async () => {

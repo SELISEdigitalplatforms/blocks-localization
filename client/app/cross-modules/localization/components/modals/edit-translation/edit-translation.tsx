@@ -17,7 +17,6 @@ import {
   useSaveBlocksLanguageKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 import { formatErrorMessage } from "@/lib/error";
 
 interface EditTranslationProps {
@@ -39,16 +38,11 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   const { isPending: isAutoTranslateLoading, mutateAsync: autoTranslateAsync } =
     useGetTranslationSuggestion();
 
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const [translation, setTranslation] = useState(
     keyDetails.resources?.find((resource) => resource.culture === destinationLanguageCode)?.value ||
       "",
   );
 
-  // Split so the click handler itself returns void. React ignores a promise
-  // returned from an event handler, so an async handler leaves a rejection
-  // unobserved; the await happens in here, where the catch turns a failure into
-  // a toast the user actually sees.
   async function runAutoTranslate(
     destinationLanguage: string | undefined,
     defaultLanguageText: string,
@@ -57,7 +51,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       const payload = {
         sourceText: defaultLanguageText,
         destinationLanguage: destinationLanguage || "English",
-        currentLanguage: "English",
+        currentLanguage: languageListData[0]?.languageName || "English",
         temperature: 0.1,
         // elementDetailContext: keyDetails.context,
         glossaryIds: keyDetails.glossaryIds,
@@ -108,8 +102,10 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
         value: translation,
       });
     } else if (keyDetails.resources) {
+      // eslint-disable-next-line react-hooks/immutability -- mutating the caller's keyDetails in place is the existing contract this save relies on.
       keyDetails.resources[index].value = translation;
     } else {
+      // eslint-disable-next-line react-hooks/immutability -- mutating the caller's keyDetails in place is the existing contract this save relies on.
       keyDetails.resources = [
         {
           culture: destinationLanguageCode,
@@ -217,7 +213,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           />
         </div>
       </DialogHeader>
-      <DialogFooter className="mt-[-14px] flex flex-row gap-2">
+      <DialogFooter className="mt-[-14px] flex gap-2">
         <DialogTrigger asChild>
           <Button variant="outline" size="default">
             Cancel

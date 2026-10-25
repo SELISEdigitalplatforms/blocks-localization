@@ -238,6 +238,28 @@ namespace XUnitTest
             result.Errors["k1"].Should().Be("delete failed");
         }
 
+        #region Move entries
+
+        [Fact]
+        public async Task RollbackAsync_MoveEntry_IsRejectedWithoutTouchingTheKey()
+        {
+            _keyTimelineRepositoryMock.Setup(r => r.GetTimelineByItemIdAsync("t1")).ReturnsAsync(new KeyTimeline
+            {
+                ItemId = "t1",
+                LogFrom = LogFromConstants.KeyBulkMove,
+                PreviousData = new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" },
+                CurrentData = new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m2" }
+            });
+
+            var result = await _service.RollbackAsync(new RollbackRequest { ItemId = "t1" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("ItemId");
+            _keyRepositoryMock.Verify(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()), Times.Never);
+        }
+
+        #endregion
+
         [Fact]
         public async Task SendTranslateBlocksLanguageKeysEvent_PublishesToQueueWithOperationId()
         {

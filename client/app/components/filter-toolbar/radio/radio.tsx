@@ -73,7 +73,7 @@ export function Radio({ label, options, onChange, value }: MultiSelectProps) {
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <Input
             className={
-              "flex h-11 w-full rounded-md border-none bg-transparent px-0 py-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+              "flex h-11 w-full rounded-md border-none bg-transparent px-0 py-3 text-sm outline-hidden placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
             }
             placeholder={label}
             value={search}
@@ -100,7 +100,7 @@ export function Radio({ label, options, onChange, value }: MultiSelectProps) {
                 ))}
             </RadioGroup>
           ) : (
-            <div className="py-6 text-center text-sm !text-popover-foreground">
+            <div className="py-6 text-center text-sm text-popover-foreground!">
               No results found.
             </div>
           )}

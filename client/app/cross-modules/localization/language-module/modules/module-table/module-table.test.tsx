@@ -64,6 +64,9 @@ describe("language-module/module-table", () => {
     } as never);
     renderWithProviders(<ModuleTable />);
     expect(screen.getByText(/No modules found/)).toBeTruthy();
+    expect((screen.getByPlaceholderText("Search modules...") as HTMLInputElement).disabled).toBe(
+      true,
+    );
   });
 
   it("should render module rows and navigate on click", () => {

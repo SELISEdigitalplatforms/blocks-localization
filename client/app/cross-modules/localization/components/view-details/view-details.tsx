@@ -10,6 +10,7 @@ import {
   useGetLanguageModules,
   useGetLanguages,
   useGetGlossaries,
+  useGetGlossariesByIds,
   useGetSuggestedGlossaries,
   useGetGlobalGlossaries,
   useGetModuleGlossaries,
@@ -19,10 +20,8 @@ import { IBlocksLanguageKey } from "../../models/language";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
-import { useProjectStore } from "@seliseblocks/genesis-os";
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { mutateAsync: saveKey } = useSaveBlocksLanguageKey();
   const { data: languageModules } = useGetLanguageModules();
   const {
@@ -44,10 +43,30 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
 
+  const missingGlossaryIds = useMemo(() => {
+    if (!hasGlossaryIds || !allGlossariesData?.items) return [];
+    const loadedIds = new Set(allGlossariesData.items.map((g) => g.itemId));
+    return (keyDetails.glossaryIds ?? []).filter((id) => !loadedIds.has(id));
+  }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
+  const missingGlossaries = useGetGlossariesByIds(
+    missingGlossaryIds,
+    missingGlossaryIds.length > 0,
+  );
+
   const resolvedGlossaries = useMemo(() => {
     if (!hasGlossaryIds || !allGlossariesData?.items) return [];
-    return allGlossariesData.items.filter((g) => keyDetails.glossaryIds?.includes(g.itemId));
-  }, [hasGlossaryIds, allGlossariesData, keyDetails.glossaryIds]);
+    const fromFirstPage = allGlossariesData.items.filter((g) =>
+      keyDetails.glossaryIds?.includes(g.itemId),
+    );
+    const fetchedById = missingGlossaries.filter((g) => missingGlossaryIds.includes(g.itemId));
+    return [...fromFirstPage, ...fetchedById];
+  }, [
+    hasGlossaryIds,
+    allGlossariesData,
+    keyDetails.glossaryIds,
+    missingGlossaries,
+    missingGlossaryIds,
+  ]);
 
   const contextGlossaries = useMemo(() => {
     const taggedIds = new Set(keyDetails.glossaryIds ?? []);
@@ -164,8 +183,8 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             <CardTitle className="text-xl">About</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
-            <div className="grid gap-10">
-              <div className="grid gap-1">
+            <div className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-10">
+              <div className="grid content-start gap-1">
                 {/* <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
                 <p className="text-base font-normal text-high-emphasis">Text box</p> */}
                 <h3 className="text-sm font-medium text-low-emphasis">Module</h3>
@@ -176,45 +195,33 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   }
                 </p>
               </div>
-              <div className="grid gap-1">
+              <div className="grid content-start gap-1">
+                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
+                <p className="text-base font-normal text-high-emphasis">
+                  {!keyDetails || !keyDetails.createDate || !checkValidDate(keyDetails.createDate)
+                    ? "-"
+                    : formatFullDate(parseDateString(keyDetails.createDate))}
+                </p>
+              </div>
+              <div className="grid content-start gap-1">
                 <h3 className="text-sm font-medium text-low-emphasis">Default Language</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {languageListData[0].languageName}
                 </p>
               </div>
-              {/* <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
-                <p className="text-base font-normal text-high-emphasis">{keyDetails.createDate}</p>
-              </div> */}
-            </div>
-            <div>
-              <div className="grid gap-10">
-                <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
-                  <p className="text-base font-normal text-high-emphasis">
-                    {!keyDetails || !keyDetails.createDate || !checkValidDate(keyDetails.createDate)
-                      ? "-"
-                      : formatFullDate(parseDateString(keyDetails.createDate))}
-                  </p>
-                </div>
-                <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last modified</h3>
-                  <p className="text-base font-normal text-high-emphasis">
-                    {!keyDetails ||
-                    !keyDetails.lastUpdateDate ||
-                    !checkValidDate(keyDetails.lastUpdateDate)
-                      ? "-"
-                      : formatFullDate(parseDateString(keyDetails.lastUpdateDate))}
-                  </p>
-                </div>
-                {/* <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created by</h3>
-                  <p className="text-base font-normal text-high-emphasis">Martin Bator</p>
-                </div> */}
+              <div className="grid content-start gap-1">
+                <h3 className="text-sm font-medium text-low-emphasis">Last modified</h3>
+                <p className="text-base font-normal text-high-emphasis">
+                  {!keyDetails ||
+                  !keyDetails.lastUpdateDate ||
+                  !checkValidDate(keyDetails.lastUpdateDate)
+                    ? "-"
+                    : formatFullDate(parseDateString(keyDetails.lastUpdateDate))}
+                </p>
               </div>
             </div>
             <div className="col-span-2 mt-4 border-t pt-4">
-              <h3 className="mb-2 text-sm font-medium text-low-emphasis">Context</h3>
+              <h3 className="mb-1 text-sm font-medium text-low-emphasis">Context</h3>
               <p className="whitespace-pre-wrap text-base text-high-emphasis">
                 {keyDetails.context || "No context provided."}
               </p>

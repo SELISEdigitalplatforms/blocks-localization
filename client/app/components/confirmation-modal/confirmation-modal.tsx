@@ -29,11 +29,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ data, onConfirm, 
       <DialogTitle className="text-left text-lg font-semibold leading-7">
         {data.dialogTitle}
       </DialogTitle>
-      <DialogDescription className="mb-6 mt-2 break-words text-left text-sm font-normal leading-5 text-medium-emphasis">
+      <DialogDescription className="mb-6 mt-2 wrap-break-word text-left text-sm font-normal leading-5 text-medium-emphasis">
         {data.dialogSubtitle}
       </DialogDescription>
     </DialogHeader>
-    <DialogFooter className="mt-4 flex flex-row gap-2">
+    <DialogFooter className="mt-4 flex gap-2">
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           {data.cancelButton || "Cancel"}

@@ -12,7 +12,7 @@ const StepHorizontalTrackBar = () => {
         return (
           <div
             className={cn(
-              "after:border-t-1 relative flex items-center after:h-0.5 after:border-gray-500 after:bg-gray-300 after:content-[''] [&:not(:last-child)]:flex-1 [&:not(:last-child)]:after:me-[35px] [&:not(:last-child)]:after:ms-[35px] [&:not(:last-child)]:after:flex-1",
+              "relative flex items-center after:h-0.5 after:border-gray-500 after:bg-gray-300 after:content-[''] not-last:flex-1 not-last:after:me-[35px] not-last:after:ms-[35px] not-last:after:flex-1",
               "data-[completed=true]:after:border-gray-700 data-[completed=true]:after:bg-gray-700",
             )}
             key={step.id}
