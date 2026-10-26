@@ -215,12 +215,14 @@ describe("language-table All view", () => {
     const { rerender } = await renderAllView();
 
     fireEvent.click(screen.getByLabelText("Select all loaded (100)"));
-    expect(screen.getByText(/100 keys selected/)).toBeTruthy();
+    expect(screen.getByText(`100 of ${(12345).toLocaleString()} keys selected`)).toBeTruthy();
 
     setAllView(200);
     rerender(<LanguageTable />);
 
-    expect(await screen.findByText(/200 keys selected/)).toBeTruthy();
+    expect(
+      await screen.findByText(`200 of ${(12345).toLocaleString()} keys selected`),
+    ).toBeTruthy();
   });
 
   it("stops selecting later chunks once a row is unticked", async () => {
@@ -229,12 +231,12 @@ describe("language-table All view", () => {
 
     fireEvent.click(screen.getByLabelText("Select all loaded (100)"));
     fireEvent.click(screen.getAllByLabelText("Select row")[0]);
-    expect(screen.getByText(/99 keys selected/)).toBeTruthy();
+    expect(screen.getByText(`99 of ${(12345).toLocaleString()} keys selected`)).toBeTruthy();
 
     setAllView(200);
     rerender(<LanguageTable />);
 
-    expect(await screen.findByText(/99 keys selected/)).toBeTruthy();
+    expect(await screen.findByText(`99 of ${(12345).toLocaleString()} keys selected`)).toBeTruthy();
   });
 
   it("exposes the full row count to assistive tech", async () => {

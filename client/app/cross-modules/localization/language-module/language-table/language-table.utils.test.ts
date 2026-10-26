@@ -5,6 +5,7 @@ import {
   getDeleteKeyErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
+  getSelectedKeysLabel,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
@@ -159,6 +160,22 @@ describe("areAllRowsSelected", () => {
 
   it("is false when there are no rows", () => {
     expect(areAllRowsSelected([], { a: true })).toBe(false);
+  });
+});
+
+describe("getSelectedKeysLabel", () => {
+  it("gives the count alone without a total", () => {
+    expect(getSelectedKeysLabel(1)).toBe("1 key selected");
+    expect(getSelectedKeysLabel(3)).toBe("3 keys selected");
+  });
+
+  it("adds the total while only part of the list is selected", () => {
+    expect(getSelectedKeysLabel(300, 900)).toBe("300 of 900 keys selected");
+    expect(getSelectedKeysLabel(1, 900)).toBe("1 of 900 keys selected");
+  });
+
+  it("drops the total once every key is selected", () => {
+    expect(getSelectedKeysLabel(900, 900)).toBe("900 keys selected");
   });
 });
 

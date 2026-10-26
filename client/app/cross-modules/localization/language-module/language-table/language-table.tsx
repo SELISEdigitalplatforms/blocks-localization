@@ -104,6 +104,7 @@ import {
   getKeyListErrorCode,
   getPageSizeOptions,
   getResourceSearchFilters,
+  getSelectedKeysLabel,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
@@ -1193,8 +1194,10 @@ export function LanguageTable() {
                       <X className="h-4 w-4" />
                     </Button>
                     <span className="text-sm font-medium">
-                      {selectedKeys.length} key
-                      {selectedKeys.length > 1 ? "s" : ""} selected
+                      {getSelectedKeysLabel(
+                        selectedKeys.length,
+                        isAllView ? allViewTotalCount : undefined,
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

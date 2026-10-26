@@ -169,6 +169,17 @@ export const getPageSizeOptions = (totalCount: number) => {
 export const areAllRowsSelected = (rowIds: string[], selection: RowSelectionState) =>
   rowIds.length > 0 && rowIds.every((rowId) => selection[rowId]);
 
+/**
+ * The selection bar's count. Given the list total (the All view), it also says how many keys there
+ * are, since only loaded rows can be selected and select-all grows as more chunks load.
+ */
+export const getSelectedKeysLabel = (selectedCount: number, totalCount?: number) => {
+  if (totalCount === undefined || selectedCount >= totalCount) {
+    return `${selectedCount} key${selectedCount > 1 ? "s" : ""} selected`;
+  }
+  return `${selectedCount.toLocaleString()} of ${totalCount.toLocaleString()} keys selected`;
+};
+
 /** The selection with the rows added; the same object when they already all are. */
 export const withRowsSelected = (selection: RowSelectionState, rowIds: string[]) => {
   const unselected = rowIds.filter((rowId) => !selection[rowId]);
