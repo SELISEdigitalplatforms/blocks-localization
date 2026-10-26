@@ -163,14 +163,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
         ],
         isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
       });
-      if (!res?.success) {
+      if (res?.success) {
+        setAddedGlossaryIds((ids) => [...new Set([...ids, ...glossaryIds])]);
+      } else {
         toast({
           variant: "destructive",
           title: "Error",
           description: formatErrorMessage(res?.errorMessage),
         });
-      } else {
-        setAddedGlossaryIds((ids) => [...new Set([...ids, ...glossaryIds])]);
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
