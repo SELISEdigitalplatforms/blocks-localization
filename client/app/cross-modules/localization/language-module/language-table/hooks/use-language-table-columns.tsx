@@ -25,7 +25,7 @@ const MODULE_BADGE_SATURATION = 0.7;
 const MODULE_BADGE_LIGHTNESS = 0.55;
 const MIN_TEXT_CONTRAST = 4.5; // WCAG AA for normal-size text
 
-const DARK_TEXT = { color: "#111827", luminance: 0.0117 };
+const DARK_TEXT = { color: "#111827", luminance: 0.0092 };
 const LIGHT_TEXT = { color: "#ffffff", luminance: 1 };
 const BLACK_TEXT = { color: "#000000", luminance: 0 };
 
