@@ -841,6 +841,10 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await tagDialog.getByRole("combobox").click();
         await tagDialog.getByPlaceholder("Search glossary...").fill(names.gu);
         await tagDialog.getByRole("option", { name: names.gu }).click();
+        // The picker is multi-select and stays open over the footer; close it before Update.
+        const picker = tagDialog.getByRole("button", { name: "Search glossary..." });
+        await picker.click();
+        await expect(picker).toHaveAttribute("aria-expanded", "false");
         const payload = await translations.captureKeySave(() =>
           tagDialog.getByRole("button", { name: "Update" }).click(),
         );
