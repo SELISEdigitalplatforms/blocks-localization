@@ -26,6 +26,8 @@ export const LANGUAGE_KEY_ENDPOINTS = {
   ROLLBACK: `${API_BASES.UILM}${KEY_SUBPATH}/RollBack`,
   GET_LOCALIZATION_TIMELINE: `${API_BASES.UILM}${KEY_SUBPATH}/GetLocalizationTimeline`,
   GET_TIMELINE_BY_OPERATION_ID: `${API_BASES.UILM}${KEY_SUBPATH}/GetTimelineByOperationId`,
+  GET_DUPLICATE_SUMMARY: `${API_BASES.UILM}${KEY_SUBPATH}/GetDuplicateSummary`,
+  ENFORCE_UNIQUENESS: `${API_BASES.UILM}${KEY_SUBPATH}/EnforceUniqueness`,
 } as const;
 
 // Language Module endpoints

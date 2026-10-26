@@ -604,6 +604,26 @@ namespace XUnitTest
             _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_WhenTheUniqueKeyIndexRejectsTheMove_ReturnsTargetErrorAndKeepsModule()
+        {
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            _keyRepositoryMock.Setup(r => r.MoveKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), "m2"))
+                .ThrowsAsync(XUnitTest.Shared.MongoExceptionFactory.DuplicateKeyWrite());
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().ContainKey("TargetModuleId").WhoseValue
+                .Should().Be("Keys with the same names now exist in the target module. Rename or delete them before moving");
+            result.Errors.Values.Should().NotContain(v => v.Contains("E11000"));
+            _keyTimelineRepositoryMock.Verify(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()), Times.Never);
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
         #endregion
 
         #region DeleteModuleAsync with DeleteKeys

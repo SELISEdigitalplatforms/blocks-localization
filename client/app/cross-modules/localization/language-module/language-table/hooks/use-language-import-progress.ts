@@ -284,6 +284,10 @@ export const useLanguageImportProgress = ({
           await Promise.allSettled([
             queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all }),
             queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all }),
+            // An import can add duplicates, or turn on duplicate prevention on the worker side.
+            queryClient.invalidateQueries({
+              queryKey: localizationQueryKeys.languageKeys.duplicateSummaryPrefix,
+            }),
           ]);
           if (cancelled) return;
           progressRef.current = null;

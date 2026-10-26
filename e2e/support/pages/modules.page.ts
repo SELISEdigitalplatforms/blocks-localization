@@ -79,7 +79,15 @@ export class ModulesPage {
   }
 
   async closeNewModuleDialog() {
-    await this.page.getByRole("button", { name: "Close" }).click({ force: true });
+    // The dialog animates in and re-centres when its content height changes, so a
+    // forced click on the small X can miss it. Click normally and confirm it closed.
+    const dialog = this.page.getByRole("dialog");
+    await expect(async () => {
+      if (await dialog.isVisible()) {
+        await dialog.getByRole("button", { name: "Close" }).click({ timeout: 2_000 });
+      }
+      await expect(dialog).toBeHidden({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
   }
 
   getRowMenuButton(moduleName: string) {

@@ -24,10 +24,10 @@ test.describe("Extension Guides", () => {
       await guides.expandAccordion(extensionRow);
     });
 
-    await test.step("Chrome Web Store link opens the extension's store page", async () => {
-      const page3 = await guides.clickChromeWebStoreLink();
-      await guides.expectChromeStoreHeadingVisible(page3);
-      await page.bringToFront();
+    // The external store page is not loaded: from the runner Google shows a
+    // cookie-consent page first (approved on #345, Q2: B).
+    await test.step("Chrome Web Store link points to the extension's store listing", async () => {
+      await guides.expectChromeWebStoreLinkTargetsListing();
       await guides.collapseAccordion(extensionRow);
       await guides.expectAccordionCollapsed(extensionRow);
     });

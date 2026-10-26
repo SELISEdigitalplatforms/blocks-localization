@@ -1,0 +1,290 @@
+[
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_GREETING",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "Hello", "Culture": "en-US", "CharacterLength": 5 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_FAREWELL",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "Goodbye", "Culture": "en-US", "CharacterLength": 7 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_01",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 01", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_02",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 02", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_03",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 03", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_04",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 04", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_05",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 05", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_06",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 06", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_07",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 07", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_08",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 08", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_09",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 09", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_10",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 10", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_11",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 11", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_12",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 12", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_13",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 13", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_14",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 14", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_15",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 15", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_16",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 16", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_17",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 17", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_18",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 18", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_19",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 19", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_20",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 20", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_21",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 21", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_22",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 22", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_23",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 23", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_24",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 24", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_25",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 25", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_26",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 26", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_27",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 27", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_28",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 28", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_29",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 29", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  },
+  {
+    "Module": "e2e-import",
+    "KeyName": "E2E_IMPORT_PAGINATION_30",
+    "Routes": ["/e2e/import"],
+    "IsPartiallyTranslated": false,
+    "Resources": [
+      { "Value": "E2E pagination 30", "Culture": "en-US", "CharacterLength": 17 }
+    ]
+  }
+]

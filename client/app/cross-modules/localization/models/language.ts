@@ -45,6 +45,24 @@ export interface ISaveBlocksLanguageKeyPayload {
   context?: string;
 }
 
+/** Duplicate keys (same module and key name) and duplicate module names for the tenant. */
+export interface IDuplicateSummary {
+  keyGroupCount: number;
+  duplicateKeyRowCount: number;
+  extraKeyCount: number;
+  moduleGroupCount: number;
+  extraModuleCount: number;
+  keyUniquenessEnforced: boolean;
+  moduleUniquenessEnforced: boolean;
+}
+
+export interface IEnforceUniquenessResult {
+  keyUniquenessEnforced: boolean;
+  moduleUniquenessEnforced: boolean;
+  keyGroupCount: number;
+  moduleGroupCount: number;
+}
+
 export interface IValidationError {
   propertyName: string;
   errorMessage: string;
