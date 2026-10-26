@@ -3,6 +3,8 @@ import { render, renderHook, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import {
   getCompletenessCellValue,
+  getModuleBadgeStyle,
+  getReadableTextColor,
   hasNonEmptyValue,
   isKeyComplete,
   useLanguageTableColumns,
@@ -155,4 +157,41 @@ it("module cell shows Loading… while an imported module is still being fetched
 it("module cell stays empty when the module is unknown and nothing is pending", () => {
   const { container } = renderModuleCell("m1", { languageModules: [] });
   expect(container.innerHTML).toBe("");
+});
+
+const parseHex = (hex: string) =>
+  [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255);
+const toLinear = (value: number) =>
+  value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+const luminanceOf = (rgb: number[]) =>
+  0.2126 * toLinear(rgb[0]) + 0.7152 * toLinear(rgb[1]) + 0.0722 * toLinear(rgb[2]);
+const parseHsl = (hsl: string) => {
+  const [hue] = /hsl\((\d+)/.exec(hsl)!.slice(1).map(Number);
+  const chroma = 0.7 * Math.min(0.55, 0.45);
+  const channel = (offset: number) => {
+    const k = (offset + hue / 30) % 12;
+    return 0.55 - chroma * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return [channel(0), channel(8), channel(4)];
+};
+
+it("module badge keeps the existing background color format", () => {
+  expect(getModuleBadgeStyle("module-1").backgroundColor).toMatch(/^hsl\(\d+, 70%, 55%\)$/);
+});
+
+it("module badge text meets WCAG AA contrast for many module ids", () => {
+  for (let index = 0; index < 2000; index++) {
+    const style = getModuleBadgeStyle(`module-${index}-${index * 7919}`);
+    const background = luminanceOf(parseHsl(String(style.backgroundColor)));
+    const text = luminanceOf(parseHex(String(style.color)));
+    const ratio =
+      (Math.max(background, text) + 0.05) / (Math.min(background, text) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
+it("getReadableTextColor keeps dark text on light backgrounds and white on dark ones", () => {
+  expect(getReadableTextColor(0.6)).toBe("#111827");
+  expect(getReadableTextColor(0.05)).toBe("#ffffff");
+  expect(getReadableTextColor(0.19)).toBe("#000000");
 });
