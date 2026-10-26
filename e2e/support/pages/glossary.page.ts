@@ -230,7 +230,9 @@ export class GlossaryPage {
   }
 
   async removeVariant(value: string) {
-    await this.editorSheet.getByRole("button", { name: `Remove variant ${value}` }).click();
+    await this.editorSheet
+      .getByRole("button", { name: `Remove variant ${value}`, exact: true })
+      .click();
   }
 
   async setCaseSensitive(on: boolean) {
@@ -322,9 +324,7 @@ export class GlossaryPage {
 
   async openEditFromList(name: string) {
     await this.searchGlossaries(name);
-    await this.waitForRowMenuButton(name);
-    await this.getRowMenuButton(name).click();
-    await this.page.getByRole("menuitem", { name: "Edit" }).click();
+    await this.clickRowMenuItem(name, "Edit");
     await expect(this.editDialog).toBeVisible();
   }
 
@@ -409,17 +409,27 @@ export class GlossaryPage {
     });
   }
 
+  /**
+   * Clicks an item in a row's actions menu. The debounced search refetch can re-render the
+   * row just after the menu opens, which closes it before the item is clicked, so the whole
+   * open-and-click is retried until the click lands.
+   */
+  async clickRowMenuItem(glossaryName: string, item: "Edit" | "Delete") {
+    await this.waitForRowMenuButton(glossaryName);
+    const menuItem = this.page.getByRole("menuitem", { name: item });
+    await expect(async () => {
+      if (!(await menuItem.isVisible())) await this.getRowMenuButton(glossaryName).click();
+      await menuItem.click({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+  }
+
   async waitForRowMenuButton(glossaryName: string, timeout = 20_000) {
     const menuButton = this.getRowMenuButton(glossaryName);
     await expect(menuButton).toBeVisible({ timeout });
   }
 
   async openDeleteGlossaryDialog(glossaryName: string) {
-    await this.waitForRowMenuButton(glossaryName);
-    const menuButton = this.getRowMenuButton(glossaryName);
-    await menuButton.click();
-    await expect(this.page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
-    await this.page.getByRole("menuitem", { name: "Delete" }).click();
+    await this.clickRowMenuItem(glossaryName, "Delete");
     await expect(this.deleteDialog).toBeVisible();
   }
 

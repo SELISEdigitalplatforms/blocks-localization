@@ -971,8 +971,11 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
     test.setTimeout(300_000);
     const translations = new TranslationsPage(page);
     const { fixtures, source, target } = await setUp(page);
-    // C1: the real, unreplaced placeholder means off.
-    expect(await readGlossaryEnforcementFlag(page)).toBe(GLOSSARY_ENFORCEMENT_PLACEHOLDER);
+    // C1: the HTML is served with the unreplaced placeholder (checked in the Q4 test); the
+    // loaded page may clear it to "", and either way the flag reads as off.
+    expect(["", GLOSSARY_ENFORCEMENT_PLACEHOLDER]).toContain(
+      await readGlossaryEnforcementFlag(page),
+    );
 
     try {
       await test.step("Create fixtures", () => fixtures.create(source, target));

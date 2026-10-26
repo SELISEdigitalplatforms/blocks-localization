@@ -433,8 +433,11 @@ test.describe("Glossary", () => {
     await openGlossary(page);
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
-    // Flag-off runs use the placeholder exactly as served (C1).
-    expect(await readGlossaryEnforcementFlag(page)).toBe(GLOSSARY_ENFORCEMENT_PLACEHOLDER);
+    // C1: the HTML is served with the unreplaced placeholder (checked in the Q4 test); the
+    // loaded page may clear it to "", and either way the flag reads as off.
+    expect(["", GLOSSARY_ENFORCEMENT_PLACEHOLDER]).toContain(
+      await readGlossaryEnforcementFlag(page),
+    );
 
     const name = `E2E Stored variants ${Date.now()}`;
     const storedNote = `${META_PREFIX}${JSON.stringify({
