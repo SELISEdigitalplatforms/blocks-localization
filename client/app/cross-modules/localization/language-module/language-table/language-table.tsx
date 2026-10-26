@@ -529,7 +529,6 @@ export function LanguageTable() {
 
     const prevTenantId = prevTenantIdRef.current;
 
-    // On initial mount, load settings for the selected tenant without resetting filters.
     if (prevTenantId === null) {
       prevTenantIdRef.current = tenantId;
       updateLanguageViewTenantId(tenantId);
@@ -754,7 +753,6 @@ export function LanguageTable() {
     if (tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
   }, [queryClient]);
 
-  // New filters or sort start the All view from the top.
   const allViewFiltersHash = JSON.stringify([
     queryParams.search,
     queryParams.moduleIds,
@@ -770,8 +768,6 @@ export function LanguageTable() {
     if (isAllView && tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
   }, [isAllView, allViewFiltersHash]);
 
-  // A cursor the server no longer accepts (e.g. data changed shape) restarts the view once; a repeat
-  // failure is left to the Retry row rather than looping.
   const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
   useEffect(() => {
     if (!isAllView || !allViewErrorCode || !CURSOR_RESET_ERROR_CODES.has(allViewErrorCode)) return;
@@ -780,8 +776,6 @@ export function LanguageTable() {
     resetAllView();
   }, [isAllView, allViewErrorCode, resetAllView]);
 
-  // Old "All (n)" bookmarks carry a number the parser maps to "all" (and odd sizes to a preset);
-  // rewrite the URL so it matches what is shown.
   useEffect(() => {
     const rawPageSize = new URLSearchParams(globalThis.location?.search ?? "").get("pageSize");
     if (rawPageSize !== null && rawPageSize !== String(queryParams.pageSize)) {
@@ -821,6 +815,10 @@ export function LanguageTable() {
     });
   };
 
+  const clearTranslatingKeys = (keyIds: Set<string>) => {
+    setTranslatingKeys((prev) => removeKeysFromSet(prev, keyIds));
+  };
+
   const onConfirmBulkTranslate = async () => {
     if (!tenantId || selectedKeys.length === 0) return;
 
@@ -838,16 +836,12 @@ export function LanguageTable() {
         description: "Key translation in progress for selected keys.",
       },
       onSuccess: () => {
-        // Track all selected keys as translating (for showing skeleton/loading state)
         const keysToTranslate = new Set(selectedKeys);
         setTranslatingKeys((prev) => addKeysToSet(prev, selectedKeys));
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
 
-        // Clear translating state after timeout (bulk translate doesn't have individual polling)
-        setTimeout(() => {
-          setTranslatingKeys((prev) => removeKeysFromSet(prev, keysToTranslate));
-        }, 60000); // 60 seconds timeout
+        setTimeout(() => clearTranslatingKeys(keysToTranslate), 60000);
       },
       describeErrors: stringifyError,
       describeException: stringifyError,
