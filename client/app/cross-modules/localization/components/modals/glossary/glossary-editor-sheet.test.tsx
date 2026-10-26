@@ -9,6 +9,9 @@ import GlossaryEditorSheet from "./glossary-editor-sheet";
 
 const saveGlossaryAsync = vi.fn();
 const navigate = vi.fn();
+const { isGlossaryEnforcementEnabled } = vi.hoisted(() => ({
+  isGlossaryEnforcementEnabled: vi.fn(() => false),
+}));
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -18,6 +21,7 @@ vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
+vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled }));
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
   showErrorToast: vi.fn(),
@@ -71,6 +75,7 @@ const openForbidden = (code: string) => {
 describe("modals/glossary/glossary-editor-sheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isGlossaryEnforcementEnabled.mockReturnValue(false);
     saveGlossaryAsync.mockResolvedValue({ success: true });
     vi.mocked(hooks.useSaveGlossary).mockReturnValue({
       isPending: false,
@@ -211,7 +216,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(lastPayload().context).toBe("⟦rule: do not use this term; avoid de-DE: Werkraum⟧");
   });
 
-  it("should not show Variants or Case-sensitive and keep their stored values on save", async () => {
+  it("should not show Variants or Case-sensitive with the flag off and keep their stored values on save (C17)", async () => {
     const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"],"translations":{"de-DE":"Arbeitsbereich"}}`;
     renderSheet(makeGlossary({ additionalNote }));
     expect(screen.queryByLabelText("Variants")).toBeNull();
@@ -223,6 +228,109 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(saved.caseSensitive).toBe(true);
     expect(saved.variants).toEqual(["workspaces"]);
     expect(saved.translations["de-DE"]).toBe("Arbeitsraum");
+  });
+
+  describe("variants and case-sensitive (flag on)", () => {
+    beforeEach(() => {
+      isGlossaryEnforcementEnabled.mockReturnValue(true);
+    });
+
+    const savedMeta = () => JSON.parse(lastPayload().additionalNote.slice(PREFIX.length));
+
+    it("should add variants with Enter, comma or leaving the field as removable chips (H13)", async () => {
+      renderSheet(makeGlossary());
+      const input = screen.getByLabelText("Variants");
+      expect(input.id).toBe("glossary-variants");
+      expect(input.getAttribute("placeholder")).toBe("Plurals, synonyms… press Enter or comma");
+      addChip(input, "workspaces");
+      fireEvent.change(input, { target: { value: "work area,team space," } });
+      fireEvent.change(input, { target: { value: "work room" } });
+      fireEvent.blur(input);
+      expect(screen.getByText("workspaces")).toBeTruthy();
+      expect(screen.getByText("work area")).toBeTruthy();
+      expect(screen.getByText("work room")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Remove variant work area" }));
+      expect(screen.queryByText("work area")).toBeNull();
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(savedMeta().variants).toEqual(["workspaces", "team space", "work room"]);
+    });
+
+    it("should show the Case-sensitive switch after Rule and save it (H14)", async () => {
+      renderSheet(makeGlossary());
+      const toggle = screen.getByRole("switch", { name: "Case-sensitive" });
+      const keep = screen.getByRole("radio", { name: "Keep" });
+      expect(keep.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        toggle.compareDocumentPosition(screen.getByLabelText("Variants")) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+      fireEvent.click(toggle);
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(savedMeta().caseSensitive).toBe(true);
+    });
+
+    it("should load stored values and save edits to them (H13, H14)", async () => {
+      const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"]}`;
+      renderSheet(makeGlossary({ additionalNote }));
+      const toggle = screen.getByRole("switch", { name: "Case-sensitive" });
+      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      expect(screen.getByText("workspaces")).toBeTruthy();
+      fireEvent.click(toggle);
+      fireEvent.click(screen.getByRole("button", { name: "Remove variant workspaces" }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      const saved = savedMeta();
+      expect(saved.caseSensitive ?? false).toBe(false);
+      expect(saved.variants ?? []).toEqual([]);
+    });
+
+    it("should block a variant equal to the term and duplicate variants (C16)", async () => {
+      renderSheet(makeGlossary());
+      const input = screen.getByLabelText("Variants");
+      addChip(input, "workspace ");
+      save();
+      expect(await screen.findByText("Variant can't be the same as the term")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Remove variant workspace" }));
+      addChip(input, "Area");
+      addChip(input, "area");
+      save();
+      expect(await screen.findByText("Variant already listed")).toBeTruthy();
+      expect(saveGlossaryAsync).not.toHaveBeenCalled();
+    });
+
+    it("should block more than 20 variants and variants over 200 characters", async () => {
+      renderSheet(makeGlossary());
+      const input = screen.getByLabelText("Variants");
+      addChip(input, "x".repeat(201));
+      save();
+      expect(await screen.findByText("Variant must be 200 characters or fewer")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: `Remove variant ${"x".repeat(201)}` }));
+      fireEvent.change(input, {
+        target: { value: `${Array.from({ length: 21 }, (_, i) => `v${i}`).join(",")},` },
+      });
+      save();
+      expect(await screen.findByText("Add at most 20 variants")).toBeTruthy();
+      expect(saveGlossaryAsync).not.toHaveBeenCalled();
+    });
+
+    it("should start a corrupt term with Case-sensitive off and no variants", () => {
+      renderSheet(makeGlossary({ additionalNote: `${PREFIX}{broken` }));
+      expect(
+        screen.getByRole("switch", { name: "Case-sensitive" }).getAttribute("aria-checked"),
+      ).toBe("false");
+      expect(screen.queryByRole("button", { name: /^Remove variant / })).toBeNull();
+    });
+
+    it("should disable both fields for an unsupported version", () => {
+      renderSheet(makeGlossary({ additionalNote: "@@glossary-meta:v2@@{}" }));
+      expect(
+        (screen.getByRole("switch", { name: "Case-sensitive" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+      expect((screen.getByLabelText("Variants") as HTMLInputElement).disabled).toBe(true);
+    });
   });
 
   it("should block a forbidden alternative equal to the translation (C5)", async () => {

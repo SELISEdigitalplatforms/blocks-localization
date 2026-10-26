@@ -571,6 +571,24 @@ describe("LanguageManagerService", () => {
     });
   });
 
+  it("getTranslationSuggestion should pass elementDetailContext through unchanged", async () => {
+    vi.mocked(http.post).mockResolvedValue({ content: "Hallo", errors: null, isSuccess: true });
+    const payload = {
+      sourceText: "Hello",
+      destinationLanguage: "German",
+      currentLanguage: "English",
+      temperature: 0.1,
+      elementDetailContext: "Translate a user interface string.\n",
+      glossaryIds: [],
+      destinationLanguageCode: "de-DE",
+    };
+    await service.getTranslationSuggestion(payload);
+    expect(http.post).toHaveBeenCalledWith(
+      LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION,
+      payload,
+    );
+  });
+
   // ─── translateAll ────────────────────────────────────────────────────────
   describe("translateAll", () => {
     it("should POST to TRANSLATE_ALL endpoint", async () => {

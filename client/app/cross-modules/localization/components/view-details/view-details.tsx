@@ -16,10 +16,21 @@ import {
   useGetModuleGlossaries,
   useSaveBlocksLanguageKey,
 } from "../../hooks/use-language-manager";
-import { IBlocksLanguageKey } from "../../models/language";
+import {
+  useGetAllGlossaries,
+  useLoadAllGlossaries,
+} from "../../hooks/use-glossary-aware-suggestion";
+import { IBlocksLanguageKey, IGlossary } from "../../models/language";
+import { buildGlossaryMatcher } from "../../utils/glossary-matcher";
+import { getDefaultLanguage } from "../../utils/glossary-rule-marker";
+import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
+import { toast } from "@/hooks/use-toast";
+import { formatErrorMessage } from "@/lib/error";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
+
+const MAX_SHOWN_SUGGESTIONS = 10;
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const { mutateAsync: saveKey } = useSaveBlocksLanguageKey();
@@ -33,13 +44,20 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const [isEditGlossaryDialogOpen, setIsEditGlossaryDialogOpen] = useState(false);
   const [editTranslationLangCode, setEditTranslationLangCode] = useState<string | null>(null);
 
+  const [isTagging, setIsTagging] = useState(false);
+
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
+  const glossaryEnforcement = isGlossaryEnforcementEnabled();
 
   const { data: allGlossariesData } = useGetGlossaries(0, 100);
+  // With the flag on, suggestions come from the matcher instead (no GetSuggestedGlossaries call).
   const { data: suggestedGlossariesData } = useGetSuggestedGlossaries(
     keyDetails.itemId,
-    !hasGlossaryIds,
+    !hasGlossaryIds && !glossaryEnforcement,
   );
+  // The full glossary, loaded once (flag on): View Details suggestions and Edit translation.
+  const { data: allTerms } = useGetAllGlossaries(glossaryEnforcement);
+  const loadGlossaries = useLoadAllGlossaries();
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
 
@@ -89,6 +107,65 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     return result;
   }, [globalGlossariesData, moduleGlossariesData, keyDetails.glossaryIds]);
 
+  // Untagged, non-global terms of other modules found in the default-language text (H10).
+  const glossarySuggestions = useMemo(() => {
+    if (!glossaryEnforcement || !allTerms?.length) return [];
+    const defaultLanguage = getDefaultLanguage(languageListData);
+    const source = keyDetails.resources?.find(
+      (resource) => resource.culture === defaultLanguage?.languageCode,
+    )?.value;
+    if (!defaultLanguage || !source?.trim()) return [];
+    const matches = buildGlossaryMatcher(allTerms).match(source, {
+      scopeMode: "all",
+      sourceCulture: defaultLanguage.languageCode,
+      keyGlossaryIds: keyDetails.glossaryIds,
+      moduleId: keyDetails.moduleId,
+    });
+    const seen = new Set<string>();
+    const result: IGlossary[] = [];
+    for (const match of matches) {
+      if (match.scope !== "other" || seen.has(match.glossary.itemId)) continue;
+      seen.add(match.glossary.itemId);
+      result.push(match.glossary);
+    }
+    return result;
+  }, [
+    glossaryEnforcement,
+    allTerms,
+    languageListData,
+    keyDetails.resources,
+    keyDetails.glossaryIds,
+    keyDetails.moduleId,
+  ]);
+
+  // Saves the full current key with the glossaries added, keeping context and routes (H11).
+  const tagGlossaries = async (glossaryIds: string[]) => {
+    setIsTagging(true);
+    try {
+      const res = await saveKey({
+        itemId: keyDetails.itemId,
+        keyName: keyDetails.keyName,
+        moduleId: keyDetails.moduleId,
+        resources: keyDetails.resources ?? [],
+        routes: keyDetails.routes ?? [],
+        context: keyDetails.context,
+        glossaryIds: [...new Set([...(keyDetails.glossaryIds ?? []), ...glossaryIds])],
+        isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
+      });
+      if (!res?.success) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: formatErrorMessage(res?.errorMessage),
+        });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
+    } finally {
+      setIsTagging(false);
+    }
+  };
+
   if (isLanguageListLoading || isLanguageListLoadingFetching || !languageListData) {
     return (
       <div>
@@ -124,6 +201,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   destinationLanguageCode={languageListData[0].languageCode}
                   languageListData={languageListData}
                   onClose={() => setEditTranslationLangCode(null)}
+                  loadGlossaries={loadGlossaries}
                 />
               </Dialog>
             </div>
@@ -164,6 +242,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       destinationLanguageCode={language.languageCode}
                       languageListData={languageListData}
                       onClose={() => setEditTranslationLangCode(null)}
+                      loadGlossaries={loadGlossaries}
                     />
                   </Dialog>
                 </div>
@@ -361,6 +440,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                                     moduleId: keyDetails.moduleId,
                                     resources: keyDetails.resources ?? [],
                                     routes: keyDetails.routes ?? [],
+                                    context: keyDetails.context,
                                     glossaryIds: [
                                       ...(keyDetails.glossaryIds ?? []),
                                       glossary.itemId,
@@ -378,6 +458,46 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       </div>
                     </div>
                   )}
+              </div>
+            )}
+            {glossarySuggestions.length > 0 && (
+              <div className="mt-3 space-y-2 border-t pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">Suggested glossaries</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2"
+                    disabled={isTagging}
+                    onClick={() => void tagGlossaries(glossarySuggestions.map((g) => g.itemId))}
+                  >
+                    Add all
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {glossarySuggestions.slice(0, MAX_SHOWN_SUGGESTIONS).map((glossary) => (
+                    <Badge key={glossary.itemId} variant="outline" className="gap-1">
+                      {glossary.name}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-5 w-5 p-0"
+                        aria-label={`Tag ${glossary.name} to key`}
+                        disabled={isTagging}
+                        onClick={() => void tagGlossaries([glossary.itemId])}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </Badge>
+                  ))}
+                  {glossarySuggestions.length > MAX_SHOWN_SUGGESTIONS && (
+                    <span className="text-xs text-muted-foreground">
+                      +{glossarySuggestions.length - MAX_SHOWN_SUGGESTIONS} more
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>

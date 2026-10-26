@@ -115,6 +115,23 @@ describe("lib/runtime-env", () => {
     });
   });
 
+  // ─── BLOCKS_GLOSSARY_ENFORCEMENT ──────────────────────────────────────────
+  describe("BLOCKS_GLOSSARY_ENFORCEMENT", () => {
+    it("returns the runtime value when the server replaced the placeholder", () => {
+      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
+        BLOCKS_GLOSSARY_ENFORCEMENT: "true",
+      };
+      expect(getRuntimeEnv("BLOCKS_GLOSSARY_ENFORCEMENT")).toBe("true");
+    });
+
+    it("treats the unreplaced placeholder as unset", () => {
+      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
+        BLOCKS_GLOSSARY_ENFORCEMENT: "__BLOCKS_GLOSSARY_ENFORCEMENT__",
+      };
+      expect(getRuntimeEnv("BLOCKS_GLOSSARY_ENFORCEMENT")).toBe("");
+    });
+  });
+
   // ─── import.meta.env fallback ────────────────────────────────────────────
   describe("import.meta.env fallback", () => {
     it("should fall back to vite env when window env is absent", () => {

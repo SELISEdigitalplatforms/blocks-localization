@@ -23,6 +23,7 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { CircleAlert, Pencil, Trash, TriangleAlert } from "lucide-react";
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import {
   useGetGlossaryById,
   useGetKeysByGlossaryId,
@@ -198,6 +199,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
   const parsedMeta = parseGlossaryMeta(glossary.additionalNote);
   const { meta } = parsedMeta;
+  // Case-sensitive and variants only affect matching, which runs only with the flag on.
+  const showMatchingOptions = isGlossaryEnforcementEnabled();
   const moduleCount = glossary.moduleIds?.length ?? 0;
   const moduleSuffix = moduleCount === 1 ? "" : "s";
   const scopeLabel = glossary.isGlobal ? "Whole project" : `${moduleCount} module${moduleSuffix}`;
@@ -339,7 +342,22 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <Badge variant="outline" className="w-fit">
           {scopeLabel}
         </Badge>
+        {showMatchingOptions && meta.caseSensitive && (
+          <Badge variant="outline" className="w-fit">
+            Case-sensitive
+          </Badge>
+        )}
       </div>
+      {showMatchingOptions && meta.variants.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-medium-emphasis">Variants:</span>
+          {meta.variants.map((variant) => (
+            <Badge key={variant} variant="secondary" className="w-fit">
+              {variant}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="rounded-sm shadow-none lg:col-span-2">

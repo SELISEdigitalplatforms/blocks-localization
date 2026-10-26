@@ -264,7 +264,8 @@ export class LanguageManagerService {
     destinationLanguage: string;
     currentLanguage: string;
     temperature: number;
-    // elementDetailContext: string;
+    /** Replaces the server's default instruction; the server appends its glossary lines and the source text. */
+    elementDetailContext?: string;
     glossaryIds?: string[];
     moduleId?: string;
     destinationLanguageCode?: string;

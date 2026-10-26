@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import {
-  useGetTranslationSuggestion,
-  useSaveBlocksLanguageKey,
-} from "@blocks-localization/hooks/use-language-manager";
+import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
+import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
+import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
 
@@ -23,8 +23,15 @@ export const useInlineKeyEditor = (
   languageListData: ILanguageConfig[],
 ) => {
   const { isPending: isSaving, mutateAsync: saveKeyAsync } = useSaveBlocksLanguageKey();
-  const { isPending: isAutoTranslating, mutateAsync: suggestTranslationAsync } =
-    useGetTranslationSuggestion();
+  const loadGlossaries = useLoadAllGlossaries();
+  // Per-language suggestion state; unmounting (row collapsed) drops in-flight responses (C22).
+  const {
+    request,
+    isPending: isAutoTranslating,
+    getRow: getGlossaryRow,
+    clearViolations,
+    fix,
+  } = useGlossarySuggestionRows({ loadGlossaries });
   const sortedLanguages = useMemo(
     () => [...languageListData].sort((a, b) => Number(b.isDefault) - Number(a.isDefault)),
     [languageListData],
@@ -42,12 +49,24 @@ export const useInlineKeyEditor = (
   const hasChanges = changedCultures.length > 0;
   const hasEmptyChange = changedCultures.some((culture) => !draftTranslations[culture]?.trim());
 
-  const setTranslation = (culture: string, value: string) => {
+  const setDraftTranslation = (culture: string, value: string) => {
     setDraftTranslations((current) => ({ ...current, [culture]: value }));
+  };
+
+  /** A user edit: the suggestion's violation list no longer applies (C11). */
+  const setTranslation = (culture: string, value: string) => {
+    setDraftTranslation(culture, value);
+    clearViolations(culture);
   };
 
   const discardChanges = () => {
     setDraftTranslations({ ...savedTranslations });
+    clearViolations();
+  };
+
+  const fixViolation = (culture: string, violation: GlossaryViolation) => {
+    const fixed = fix(culture, violation, draftTranslations[culture] ?? "");
+    if (fixed !== null) setDraftTranslation(culture, fixed);
   };
 
   const saveChanges = async () => {
@@ -108,45 +127,48 @@ export const useInlineKeyEditor = (
 
     if (!defaultLanguage || !destinationLanguage) return;
 
-    try {
-      const response = await suggestTranslationAsync({
-        sourceText: draftTranslations[defaultLanguage.languageCode] ?? "",
+    const sourceText = draftTranslations[defaultLanguage.languageCode] ?? "";
+    const outcome = await request({
+      requestKey: destinationLanguageCode,
+      legacyPayload: {
+        sourceText,
         destinationLanguage: destinationLanguage.languageName || "English",
         currentLanguage: defaultLanguage.languageName || "English",
         temperature: 0.1,
         glossaryIds: keyDetails.glossaryIds,
         moduleId: keyDetails.moduleId,
         destinationLanguageCode,
-      });
-
-      if (response.content) {
-        setTranslation(destinationLanguageCode, response.content);
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "Translated successfully",
-        });
-        return;
-      }
-
+      },
+      sourceText,
+      defaultLanguage,
+      targetLanguage: destinationLanguage,
+      keyContext: keyDetails.context,
+      keyGlossaryIds: keyDetails.glossaryIds,
+      moduleId: keyDetails.moduleId,
+    });
+    if (outcome.status === "stale") return;
+    if (outcome.status === "success") {
+      setDraftTranslation(destinationLanguageCode, outcome.content);
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(response?.errors),
+        variant: "success",
+        title: "Success",
+        description: "Translated successfully",
       });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
-      });
+      return;
     }
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
+    });
   };
 
   return {
     autoTranslate,
     discardChanges,
     draftTranslations,
+    fixViolation,
+    getGlossaryRow,
     hasChanges,
     hasEmptyChange,
     isAutoTranslating,
