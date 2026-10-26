@@ -251,6 +251,22 @@ describe("utils/glossary-matcher", () => {
     ]);
   });
 
+  it("folds the Greek final sigma in case-insensitive matching (m3)", () => {
+    const upper = glossary({ itemId: "u", name: "ΟΔΟΣ", isGlobal: true });
+    const lower = glossary({ itemId: "l", name: "οδος", isGlobal: true });
+    const el: MatchOptions = { sourceCulture: "el-GR", scopeMode: "applicable" };
+    expect(
+      buildGlossaryMatcher([upper])
+        .match("Η οδος εδώ", el)
+        .map((match) => [match.surface, match.start, match.length]),
+    ).toEqual([["οδος", 2, 4]]);
+    expect(
+      buildGlossaryMatcher([lower])
+        .match("Η ΟΔΟΣ εδώ", el)
+        .map((match) => [match.surface, match.start, match.length]),
+    ).toEqual([["ΟΔΟΣ", 2, 4]]);
+  });
+
   describe("performance budgets (C14; median of 5 runs, fail at 2×)", () => {
     const syllables = ["ka", "lo", "mi", "ne", "su", "ta", "ri", "po", "de", "fa", "gu", "he"];
     const word = (seed: number, size: number) => {
@@ -296,6 +312,8 @@ describe("utils/glossary-matcher", () => {
       const buildTimes: number[] = [];
       const matchTimes: number[] = [];
       let found = 0;
+      // One untimed warm-up run, so JIT compilation doesn't count against the first sample.
+      buildGlossaryMatcher(makeFixture()).match(source, { ...en, moduleId: "M" });
       for (let run = 0; run < 5; run++) {
         const list = makeFixture();
         const buildStart = performance.now();
@@ -314,6 +332,10 @@ describe("utils/glossary-matcher", () => {
     it("keeps match + prompt + validation within 20 ms per suggestion", () => {
       const matcher = buildGlossaryMatcher(makeFixture());
       const times: number[] = [];
+      // One untimed warm-up run, as above.
+      const warmUp = matcher.match(source, { ...en, moduleId: "M" });
+      buildTranslationPrompt({ matches: warmUp, targetCulture: "de-DE" });
+      validateTranslation(source, warmUp, "de-DE");
       for (let run = 0; run < 5; run++) {
         const start = performance.now();
         const matches = matcher.match(source, { ...en, moduleId: "M" });

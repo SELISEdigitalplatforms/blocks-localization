@@ -45,6 +45,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const [editTranslationLangCode, setEditTranslationLangCode] = useState<string | null>(null);
 
   const [isTagging, setIsTagging] = useState(false);
+  // Tags added here whose key refetch has not landed yet (M1); merged into the next save.
+  const [addedGlossaryIds, setAddedGlossaryIds] = useState<string[]>([]);
+  const [seenKeyGlossaryIds, setSeenKeyGlossaryIds] = useState(keyDetails.glossaryIds);
+  if (seenKeyGlossaryIds !== keyDetails.glossaryIds) {
+    setSeenKeyGlossaryIds(keyDetails.glossaryIds);
+    const keyIds = new Set(keyDetails.glossaryIds ?? []);
+    setAddedGlossaryIds((ids) => ids.filter((id) => !keyIds.has(id)));
+  }
 
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
   const glossaryEnforcement = isGlossaryEnforcementEnabled();
@@ -121,7 +129,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
       keyGlossaryIds: keyDetails.glossaryIds,
       moduleId: keyDetails.moduleId,
     });
-    const seen = new Set<string>();
+    const seen = new Set<string>(addedGlossaryIds);
     const result: IGlossary[] = [];
     for (const match of matches) {
       if (match.scope !== "other" || seen.has(match.glossary.itemId)) continue;
@@ -136,6 +144,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     keyDetails.resources,
     keyDetails.glossaryIds,
     keyDetails.moduleId,
+    addedGlossaryIds,
   ]);
 
   // Saves the full current key with the glossaries added, keeping context and routes (H11).
@@ -149,7 +158,9 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
         resources: keyDetails.resources ?? [],
         routes: keyDetails.routes ?? [],
         context: keyDetails.context,
-        glossaryIds: [...new Set([...(keyDetails.glossaryIds ?? []), ...glossaryIds])],
+        glossaryIds: [
+          ...new Set([...(keyDetails.glossaryIds ?? []), ...addedGlossaryIds, ...glossaryIds]),
+        ],
         isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
       });
       if (!res?.success) {
@@ -158,6 +169,8 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           title: "Error",
           description: formatErrorMessage(res?.errorMessage),
         });
+      } else {
+        setAddedGlossaryIds((ids) => [...new Set([...ids, ...glossaryIds])]);
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });

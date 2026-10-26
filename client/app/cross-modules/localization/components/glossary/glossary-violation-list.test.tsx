@@ -1,6 +1,7 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
@@ -64,16 +65,40 @@ const missingKeep: GlossaryViolation = {
 };
 
 describe("GlossaryViolationList", () => {
-  it("renders nothing without violations", () => {
-    const { container } = render(
-      <GlossaryViolationList
-        violations={[]}
-        matches={matches}
-        targetCulture="de-DE"
-        onFix={vi.fn()}
-        onRetry={vi.fn()}
-      />,
-    );
+  const list = (violations: GlossaryViolation[]) => (
+    <GlossaryViolationList
+      violations={violations}
+      matches={matches}
+      targetCulture="de-DE"
+      onFix={vi.fn()}
+      onRetry={vi.fn()}
+    />
+  );
+
+  it("keeps an empty polite live region mounted without violations (flag on)", () => {
+    render(list([]));
+    const region = screen.getByRole("status");
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.textContent).toBe("");
+    expect(region.className).toBe("sr-only");
+    expect(screen.queryByRole("list")).toBeNull();
+  });
+
+  it("fills the same live region when violations arrive, so they are announced", () => {
+    const { rerender } = render(list([]));
+    const region = screen.getByRole("status");
+    rerender(list([forbidden]));
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region.querySelector("ul")).not.toBeNull();
+    expect(region.className).toContain("mt-2 block");
+    rerender(list([]));
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region.textContent).toBe("");
+  });
+
+  it("renders nothing without violations when the flag is off", () => {
+    vi.mocked(isGlossaryEnforcementEnabled).mockReturnValueOnce(false);
+    const { container } = render(list([]));
     expect(container.innerHTML).toBe("");
   });
 

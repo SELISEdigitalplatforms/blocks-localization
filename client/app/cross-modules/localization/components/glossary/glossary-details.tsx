@@ -351,8 +351,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       {showMatchingOptions && meta.variants.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-sm text-medium-emphasis">Variants:</span>
-          {meta.variants.map((variant) => (
-            <Badge key={variant} variant="secondary" className="w-fit">
+          {meta.variants.map((variant, index) => (
+            // Stored variants may repeat (written by other clients), so the index keeps keys unique.
+            <Badge key={`${variant}-${index}`} variant="secondary" className="w-fit">
               {variant}
             </Badge>
           ))}

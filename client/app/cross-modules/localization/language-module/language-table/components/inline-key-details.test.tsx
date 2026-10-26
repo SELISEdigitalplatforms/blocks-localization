@@ -90,6 +90,13 @@ const deferred = <T,>() => {
   return { promise, resolve };
 };
 
+/**
+ * No violation list and no info line. The polite live region stays mounted while empty, so
+ * this checks that every status region is empty instead of that none exists.
+ */
+const expectNoStatusContent = () =>
+  expect(screen.queryAllByRole("status").filter((region) => region.textContent !== "")).toEqual([]);
+
 describe("InlineKeyDetails — glossary-aware suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -159,12 +166,12 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
       fireEvent.click(button("Fix"));
       expect(textbox("German translation").value).toBe("Öffnen Sie Ihren Arbeitsbereich");
       expect(screen.queryByText('"Werkbereich" is not allowed')).toBeNull();
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
 
       fireEvent.click(button("Auto-translate German"));
       await screen.findByText('"Werkbereich" is not allowed');
       fireEvent.change(textbox("German translation"), { target: { value: "Hallo" } });
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("shows the info line when the glossary cannot be loaded (C6)", async () => {

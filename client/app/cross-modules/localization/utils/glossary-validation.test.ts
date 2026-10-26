@@ -178,7 +178,70 @@ describe("utils/glossary-validation validateTranslation", () => {
   });
 });
 
+// The approved translation starts with the stored forbidden value (m1).
+const PORTAL = glossary({
+  itemId: "p",
+  name: "Portal",
+  additionalNote: meta({
+    rule: "translate",
+    translations: { "de-DE": "Portalseite" },
+    forbidden: { "de-DE": ["Portal"] },
+  }),
+});
+const portal = match([PORTAL], "Open the Portal");
+const portalUsed: GlossaryViolation = {
+  glossaryId: "p",
+  term: "Portal",
+  kind: "forbidden-used",
+  found: "Portal",
+};
+
+describe("utils/glossary-validation forbidden value inside the approved translation (m1)", () => {
+  it("does not report a forbidden value that is part of the approved translation", () => {
+    expect(validateTranslation("Öffne Portalseite", portal, "de-DE")).toEqual([]);
+    expect(validateTranslation("Öffne die Portalseiten", portal, "de-DE")).toEqual([]);
+  });
+
+  it("still reports a forbidden occurrence outside the approved translation", () => {
+    expect(validateTranslation("Öffne Portalseite im Portal", portal, "de-DE")).toEqual([
+      portalUsed,
+    ]);
+    expect(validateTranslation("Öffne Portal", portal, "de-DE")).toEqual([
+      { glossaryId: "p", term: "Portal", kind: "missing-translation", expected: "Portalseite" },
+      portalUsed,
+    ]);
+  });
+
+  it("applyFix never replaces inside the approved translation", () => {
+    expect(applyFix("Öffne Portalseite", portalUsed, portal, "de-DE")).toBeNull();
+    const fixed = applyFix("Öffne Portalseite im Portal", portalUsed, portal, "de-DE");
+    expect(fixed).toBe("Öffne Portalseite im Portalseite");
+    expect(validateTranslation(fixed ?? "", portal, "de-DE")).toEqual([]);
+    expect(applyFix("Öffne Portal", portalUsed, portal, "de-DE")).toBe("Öffne Portalseite");
+  });
+});
+
 describe("utils/glossary-validation findInTarget", () => {
+  it("folds the Greek final sigma when comparing case-insensitively (m3)", () => {
+    const options = { caseInsensitive: true, targetCulture: "el-GR" };
+    expect(findInTarget("Η οδος εδώ", "ΟΔΟΣ", options)).toEqual({ start: 2, length: 4 });
+    expect(findInTarget("Η ΟΔΟΣ εδώ", "οδος", options)).toEqual({ start: 2, length: 4 });
+    expect(findInTarget("Η ΟΔΟΣ εδώ", "οδος", { ...options, caseInsensitive: false })).toBeNull();
+  });
+
+  it("rejects a match that ends inside a case expansion (m4)", () => {
+    const options = { caseInsensitive: true, targetCulture: "en-US" };
+    // "İ" lower-cases to "i" + U+0307: "i" alone is only half of that character.
+    expect(findInTarget("İstanbul", "i", options)).toBeNull();
+    expect(findInTarget("İstanbul", "i", { ...options, anywhere: true })).toBeNull();
+    expect(findInTarget("İi", "i", { ...options, anywhere: true })).toEqual({
+      start: 1,
+      length: 1,
+    });
+    expect(findInTarget("İstanbul", "istanbul", options)).toBeNull();
+    expect(findInTarget("İstanbul", "i̇stanbul", options)).toEqual({ start: 0, length: 8 });
+  });
+
   it("returns offsets in the original text even when lower-casing changes lengths", () => {
     expect(
       findInTarget("İİ Werkbereich", "werkbereich", {
@@ -236,6 +299,12 @@ describe("utils/glossary-validation applyFix", () => {
     expect(applyFix("Projektwerkbereich", forbiddenUsed, ws, "de-DE")).toBe(
       "ProjektArbeitsbereich",
     );
+  });
+
+  it("never inserts at a zero-length match inside a case expansion (m4)", () => {
+    const halfI: GlossaryViolation = { ...forbiddenUsed, found: "i" };
+    expect(applyFix("İstanbul", halfI, ws, "de-DE")).toBeNull();
+    expect(applyFix("İ", halfI, ws, "de-DE")).toBeNull();
   });
 
   it("offers no fix without a deterministic replacement (A5)", () => {

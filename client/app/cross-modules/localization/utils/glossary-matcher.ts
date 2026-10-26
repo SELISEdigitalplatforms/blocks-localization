@@ -70,8 +70,17 @@ export const isWordStart = (text: string, index: number): boolean =>
 const isWordEnd = (text: string, index: number): boolean =>
   !LETTER_OR_DIGIT.test(charAt(text, index));
 
+/**
+ * Lower-cases one code point. The Greek final sigma "ς" folds to "σ" (same length), because
+ * "Σ" always lowers to "σ" when lowered on its own.
+ */
+const foldChar = (char: string): string => {
+  const lower = char.toLowerCase();
+  return lower === "ς" ? "σ" : lower;
+};
+
 /** Lower-cases one code point at a time, so both sides fold the same way. */
-const foldCase = (value: string) => Array.from(value, (char) => char.toLowerCase()).join("");
+const foldCase = (value: string) => Array.from(value, foldChar).join("");
 
 /**
  * The folded text plus offset maps in both directions. `toOriginal` is only set where a
@@ -83,7 +92,7 @@ const foldWithOffsets = (text: string) => {
   const toOriginal: (number | undefined)[] = [];
   let index = 0;
   for (const char of text) {
-    const lower = char.toLowerCase();
+    const lower = foldChar(char);
     toFolded[index] = folded.length;
     toOriginal[folded.length] = index;
     folded += lower;

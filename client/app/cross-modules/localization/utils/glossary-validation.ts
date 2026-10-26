@@ -27,19 +27,28 @@ interface Occurrence {
   length: number;
 }
 
-/** Lower-cases one code point at a time and maps every lowered index back to the original. */
+/**
+ * Lower-cases one code point at a time. `map` gives the original index only where a lowered
+ * code point starts, so a match starting or ending inside a case expansion ("İ" → "i̇") is
+ * rejected instead of covering half a character.
+ */
 const lowerWithMap = (text: string, locale: string) => {
   let lowered = "";
-  const map: number[] = [];
+  const map: (number | undefined)[] = [];
   let index = 0;
   for (const char of text) {
-    lowered += safeLower(char, locale);
-    // One entry per lowered code unit.
-    while (map.length < lowered.length) map.push(index);
+    map[lowered.length] = index;
+    lowered += lowerChar(char, locale);
     index += char.length;
   }
-  map.push(index);
+  map[lowered.length] = index;
   return { lowered, map };
+};
+
+/** The Greek final sigma "ς" folds to "σ" (same length), as "Σ" lowers to "σ" on its own. */
+const lowerChar = (char: string, locale: string) => {
+  const lower = safeLower(char, locale);
+  return lower === "ς" ? "σ" : lower;
 };
 
 const safeLower = (value: string, locale: string) => {
@@ -50,25 +59,21 @@ const safeLower = (value: string, locale: string) => {
   }
 };
 
-/**
- * Finds `value` in `text` where it starts a word; trailing letters are allowed so
- * inflected forms ("Arbeitsbereichs") count (A11). No-space languages: plain substring.
- * Returns the first occurrence as offsets into `text`.
- */
-export const findInTarget = (
-  text: string,
-  value: string,
-  options: { caseInsensitive: boolean; targetCulture: string; anywhere?: boolean },
-): Occurrence | null => {
+type FindOptions = { caseInsensitive: boolean; targetCulture: string; anywhere?: boolean };
+
+/** Every occurrence of `value` in `text` (see `findInTarget`), in order. */
+const findAllInTarget = (text: string, value: string, options: FindOptions): Occurrence[] => {
   const needle = value.normalize("NFC");
-  if (!needle || !text) return null;
+  if (!needle || !text) return [];
   const substring = options.anywhere || isNoSpaceCulture(options.targetCulture);
+  const occurrences: Occurrence[] = [];
 
   if (!options.caseInsensitive) {
     for (let at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + 1)) {
-      if (substring || isWordStart(text, at)) return { start: at, length: needle.length };
+      if (substring || isWordStart(text, at))
+        occurrences.push({ start: at, length: needle.length });
     }
-    return null;
+    return occurrences;
   }
 
   const { lowered, map } = lowerWithMap(text, options.targetCulture);
@@ -79,17 +84,32 @@ export const findInTarget = (
     at = lowered.indexOf(loweredNeedle, at + 1)
   ) {
     const start = map[at];
-    if (substring || isWordStart(text, start)) {
-      return { start, length: map[at + loweredNeedle.length] - start };
-    }
+    const end = map[at + loweredNeedle.length];
+    if (start === undefined || end === undefined) continue;
+    if (substring || isWordStart(text, start)) occurrences.push({ start, length: end - start });
   }
-  return null;
+  return occurrences;
 };
+
+const isWithin = (inner: Occurrence, outer: Occurrence) =>
+  inner.start >= outer.start && inner.start + inner.length <= outer.start + outer.length;
+
+/**
+ * Finds `value` in `text` where it starts a word; trailing letters are allowed so
+ * inflected forms ("Arbeitsbereichs") count (A11). No-space languages: plain substring.
+ * Returns the first occurrence as offsets into `text`.
+ */
+export const findInTarget = (
+  text: string,
+  value: string,
+  options: FindOptions,
+): Occurrence | null => findAllInTarget(text, value, options)[0] ?? null;
 
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
-type FindValue = (value: string, caseInsensitive: boolean) => Occurrence | null;
+/** Every occurrence of `value` in the output, in order. */
+type FindValue = (value: string, caseInsensitive: boolean) => Occurrence[];
 
 type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
 
@@ -101,7 +121,7 @@ const keepViolations = (
 ): GlossaryViolation[] => {
   const violations: GlossaryViolation[] = [];
   for (const surface of surfaces) {
-    if (!find(surface, false))
+    if (find(surface, false).length === 0)
       violations.push({ ...base, kind: "missing-keep", expected: surface });
   }
   return violations;
@@ -115,13 +135,14 @@ const translationViolations = (
   find: FindValue,
 ): GlossaryViolation[] => {
   const expected = match.meta.translations[targetCulture]?.trim();
-  if (!expected || find(expected, true)) return [];
+  if (!expected || find(expected, true).length > 0) return [];
   return [{ ...base, kind: "missing-translation", expected }];
 };
 
 /**
  * Forbidden rule: the term and its variants. Translate or forbidden rule: the stored
  * forbidden values. Longest first, so "Dashboards" isn't also reported as "Dashboard".
+ * An occurrence inside the approved translation ("Portal" in "Portalseite") is not a use.
  */
 const forbiddenViolations = (
   text: string,
@@ -137,10 +158,14 @@ const forbiddenViolations = (
       : []),
     ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
   ].sort((a, b) => b.value.length - a.value.length);
+  const approved = meta.rule === "translate" ? meta.translations[targetCulture]?.trim() : "";
+  const approvedSpans = approved ? find(approved, true) : [];
   const violations: GlossaryViolation[] = [];
   const reportedStarts = new Set<number>();
   for (const { value, caseInsensitive } of banned) {
-    const occurrence = find(value, caseInsensitive);
+    const occurrence = find(value, caseInsensitive).find(
+      (candidate) => !approvedSpans.some((span) => isWithin(candidate, span)),
+    );
     if (!occurrence || reportedStarts.has(occurrence.start)) continue;
     reportedStarts.add(occurrence.start);
     violations.push({
@@ -182,7 +207,7 @@ export const validateTranslation = (
   if (!text.trim()) return [];
 
   const find: FindValue = (value, caseInsensitive) =>
-    findInTarget(text, value, { caseInsensitive, targetCulture });
+    findAllInTarget(text, value, { caseInsensitive, targetCulture });
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
   for (const group of groupMatchesByGlossary(matches)) {
@@ -224,9 +249,10 @@ export const canApplyFix = (
 /**
  * Fix for a forbidden-used violation: replaces the first case-insensitive occurrence of
  * the found span (preferring one at a word start) with the approved translation. Letters
- * after the span stay, so "Werkbereichs" becomes "Arbeitsbereichs". Returns null when the
- * violation has no deterministic fix or the text no longer contains the span. Re-validate
- * the result with `validateTranslation`.
+ * after the span stay, so "Werkbereichs" becomes "Arbeitsbereichs". An occurrence inside
+ * the approved translation is never replaced ("Portalseite" stays). Returns null when the
+ * violation has no deterministic fix or the text no longer contains the span outside the
+ * approved translation. Re-validate the result with `validateTranslation`.
  */
 export const applyFix = (
   text: string,
@@ -237,13 +263,13 @@ export const applyFix = (
   const replacement = getFixReplacement(violation, matches, targetCulture);
   if (!replacement || !violation.found) return null;
   const normalized = (text ?? "").normalize("NFC");
+  const options: FindOptions = { caseInsensitive: true, targetCulture };
+  const approvedSpans = findAllInTarget(normalized, replacement, { ...options, anywhere: true });
+  const replaceable = (candidate: Occurrence) =>
+    !approvedSpans.some((span) => isWithin(candidate, span));
   const occurrence =
-    findInTarget(normalized, violation.found, { caseInsensitive: true, targetCulture }) ??
-    findInTarget(normalized, violation.found, {
-      caseInsensitive: true,
-      targetCulture,
-      anywhere: true,
-    });
+    findAllInTarget(normalized, violation.found, options).find(replaceable) ??
+    findAllInTarget(normalized, violation.found, { ...options, anywhere: true }).find(replaceable);
   if (!occurrence) return null;
   return (
     normalized.slice(0, occurrence.start) +

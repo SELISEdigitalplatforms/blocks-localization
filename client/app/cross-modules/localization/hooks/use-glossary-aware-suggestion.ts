@@ -32,7 +32,7 @@ import {
   GlossaryViolation,
   validateTranslation,
 } from "@blocks-localization/utils/glossary-validation";
-import { buildTranslationPrompt } from "@blocks-localization/utils/translation-prompt";
+import { buildTranslationPromptWithRules } from "@blocks-localization/utils/translation-prompt";
 
 export const ALL_GLOSSARIES_PAGE_SIZE = 500;
 export const ALL_GLOSSARIES_MAX_PAGES = 20;
@@ -115,6 +115,7 @@ export type GlossarySuggestionOutcome =
       status: "success";
       content: string;
       violations: GlossaryViolation[];
+      /** The matches whose rules were sent and validated (Fix re-validates against these). */
       matches: GlossaryMatch[];
       /** True when the terminology prompt was sent. */
       usedGlossary: boolean;
@@ -141,9 +142,13 @@ export interface GlossarySuggestionDeps {
 const buildGlossaryPayload = (
   input: GlossarySuggestionInput,
   matches: GlossaryMatch[],
-): { payload: TranslationSuggestionPayload; prompt: string } => {
+): { payload: TranslationSuggestionPayload; prompt: string; ruleGlossaryIds: string[] } => {
   const targetCulture = input.targetLanguage.languageCode;
-  const prompt = buildTranslationPrompt({ keyContext: input.keyContext, matches, targetCulture });
+  const { prompt, ruleGlossaryIds } = buildTranslationPromptWithRules({
+    keyContext: input.keyContext,
+    matches,
+    targetCulture,
+  });
   const payload: TranslationSuggestionPayload = {
     sourceText: input.sourceText,
     destinationLanguage: input.targetLanguage.languageName || "English",
@@ -154,7 +159,7 @@ const buildGlossaryPayload = (
     glossaryIds: [],
     destinationLanguageCode: targetCulture,
   };
-  return { payload, prompt };
+  return { payload, prompt, ruleGlossaryIds };
 };
 
 /** Resolves the glossary, or `{ ok: false }` when there is no loader or it failed (C6). */
@@ -235,7 +240,10 @@ export const runGlossaryAwareSuggestion = async (
     keyGlossaryIds: input.keyGlossaryIds,
     moduleId: input.moduleId,
   });
-  const { payload, prompt } = buildGlossaryPayload(input, matches);
+  const { payload, prompt, ruleGlossaryIds } = buildGlossaryPayload(input, matches);
+  // Only rules that were sent are checked; the caps may have dropped some (m2).
+  const sentIds = new Set(ruleGlossaryIds);
+  const checkedMatches = matches.filter((match) => sentIds.has(match.glossary.itemId));
 
   let first: TranslationSuggestionResponse;
   try {
@@ -252,7 +260,7 @@ export const runGlossaryAwareSuggestion = async (
       status: "success",
       content,
       violations,
-      matches,
+      matches: checkedMatches,
       usedGlossary: true,
       glossaryUnavailable: false,
       requestCount,
@@ -261,7 +269,7 @@ export const runGlossaryAwareSuggestion = async (
   // No matched term: nothing to check, never retry (C7).
   if (matches.length === 0) return success(first.content, [], 1);
 
-  const firstViolations = validateTranslation(first.content, matches, targetCulture);
+  const firstViolations = validateTranslation(first.content, checkedMatches, targetCulture);
   if (firstViolations.length === 0) return success(first.content, [], 1);
 
   // Exactly one retry (H6); a failed or empty retry keeps the first output (C5).
@@ -272,7 +280,7 @@ export const runGlossaryAwareSuggestion = async (
     first.content,
   );
   if (!current()) return stale;
-  return success(content, validateTranslation(content, matches, targetCulture), 2);
+  return success(content, validateTranslation(content, checkedMatches, targetCulture), 2);
 };
 
 export interface UseGlossaryAwareSuggestionOptions {

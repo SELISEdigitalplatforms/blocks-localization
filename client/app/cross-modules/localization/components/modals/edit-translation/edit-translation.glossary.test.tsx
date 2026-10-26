@@ -104,6 +104,13 @@ const deferred = <T,>() => {
   return { promise, resolve };
 };
 
+/**
+ * No violation list and no info line. The polite live region stays mounted while empty, so
+ * this checks that every status region is empty instead of that none exists.
+ */
+const expectNoStatusContent = () =>
+  expect(screen.queryAllByRole("status").filter((region) => region.textContent !== "")).toEqual([]);
+
 describe("edit-translation — glossary-aware suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -162,7 +169,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
         glossaryIds: [],
         destinationLanguageCode: "de-DE",
       });
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("lists the remaining violations, keeps Save enabled and applies Fix (H7, H8)", async () => {
@@ -182,7 +189,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
       fireEvent.click(screen.getByRole("button", { name: "Fix" }));
       expect(field().value).toBe("Öffnen Sie Ihren Arbeitsbereich");
       // Re-validated against the same matches: nothing remains, so the list is hidden.
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("places Retry and Fix right after the textarea in tab order", async () => {
@@ -206,7 +213,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
       fireEvent.click(autoTranslateButton());
       await screen.findByText('"Werkbereich" is not allowed');
       fireEvent.change(field(), { target: { value: "Öffnen Sie Ihren Werkbereich!" } });
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -228,7 +235,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
       await waitFor(() => expect(field().value).toBe("Öffnen Sie Ihren Arbeitsbereich"));
       expect(autoTranslateAsync).toHaveBeenCalledTimes(3);
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("falls back to the legacy payload with an info line when the glossary fails (C6)", async () => {

@@ -79,6 +79,13 @@ const deferred = <T,>() => {
   return { promise, resolve };
 };
 
+/**
+ * No violation list and no info line. The polite live region stays mounted while empty, so
+ * this checks that every status region is empty instead of that none exists.
+ */
+const expectNoStatusContent = () =>
+  expect(screen.queryAllByRole("status").filter((region) => region.textContent !== "")).toEqual([]);
+
 describe("add-new-language-key — glossary-aware suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -180,12 +187,12 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Fix" }));
       expect(translationFields()[0].value).toBe("Öffnen Sie Ihren Arbeitsbereich");
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
 
       fireEvent.click(autoButtons()[0]);
       await screen.findByText('"Werkbereich" is not allowed');
       fireEvent.change(translationFields()[0], { target: { value: "Hallo" } });
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("Retry runs the row's suggestion again", async () => {
@@ -201,7 +208,7 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
         expect(translationFields()[0].value).toBe("Öffnen Sie Ihren Arbeitsbereich"),
       );
       expect(suggestAsync).toHaveBeenCalledTimes(3);
-      expect(screen.queryByRole("status")).toBeNull();
+      expectNoStatusContent();
     });
 
     it("shows the info line and sends the legacy payload when the glossary fails (C6)", async () => {

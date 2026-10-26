@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui-kits/button/button";
+import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import {
   GLOSSARY_UNAVAILABLE_MESSAGE,
@@ -112,7 +113,12 @@ interface GlossaryViolationListProps {
   className?: string;
 }
 
-/** Glossary rule violations of a suggestion, shown directly under the target field. */
+/**
+ * Glossary rule violations of a suggestion, shown directly under the target field. With the
+ * flag on, the polite live region stays mounted (empty and visually hidden) while there are
+ * no violations: screen readers announce content added to an existing region, not a region
+ * that is inserted already filled.
+ */
 export const GlossaryViolationList = ({
   violations,
   matches,
@@ -122,36 +128,39 @@ export const GlossaryViolationList = ({
   onRetry,
   className,
 }: GlossaryViolationListProps) => {
-  if (violations.length === 0) return null;
+  const hasViolations = violations.length > 0;
+  if (!hasViolations && !isGlossaryEnforcementEnabled()) return null;
   return (
-    <output aria-live="polite" className={cn("mt-2 block", className)}>
-      <ul className="space-y-1">
-        {violations.map((violation) => {
-          const fixable = canApplyFix(violation, matches, targetCulture);
-          return (
-            <li key={violationKey(violation)} className="flex items-center gap-2">
-              <TriangleAlert className="h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
-              <span className="text-sm text-high-emphasis">
-                {formatViolationMessage(violation)}
-              </span>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto px-1 py-0"
-                disabled={disabled}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (fixable) onFix(violation);
-                  else onRetry();
-                }}
-              >
-                {fixable ? "Fix" : "Retry"}
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
+    <output aria-live="polite" className={hasViolations ? cn("mt-2 block", className) : "sr-only"}>
+      {hasViolations && (
+        <ul className="space-y-1">
+          {violations.map((violation) => {
+            const fixable = canApplyFix(violation, matches, targetCulture);
+            return (
+              <li key={violationKey(violation)} className="flex items-center gap-2">
+                <TriangleAlert className="h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
+                <span className="text-sm text-high-emphasis">
+                  {formatViolationMessage(violation)}
+                </span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-1 py-0"
+                  disabled={disabled}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (fixable) onFix(violation);
+                    else onRetry();
+                  }}
+                >
+                  {fixable ? "Fix" : "Retry"}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </output>
   );
 };

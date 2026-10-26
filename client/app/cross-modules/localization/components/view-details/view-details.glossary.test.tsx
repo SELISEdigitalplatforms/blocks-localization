@@ -161,11 +161,77 @@ describe("view-details — glossary suggestions", () => {
           .disabled,
       ).toBe(true);
       finish({ success: true });
-      await waitFor(() => expect(addAll.disabled).toBe(false));
+      // Every candidate is now tagged, so the section goes away (M1) instead of re-enabling.
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Add all" })).toBeNull());
       expect(saveKey).toHaveBeenCalledTimes(1);
       expect(saveKey.mock.calls[0][0]).toStrictEqual(
         expectedSave(["g-tagged", "g-other", "g-other2"]),
       );
+    });
+
+    it("keeps a just-added tag when another is added before the key refetch lands (M1)", async () => {
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      fireEvent.click(screen.getByRole("button", { name: "Tag Customer Portal to key" }));
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
+      // The added term leaves the suggestions although keyDetails is still the old snapshot.
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Tag Customer Portal to key" })).toBeNull(),
+      );
+      const addDashboard = screen.getByRole("button", {
+        name: "Tag Dashboard to key",
+      }) as HTMLButtonElement;
+      await waitFor(() => expect(addDashboard.disabled).toBe(false));
+      fireEvent.click(addDashboard);
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(2));
+      expect(saveKey.mock.calls[1][0]).toStrictEqual(
+        expectedSave(["g-tagged", "g-other", "g-other2"]),
+      );
+    });
+
+    it("Add all after Add keeps the earlier tag without duplicates (M1)", async () => {
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      fireEvent.click(screen.getByRole("button", { name: "Tag Customer Portal to key" }));
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
+      const addAll = screen.getByRole("button", { name: "Add all" }) as HTMLButtonElement;
+      await waitFor(() => expect(addAll.disabled).toBe(false));
+      fireEvent.click(addAll);
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(2));
+      expect(saveKey.mock.calls[1][0]).toStrictEqual(
+        expectedSave(["g-tagged", "g-other", "g-other2"]),
+      );
+    });
+
+    it("does not keep a tag whose save failed (M1)", async () => {
+      saveKey.mockResolvedValueOnce({ success: false, errorMessage: "nope" });
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      fireEvent.click(screen.getByRole("button", { name: "Tag Customer Portal to key" }));
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
+      const addDashboard = screen.getByRole("button", {
+        name: "Tag Dashboard to key",
+      }) as HTMLButtonElement;
+      await waitFor(() => expect(addDashboard.disabled).toBe(false));
+      expect(screen.getByRole("button", { name: "Tag Customer Portal to key" })).toBeTruthy();
+      fireEvent.click(addDashboard);
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(2));
+      expect(saveKey.mock.calls[1][0]).toStrictEqual(expectedSave(["g-tagged", "g-other2"]));
+    });
+
+    it("drops the local tag once the refetched key has it, so a later removal shows again (M1)", async () => {
+      const { rerender } = renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      fireEvent.click(screen.getByRole("button", { name: "Tag Customer Portal to key" }));
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Tag Customer Portal to key" })).toBeNull(),
+      );
+      // The refetch lands with the tag.
+      rerender(
+        <ViewDetails
+          keyDetails={{ ...(keyDetails as object), glossaryIds: ["g-tagged", "g-other"] } as never}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Tag Customer Portal to key" })).toBeNull();
+      // The tag is later removed (e.g. in the Tag Glossary dialog): it is suggested again.
+      rerender(<ViewDetails keyDetails={keyDetails} />);
+      expect(screen.getByRole("button", { name: "Tag Customer Portal to key" })).toBeTruthy();
     });
 
     it("shows at most 10 suggestions plus a +N more text", () => {

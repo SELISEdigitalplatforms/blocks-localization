@@ -243,6 +243,25 @@ describe("components/glossary/glossary-details", () => {
       expect(screen.getByText("Selise")).toBeTruthy();
     });
 
+    it("should render duplicate stored variants without duplicate React keys (m7)", () => {
+      isGlossaryEnforcementEnabled.mockReturnValue(true);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        renderGlossary({
+          isGlobal: true,
+          additionalNote:
+            '@@glossary-meta:v1@@{"rule":"keep","variants":["workspaces","workspaces"]}',
+        });
+        expect(screen.getAllByText("workspaces")).toHaveLength(2);
+        const keyWarnings = consoleError.mock.calls.filter((args) =>
+          args.some((arg) => String(arg).includes("same key")),
+        );
+        expect(keyWarnings).toEqual([]);
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
     it("should hide the Case-sensitive badge and Variants row when unset, flag on (H14)", () => {
       isGlossaryEnforcementEnabled.mockReturnValue(true);
       renderGlossary({
