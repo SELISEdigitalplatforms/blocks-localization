@@ -842,9 +842,11 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await tagDialog.getByPlaceholder("Search glossary...").fill(names.gu);
         await tagDialog.getByRole("option", { name: names.gu }).click();
         // The picker is multi-select and stays open over the footer; close it before Update.
-        const picker = tagDialog.getByRole("button", { name: "Search glossary..." });
-        await picker.click();
-        await expect(picker).toHaveAttribute("aria-expanded", "false");
+        // Escape closes only the picker's popover; the dialog stays open.
+        const pickerSearch = tagDialog.getByPlaceholder("Search glossary...");
+        await pickerSearch.press("Escape");
+        await expect(pickerSearch).toBeHidden();
+        await expect(tagDialog).toBeVisible();
         const payload = await translations.captureKeySave(() =>
           tagDialog.getByRole("button", { name: "Update" }).click(),
         );
