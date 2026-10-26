@@ -495,13 +495,13 @@ export function LanguageTable() {
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
   const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(new Set());
-  const [rowSelection, setRowSelectionState] = useState<RowSelectionState>({});
+  const [rowSelectionState, setRowSelectionState] = useState<RowSelectionState>({});
   // In the All view, while every loaded row is selected, the rows of later chunks are selected as
   // they load, so select-all keeps covering the list while scrolling.
   const isSelectingAllLoadedRef = useRef(false);
   const setRowSelection = useCallback<OnChangeFn<RowSelectionState>>(
     (updater) => {
-      const next = typeof updater === "function" ? updater(rowSelection) : updater;
+      const next = typeof updater === "function" ? updater(rowSelectionState) : updater;
       isSelectingAllLoadedRef.current =
         isAllView &&
         areAllRowsSelected(
@@ -510,7 +510,7 @@ export function LanguageTable() {
         );
       setRowSelectionState(next);
     },
-    [rowSelection, isAllView, allViewKeys],
+    [rowSelectionState, isAllView, allViewKeys],
   );
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
@@ -748,7 +748,7 @@ export function LanguageTable() {
     getRowId: (row) => row.itemId,
     getCoreRowModel: getCoreRowModel(),
     state: {
-      rowSelection,
+      rowSelection: rowSelectionState,
     },
     onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
