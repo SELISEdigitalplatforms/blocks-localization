@@ -1040,7 +1040,7 @@ export class TranslationsPage {
 
   /** The glossary violation list under a target field (a polite live region). */
   violationList(scope: Locator) {
-    return scope.locator('ul[role="status"]');
+    return scope.locator("output:has(ul)");
   }
 
   violationItem(scope: Locator, message: string) {

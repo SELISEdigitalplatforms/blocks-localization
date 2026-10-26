@@ -33,7 +33,8 @@ const lowerWithMap = (text: string, locale: string) => {
   let index = 0;
   for (const char of text) {
     const lower = safeLower(char, locale);
-    for (let i = 0; i < lower.length; i++) map.push(index);
+    // One entry per UTF-16 unit of `lower`, so not a for-of (that iterates code points).
+    map.push(...new Array<number>(lower.length).fill(index));
     lowered += lower;
     index += char.length;
   }
@@ -88,6 +89,64 @@ export const findInTarget = (
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
+type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
+
+/** What every rule check of one `validateTranslation` call shares. */
+interface RuleCheck {
+  text: string;
+  targetCulture: string;
+  contains: (value: string, caseInsensitive: boolean) => Occurrence | null;
+  add: (violation: GlossaryViolation) => void;
+}
+
+/** Keep rule: every matched source surface must appear unchanged. */
+const checkKeep = (surfaces: string[], base: ViolationBase, { contains, add }: RuleCheck) => {
+  for (const surface of surfaces) {
+    if (!contains(surface, false)) add({ ...base, kind: "missing-keep", expected: surface });
+  }
+};
+
+/** Translate rule: the approved translation for the target culture must appear. */
+const checkTranslation = (
+  match: GlossaryMatch,
+  base: ViolationBase,
+  { targetCulture, contains, add }: RuleCheck,
+) => {
+  const expected = match.meta.translations[targetCulture]?.trim();
+  if (expected && !contains(expected, true)) {
+    add({ ...base, kind: "missing-translation", expected });
+  }
+};
+
+/**
+ * Forbidden rule: the term and its variants. Translate or forbidden rule: the stored
+ * forbidden values. Longest first, so "Dashboards" isn't also reported as "Dashboard".
+ */
+const checkForbidden = (
+  match: GlossaryMatch,
+  base: ViolationBase,
+  { text, targetCulture, contains, add }: RuleCheck,
+) => {
+  const { meta } = match;
+  const banned = [
+    ...(meta.rule === "forbidden"
+      ? alternativesOf(match).map((value) => ({ value, caseInsensitive: !meta.caseSensitive }))
+      : []),
+    ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
+  ].sort((a, b) => b.value.length - a.value.length);
+  const reportedStarts = new Set<number>();
+  for (const { value, caseInsensitive } of banned) {
+    const occurrence = contains(value, caseInsensitive);
+    if (!occurrence || reportedStarts.has(occurrence.start)) continue;
+    reportedStarts.add(occurrence.start);
+    add({
+      ...base,
+      kind: "forbidden-used",
+      found: text.slice(occurrence.start, occurrence.start + occurrence.length),
+    });
+  }
+};
+
 /**
  * Checks an AI output against the rules of the matched glossaries (only the values that
  * are active for each rule, C18). One violation per (glossary, kind, found/expected).
@@ -102,57 +161,33 @@ export const validateTranslation = (
 
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
-  const add = (violation: GlossaryViolation) => {
-    const id = [
-      violation.glossaryId,
-      violation.kind,
-      violation.found ?? violation.expected ?? "",
-    ].join("\u0000");
-    if (seen.has(id)) return;
-    seen.add(id);
-    violations.push(violation);
+  const check: RuleCheck = {
+    text,
+    targetCulture,
+    contains: (value, caseInsensitive) =>
+      findInTarget(text, value, { caseInsensitive, targetCulture }),
+    add: (violation) => {
+      const id = [
+        violation.glossaryId,
+        violation.kind,
+        violation.found ?? violation.expected ?? "",
+      ].join("\u0000");
+      if (seen.has(id)) return;
+      seen.add(id);
+      violations.push(violation);
+    },
   };
-  const contains = (value: string, caseInsensitive: boolean) =>
-    findInTarget(text, value, { caseInsensitive, targetCulture });
 
   for (const { matches: glossaryMatches, surfaces } of groupMatchesByGlossary(matches)) {
     const [match] = glossaryMatches;
-    const { glossary, meta } = match;
-    const base = { glossaryId: glossary.itemId, term: glossary.name };
+    const base: ViolationBase = { glossaryId: match.glossary.itemId, term: match.glossary.name };
 
-    if (meta.rule === "keep") {
-      for (const surface of surfaces) {
-        if (!contains(surface, false)) add({ ...base, kind: "missing-keep", expected: surface });
-      }
+    if (match.meta.rule === "keep") {
+      checkKeep(surfaces, base, check);
       continue;
     }
-
-    if (meta.rule === "translate") {
-      const expected = meta.translations[targetCulture]?.trim();
-      if (expected && !contains(expected, true)) {
-        add({ ...base, kind: "missing-translation", expected });
-      }
-    }
-
-    // Forbidden rule: the term and its variants. Translate or forbidden rule: the stored
-    // forbidden values. Longest first, so "Dashboards" isn't also reported as "Dashboard".
-    const banned = [
-      ...(meta.rule === "forbidden"
-        ? alternativesOf(match).map((value) => ({ value, caseInsensitive: !meta.caseSensitive }))
-        : []),
-      ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
-    ].sort((a, b) => b.value.length - a.value.length);
-    const reportedStarts = new Set<number>();
-    for (const { value, caseInsensitive } of banned) {
-      const occurrence = contains(value, caseInsensitive);
-      if (!occurrence || reportedStarts.has(occurrence.start)) continue;
-      reportedStarts.add(occurrence.start);
-      add({
-        ...base,
-        kind: "forbidden-used",
-        found: text.slice(occurrence.start, occurrence.start + occurrence.length),
-      });
-    }
+    if (match.meta.rule === "translate") checkTranslation(match, base, check);
+    checkForbidden(match, base, check);
   }
   return violations;
 };
