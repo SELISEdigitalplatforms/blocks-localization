@@ -187,6 +187,21 @@ describe("utils/glossary-validation findInTarget", () => {
       }),
     ).toEqual({ start: 3, length: 11 });
   });
+
+  it("treats an astral letter before the value as part of the word, an emoji as a boundary", () => {
+    const options = { caseInsensitive: true, targetCulture: "de-DE" };
+    expect(findInTarget("𝐀Werkbereich", "werkbereich", options)).toBeNull();
+    expect(findInTarget("😀Werkbereich", "werkbereich", options)).toEqual({
+      start: 2,
+      length: 11,
+    });
+    expect(
+      findInTarget("𝐀Werkbereich 😀Werkbereich", "Werkbereich", {
+        ...options,
+        caseInsensitive: false,
+      }),
+    ).toEqual({ start: 16, length: 11 });
+  });
 });
 
 describe("utils/glossary-validation applyFix", () => {

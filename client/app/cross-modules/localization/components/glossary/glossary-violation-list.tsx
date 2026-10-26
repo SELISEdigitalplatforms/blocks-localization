@@ -47,17 +47,18 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
   const request = useCallback(
     async (input: GlossarySuggestionInput): Promise<GlossarySuggestionOutcome> => {
       const outcome = await suggest(input);
-      if (outcome.status === "stale") return outcome;
-      const row: GlossaryRowState =
-        outcome.status === "success"
-          ? {
-              violations: outcome.violations,
-              matches: outcome.matches,
-              targetCulture: input.targetLanguage.languageCode,
-              glossaryUnavailable: outcome.glossaryUnavailable,
-            }
-          : { ...EMPTY_ROW, glossaryUnavailable: outcome.glossaryUnavailable };
-      setRows((previous) => ({ ...previous, [input.requestKey]: row }));
+      if (outcome.status !== "stale") {
+        const row: GlossaryRowState =
+          outcome.status === "success"
+            ? {
+                violations: outcome.violations,
+                matches: outcome.matches,
+                targetCulture: input.targetLanguage.languageCode,
+                glossaryUnavailable: outcome.glossaryUnavailable,
+              }
+            : { ...EMPTY_ROW, glossaryUnavailable: outcome.glossaryUnavailable };
+        setRows((previous) => ({ ...previous, [input.requestKey]: row }));
+      }
       return outcome;
     },
     [suggest],
@@ -123,38 +124,42 @@ export const GlossaryViolationList = ({
 }: GlossaryViolationListProps) => {
   if (violations.length === 0) return null;
   return (
-    <ul role="status" aria-live="polite" className={cn("mt-2 space-y-1", className)}>
-      {violations.map((violation) => {
-        const fixable = canApplyFix(violation, matches, targetCulture);
-        return (
-          <li key={violationKey(violation)} className="flex items-center gap-2">
-            <TriangleAlert className="h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
-            <span className="text-sm text-high-emphasis">{formatViolationMessage(violation)}</span>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-1 py-0"
-              disabled={disabled}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (fixable) onFix(violation);
-                else onRetry();
-              }}
-            >
-              {fixable ? "Fix" : "Retry"}
-            </Button>
-          </li>
-        );
-      })}
-    </ul>
+    <output aria-live="polite" className={cn("mt-2 block", className)}>
+      <ul className="space-y-1">
+        {violations.map((violation) => {
+          const fixable = canApplyFix(violation, matches, targetCulture);
+          return (
+            <li key={violationKey(violation)} className="flex items-center gap-2">
+              <TriangleAlert className="h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
+              <span className="text-sm text-high-emphasis">
+                {formatViolationMessage(violation)}
+              </span>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto px-1 py-0"
+                disabled={disabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (fixable) onFix(violation);
+                  else onRetry();
+                }}
+              >
+                {fixable ? "Fix" : "Retry"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </output>
   );
 };
 
 /** C6 info line, shown under the Auto-translate button. */
 export const GlossaryUnavailableNote = ({ className }: { className?: string }) => (
-  <p role="status" className={cn("flex items-center gap-1 text-xs text-low-emphasis", className)}>
+  <output className={cn("flex items-center gap-1 text-xs text-low-emphasis", className)}>
     <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
     {GLOSSARY_UNAVAILABLE_MESSAGE}
-  </p>
+  </output>
 );

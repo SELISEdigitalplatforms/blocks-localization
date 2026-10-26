@@ -200,6 +200,29 @@ describe("utils/glossary-matcher", () => {
     expect(ids("𝐀API", en, [api])).toEqual([]);
   });
 
+  it("checks word boundaries on whole astral code points", () => {
+    const api = glossary({ itemId: "api", name: "API", isGlobal: true });
+    // An astral letter (U+1D400) before or after the term is part of the word.
+    expect(ids("API𝐀", en, [api])).toEqual([]);
+    expect(ids("x 𝐀API", en, [api])).toEqual([]);
+    // An emoji is not a letter, so it is a boundary on either side.
+    expect(ids("😀API😀", en, [api])).toEqual(["api"]);
+    const [match] = buildGlossaryMatcher([api]).match("😀API😀", en);
+    expect(match).toMatchObject({ start: 2, length: 3, surface: "API" });
+  });
+
+  it("matches terms that start or end with an astral character", () => {
+    const bold = glossary({ itemId: "bold", name: "𝐀pp", isGlobal: true });
+    const rocket = glossary({ itemId: "rocket", name: "Launch 🚀", isGlobal: true });
+    const matches = buildGlossaryMatcher([bold, rocket]).match("Open 𝐀pp, Launch 🚀 now", en);
+    expect(matches.map((match) => [match.surface, match.start, match.length])).toEqual([
+      ["𝐀pp", 5, 4],
+      ["Launch 🚀", 11, 9],
+    ]);
+    // Never starts a match on the second half of a surrogate pair.
+    expect(ids("𝐀𝐀pp", en, [bold])).toEqual([]);
+  });
+
   it("escapes regex characters in terms", () => {
     const net = glossary({ itemId: "net", name: "C++ (beta)", isGlobal: true });
     expect(ids("Use C++ (beta) now", en, [net])).toEqual(["net"]);
