@@ -40,6 +40,8 @@ export interface IBlocksLanguageKeyResponse {
   /** Keyset token for the rows after this page; null on the last page. */
   nextCursor?: string | null;
   hasMore?: boolean;
+  /** True when the duplicates filter was on and the duplicate rows exceeded the server's cap. */
+  duplicatesTruncated?: boolean;
 }
 
 export interface ISaveBlocksLanguageKeyPayload {
@@ -52,6 +54,24 @@ export interface ISaveBlocksLanguageKeyPayload {
   isPartiallyTranslated: boolean;
   isNewKey?: boolean;
   context?: string;
+}
+
+/** Duplicate keys (same module and key name) and duplicate module names for the tenant. */
+export interface IDuplicateSummary {
+  keyGroupCount: number;
+  duplicateKeyRowCount: number;
+  extraKeyCount: number;
+  moduleGroupCount: number;
+  extraModuleCount: number;
+  keyUniquenessEnforced: boolean;
+  moduleUniquenessEnforced: boolean;
+}
+
+export interface IEnforceUniquenessResult {
+  keyUniquenessEnforced: boolean;
+  moduleUniquenessEnforced: boolean;
+  keyGroupCount: number;
+  moduleGroupCount: number;
 }
 
 export interface IValidationError {

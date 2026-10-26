@@ -11,6 +11,7 @@ using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Shared.Utilities;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -129,9 +130,19 @@ namespace Eurolm.DomainService.Services
                     }
                 }
             }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique index caught a concurrent save of the same new key; answer as the validator would.
+                // User-supplied names stay out of the log; the response carries the details.
+                // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
+#pragma warning disable S6667
+                _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
+                return new ApiResponse(string.Empty, [DuplicateKeyFailure()]);
+            }
             catch (Exception ex)
             {
-                _logger.LogError("Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error while saving BlocksLanguage {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
                 return new ApiResponse(ex.Message);
             }
 
@@ -151,60 +162,14 @@ namespace Eurolm.DomainService.Services
 
             foreach (var key in keys)
             {
-                try
+                var error = await SaveKeyInBulkAsync(key, bulkOperationId);
+                if (error != null)
                 {
-                    var validationResult = await _validator.ValidateAsync(key);
-
-                    if (!validationResult.IsValid)
-                    {
-                        var validationErrors = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
-                        errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {validationErrors}");
-                        continue;
-                    }
-
-                    // Get existing key for timeline tracking
-                    var existingRepoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
-                    BlocksLanguageKey? previousKey = null;
-                    bool isNewKey = existingRepoKey == null;
-
-                    if (!isNewKey && existingRepoKey != null)
-                    {
-                        previousKey = existingRepoKey;
-                    }
-
-                    var repoKey = await MappedIntoRepoKeyAsync(key);
-                    await _keyRepository.SaveKeyAsync(repoKey);
-
-                    if (key.ShouldPublish == true)
-                    {
-                        var request = new GenerateUilmFilesRequest
-                        {
-                            Guid = key.ItemId,
-                            ModuleId = key.ModuleId,
-                            ProjectKey = BlocksContext.GetContext().TenantId??""
-                        };
-                        await SendGenerateUilmFilesEvent(request);
-                    }
-
-                    // Create timeline entry
-                    if (repoKey != null)
-                    {
-                        if (isNewKey)
-                        {
-                            await CreateKeyTimelineEntryAsync(null, repoKey, LogFromConstants.KeyBulkCreate, bulkOperationId);
-                        }
-                        else
-                        {
-                            await CreateKeyTimelineEntryAsync(previousKey, repoKey, LogFromConstants.KeyBulkSave, bulkOperationId);
-                        }
-                    }
-
-                    successCount++;
+                    errors.Add(error);
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError("Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
-                    errors.Add($"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}");
+                    successCount++;
                 }
             }
 
@@ -217,6 +182,77 @@ namespace Eurolm.DomainService.Services
             }
 
             return new ApiResponse();
+        }
+
+        /// <summary>
+        /// Validates and saves a single key as part of a bulk save.
+        /// Returns the error line for the bulk response, or null when the key was saved.
+        /// </summary>
+        private async Task<string?> SaveKeyInBulkAsync(Key key, string bulkOperationId)
+        {
+            try
+            {
+                var validationResult = await _validator.ValidateAsync(key);
+
+                if (!validationResult.IsValid)
+                {
+                    var validationErrors = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
+                    return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {validationErrors}";
+                }
+
+                // Get existing key for timeline tracking
+                var previousKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
+
+                var repoKey = await MappedIntoRepoKeyAsync(key);
+                await _keyRepository.SaveKeyAsync(repoKey);
+
+                if (key.ShouldPublish == true)
+                {
+                    var request = new GenerateUilmFilesRequest
+                    {
+                        Guid = key.ItemId,
+                        ModuleId = key.ModuleId,
+                        ProjectKey = BlocksContext.GetContext().TenantId??""
+                    };
+                    await SendGenerateUilmFilesEvent(request);
+                }
+
+                await CreateBulkKeyTimelineEntryAsync(previousKey, repoKey, bulkOperationId);
+
+                return null;
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // User-supplied names stay out of the log; the response carries the details.
+                // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
+#pragma warning disable S6667
+                _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
+                var failure = DuplicateKeyFailure();
+                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
+                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}";
+            }
+        }
+
+        private async Task CreateBulkKeyTimelineEntryAsync(BlocksLanguageKey? previousKey, BlocksLanguageKey? repoKey, string bulkOperationId)
+        {
+            if (repoKey == null)
+            {
+                return;
+            }
+
+            if (previousKey == null)
+            {
+                await CreateKeyTimelineEntryAsync(null, repoKey, LogFromConstants.KeyBulkCreate, bulkOperationId);
+            }
+            else
+            {
+                await CreateKeyTimelineEntryAsync(previousKey, repoKey, LogFromConstants.KeyBulkSave, bulkOperationId);
+            }
         }
 
         private async Task<BlocksLanguageKey> MappedIntoRepoKeyAsync(Key key)
@@ -241,6 +277,24 @@ namespace Eurolm.DomainService.Services
         public async Task<GetKeysQueryResponse> GetKeysAsync(GetKeysRequest query)
         {
             return await _keyRepository.GetAllKeysAsync(query);
+        }
+
+        // Same property and message as KeyValidator's key-pair rule, so the failure looks the
+        // same whether the validator or the unique index catches it.
+        public const string DuplicateKeyMessage = "KeyName and ModuleId combination must not already exist for this key.";
+
+        private static ValidationFailure DuplicateKeyFailure() => new(nameof(Key.IsNewKey), DuplicateKeyMessage);
+
+        public async Task<GetDuplicateSummaryResponse> GetDuplicateSummaryAsync()
+        {
+            return await _serviceProvider.GetRequiredService<ILocalizationUniquenessRepository>()
+                .GetDuplicateSummaryAsync(CurrentTenantId);
+        }
+
+        public async Task<EnforceUniquenessResponse> EnforceUniquenessAsync()
+        {
+            return await _serviceProvider.GetRequiredService<ILocalizationUniquenessRepository>()
+                .EnsureUniqueIndexesAsync(CurrentTenantId);
         }
 
         public async Task<GetKeysByKeyNamesResponse> GetKeysByKeyNamesAsync(GetKeysByKeyNamesRequest request)
@@ -382,7 +436,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to get key data for timeline before deletion {KeyId}: {Error}", key.ItemId, ex.Message);
+                _logger.LogError(ex, "Failed to get key data for timeline before deletion {KeyId}: {Error}", key.ItemId, ex.Message);
             }
 
             await _keyRepository.DeleteAsync(request.ItemId);
@@ -396,7 +450,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to create timeline entry for deleted Key {KeyId}: {Error}", key.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to create timeline entry for deleted Key {KeyId}: {Error}", key.ItemId, ex.Message);
                 }
             }
 
@@ -429,7 +483,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
+                        _logger.LogError(ex, "Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
                     }
 
                     await _keyRepository.DeleteAsync(itemId);
@@ -442,13 +496,13 @@ namespace Eurolm.DomainService.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError("Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
+                            _logger.LogError(ex, "Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
+                    _logger.LogError(ex, "Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
                     errors[itemId] = ex.Message;
                 }
             }
@@ -768,7 +822,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to create timeline entry for Key {KeyId} during TranslateAll: {Error}", resourceKey.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to create timeline entry for Key {KeyId} during TranslateAll: {Error}", resourceKey.ItemId, ex.Message);
                 }
             }
 
@@ -809,7 +863,7 @@ namespace Eurolm.DomainService.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Failed to publish keys for module {ModuleId}: {Error}", application.ItemId, ex.Message);
+                    _logger.LogError(ex, "Failed to publish keys for module {ModuleId}: {Error}", application.ItemId, ex.Message);
                     failedKeys.AddRange(resourceKeys);
                 }
             }
@@ -1336,9 +1390,11 @@ namespace Eurolm.DomainService.Services
             }
 
             // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
-            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
+            await InsertNewModulesBeforeKeysAsync(validUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
             await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
@@ -1839,9 +1895,11 @@ namespace Eurolm.DomainService.Services
             }
 
             // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
-            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
+            await InsertNewModulesBeforeKeysAsync(validUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveXlfResourceKeys(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
             await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
@@ -1874,7 +1932,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for updated Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for updated Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -1886,7 +1944,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for new Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for new Key {KeyId} during XLF import: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -1956,9 +2014,11 @@ namespace Eurolm.DomainService.Services
             }
 
             // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
             var distinctUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList();
             var distinctUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList();
-            await SaveUilmApplication(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated);
+            await InsertNewModulesBeforeKeysAsync(distinctUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
             await UpdateUilmApplicationKeyCounts(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated);
@@ -2128,7 +2188,7 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for updated Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for updated Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
@@ -2136,10 +2196,18 @@ namespace Eurolm.DomainService.Services
             }
             if (resourceKeysWithoutId.Any())
             {
-                await _keyRepository.InsertUilmResourceKeys(resourceKeysWithoutId, _blocksBaseCommand?.ClientTenantId);
+                // One row per ModuleId + KeyName even if the file repeats a key; with the unique key index
+                // a repeat would otherwise fail the import partway.
+                var newKeys = MergeRepeatedNewKeys(resourceKeysWithoutId);
+                var mergedIntoExisting = await _keyRepository.InsertOrMergeResourceKeysAsync(newKeys) ?? new List<BlocksLanguageKey>();
+                if (mergedIntoExisting.Count > 0)
+                {
+                    _logger.LogInformation("SaveUilmResourceKey: {Count} new keys were created meanwhile by another writer and were merged into it", mergedIntoExisting.Count);
+                }
+                var insertedKeys = newKeys.Except(mergedIntoExisting).ToList();
 
                 // Create timeline entries for inserted keys
-                foreach (var resourceKey in resourceKeysWithoutId)
+                foreach (var resourceKey in insertedKeys)
                 {
                     try
                     {
@@ -2147,11 +2215,69 @@ namespace Eurolm.DomainService.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to create timeline entry for new Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
+                        _logger.LogError(ex, "Failed to create timeline entry for new Key {KeyId} during UilmImport: {Error}", resourceKey.ItemId, ex.Message);
                     }
                 }
 
-                _logger.LogInformation("SaveUilmResourceKey: Inserted UilmResourceKeys:{Count}", resourceKeysWithoutId.Count);
+                _logger.LogInformation("SaveUilmResourceKey: Inserted UilmResourceKeys:{Count}", insertedKeys.Count);
+            }
+        }
+
+        /// <summary>
+        /// Folds keys an import repeats (same ModuleId + KeyName) into the first occurrence; later
+        /// translations win per culture, as they would have when written one after another.
+        /// </summary>
+        private static List<BlocksLanguageKey> MergeRepeatedNewKeys(List<BlocksLanguageKey> keys)
+        {
+            var merged = new List<BlocksLanguageKey>();
+            var byKey = new Dictionary<(string ModuleId, string KeyName), BlocksLanguageKey>();
+            foreach (var key in keys)
+            {
+                if (byKey.TryGetValue((key.ModuleId, key.KeyName), out var first))
+                {
+                    first.Resources = MergeResources(first.Resources, key.Resources);
+                    first.Routes = key.Routes ?? first.Routes;
+                    continue;
+                }
+
+                byKey[(key.ModuleId, key.KeyName)] = key;
+                merged.Add(key);
+            }
+
+            return merged;
+        }
+
+        /// <summary>
+        /// Saves an import's new modules before its keys. A module whose name another import took
+        /// meanwhile is not created again: the import's keys move to the existing module instead.
+        /// </summary>
+        private async Task InsertNewModulesBeforeKeysAsync(List<BlocksLanguageModule> modulesToInsert, params List<BlocksLanguageKey>[] keyLists)
+        {
+            var skipped = await _keyRepository.InsertModulesSkippingTakenNamesAsync(modulesToInsert) ?? new List<BlocksLanguageModule>();
+            if (skipped.Count == 0)
+            {
+                return;
+            }
+
+            var names = skipped.Select(m => m.ModuleName).ToList();
+            var existing = await _keyRepository.GetUilmApplications<BlocksLanguageModule>(m => names.Contains(m.ModuleName));
+            var existingByName = existing.GroupBy(m => m.ModuleName).ToDictionary(g => g.Key, g => g.First());
+
+            foreach (var module in skipped)
+            {
+                if (!existingByName.TryGetValue(module.ModuleName, out var taken))
+                {
+                    continue;
+                }
+
+                foreach (var key in keyLists.SelectMany(list => list).Where(k => k.ModuleId == module.ItemId))
+                {
+                    key.ModuleId = taken.ItemId;
+                }
+
+                // Keep counting keys for the module that now holds them.
+                modulesToInsert[modulesToInsert.IndexOf(module)] = taken;
+                _logger.LogInformation("An imported module already exists under the same name (created by another import, or exported from another environment); its keys use the existing module");
             }
         }
 
@@ -2169,14 +2295,14 @@ namespace Eurolm.DomainService.Services
         }
 
         private async Task SaveUilmApplication(List<BlocksLanguageModule> uilmApplicationsToBeInserted,
-            List<BlocksLanguageModule> uilmApplicationsToBeUpdated)
+            List<BlocksLanguageModule> uilmApplicationsToBeUpdated, bool newModulesAlreadyInserted = false)
         {
             if (uilmApplicationsToBeUpdated.Any())
             {
                 await _keyRepository.UpdateBulkUilmApplications(uilmApplicationsToBeUpdated, _blocksBaseCommand?.OrganizationId, _blocksBaseCommand?.IsExternal ?? false, _blocksBaseCommand?.ClientTenantId);
             }
 
-            if (uilmApplicationsToBeInserted.Any())
+            if (!newModulesAlreadyInserted && uilmApplicationsToBeInserted.Any())
             {
                 await InsertUilmApplications(uilmApplicationsToBeInserted);
             }
@@ -2303,7 +2429,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("SaveUilmFile: Failed to create UilmExportedFile entry for fileId={FileId}, Error: {Error}", fileId, ex.Message);
+                _logger.LogError(ex, "SaveUilmFile: Failed to create UilmExportedFile entry for fileId={FileId}, Error: {Error}", fileId, ex.Message);
                 // Don't fail the entire operation if just the DB entry creation fails
             }
         }
@@ -2515,7 +2641,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("WriteToXlf: Error updating XLF template: {Error}", ex.Message);
+                _logger.LogError(ex, "WriteToXlf: Error updating XLF template: {Error}", ex.Message);
                 return new MemoryStream();
             }
         }
@@ -2797,7 +2923,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create timeline entry for Key {KeyId}: {Error}", entityId ?? currentKey?.ItemId ?? previousKey?.ItemId, ex.Message);
+                _logger.LogError(ex, "Failed to create timeline entry for Key {KeyId}: {Error}", entityId ?? currentKey?.ItemId ?? previousKey?.ItemId, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2827,7 +2953,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
+                _logger.LogError(ex, "Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2860,7 +2986,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
+                _logger.LogError(ex, "Failed to create bulk timeline entries for {Count} keys: {Error}", keys.Count, ex.Message);
                 // Don't throw - timeline creation should not break the main operation
             }
         }
@@ -2887,7 +3013,7 @@ namespace Eurolm.DomainService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to create no-change publish timeline entry: {Error}", ex.Message);
+                _logger.LogError(ex, "Failed to create no-change publish timeline entry: {Error}", ex.Message);
             }
         }
 

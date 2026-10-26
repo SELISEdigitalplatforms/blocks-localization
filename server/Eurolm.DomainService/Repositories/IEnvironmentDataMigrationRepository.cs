@@ -16,6 +16,9 @@ namespace Eurolm.DomainService.Repositories
         Task<BulkUpsertResult> BulkUpsertKeysAsync(List<BlocksLanguageKey> keys, List<BlocksLanguageKey> existingTargetKeys, string tenantId, bool shouldOverwrite);
         Task<BulkUpsertResult> BulkUpsertKeysByModuleNameAndKeyNameAsync(List<BlocksLanguageKey> keys, List<BlocksLanguageKey> existingTargetKeys, Dictionary<string, string> targetModuleNameToIdMap, string tenantId, bool shouldOverwrite);
         Task UpdateMigrationTrackerAsync(string trackerId, ServiceMigrationStatus LanguageServiceStatus);
+
+        /// <summary>Counts keys in the given modules whose name has leading or trailing whitespace.</summary>
+        Task<long> CountUntrimmedKeyNamesAsync(IEnumerable<string> moduleIds, string tenantId);
     }
 
     public class BulkUpsertResult

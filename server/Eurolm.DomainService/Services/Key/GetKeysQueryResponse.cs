@@ -9,5 +9,8 @@ namespace Eurolm.DomainService.Services
         /// <summary>Keyset token for the rows after this page; null on the last page.</summary>
         public string? NextCursor { get; set; }
         public bool HasMore => NextCursor != null;
+
+        /// <summary>True when OnlyDuplicates was requested and the duplicate rows exceeded the cap.</summary>
+        public bool DuplicatesTruncated { get; set; }
     }
 }

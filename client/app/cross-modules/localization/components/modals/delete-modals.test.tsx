@@ -22,7 +22,11 @@ vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
-vi.mock("react-router", () => ({ useNavigate: () => navigateMock }));
+let locationState: unknown = null;
+vi.mock("react-router", () => ({
+  useNavigate: () => navigateMock,
+  useLocation: () => ({ state: locationState, search: "" }),
+}));
 vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => toastMock(...a) }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useDeleteLanguageKey: () => ({ isPending: false, mutateAsync: deleteKeyMock }),
@@ -42,6 +46,7 @@ const withDialog = (node: React.ReactNode) => (
 describe("modals/delete-language-key", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    locationState = null;
     tenantId = "t1";
   });
 
@@ -56,6 +61,33 @@ describe("modals/delete-language-key", () => {
       replace: true,
     });
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+  });
+
+  it("should return to the table with the filters it was opened from", async () => {
+    deleteKeyMock.mockResolvedValue({ isSuccess: true });
+    locationState = { returnSearch: "?duplicates=true&moduleIds=m1&pageNumber=1" };
+    const onClose = vi.fn();
+    render(withDialog(<DeleteLanguageKey itemId="k1" onClose={onClose} />));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Key" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(navigateMock).toHaveBeenCalledWith(
+      "/scoped/services/language?duplicates=true&moduleIds=m1&pageNumber=1",
+      { replace: true },
+    );
+  });
+
+  it.each([
+    ["no state (glossary link, bookmark, direct URL)", null],
+    ["a value that is not a query string", { returnSearch: "/elsewhere" }],
+    ["a non-string value", { returnSearch: 42 }],
+  ])("should return to the plain table when opened with %s", async (_label, state) => {
+    deleteKeyMock.mockResolvedValue({ isSuccess: true });
+    locationState = state;
+    const onClose = vi.fn();
+    render(withDialog(<DeleteLanguageKey itemId="k1" onClose={onClose} />));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Key" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(navigateMock).toHaveBeenCalledWith("/scoped/services/language", { replace: true });
   });
 
   it("should guard against a missing key/tenant", async () => {
@@ -166,7 +198,7 @@ describe("modals/delete-module-modal", () => {
   ])("should ask what to do with the keys when the module has %i key(s)", (count, text) => {
     setKeyCount(count);
     render(withDialog(<DeleteModuleModal module={module} modules={modules} onClose={vi.fn()} />));
-    expect(screen.getByText(new RegExp(text))).toBeTruthy();
+    expect(screen.getByText(text, { exact: false })).toBeTruthy();
     expect(
       screen.getByText(/Move them to another module or delete them together with the module\./),
     ).toBeTruthy();

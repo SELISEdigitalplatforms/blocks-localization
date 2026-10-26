@@ -28,6 +28,9 @@ namespace Eurolm.DomainService.Services
         /// When false the CountDocuments scan is skipped and TotalCount is null. Defaults to true.
         /// </summary>
         public bool? IncludeTotalCount { get; set; }
+
+        /// <summary>When true, only keys that belong to a duplicate group (same ModuleId and KeyName) are returned.</summary>
+        public bool OnlyDuplicates { get; set; }
     }
 
     public class ResourceSearchFilter

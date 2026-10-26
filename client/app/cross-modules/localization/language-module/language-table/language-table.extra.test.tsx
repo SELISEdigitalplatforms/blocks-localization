@@ -57,6 +57,9 @@ vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+  // The duplicate chips have their own tests; here the summary simply has not loaded.
+  useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
   useGetBlocksLanguageKeysInfinite: vi.fn(),
   useGetLanguageModules: vi.fn(),
@@ -721,7 +724,10 @@ describe("language-table (extra coverage)", () => {
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
       await user.click(screen.getByText("greeting"));
-      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
+      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1", {
+        // Key details returns to this list (with its filters) after a delete.
+        state: { returnSearch: expect.any(String) },
+      });
     });
 
     it("opens and confirms the single-key translate dialog", async () => {

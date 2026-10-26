@@ -46,6 +46,7 @@ export const useGetBlocksLanguageKey = (
   resourceSearchFilters?: { culture: string; searchText: string }[],
   missingLanguages?: string[],
   enabled = true,
+  onlyDuplicates = false,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const queryClient = useQueryClient();
@@ -65,6 +66,7 @@ export const useGetBlocksLanguageKey = (
       lastUpdateDateRange?.endDate ?? "",
       resourceSearchFilters ?? [],
       missingLanguages ?? [],
+      onlyDuplicates,
     ),
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       languageManagerService.fetchBlocksLanguageKey(
@@ -80,6 +82,7 @@ export const useGetBlocksLanguageKey = (
           lastUpdateDateRange: lastUpdateDateRange,
           resourceSearchFilters: resourceSearchFilters,
           missingLanguages: missingLanguages,
+          ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
         },
         { signal },
       ),
@@ -113,6 +116,9 @@ export const useGetBlocksLanguageKey = (
  * The All view: keys in chunks of {@link LANGUAGE_KEY_CHUNK_SIZE} through the keyset cursor, at most
  * {@link MAX_LOADED_LANGUAGE_KEY_CHUNKS} chunks in memory. Only the first chunk asks for the total;
  * later chunks carry it forward so it survives the first chunk being evicted.
+ *
+ * The duplicates filter's order is not a keyset, so the server refuses a cursor there; that list
+ * (capped server-side) is chunked by page number instead, and the total decides when it ends.
  */
 export const useGetBlocksLanguageKeysInfinite = (
   searchKey: string,
@@ -124,6 +130,7 @@ export const useGetBlocksLanguageKeysInfinite = (
   resourceSearchFilters?: { culture: string; searchText: string }[],
   missingLanguages?: string[],
   enabled = true,
+  onlyDuplicates = false,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const queryClient = useQueryClient();
@@ -139,20 +146,22 @@ export const useGetBlocksLanguageKeysInfinite = (
     lastUpdateDateRange?.endDate ?? "",
     resourceSearchFilters ?? [],
     missingLanguages ?? [],
+    onlyDuplicates,
   );
 
+  // null is the first chunk; after it, a keyset cursor, or a page number under the duplicates filter.
   return useInfiniteQuery<
     IBlocksLanguageKeyResponse,
     Error,
-    InfiniteData<IBlocksLanguageKeyResponse, string | null>,
+    InfiniteData<IBlocksLanguageKeyResponse, string | number | null>,
     typeof queryKey,
-    string | null
+    string | number | null
   >({
     queryKey,
     queryFn: async ({ pageParam, signal }) => {
       const page = await languageManagerService.fetchBlocksLanguageKey(
         {
-          pageNumber: 0,
+          pageNumber: typeof pageParam === "number" ? pageParam : 0,
           pageSize: LANGUAGE_KEY_CHUNK_SIZE,
           searchKey,
           moduleIds,
@@ -163,7 +172,8 @@ export const useGetBlocksLanguageKeysInfinite = (
           lastUpdateDateRange,
           resourceSearchFilters,
           missingLanguages,
-          cursor: pageParam ?? undefined,
+          ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
+          cursor: typeof pageParam === "string" ? pageParam : undefined,
           includeTotalCount: pageParam === null,
         },
         { signal },
@@ -173,8 +183,15 @@ export const useGetBlocksLanguageKeysInfinite = (
       return { ...page, totalCount: loaded?.pages.at(-1)?.totalCount ?? null };
     },
     initialPageParam: null,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (onlyDuplicates) {
+        const nextPage = (typeof lastPageParam === "number" ? lastPageParam : 0) + 1;
+        return nextPage * LANGUAGE_KEY_CHUNK_SIZE < (lastPage.totalCount ?? 0)
+          ? nextPage
+          : undefined;
+      }
+      return lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined;
+    },
     maxPages: MAX_LOADED_LANGUAGE_KEY_CHUNKS,
     enabled,
     // Refetching would re-request every loaded chunk; mutations patch or reset this view instead,
@@ -182,6 +199,31 @@ export const useGetBlocksLanguageKeysInfinite = (
     staleTime: Infinity,
     gcTime: 0,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useGetDuplicateSummary = () => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.duplicateSummary(tenantId),
+    queryFn: () => languageManagerService.fetchDuplicateSummary(),
+    enabled: !!tenantId,
+    // A failed summary only hides the chips; it is not worth retrying or surfacing.
+    retry: false,
+  });
+};
+
+export const useEnforceUniqueness = () => {
+  const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useMutation({
+    mutationKey: ["language-keys", "enforce-uniqueness"],
+    mutationFn: () => languageManagerService.enforceUniqueness(),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.duplicateSummary(tenantId),
+      });
+    },
   });
 };
 
@@ -323,6 +365,10 @@ export const useDeleteLanguageModule = () => {
     onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.modules.all,
+      });
+      // Deleting a module can clear a duplicate module name, even when it has no keys.
+      queryClient.invalidateQueries({
+        queryKey: localizationQueryKeys.languageKeys.duplicateSummaryPrefix,
       });
       if (payload.targetModuleId || payload.deleteKeys) {
         refreshLanguageKeyLists(queryClient, "reset");

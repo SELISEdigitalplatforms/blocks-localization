@@ -123,6 +123,9 @@ test.describe("Glossary", () => {
       await expect(page.getByRole("heading", { name: glossaryName })).toBeVisible({
         timeout: 15_000,
       });
+      // Let the tagged-keys request finish before leaving: an in-flight request is reused when
+      // the detail page mounts again, and the next step counts that page's own request.
+      await glossary.expectNoTaggedKeys();
       await glossary.goBackToList();
     });
 
@@ -152,7 +155,7 @@ test.describe("Glossary", () => {
     await test.step("Edit dialog does not warn about the glossary's own name", async () => {
       await glossary.clickEditButton();
       await glossary.expectNoDuplicateNameWarning();
-      await page.keyboard.press("Escape");
+      await glossary.cancelEditor();
     });
 
     await test.step("Editor validation blocks invalid terminology (C5, C12)", async () => {

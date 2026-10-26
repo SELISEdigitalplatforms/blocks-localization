@@ -1,6 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Eurolm.DomainService.Repositories
@@ -288,6 +289,50 @@ namespace Eurolm.DomainService.Repositories
             }
         }
 
+        /// <summary>
+        /// Points each retried replacement at the row that now exists for its ModuleId + KeyName,
+        /// so the retry updates that row instead of trying to change its _id.
+        /// </summary>
+        private static async Task<IReadOnlyList<WriteModel<BlocksLanguageKey>>> AdoptExistingIdsAsync(
+            IMongoCollection<BlocksLanguageKey> collection, IReadOnlyList<WriteModel<BlocksLanguageKey>> retry)
+        {
+            var replacements = retry.OfType<ReplaceOneModel<BlocksLanguageKey>>().ToList();
+            if (replacements.Count == 0)
+            {
+                return retry;
+            }
+
+            var pairs = replacements.Select(r => Builders<BlocksLanguageKey>.Filter.And(
+                Builders<BlocksLanguageKey>.Filter.Eq(k => k.ModuleId, r.Replacement.ModuleId),
+                Builders<BlocksLanguageKey>.Filter.Eq(k => k.KeyName, r.Replacement.KeyName)));
+            var existing = await collection.Find(Builders<BlocksLanguageKey>.Filter.Or(pairs)).ToListAsync();
+            var idByKey = existing
+                .GroupBy(k => (k.ModuleId, k.KeyName))
+                .ToDictionary(g => g.Key, g => g.First().ItemId);
+
+            foreach (var key in replacements.Select(replacement => replacement.Replacement))
+            {
+                if (idByKey.TryGetValue((key.ModuleId, key.KeyName), out var itemId))
+                {
+                    key.ItemId = itemId;
+                }
+            }
+
+            return retry;
+        }
+
+        public async Task<long> CountUntrimmedKeyNamesAsync(IEnumerable<string> moduleIds, string tenantId)
+        {
+            var database = _dbContextProvider.GetDatabase(tenantId);
+            var collection = database.GetCollection<BlocksLanguageKey>(_keysCollectionName);
+
+            var filter = Builders<BlocksLanguageKey>.Filter.And(
+                Builders<BlocksLanguageKey>.Filter.In(k => k.ModuleId, moduleIds),
+                Builders<BlocksLanguageKey>.Filter.Regex(k => k.KeyName, new BsonRegularExpression(@"^\s|\s$")));
+
+            return await collection.CountDocumentsAsync(filter);
+        }
+
         public async Task<BulkUpsertResult> BulkUpsertKeysByModuleNameAndKeyNameAsync(
             List<BlocksLanguageKey> keys,
             List<BlocksLanguageKey> existingTargetKeys,
@@ -331,7 +376,9 @@ namespace Eurolm.DomainService.Repositories
                     return new ReplaceOneModel<BlocksLanguageKey>(filter, key) { IsUpsert = true };
                 }).ToList();
 
-                await collection.BulkWriteAsync(bulkOps);
+                // With the unique key index, a concurrent writer can win the insert. The retry then
+                // replaces that writer's row, keeping its _id (a replacement may not change _id).
+                await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps, retry => AdoptExistingIdsAsync(collection, retry));
 
                 // When shouldOverwrite is true, all keys are considered "upserted" for timeline purposes
                 result.UpsertedKeys = keysToUpsert.ToList();
@@ -369,7 +416,7 @@ namespace Eurolm.DomainService.Repositories
                         return new UpdateOneModel<BlocksLanguageKey>(filter, update) { IsUpsert = true };
                     }).ToList();
 
-                    await collection.BulkWriteAsync(bulkOps);
+                    await DuplicateKeyRetry.BulkWriteAsync(collection, bulkOps);
                 }
 
                 // Only the keys that were actually inserted should be in the result

@@ -63,6 +63,8 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useTranslateKeyWithPolling: vi.fn(),
   useTranslateLanguageKeys: vi.fn(),
   useSaveBlocksLanguageKeys: vi.fn(),
+  useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
 }));
 
 const h = vi.mocked(hooks);

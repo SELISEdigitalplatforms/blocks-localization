@@ -10,6 +10,7 @@ import { LanguageTable } from "./language-table";
 const navigate = vi.fn();
 const setQueryParams = vi.fn();
 const setSortQueryParams = vi.fn();
+let duplicatesFilter = false;
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -37,6 +38,7 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
       moduleIds: [],
       missingLanguages: [],
       resourceSearch: "",
+      duplicates: duplicatesFilter,
     },
     setQueryParams,
   }),
@@ -59,6 +61,9 @@ vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+  // The duplicate chips have their own tests; here the summary simply has not loaded.
+  useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
   useGetBlocksLanguageKeysInfinite: vi.fn(),
   useGetLanguageModules: vi.fn(),
@@ -136,6 +141,7 @@ describe("language-module/language-table", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setBaseMocks();
+    duplicatesFilter = false;
   });
 
   it("should render skeleton rows while loading", () => {
@@ -221,6 +227,36 @@ describe("language-module/language-table", () => {
     expect(keyName.className).not.toContain("md:w-[200px]");
   });
 
+  it("should ask for duplicate rows only while the duplicates filter is on", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(false);
+
+    duplicatesFilter = true;
+    renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(true);
+  });
+
+  it.each([
+    [true, true, true],
+    [true, false, false],
+    [false, true, false],
+  ])(
+    "with the duplicates filter %s and a truncated result %s, the truncation note shows: %s",
+    (filterOn, truncated, shown) => {
+      duplicatesFilter = filterOn;
+      h.useGetBlocksLanguageKey.mockReturnValue({
+        isLoading: false,
+        data: { ...oneKey, duplicatesTruncated: truncated },
+      } as never);
+      const { container } = renderWithProviders(<LanguageTable />);
+      const note = within(container).queryByTestId("duplicates-truncated-note");
+      expect(note?.textContent ?? null).toBe(
+        shown ? "Showing the first 10,000 duplicate rows." : null,
+      );
+    },
+  );
+
   it("should preserve the rendered table dimensions when filter loading starts", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({
       isLoading: false,
@@ -303,7 +339,25 @@ describe("language-module/language-table", () => {
     } as never);
     renderWithProviders(<LanguageTable />);
     fireEvent.click(screen.getByText("greeting"));
-    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1", {
+      // Key details returns to this list (with its filters) after a delete.
+      state: { returnSearch: expect.any(String) },
+    });
+  });
+
+  it("should hand key details the live query string, which nuqs updates outside the router", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    const previous = window.location.href;
+    window.history.replaceState(null, "", "/list?search=greet&duplicates=true&pageNumber=1");
+    try {
+      renderWithProviders(<LanguageTable />);
+      fireEvent.click(screen.getByText("greeting"));
+      expect(navigate).toHaveBeenLastCalledWith("/scoped/services/language/translations/k1", {
+        state: { returnSearch: "?search=greet&duplicates=true&pageNumber=1" },
+      });
+    } finally {
+      window.history.replaceState(null, "", previous);
+    }
   });
 
   it("should show the bulk action bar when a row is selected", () => {

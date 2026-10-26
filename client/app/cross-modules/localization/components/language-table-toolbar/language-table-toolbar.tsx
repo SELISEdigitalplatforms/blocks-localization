@@ -4,7 +4,14 @@ import {
   FilterToolbar,
   useSortQueryParams,
 } from "@/components/filter-toolbar";
-import { createParser, parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import {
+  createParser,
+  parseAsArrayOf,
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsString,
+  useQueryStates,
+} from "nuqs";
 import {
   DEFAULT_KEY_PAGE_SIZE,
   parseKeyPageSize,
@@ -28,6 +35,8 @@ export const useKeysFilterQueryParams = () => {
     lastUpdateStartDate: parseAsString.withDefault(""),
     lastUpdateEndDate: parseAsString.withDefault(""),
     resourceSearch: parseAsString.withDefault(""),
+    // Set by the duplicates chip in the Translations header: show only duplicate key rows.
+    duplicates: parseAsBoolean.withDefault(false),
   });
   return { queryParams, setQueryParams };
 };

@@ -18,8 +18,11 @@ interface VirtualKeyRowsProps {
   headerRowCount: number;
   colSpan: number;
   renderKeyRow: (row: Row<IBlocksLanguageKey>, ariaRowIndex: number) => ReactNode;
-  /** Cursor of the oldest chunk still loaded: set once earlier chunks have been evicted. */
-  headCursor: string | null | undefined;
+  /**
+   * Cursor (or, under the duplicates filter, page number) of the oldest chunk still loaded: set once
+   * earlier chunks have been evicted.
+   */
+  headCursor: string | number | null | undefined;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   isFetchNextPageError: boolean;

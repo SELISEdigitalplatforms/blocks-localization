@@ -24,6 +24,8 @@ import {
   IKeyUilmExport,
   ILanguageConfig,
   IDeleteModuleRequest,
+  IDuplicateSummary,
+  IEnforceUniquenessResult,
   IModuleGets,
   IRollbackResponse,
   ISaveBlocksLanguageKeyPayload,
@@ -54,6 +56,7 @@ export class LanguageManagerService {
       resourceSearchFilters?: { culture: string; searchText: string }[];
       glossaryId?: string;
       missingLanguages?: string[];
+      onlyDuplicates?: boolean;
       /** Keyset token from a previous `nextCursor`; when set the server ignores `pageNumber`. */
       cursor?: string;
       includeTotalCount?: boolean;
@@ -77,6 +80,14 @@ export class LanguageManagerService {
       delete payload.lastUpdateDateRange.endDate;
     }
     return this.httpClient.post(url, payload, undefined, { signal: options?.signal });
+  };
+
+  fetchDuplicateSummary = (): Promise<IDuplicateSummary> => {
+    return this.httpClient.get(LANGUAGE_KEY_ENDPOINTS.GET_DUPLICATE_SUMMARY);
+  };
+
+  enforceUniqueness = (): Promise<IEnforceUniquenessResult> => {
+    return this.httpClient.post<IEnforceUniquenessResult>(LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS, {});
   };
 
   fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {

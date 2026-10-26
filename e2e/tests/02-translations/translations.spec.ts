@@ -13,6 +13,7 @@ import {
 } from "../../support/localization-helpers";
 import { e2eBaseUrl } from "../../support/env";
 import { readLocalizationProject } from "../../support/localization-project";
+import fs from "fs";
 import path from "path";
 
 test.describe("Translations", () => {
@@ -21,6 +22,9 @@ test.describe("Translations", () => {
     const translations = new TranslationsPage(page);
     const keyDetails = new KeyDetailsPage(page);
 
+    // The import fixture holds more than 30 keys so the Rows per page step always has a larger option.
+    const jsonFile = path.resolve(__dirname, "../../test-data/Uilm_template.json");
+    const importedKeyCount = (JSON.parse(fs.readFileSync(jsonFile, "utf8")) as unknown[]).length;
     const project = readLocalizationProject();
     if (!project)
       throw new Error("Missing fixtures/localization-project.json — run suite setup first.");
@@ -88,7 +92,6 @@ test.describe("Translations", () => {
     });
 
     await test.step("Upload a JSON file, remove it, then re-upload it", async () => {
-      const jsonFile = path.resolve(__dirname, "../../fixtures/Uilm_template.json");
       await translations.uploadJsonFile(jsonFile);
       await translations.removeUploadedFile();
       await translations.resetFileInput(jsonFile);
@@ -141,7 +144,11 @@ test.describe("Translations", () => {
     await test.step("Export History", async () => {
       await translations.openExportHistory();
       const noHistoryMessage = page.getByText("No export history found");
-      if (await noHistoryMessage.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      // isVisible() does not wait, so first wait for either the empty state or the list.
+      await expect(
+        noHistoryMessage.or(page.getByRole("columnheader", { name: "File Name" })),
+      ).toBeVisible({ timeout: 15_000 });
+      if (await noHistoryMessage.isVisible()) {
         await expect(
           page.getByText("Your exported files will appear here once you create an export."),
         ).toBeVisible();
@@ -291,7 +298,14 @@ test.describe("Translations", () => {
     });
 
     await test.step("Rows per page selector changes the page size", async () => {
-      await translations.changePageSize(30);
+      // The page-size options follow the key count (dev 9818f4f), so wait until the
+      // imported fixture keys are counted, then pick the first option above 10.
+      await translations.waitForTotalKeyCountAtLeast(importedKeyCount);
+      const options = await translations.openPageSizeOptions();
+      expect(options[0]).toBe("10");
+      const largerOption = options.find((label) => label !== "10");
+      expect(largerOption, `page size options: ${options.join(", ")}`).toBeDefined();
+      await translations.choosePageSizeOption(largerOption!);
       await translations.expectRowCountAtLeast(11);
       await translations.changePageSize(10);
     });

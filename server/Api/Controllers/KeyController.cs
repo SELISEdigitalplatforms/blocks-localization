@@ -118,6 +118,30 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         /// <summary>
+        /// Counts duplicate keys (same module and key name) and duplicate module names for the
+        /// current tenant, and reports whether the unique indexes are in place. Read-only.
+        /// </summary>
+        /// <returns>A <see cref="GetDuplicateSummaryResponse"/> with the counts and index state.</returns>
+        [HttpGet]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
+        public async Task<GetDuplicateSummaryResponse> GetDuplicateSummary()
+        {
+            return await _keyManagementService.GetDuplicateSummaryAsync();
+        }
+
+        /// <summary>
+        /// Creates the unique key and module-name indexes for the current tenant, each only when
+        /// that collection has no duplicates. Safe to call repeatedly.
+        /// </summary>
+        /// <returns>An <see cref="EnforceUniquenessResponse"/> saying which indexes are in place.</returns>
+        [HttpPost]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::deletekeys")]
+        public async Task<EnforceUniquenessResponse> EnforceUniqueness()
+        {
+            return await _keyManagementService.EnforceUniquenessAsync();
+        }
+
+        /// <summary>
         /// Retrieves keys by an array of key names without pagination or filtering.
         /// </summary>
         /// <param name="request">The request containing an array of key names.</param>
