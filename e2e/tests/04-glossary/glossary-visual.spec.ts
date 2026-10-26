@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { test, expect } from "../../support/test-base";
-import { GlossaryPage } from "../../support/pages/glossary.page";
+import { GlossaryPage, enableGlossaryEnforcement } from "../../support/pages/glossary.page";
 import { openGlossary } from "../../support/localization-helpers";
 
 /**
@@ -176,6 +176,66 @@ test.describe("Glossary — visual evidence", () => {
     await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
     await expect(trigger).toBeFocused();
+  });
+
+  test("flag on: Variants chips, Case-sensitive and details (screenshots, keyboard)", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(300_000);
+    await enableGlossaryEnforcement(page);
+    await openGlossary(page);
+    const glossary = new GlossaryPage(page);
+    await glossary.expectPageLoaded();
+
+    const name = `E2E Visual flag ${Date.now()}`;
+    await glossary.createGlossaryWithStoredNote(
+      name,
+      `${META_PREFIX}${JSON.stringify({
+        rule: "translate",
+        caseSensitive: true,
+        variants: ["workspaces", "work spaces"],
+      })}`,
+    );
+
+    try {
+      // Enter adds a variant chip; its remove button is labelled and reachable by keyboard (H13).
+      await glossary.openEditFromList(name);
+      const variants = glossary.variantsInput;
+      await variants.focus();
+      await page.keyboard.type("workspace area");
+      await page.keyboard.press("Enter");
+      const remove = glossary.editorSheet.getByRole("button", {
+        name: "Remove variant workspace area",
+      });
+      await expect(remove).toBeVisible();
+      await remove.focus();
+      await expect(remove).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(remove).toHaveCount(0);
+      await glossary.cancelEditor();
+
+      for (const viewport of [VIEWPORTS[0], VIEWPORTS[2]]) {
+        await page.setViewportSize(viewport);
+        for (const theme of THEMES) {
+          const suffix = `${viewport.width}x${viewport.height}-${theme}`;
+          await setTheme(page, theme);
+          await glossary.openEditFromList(name);
+          await expect(glossary.caseSensitiveSwitch).toHaveAttribute("aria-checked", "true");
+          await shoot(page, testInfo, `flag-on-sheet-variants-${suffix}`);
+          await glossary.cancelEditor();
+
+          await glossary.openGlossaryDetail(name);
+          await setTheme(page, theme);
+          await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
+          await shoot(page, testInfo, `flag-on-details-${suffix}`);
+          await glossary.goBackToList();
+        }
+      }
+    } finally {
+      await page.setViewportSize(VIEWPORTS[0]);
+      await openGlossary(page);
+      await glossary.deleteGlossaryFromList(name);
+    }
   });
 
   test("timing: glossary table render scripting time", async ({ page }, testInfo) => {
