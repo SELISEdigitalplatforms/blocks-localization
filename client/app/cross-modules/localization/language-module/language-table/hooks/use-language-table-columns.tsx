@@ -21,10 +21,54 @@ const getModuleHue = (moduleId: string): number => {
   return (hash >>> 0) % 360;
 };
 
-export const getModuleBadgeStyle = (moduleId: string): CSSProperties => ({
-  backgroundColor: `hsl(${getModuleHue(moduleId)}, 70%, 55%)`,
-  color: "#111827",
-});
+const MODULE_BADGE_SATURATION = 0.7;
+const MODULE_BADGE_LIGHTNESS = 0.55;
+const MIN_TEXT_CONTRAST = 4.5; // WCAG AA for normal-size text
+
+const DARK_TEXT = { color: "#111827", luminance: 0.0117 };
+const LIGHT_TEXT = { color: "#ffffff", luminance: 1 };
+const BLACK_TEXT = { color: "#000000", luminance: 0 };
+
+const hslToRgb = (hue: number, saturation: number, lightness: number): number[] => {
+  const chroma = saturation * Math.min(lightness, 1 - lightness);
+  const channel = (offset: number) => {
+    const k = (offset + hue / 30) % 12;
+    return lightness - chroma * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return [channel(0), channel(8), channel(4)];
+};
+
+const getRelativeLuminance = ([red, green, blue]: number[]): number => {
+  const linearize = (value: number) =>
+    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  return 0.2126 * linearize(red) + 0.7152 * linearize(green) + 0.0722 * linearize(blue);
+};
+
+const getContrastRatio = (first: number, second: number): number =>
+  (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+
+// Keeps the default dark text where readable; otherwise picks white, and only
+// falls back to pure black for mid-luminance hues where neither reaches AA.
+export const getReadableTextColor = (backgroundLuminance: number): string => {
+  const darkContrast = getContrastRatio(backgroundLuminance, DARK_TEXT.luminance);
+  const lightContrast = getContrastRatio(backgroundLuminance, LIGHT_TEXT.luminance);
+  const preferred = darkContrast >= lightContrast ? DARK_TEXT : LIGHT_TEXT;
+  if (Math.max(darkContrast, lightContrast) >= MIN_TEXT_CONTRAST) return preferred.color;
+  return getContrastRatio(backgroundLuminance, BLACK_TEXT.luminance) >= lightContrast
+    ? BLACK_TEXT.color
+    : LIGHT_TEXT.color;
+};
+
+export const getModuleBadgeStyle = (moduleId: string): CSSProperties => {
+  const hue = getModuleHue(moduleId);
+  const backgroundLuminance = getRelativeLuminance(
+    hslToRgb(hue, MODULE_BADGE_SATURATION, MODULE_BADGE_LIGHTNESS),
+  );
+  return {
+    backgroundColor: `hsl(${hue}, 70%, 55%)`,
+    color: getReadableTextColor(backgroundLuminance),
+  };
+};
 
 const COMPLETENESS_BADGE_VARIANT: Record<
   string,
