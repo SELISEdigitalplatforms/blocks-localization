@@ -2302,12 +2302,9 @@ namespace Eurolm.DomainService.Services
                 await _keyRepository.UpdateBulkUilmApplications(uilmApplicationsToBeUpdated, _blocksBaseCommand?.OrganizationId, _blocksBaseCommand?.IsExternal ?? false, _blocksBaseCommand?.ClientTenantId);
             }
 
-            if (uilmApplicationsToBeInserted.Any())
+            if (!newModulesAlreadyInserted && uilmApplicationsToBeInserted.Any())
             {
-                if (!newModulesAlreadyInserted)
-                {
-                    await InsertUilmApplications(uilmApplicationsToBeInserted);
-                }
+                await InsertUilmApplications(uilmApplicationsToBeInserted);
             }
         }
 
