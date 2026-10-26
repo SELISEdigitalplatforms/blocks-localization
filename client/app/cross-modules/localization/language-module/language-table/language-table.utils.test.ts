@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getDeleteKeyErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
   getStickyBodyCellClassName,
@@ -10,6 +11,22 @@ import {
   parseKeyPageSize,
   toKeyPageSize,
 } from "./language-table.utils";
+
+describe("getDeleteKeyErrorMessage", () => {
+  const fallback = "Failed to delete key. Please try again.";
+
+  it.each([
+    ["no errors", null, fallback],
+    ["a plain string", "bad", fallback],
+    ["an empty list", [], fallback],
+    ["an empty map", {}, fallback],
+    ["a list", ["a", "b"], "a, b"],
+    ["a map with a string message", { field: "bad", other: "worse" }, "bad"],
+    ["a map without a string message", { field: { code: 1 } }, '{"field":{"code":1}}'],
+  ])("reports %s", (_label, errors, expected) => {
+    expect(getDeleteKeyErrorMessage(errors)).toBe(expected);
+  });
+});
 
 describe("language-table sticky column helpers", () => {
   it("identifies select and actions as sticky left columns", () => {

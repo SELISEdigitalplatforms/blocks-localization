@@ -105,30 +105,37 @@ namespace Eurolm.DomainService.Repositories
         /// </summary>
         public FilterDefinition<Key> AfterFilter()
         {
-            return SortField == DefaultSortField
-                ? After(SortField, LastKeyName)
-                : After(SortField, LastDate);
+            if (SortField != DefaultSortField) return After(SortField, LastDate);
+
+            // Only a key name can be null; dates are value types and always carry a value.
+            return LastKeyName == null ? AfterNull(SortField) : After(SortField, LastKeyName);
         }
 
-        private FilterDefinition<Key> After<T>(string field, T? value)
+        private FilterDefinition<Key> IdAfter()
         {
             var f = Builders<Key>.Filter;
-            var idAfter = IsDescending ? f.Lt(k => k.ItemId, LastId) : f.Gt(k => k.ItemId, LastId);
-            FilterDefinition<Key> isNull = new BsonDocument(field, BsonNull.Value);
+            return IsDescending ? f.Lt(k => k.ItemId, LastId) : f.Gt(k => k.ItemId, LastId);
+        }
 
-            // MongoDB sorts null/missing before every other value. Comparison operators never match
-            // null, so the null bucket is handled explicitly to keep the keyset gap-free.
-            if (value == null)
-            {
-                var sameNull = f.And(isNull, idAfter);
-                return IsDescending
-                    ? sameNull
-                    : f.Or(sameNull, new BsonDocument(field, new BsonDocument("$ne", BsonNull.Value)));
-            }
+        private static FilterDefinition<Key> IsNull(string field) => new BsonDocument(field, BsonNull.Value);
 
+        // MongoDB sorts null/missing before every other value. Comparison operators never match
+        // null, so the null bucket is handled explicitly to keep the keyset gap-free.
+        private FilterDefinition<Key> AfterNull(string field)
+        {
+            var f = Builders<Key>.Filter;
+            var sameNull = f.And(IsNull(field), IdAfter());
+            return IsDescending
+                ? sameNull
+                : f.Or(sameNull, new BsonDocument(field, new BsonDocument("$ne", BsonNull.Value)));
+        }
+
+        private FilterDefinition<Key> After<T>(string field, T value)
+        {
+            var f = Builders<Key>.Filter;
             var beyond = IsDescending ? f.Lt(field, value) : f.Gt(field, value);
-            var same = f.And(f.Eq(field, value), idAfter);
-            return IsDescending ? f.Or(beyond, same, isNull) : f.Or(beyond, same);
+            var same = f.And(f.Eq(field, value), IdAfter());
+            return IsDescending ? f.Or(beyond, same, IsNull(field)) : f.Or(beyond, same);
         }
 
         private static DateTime GetDate(Key key, string sortField) =>

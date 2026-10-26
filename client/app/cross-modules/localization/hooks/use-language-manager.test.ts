@@ -94,6 +94,16 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2);
   });
 
+  it("useGetBlocksLanguageKey swallows a failed prefetch and keeps the current page", async () => {
+    svc.fetchBlocksLanguageKey
+      .mockResolvedValueOnce({ totalCount: 30, keys: [] } as never)
+      .mockRejectedValueOnce(new Error("next page down"));
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2));
+    expect(result.current.isSuccess).toBe(true);
+    expect(result.current.data).toEqual({ totalCount: 30, keys: [] });
+  });
+
   it("useGetBlocksLanguageKey does not prefetch past the last page", async () => {
     svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 10, keys: [] } as never);
     const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
@@ -136,7 +146,12 @@ describe("localization/hooks/use-language-manager", () => {
         nextCursor: null,
       } as never);
     const { result } = renderQ(() =>
-      hooks.useGetBlocksLanguageKeysInfinite("hello", ["m1"], "KeyName", false),
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "hello",
+        moduleIds: ["m1"],
+        sortProperty: "KeyName",
+        isDescending: false,
+      }),
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -175,18 +190,14 @@ describe("localization/hooks/use-language-manager", () => {
         nextCursor: null,
       } as never);
     const { result } = renderQ(() =>
-      hooks.useGetBlocksLanguageKeysInfinite(
-        "",
-        [],
-        "KeyName",
-        false,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        true,
-      ),
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+        enabled: true,
+        onlyDuplicates: true,
+      }),
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -208,36 +219,31 @@ describe("localization/hooks/use-language-manager", () => {
 
   it("useGetBlocksLanguageKeysInfinite stays idle until the All view is selected", () => {
     renderQ(() =>
-      hooks.useGetBlocksLanguageKeysInfinite(
-        "",
-        [],
-        "KeyName",
-        false,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-      ),
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+        enabled: false,
+      }),
     );
     expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
   });
 
   it("editing or deleting a key patches the All view in place instead of refetching it", async () => {
     const { queryClient, wrapper } = createQueryWrapper();
-    const allViewKey = localizationQueryKeys.languageKeys.infinite(
-      "tenant-1",
-      "",
-      [],
-      "KeyName",
-      false,
-      "",
-      "",
-      "",
-      "",
-      [],
-      [],
-    );
+    const allViewKey = localizationQueryKeys.languageKeys.infinite("tenant-1", {
+      searchKey: "",
+      moduleIds: [],
+      sortProperty: "KeyName",
+      isDescending: false,
+      createStartDate: "",
+      createEndDate: "",
+      lastUpdateStartDate: "",
+      lastUpdateEndDate: "",
+      resourceSearchFilters: [],
+      missingLanguages: [],
+    });
     // Seeded without an observer, so keep it from being garbage-collected mid-test.
     queryClient.setQueryDefaults(localizationQueryKeys.languageKeys.infinitePrefix, {
       gcTime: Infinity,

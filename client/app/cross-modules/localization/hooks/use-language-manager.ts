@@ -13,6 +13,7 @@ import { languageManagerService } from "@blocks-localization/services/language-m
 import { useEffect, useEffectEvent } from "react";
 import {
   keepPreviousData,
+  noop,
   useInfiniteQuery,
   useMutation,
   useQueries,
@@ -21,6 +22,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import {
+  allViewRefreshAfterSave,
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
@@ -102,7 +104,8 @@ export const useGetBlocksLanguageKey = (
   const nextPage = enabled && isSettled && hasNextPage ? pageQuery(pageNumber + 1) : null;
   const nextPageHash = nextPage ? JSON.stringify(nextPage.queryKey) : "";
   const prefetchNextPage = useEffectEvent(() => {
-    if (nextPage) void queryClient.prefetchQuery(nextPage);
+    // A failed prefetch is not surfaced; the page fetches again when the user opens it.
+    if (nextPage) void queryClient.query(nextPage).catch(noop);
   });
 
   useEffect(() => {
@@ -112,6 +115,20 @@ export const useGetBlocksLanguageKey = (
   return query;
 };
 
+/** Filters of the All view, plus whether it is the active view. */
+export interface LanguageKeysInfiniteOptions {
+  searchKey: string;
+  moduleIds: string[];
+  sortProperty: string;
+  isDescending: boolean;
+  createDateRange?: { startDate: string; endDate: string };
+  lastUpdateDateRange?: { startDate: string; endDate: string };
+  resourceSearchFilters?: { culture: string; searchText: string }[];
+  missingLanguages?: string[];
+  enabled?: boolean;
+  onlyDuplicates?: boolean;
+}
+
 /**
  * The All view: keys in chunks of {@link LANGUAGE_KEY_CHUNK_SIZE} through the keyset cursor, at most
  * {@link MAX_LOADED_LANGUAGE_KEY_CHUNKS} chunks in memory. Only the first chunk asks for the total;
@@ -120,34 +137,33 @@ export const useGetBlocksLanguageKey = (
  * The duplicates filter's order is not a keyset, so the server refuses a cursor there; that list
  * (capped server-side) is chunked by page number instead, and the total decides when it ends.
  */
-export const useGetBlocksLanguageKeysInfinite = (
-  searchKey: string,
-  moduleIds: string[],
-  sortProperty: string,
-  isDescending: boolean,
-  createDateRange?: { startDate: string; endDate: string },
-  lastUpdateDateRange?: { startDate: string; endDate: string },
-  resourceSearchFilters?: { culture: string; searchText: string }[],
-  missingLanguages?: string[],
+export const useGetBlocksLanguageKeysInfinite = ({
+  searchKey,
+  moduleIds,
+  sortProperty,
+  isDescending,
+  createDateRange,
+  lastUpdateDateRange,
+  resourceSearchFilters,
+  missingLanguages,
   enabled = true,
   onlyDuplicates = false,
-) => {
+}: LanguageKeysInfiniteOptions) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const queryClient = useQueryClient();
-  const queryKey = localizationQueryKeys.languageKeys.infinite(
-    tenantId,
+  const queryKey = localizationQueryKeys.languageKeys.infinite(tenantId, {
     searchKey,
     moduleIds,
     sortProperty,
     isDescending,
-    createDateRange?.startDate ?? "",
-    createDateRange?.endDate ?? "",
-    lastUpdateDateRange?.startDate ?? "",
-    lastUpdateDateRange?.endDate ?? "",
-    resourceSearchFilters ?? [],
-    missingLanguages ?? [],
+    createStartDate: createDateRange?.startDate ?? "",
+    createEndDate: createDateRange?.endDate ?? "",
+    lastUpdateStartDate: lastUpdateDateRange?.startDate ?? "",
+    lastUpdateEndDate: lastUpdateDateRange?.endDate ?? "",
+    resourceSearchFilters: resourceSearchFilters ?? [],
+    missingLanguages: missingLanguages ?? [],
     onlyDuplicates,
-  );
+  });
 
   // null is the first chunk; after it, a keyset cursor, or a page number under the duplicates filter.
   return useInfiniteQuery<
@@ -278,11 +294,7 @@ export const useSaveBlocksLanguageKey = () => {
       const { isNewKey, ...savedKey } = payload;
       refreshLanguageKeyLists(
         queryClient,
-        response?.success === false
-          ? "keep"
-          : isNewKey
-            ? "reset"
-            : replaceLanguageKeyRows([savedKey]),
+        allViewRefreshAfterSave(response, Boolean(isNewKey), [savedKey]),
       );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
@@ -306,11 +318,11 @@ export const useSaveBlocksLanguageKeys = () => {
       const savedKeys = payload.map(({ isNewKey: _isNewKey, ...savedKey }) => savedKey);
       refreshLanguageKeyLists(
         queryClient,
-        response?.success === false
-          ? "keep"
-          : payload.some((key) => key.isNewKey)
-            ? "reset"
-            : replaceLanguageKeyRows(savedKeys),
+        allViewRefreshAfterSave(
+          response,
+          payload.some((key) => key.isNewKey),
+          savedKeys,
+        ),
       );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,

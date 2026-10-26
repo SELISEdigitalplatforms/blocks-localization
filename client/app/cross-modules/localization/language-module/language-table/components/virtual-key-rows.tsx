@@ -67,8 +67,9 @@ export default function VirtualKeyRows({
   const virtualRows = rowVirtualizer.getVirtualItems();
   const { scrollMargin } = rowVirtualizer.options;
   const paddingTop = virtualRows.length ? virtualRows[0].start - scrollMargin : 0;
-  const paddingBottom = virtualRows.length
-    ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1].end - scrollMargin)
+  const lastVirtualRow = virtualRows.at(-1);
+  const paddingBottom = lastVirtualRow
+    ? rowVirtualizer.getTotalSize() - (lastVirtualRow.end - scrollMargin)
     : 0;
   const lastVisibleRowIndex = rowVirtualizer.range?.endIndex ?? -1;
 

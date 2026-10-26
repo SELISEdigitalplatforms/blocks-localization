@@ -175,7 +175,7 @@ describe("language-table All view", () => {
     renderWithProviders(<LanguageTable />);
 
     expect(h.useGetBlocksLanguageKey.mock.lastCall?.[11]).toBe(false);
-    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[8]).toBe(true);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].enabled).toBe(true);
   });
 
   it("renders only a window of the loaded rows", async () => {

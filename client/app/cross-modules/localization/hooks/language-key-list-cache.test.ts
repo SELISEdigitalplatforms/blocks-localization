@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
+  allViewRefreshAfterSave,
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
@@ -24,19 +25,18 @@ const pagedKey = localizationQueryKeys.languageKeys.list(
   [],
   [],
 );
-const allViewKey = localizationQueryKeys.languageKeys.infinite(
-  "t1",
-  "",
-  [],
-  "KeyName",
-  false,
-  "",
-  "",
-  "",
-  "",
-  [],
-  [],
-);
+const allViewKey = localizationQueryKeys.languageKeys.infinite("t1", {
+  searchKey: "",
+  moduleIds: [],
+  sortProperty: "KeyName",
+  isDescending: false,
+  createStartDate: "",
+  createEndDate: "",
+  lastUpdateStartDate: "",
+  lastUpdateEndDate: "",
+  resourceSearchFilters: [],
+  missingLanguages: [],
+});
 
 const seed = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
@@ -92,4 +92,27 @@ describe("refreshLanguageKeyLists", () => {
 
     expect(queryClient.getQueryData(allViewKey)).toBeUndefined();
   });
+});
+
+describe("allViewRefreshAfterSave", () => {
+  const saved = [{ itemId: "c", keyName: "renamed" }];
+
+  it("keeps the rows when the server refused the save, even for a new key", () => {
+    expect(allViewRefreshAfterSave({ success: false }, true, saved)).toBe("keep");
+  });
+
+  it("reloads when the save added a key", () => {
+    expect(allViewRefreshAfterSave({ success: true }, true, saved)).toBe("reset");
+  });
+
+  it.each([{ success: true }, undefined])(
+    "patches the saved rows in place (response %o)",
+    (response) => {
+      const patch = allViewRefreshAfterSave(response, false, saved);
+      expect(typeof patch).toBe("function");
+      expect((patch as (keys: { itemId: string }[]) => unknown)([{ itemId: "c" }])).toEqual([
+        expect.objectContaining({ itemId: "c", keyName: "renamed" }),
+      ]);
+    },
+  );
 });

@@ -81,12 +81,7 @@ namespace Eurolm.DomainService.Repositories
             var filterHash = KeyListCursor.ComputeFilterHash(filter, sortField, isDescending);
 
             // Validate the cursor before touching the database so a bad token never costs a query.
-            var cursor = string.IsNullOrEmpty(request.Cursor) ? null : KeyListCursor.Decode(request.Cursor);
-            if (cursor != null && (request.OnlyDuplicates || cursor.FilterHash != filterHash || cursor.SortField != sortField || cursor.IsDescending != isDescending))
-            {
-                // The duplicates view pages by offset (its order is not a keyset), so it never takes a cursor.
-                throw new KeyListException(KeyListErrorCodes.CursorMismatch, nameof(GetKeysRequest.Cursor));
-            }
+            var cursor = DecodeCursor(request, filterHash, sortField, isDescending);
 
             // _id breaks ties so rows sharing a sort value (bulk imports stamp identical dates) keep a stable order across pages.
             var sort = isDescending
@@ -150,9 +145,28 @@ namespace Eurolm.DomainService.Repositories
             catch (MongoExecutionTimeoutException ex)
             {
                 // Search text is user content; only the tenant and the filter hash are logged.
-                _logger.LogWarning("Key list query exceeded {MaxTime} for tenant {TenantId}, filter {FilterHash}", KeyListQueryMaxTime, tenantId, filterHash);
+                _logger.LogWarning(ex, "Key list query exceeded {MaxTime} for tenant {TenantId}, filter {FilterHash}", KeyListQueryMaxTime, tenantId, filterHash);
                 throw new KeyListException(KeyListErrorCodes.QueryTimeout, "Query", 503, ex);
             }
+        }
+
+        /// <summary>
+        /// The request's keyset cursor, or null when it pages by number.
+        /// </summary>
+        /// <exception cref="KeyListException">
+        /// INVALID_CURSOR for a malformed token; CURSOR_MISMATCH when it was issued for another filter
+        /// or sort, or sent with the duplicates filter.
+        /// </exception>
+        private static KeyListCursor? DecodeCursor(GetKeysRequest request, string filterHash, string sortField, bool isDescending)
+        {
+            var cursor = string.IsNullOrEmpty(request.Cursor) ? null : KeyListCursor.Decode(request.Cursor);
+            if (cursor != null && (request.OnlyDuplicates || cursor.FilterHash != filterHash || cursor.SortField != sortField || cursor.IsDescending != isDescending))
+            {
+                // The duplicates view pages by offset (its order is not a keyset), so it never takes a cursor.
+                throw new KeyListException(KeyListErrorCodes.CursorMismatch, nameof(GetKeysRequest.Cursor));
+            }
+
+            return cursor;
         }
 
         private static async Task<long?> CountAsync(IMongoCollection<Key> collection, FilterDefinition<Key> filter)

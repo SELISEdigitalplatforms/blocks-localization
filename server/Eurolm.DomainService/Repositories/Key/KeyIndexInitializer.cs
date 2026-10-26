@@ -29,7 +29,10 @@ namespace Eurolm.DomainService.Repositories
         /// </summary>
         public static Task EnsureStarted(string tenantId, IMongoCollection<Key> collection, ILogger logger)
         {
-            return _ensured.GetOrAdd(tenantId, _ => new Lazy<Task>(() => Task.Run(() => EnsureAsync(tenantId, collection, logger)))).Value;
+            return _ensured.GetOrAdd(
+                tenantId,
+                static (key, args) => new Lazy<Task>(() => Task.Run(() => EnsureAsync(key, args.Collection, args.Logger))),
+                (Collection: collection, Logger: logger)).Value;
         }
 
         public static async Task EnsureAsync(string tenantId, IMongoCollection<Key> collection, ILogger logger)
@@ -40,7 +43,7 @@ namespace Eurolm.DomainService.Repositories
             }
             catch (Exception ex)
             {
-                logger.LogWarning("Could not ensure BlocksLanguageKeys indexes for tenant {TenantId}: {ErrorMessage}", tenantId, ex.Message);
+                logger.LogWarning(ex, "Could not ensure BlocksLanguageKeys indexes for tenant {TenantId}: {ErrorMessage}", tenantId, ex.Message);
             }
         }
 

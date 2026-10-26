@@ -71,6 +71,20 @@ export const replaceLanguageKeyRows =
     });
   };
 
+/**
+ * How a key save refreshes the All view: a refused save changed nothing, a new key needs its
+ * sorted position so the view reloads, and edited keys are swapped in place.
+ */
+export const allViewRefreshAfterSave = (
+  response: { success?: boolean } | undefined,
+  hasNewKey: boolean,
+  savedKeys: Parameters<typeof replaceLanguageKeyRows>[0],
+): AllViewRefresh => {
+  if (response?.success === false) return "keep";
+  if (hasNewKey) return "reset";
+  return replaceLanguageKeyRows(savedKeys);
+};
+
 export const removeLanguageKeyRows =
   (itemIds: string[]): LanguageKeyRowsPatch =>
   (keys) => {

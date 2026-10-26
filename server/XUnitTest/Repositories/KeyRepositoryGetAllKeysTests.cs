@@ -363,11 +363,18 @@ namespace XUnitTest.Repositories
                             new MongoDB.Driver.Core.Clusters.ClusterId(1), new System.Net.DnsEndPoint("localhost", 27017))),
                     "operation exceeded time limit"));
 
-            var act = () => _repo.GetAllKeysAsync(Request());
+            var logger = new Mock<ILogger<KeyRepository>>();
+            var repo = new KeyRepository(_dbContextProvider.Object, logger.Object);
+
+            var act = () => repo.GetAllKeysAsync(Request());
 
             var error = (await act.Should().ThrowAsync<KeyListException>()).Which;
             error.ErrorCode.Should().Be(KeyListErrorCodes.QueryTimeout);
             error.StatusCode.Should().Be(503);
+            // The timeout is logged with the caught exception, so its details reach the logs.
+            logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.Is<Exception?>(e => e is MongoExecutionTimeoutException),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
 
         [Fact]
@@ -384,7 +391,9 @@ namespace XUnitTest.Repositories
             var act = () => KeyIndexInitializer.EnsureAsync("tenant-x", collection.Object, logger.Object);
 
             await act.Should().NotThrowAsync();
-            logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            // The caught exception travels with the log entry, so its type and stack trace are kept.
+            logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.Is<Exception?>(e => e is InvalidOperationException && e.Message == "not authorized"),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
 

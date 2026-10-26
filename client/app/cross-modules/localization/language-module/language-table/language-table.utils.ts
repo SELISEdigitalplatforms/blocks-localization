@@ -1,3 +1,16 @@
+const DELETE_KEY_FALLBACK_MESSAGE = "Failed to delete key. Please try again.";
+
+/** A single key delete's errors come back as a list or as a field-to-message map. */
+export const getDeleteKeyErrorMessage = (rawErrors: unknown) => {
+  if (!rawErrors || typeof rawErrors !== "object") return DELETE_KEY_FALLBACK_MESSAGE;
+  if (Array.isArray(rawErrors)) {
+    return rawErrors.length > 0 ? (rawErrors as string[]).join(", ") : DELETE_KEY_FALLBACK_MESSAGE;
+  }
+  if (Object.keys(rawErrors).length === 0) return DELETE_KEY_FALLBACK_MESSAGE;
+  const firstError = Object.values(rawErrors)[0];
+  return typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+};
+
 export const getDeleteKeysErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;

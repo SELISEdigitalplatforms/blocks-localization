@@ -1,3 +1,18 @@
+/** Filters of the "All" view's chunked list; each one is part of its query key. */
+export interface LanguageKeyInfiniteFilters {
+  searchKey: string;
+  moduleIds: string[];
+  sortProperty: string;
+  isDescending: boolean;
+  createStartDate: string;
+  createEndDate: string;
+  lastUpdateStartDate: string;
+  lastUpdateEndDate: string;
+  resourceSearchFilters: { culture: string; searchText: string }[];
+  missingLanguages: string[];
+  onlyDuplicates?: boolean;
+}
+
 export const localizationQueryKeys = {
   languageKeys: {
     all: ["get-blocksLanguageKeys"] as const,
@@ -42,17 +57,19 @@ export const localizationQueryKeys = {
      */
     infinite: (
       tenantId: string,
-      searchKey: string,
-      moduleIds: string[],
-      sortProperty: string,
-      isDescending: boolean,
-      createStartDate: string,
-      createEndDate: string,
-      lastUpdateStartDate: string,
-      lastUpdateEndDate: string,
-      resourceSearchFilters: { culture: string; searchText: string }[],
-      missingLanguages: string[],
-      onlyDuplicates = false,
+      {
+        searchKey,
+        moduleIds,
+        sortProperty,
+        isDescending,
+        createStartDate,
+        createEndDate,
+        lastUpdateStartDate,
+        lastUpdateEndDate,
+        resourceSearchFilters,
+        missingLanguages,
+        onlyDuplicates = false,
+      }: LanguageKeyInfiniteFilters,
     ) =>
       [
         "get-blocksLanguageKeys",

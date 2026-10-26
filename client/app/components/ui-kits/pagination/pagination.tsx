@@ -34,7 +34,7 @@ export function Pagination({
   onPageSizeChange,
   mode = "paged",
   loadedCount = 0,
-}: PaginationProps) {
+}: Readonly<PaginationProps>) {
   const pageChangeHandler = (page: number) => {
     onChange(page);
   };
