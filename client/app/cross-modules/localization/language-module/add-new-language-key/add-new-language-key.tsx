@@ -76,7 +76,7 @@ const schema = z.object({
     .superRefine((resources, ctx) => {
       if (!resources[0]?.value) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Default value is required",
           path: [0, "value"], // Path to the first resource's value
         });
@@ -110,7 +110,7 @@ function AddNewLanguageKeySkeleton() {
         <PageBreadcrumb />
       </div>
       <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
-        <div className="flex-1 pl-5 pr-5">
+        <div className="flex-1 md:px-5">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-semibold">Create new key</h1>
             <Skeleton className="h-10 w-[66px] rounded-md" />
@@ -387,7 +387,7 @@ function AddNewLanguageKey() {
         </div>
       </div> */}
       <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
-        <div className="flex-1 pl-5 pr-5">
+        <div className="flex-1 md:px-5">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(formSubmitHandler)}>
               <div className="flex items-center justify-between">

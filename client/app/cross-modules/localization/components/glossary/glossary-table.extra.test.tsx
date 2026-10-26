@@ -168,8 +168,17 @@ describe("glossary-table (extra coverage)", () => {
     ]);
     renderWithProviders(<GlossaryTable />);
     expect(screen.getByText("Bare")).toBeTruthy();
-    // Unknown language, missing type/date, and blank text fields all render a dash.
-    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(4);
+    // A language not in the catalog (a custom one) shows its code.
+    expect(screen.getByText("zz-ZZ")).toBeTruthy();
+    // Missing type/date and blank text fields render a dash.
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("falls back to a dash when the language is empty", () => {
+    setData([{ ...row, itemId: "g3", name: "NoLang", language: "" }]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("NoLang")).toBeTruthy();
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(1);
   });
 
   it("opens the edit dialog from the row menu", async () => {

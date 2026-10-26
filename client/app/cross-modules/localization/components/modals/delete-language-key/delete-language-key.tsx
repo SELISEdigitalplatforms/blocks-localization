@@ -90,9 +90,9 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter className="flex flex-row gap-2">
+      <DialogFooter className="flex gap-2">
         <DialogTrigger>
-          <Button variant="outline" size="default" disabled={false}>
+          <Button variant="outline" size="default" className="w-full sm:w-auto" disabled={false}>
             Cancel
           </Button>
         </DialogTrigger>

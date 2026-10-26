@@ -1,8 +1,11 @@
-import { expect, it } from "vitest";
+import type { ReactNode } from "react";
+import { render, renderHook, screen } from "@testing-library/react";
+import { expect, it, vi } from "vitest";
 import {
   getCompletenessCellValue,
   hasNonEmptyValue,
   isKeyComplete,
+  useLanguageTableColumns,
 } from "./use-language-table-columns";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 
@@ -82,7 +85,9 @@ it("treats empty-string resource as missing within active-language completeness 
 // H6
 it("returns No translation when languageListData is empty or undefined", () => {
   expect(getCompletenessCellValue([makeResource("en-US", "Save")], [])).toBe("No translation");
-  expect(getCompletenessCellValue([makeResource("en-US", "Save")], undefined)).toBe("No translation");
+  expect(getCompletenessCellValue([makeResource("en-US", "Save")], undefined)).toBe(
+    "No translation",
+  );
 });
 
 // H6 / C2 combined — all languages retired
@@ -109,4 +114,45 @@ it("isKeyComplete returns true when all language codes have non-empty resources"
 it("isKeyComplete returns false when at least one language code is missing a non-empty resource", () => {
   const resources = [makeResource("en-US", "Save")];
   expect(isKeyComplete(resources, ["en-US", "de-DE"])).toBe(false);
+});
+
+const renderModuleCell = (
+  moduleId: string,
+  options: Pick<
+    Parameters<typeof useLanguageTableColumns>[0],
+    "languageModules" | "isLanguageModulesPending"
+  >,
+) => {
+  const { result } = renderHook(() =>
+    useLanguageTableColumns({
+      expandedRowId: null,
+      onSortChange: vi.fn(),
+      onToggleExpanded: vi.fn(),
+      selectedLanguages: [],
+      selectedOptionalColumns: [],
+      sortQueryParams: { sortBy: "LastUpdateDate", isDescending: true } as never,
+      translatingKeys: new Set(),
+      ...options,
+    }),
+  );
+  const moduleColumn = result.current.find(
+    (column) => (column as { accessorKey?: string }).accessorKey === "moduleId",
+  )!;
+  const cell = moduleColumn.cell as (context: unknown) => ReactNode;
+  return render(<>{cell({ row: { getValue: () => moduleId } })}</>);
+};
+
+it("module cell shows the module name when the module is known", () => {
+  renderModuleCell("m1", { languageModules: [{ itemId: "m1", moduleName: "auth" }] });
+  expect(screen.getByText("auth")).toBeTruthy();
+});
+
+it("module cell shows Loading… while an imported module is still being fetched", () => {
+  renderModuleCell("m1", { languageModules: [], isLanguageModulesPending: true });
+  expect(screen.getByText("Loading…")).toBeTruthy();
+});
+
+it("module cell stays empty when the module is unknown and nothing is pending", () => {
+  const { container } = renderModuleCell("m1", { languageModules: [] });
+  expect(container.innerHTML).toBe("");
 });

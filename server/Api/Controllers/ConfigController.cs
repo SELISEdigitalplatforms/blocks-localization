@@ -45,19 +45,16 @@ namespace BlocksTemplate.Api.Controllers
         {
             return await GetWebHookForCurrentTenant();
         }
+        /// <summary>
+        /// Retrieves the webhook configuration for the current tenant.
+        /// </summary>
+        /// <remarks>Previously took a projectKey and read any tenant's webhook. It now always resolves to the caller's tenant.</remarks>
         [HttpGet]
         [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult<BlocksWebhook?>> GetWebHook([FromQuery] string projectKey)
+        public async Task<BlocksWebhook?> GetWebHook()
         {
-            if(string.IsNullOrEmpty(projectKey))
-            {
-                return BadRequest(new
-                {
-                    ErrorMessage = "Project key is required."
-                });
-            }
-            return Ok(await _webHookService.GetWebhookAsync(projectKey));
+            return await GetWebHookForCurrentTenant();
         }
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::config::savewebhook")]

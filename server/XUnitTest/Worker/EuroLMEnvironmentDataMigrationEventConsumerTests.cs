@@ -1,6 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -182,6 +183,100 @@ namespace XUnitTest
             captured.Payload.ErrorMessage.Should().Be("boom");
             _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
                 false, "tracker-1", "source", "target"), Times.Once);
+        }
+
+        private void SetupEmptySource()
+        {
+            _migrationRepository.Setup(x => x.GetAllModulesAsync(It.IsAny<string>())).ReturnsAsync(new List<BlocksLanguageModule>());
+            _migrationRepository.Setup(x => x.GetAllKeysAsync(It.IsAny<string>())).ReturnsAsync(new List<BlocksLanguageKey>());
+        }
+
+        [Fact]
+        public async Task Consume_OnSuccess_MarksTrackerCompletedAndPublishesSuccessNotification()
+        {
+            SetupEmptySource();
+
+            await _consumer.Consume(Event());
+
+            _migrationRepository.Verify(x => x.UpdateMigrationTrackerAsync("tracker-1",
+                It.Is<ServiceMigrationStatus>(st => st.IsCompleted && st.CompletedAt != null && st.ErrorMessage == null)), Times.Once);
+            _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
+                true, "tracker-1", "source", "target"), Times.Once);
+        }
+
+        [Fact]
+        public async Task Consume_WithoutTrackerId_DoesNotUpdateTrackerOrPublishOnSuccess()
+        {
+            SetupEmptySource();
+
+            await _consumer.Consume(Event(trackerId: null));
+
+            _migrationRepository.Verify(x => x.UpdateMigrationTrackerAsync(It.IsAny<string>(), It.IsAny<ServiceMigrationStatus>()), Times.Never);
+            _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
+                It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Consume_WhenSuccessReportFails_DoesNotMarkMigrationFailed()
+        {
+            SetupEmptySource();
+            _messageClient.Setup(x => x.SendToMassConsumerAsync(It.IsAny<ConsumerMessage<MigrationCompletionEvent>>()))
+                .ThrowsAsync(new InvalidOperationException("broker down"));
+            var sent = new List<bool>();
+            _keyManagementService.Setup(x => x.PublishEnvironmentDataMigrationNotification(
+                    It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<bool, string?, string, string>((ok, _, _, _) => sent.Add(ok))
+                .Returns(Task.CompletedTask);
+
+            await _consumer.Consume(Event());
+
+            sent.Should().Equal(true);
+            _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
+                false, It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Consume_WhenMigrationFails_MarksTrackerFailedWithError()
+        {
+            _migrationRepository.Setup(x => x.GetAllModulesAsync(It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+
+            var act = async () => await _consumer.Consume(Event());
+
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+            _migrationRepository.Verify(x => x.UpdateMigrationTrackerAsync("tracker-1",
+                It.Is<ServiceMigrationStatus>(st => !st.IsCompleted && st.ErrorMessage == "boom")), Times.Once);
+        }
+
+        [Fact]
+        public async Task Consume_WhenFailureReportStepsThrow_StillSendsAllStepsAndRethrowsOriginal()
+        {
+            _migrationRepository.Setup(x => x.GetAllModulesAsync(It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+            _migrationRepository.Setup(x => x.UpdateMigrationTrackerAsync(It.IsAny<string>(), It.IsAny<ServiceMigrationStatus>()))
+                .ThrowsAsync(new Exception("tracker down"));
+            _messageClient.Setup(x => x.SendToMassConsumerAsync(It.IsAny<ConsumerMessage<MigrationCompletionEvent>>()))
+                .ThrowsAsync(new Exception("broker down"));
+
+            var act = async () => await _consumer.Consume(Event());
+
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+            _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
+                false, "tracker-1", "source", "target"), Times.Once);
+        }
+
+        [Fact]
+        public async Task Consume_WhenMigrationFailsWithoutTrackerId_StillPublishesFailureNotification()
+        {
+            _migrationRepository.Setup(x => x.GetAllModulesAsync(It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+
+            var act = async () => await _consumer.Consume(Event(trackerId: null));
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            _messageClient.Verify(x => x.SendToMassConsumerAsync(It.IsAny<ConsumerMessage<MigrationCompletionEvent>>()), Times.Never);
+            _keyManagementService.Verify(x => x.PublishEnvironmentDataMigrationNotification(
+                false, null, "source", "target"), Times.Once);
         }
     }
 }

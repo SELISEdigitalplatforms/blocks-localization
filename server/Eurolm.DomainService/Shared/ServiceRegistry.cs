@@ -1,4 +1,5 @@
 ﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Secrets;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
@@ -44,6 +45,7 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
 
+            services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();

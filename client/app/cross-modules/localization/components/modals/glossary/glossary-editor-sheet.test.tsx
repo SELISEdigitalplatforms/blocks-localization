@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { Button } from "@/components/ui-kits/button/button";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";

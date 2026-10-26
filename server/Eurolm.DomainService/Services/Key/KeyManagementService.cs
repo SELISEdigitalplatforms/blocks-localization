@@ -1301,7 +1301,8 @@ namespace Eurolm.DomainService.Services
                             var resource = new Resource();
                             resource.Culture = culture.Key;
                             resource.Value = csv.GetField<string>(culture.Key);
-                            resource.CharacterLength = string.IsNullOrEmpty(culture.Value) ? 0 : csv.GetField<int>(culture.Value);
+                            // Export writes an empty CharacterLength when the key has no resource for this culture
+                            resource.CharacterLength = !string.IsNullOrEmpty(culture.Value) && int.TryParse(csv.GetField<string>(culture.Value), out var characterLength) ? characterLength : 0;
 
                             resources.Add(resource);
                         }
@@ -1388,12 +1389,15 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             await InsertNewModulesBeforeKeysAsync(validUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
+            await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
         }
 
         private async Task<List<BlocksLanguageModule>> GetLanguageApplications(List<string> appIds = null)
@@ -1890,12 +1894,15 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
             var validUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             var validUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.Where(x => x != null && x.ModuleName != null).DistinctBy(x => x.ModuleName).ToList();
             await InsertNewModulesBeforeKeysAsync(validUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveXlfResourceKeys(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-            await SaveUilmApplication(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
+            await UpdateUilmApplicationKeyCounts(validUilmApplicationsToBeInserted, validUilmApplicationsToBeUpdated);
         }
 
         /// <summary>
@@ -2006,14 +2013,18 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
-            var modulesToInsert = uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList();
-            await InsertNewModulesBeforeKeysAsync(modulesToInsert, uilmResourceKeys, resourceKeysWithoutId);
+            // Save modules before keys so imported keys never reference a module that isn't stored yet.
+            // A module whose name another import already took is reused, and its keys move to it.
+            var distinctUilmApplicationsToBeInserted = uilmApplicationsToBeInserted.DistinctBy(x => x.ModuleName).ToList();
+            var distinctUilmApplicationsToBeUpdated = uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList();
+            await InsertNewModulesBeforeKeysAsync(distinctUilmApplicationsToBeInserted, uilmResourceKeys, resourceKeysWithoutId);
+            await SaveUilmApplication(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated, newModulesAlreadyInserted: true);
 
             await SaveUilmResourceKey(uilmResourceKeys, resourceKeysWithoutId, oldUilmResourceKeys);
-            await SaveUilmApplication(modulesToInsert, uilmApplicationsToBeUpdated.DistinctBy(x => x.ModuleName).ToList(), newModulesAlreadyInserted: true);
+            await UpdateUilmApplicationKeyCounts(distinctUilmApplicationsToBeInserted, distinctUilmApplicationsToBeUpdated);
         }
 
-        private string HandleUilmApplication(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+        private static string HandleUilmApplication(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
             List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string appId, bool isPartiallyTranslated, string moduleName)
         {
             if (string.IsNullOrWhiteSpace(appId))
@@ -2028,7 +2039,7 @@ namespace Eurolm.DomainService.Services
             return appId;
         }
 
-        private string HandleApplicationWithoutAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+        private static string HandleApplicationWithoutAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted,
             List<BlocksLanguageModule> uilmApplicationsToBeUpdated, string moduleName)
         {
             string appId;
@@ -2049,11 +2060,7 @@ namespace Eurolm.DomainService.Services
                 var alreadyInsertedToApp = uilmApplicationsToBeInserted.FirstOrDefault(x => x.ModuleName == moduleName);
                 if (alreadyInsertedToApp is null)
                 {
-                    var app = new BlocksLanguageModule()
-                    {
-                        ItemId = Guid.NewGuid().ToString(),
-                        ModuleName = moduleName,
-                    };
+                    var app = CreateImportedModule(Guid.NewGuid().ToString(), moduleName);
 
                     uilmApplicationsToBeInserted.Add(app);
                     appId = app.ItemId;
@@ -2067,7 +2074,7 @@ namespace Eurolm.DomainService.Services
             return appId;
         }
 
-        private void HandleApplicationWithAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted, List<BlocksLanguageModule> uilmApplicationsToBeUpdated,
+        private static void HandleApplicationWithAppId(List<BlocksLanguageModule> dbApplications, List<BlocksLanguageModule> uilmApplicationsToBeInserted, List<BlocksLanguageModule> uilmApplicationsToBeUpdated,
             string appId, string moduleName)
         {
             var application = dbApplications?.FirstOrDefault(x => x.ItemId == appId);
@@ -2086,16 +2093,29 @@ namespace Eurolm.DomainService.Services
                 var alreadyAddedToInsertList = uilmApplicationsToBeInserted.FirstOrDefault(x => x.ItemId == appId);
                 if (alreadyAddedToInsertList is null)
                 {
-                    BlocksLanguageModule uilmApplication = new()
-                    {
-                        ItemId = appId,
-                        ModuleName = moduleName,
-                    };
+                    BlocksLanguageModule uilmApplication = CreateImportedModule(appId, moduleName);
 
                     uilmApplicationsToBeInserted.Add(uilmApplication);
 
                 }
             }
+        }
+
+        private static BlocksLanguageModule CreateImportedModule(string itemId, string moduleName)
+        {
+            var context = BlocksContext.GetContext();
+            var now = DateTime.UtcNow;
+
+            return new BlocksLanguageModule
+            {
+                ItemId = itemId,
+                ModuleName = moduleName,
+                CreateDate = now,
+                LastUpdateDate = now,
+                CreatedBy = context?.UserId,
+                LastUpdatedBy = context?.UserId,
+                TenantId = context?.TenantId,
+            };
         }
 
         /// <summary>
@@ -2280,7 +2300,6 @@ namespace Eurolm.DomainService.Services
             if (uilmApplicationsToBeUpdated.Any())
             {
                 await _keyRepository.UpdateBulkUilmApplications(uilmApplicationsToBeUpdated, _blocksBaseCommand?.OrganizationId, _blocksBaseCommand?.IsExternal ?? false, _blocksBaseCommand?.ClientTenantId);
-                await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeUpdated);
             }
 
             if (uilmApplicationsToBeInserted.Any())
@@ -2289,8 +2308,18 @@ namespace Eurolm.DomainService.Services
                 {
                     await InsertUilmApplications(uilmApplicationsToBeInserted);
                 }
-                await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeInserted);
             }
+        }
+
+        /// <summary>
+        /// Recalculates key counts for imported modules. Must run after the keys are saved,
+        /// because the count is read from the stored keys.
+        /// </summary>
+        private async Task UpdateUilmApplicationKeyCounts(List<BlocksLanguageModule> uilmApplicationsToBeInserted,
+            List<BlocksLanguageModule> uilmApplicationsToBeUpdated)
+        {
+            await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeUpdated);
+            await AddNumberOfKeysInUilmApplications(uilmApplicationsToBeInserted);
         }
 
         private async Task AddNumberOfKeysInUilmApplications(List<BlocksLanguageModule> uilmApplications)

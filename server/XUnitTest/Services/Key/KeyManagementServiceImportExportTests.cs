@@ -382,6 +382,88 @@ namespace XUnitTest
             result.Should().BeFalse();
         }
 
+        // ---- Import write order: modules before keys, key counts last ----
+
+        private List<string> RecordImportWriteOrder()
+        {
+            var calls = new List<string>();
+            _keyRepositoryMock.Setup(r => r.InsertModulesSkippingTakenNamesAsync(It.IsAny<List<BlocksLanguageModule>>()))
+                .Callback(() => calls.Add("modules"))
+                .ReturnsAsync(new List<BlocksLanguageModule>());
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
+                .Callback(() => calls.Add("keys"))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+            _keyRepositoryMock.Setup(r => r.UpsertResourceKeysWithMergeAsync(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string?>()))
+                .Callback(() => calls.Add("keys"))
+                .ReturnsAsync((1L, 0L));
+            _keyRepositoryMock.Setup(r => r.UpdateKeysCountOfAppAsync(
+                    It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Callback(() => calls.Add("counts"))
+                .ReturnsAsync(true);
+            return calls;
+        }
+
+        [Fact]
+        public async Task ImportCsvFile_NewModule_SavesModuleBeforeKeysAndCountsLast()
+        {
+            var calls = RecordImportWriteOrder();
+            _keyRepositoryMock.Setup(r => r.GetUilmApplications<BlocksLanguageModule>(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageModule, bool>>>()))
+                .ReturnsAsync(new List<BlocksLanguageModule>());
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKey(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync((BlocksLanguageKey?)null);
+
+            var csv = "ItemId,ModuleId,Module,KeyName,en-US,en-US_CharacterLength\n" +
+                      "1,m1,auth,hello,Hello,5\n";
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+
+            var result = await InvokeImport("ImportCsvFile", stream, File("uilm.csv"));
+
+            result.Should().BeTrue();
+            calls.Should().Equal("modules", "keys", "counts");
+        }
+
+        [Fact]
+        public async Task ImportExcelFile_NewModule_SavesModuleBeforeKeysAndCountsLast()
+        {
+            var calls = RecordImportWriteOrder();
+            _moduleServiceMock.Setup(m => m.GetModulesAsync())
+                .ReturnsAsync(new List<BlocksLanguageModule>());
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKey(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync((BlocksLanguageKey?)null);
+
+            using var stream = BuildXlsx();
+            var result = await InvokeImport("ImportExcelFile", stream, File("uilm.xlsx"));
+
+            result.Should().BeTrue();
+            calls.Should().Equal("modules", "keys", "counts");
+        }
+
+        [Fact]
+        public async Task ImportXlfFile_NewModule_SavesModuleBeforeKeysAndCountsLast()
+        {
+            var calls = RecordImportWriteOrder();
+            _languageServiceMock.Setup(s => s.GetLanguagesAsync())
+                .ReturnsAsync(new List<Language> { new() { LanguageCode = "en-US", LanguageName = "English" } });
+            _keyRepositoryMock.Setup(r => r.GetUilmApplications<BlocksLanguageModule>(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageModule, bool>>>()))
+                .ReturnsAsync(new List<BlocksLanguageModule>());
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeys(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(BaseXlf));
+            var result = await InvokeImport("ImportXlfFile", stream, File("messages.xlf"));
+
+            result.Should().BeTrue();
+            calls.Should().Equal("modules", "keys", "counts");
+        }
+
         // ---- ImportUilmFile (public dispatch) ----
 
         [Fact]

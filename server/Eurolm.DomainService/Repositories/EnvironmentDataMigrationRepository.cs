@@ -55,7 +55,9 @@ namespace Eurolm.DomainService.Repositories
 
             var update = Builders<MigrationTracker>.Update
                 .Set(t => t.LastUpdateDate, DateTime.UtcNow)
-                .Set(t => t.LanguageService, LanguageServiceStatus);
+                .Set("LanguageService.IsCompleted", LanguageServiceStatus.IsCompleted)
+                .Set("LanguageService.CompletedAt", LanguageServiceStatus.CompletedAt)
+                .Set("LanguageService.ErrorMessage", LanguageServiceStatus.ErrorMessage);
 
             await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
         }

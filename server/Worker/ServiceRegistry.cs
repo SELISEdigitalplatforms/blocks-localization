@@ -1,4 +1,5 @@
 ﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Secrets;
 using Blocks.Genesis;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
@@ -60,6 +61,7 @@ namespace Worker
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
 
+            services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
             services.AddTransient<AwsS3CompatibleStorageService>();

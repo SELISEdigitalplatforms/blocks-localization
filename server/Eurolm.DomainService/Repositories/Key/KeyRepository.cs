@@ -676,7 +676,8 @@ namespace Eurolm.DomainService.Repositories
                 bulkOpsInt.Add(new UpdateOneModel<BsonDocument>(filter, update));
 
                 var upsert = Builders<BlocksLanguageModule>.Update.Set(x => x.Name, uilmApplication.Name)
-                    .SetOnInsert(x => x.ItemId, Guid.NewGuid().ToString());
+                    .SetOnInsert(x => x.ItemId, Guid.NewGuid().ToString())
+                    .SetOnInsert(x => x.CreateDate, DateTime.UtcNow);
                 var filterForUpsert = Builders<BlocksLanguageModule>.Filter.Eq(x => x.ItemId, uilmApplication.ItemId);
                 bulkOpsExtUpserts.Add(new UpdateOneModel<BlocksLanguageModule>(filterForUpsert, upsert) { IsUpsert = true });
             }

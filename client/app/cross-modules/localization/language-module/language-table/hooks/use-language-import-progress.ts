@@ -15,8 +15,20 @@ export interface LanguageImportProgress {
 }
 
 interface LanguageKeysQueryResult {
-  data?: { totalCount?: number };
+  data?: { totalCount?: number; keys?: { moduleId?: string }[] };
 }
+
+interface LanguageModuleItem {
+  itemId?: string;
+}
+
+// Backs off 2s, 4s, 8s, then every 15s: about 2.5 minutes before giving up.
+const MODULE_SYNC_MAX_ATTEMPTS = 12;
+const MODULE_SYNC_BASE_DELAY_MS = 2000;
+const MODULE_SYNC_MAX_DELAY_MS = 15000;
+
+export const getModuleSyncDelay = (attempt: number) =>
+  Math.min(MODULE_SYNC_BASE_DELAY_MS * 2 ** attempt, MODULE_SYNC_MAX_DELAY_MS);
 
 interface UseLanguageImportProgressOptions {
   totalCount: number;
@@ -94,7 +106,57 @@ export const useLanguageImportProgress = ({
 }: Readonly<UseLanguageImportProgressOptions>) => {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<LanguageImportProgress | null>(null);
+  const [isSyncingModules, setIsSyncingModules] = useState(false);
   const progressRef = useRef<LanguageImportProgress | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const syncModulesForKeys = useCallback(
+    async (keys: { moduleId?: string }[] | undefined) => {
+      const moduleIds = new Set(
+        (keys ?? []).map((key) => key.moduleId).filter((id): id is string => !!id),
+      );
+      if (moduleIds.size === 0) return;
+
+      const hasMissingModules = () => {
+        const knownIds = new Set(
+          queryClient
+            .getQueriesData<LanguageModuleItem[]>({ queryKey: localizationQueryKeys.modules.all })
+            .flatMap(([, data]) => (Array.isArray(data) ? data : []))
+            .map((module) => module.itemId),
+        );
+        return [...moduleIds].some((id) => !knownIds.has(id));
+      };
+
+      if (!hasMissingModules()) return;
+
+      setIsSyncingModules(true);
+      try {
+        for (let attempt = 0; attempt < MODULE_SYNC_MAX_ATTEMPTS; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, getModuleSyncDelay(attempt)));
+          if (!isMountedRef.current) return;
+          try {
+            await queryClient.refetchQueries({
+              queryKey: localizationQueryKeys.modules.all,
+              type: "active",
+            });
+          } catch {
+            // Keep retrying through transient module-query failures.
+          }
+          if (!isMountedRef.current || !hasMissingModules()) return;
+        }
+      } finally {
+        if (isMountedRef.current) setIsSyncingModules(false);
+      }
+    },
+    [queryClient],
+  );
 
   const onImportStarted = useCallback(
     ({ correlationId, fileName }: ILanguageImportRequest) => {
@@ -235,6 +297,7 @@ export const useLanguageImportProgress = ({
             title: "Import complete",
             description: "Your imported translation keys are ready.",
           });
+          void syncModulesForKeys(result.data?.keys);
           return;
         }
       } catch {
@@ -265,7 +328,7 @@ export const useLanguageImportProgress = ({
       if (timeoutId) clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- polling must restart only on status/baseline changes, not on every progress update.
-  }, [progress?.baselineTotalCount, progress?.status, queryClient, refetch]);
+  }, [progress?.baselineTotalCount, progress?.status, queryClient, refetch, syncModulesForKeys]);
 
-  return { progress, onImportStarted, onImportRequestFailed };
+  return { progress, isSyncingModules, onImportStarted, onImportRequestFailed };
 };
