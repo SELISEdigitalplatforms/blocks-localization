@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
 import { useScopedPath, useProjectStore } from "@seliseblocks/genesis-os";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import type { RowSelectionState } from "@tanstack/react-table";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Row, RowSelectionState } from "@tanstack/react-table";
 import {
   EllipsisVertical,
   FolderInput,
@@ -56,12 +57,14 @@ import {
   useDeleteLanguageKeys,
   useGenerateUilmFile,
   useGetBlocksLanguageKey,
+  useGetBlocksLanguageKeysInfinite,
   useGetLanguageModules,
   useGetLanguages,
   useTranslateKey,
   useTranslateKeyWithPolling,
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
+import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
 import {
   useLanguageViewStore,
   updateLanguageViewTenantId,
@@ -73,6 +76,7 @@ import { useNotificationListener } from "@blocks-utilities/notification";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
+import type { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
@@ -84,16 +88,28 @@ import {
   type LanguageImportProgress,
 } from "./hooks/use-language-import-progress";
 import {
+  ALL_KEYS_PAGE_SIZE,
+  DEFAULT_KEY_PAGE_SIZE,
   getDeleteKeysErrorMessage,
   getInclusiveDateRange,
+  getKeyListErrorCode,
   getPageSizeOptions,
   getResourceSearchFilters,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
   parseResourceSearch,
+  TABLE_ROW_HEIGHT_ESTIMATE,
+  toKeyPageSize,
   updateResourceSearchValue,
 } from "./language-table.utils";
+
+// The virtualizer is only needed in the All view, so it stays out of the main bundle.
+const VirtualKeyRows = lazy(() => import("./components/virtual-key-rows"));
+
+/** Skeleton rows are capped so a large page size doesn't mount (and reserve height for) hundreds of rows. */
+const MAX_SKELETON_ROWS = 20;
+const CURSOR_RESET_ERROR_CODES = new Set(["CURSOR_MISMATCH", "INVALID_CURSOR"]);
 
 const getTableSkeletonClassName = (columnId: string) => {
   if (columnId === "select") return "h-4 w-4 rounded";
@@ -146,6 +162,17 @@ function LanguageTableEmptyState({
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
       <p className="font-medium text-high-emphasis">No translation keys yet</p>
       <p className="text-muted-foreground">Create your first translation key to get started.</p>
+    </div>
+  );
+}
+
+function AllViewLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <span className="text-sm text-medium-emphasis">Couldn&apos;t load more keys.</span>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Retry
+      </Button>
     </div>
   );
 }
@@ -279,25 +306,69 @@ export function LanguageTable() {
     [setQueryParams],
   );
 
-  const {
-    isLoading,
-    isFetching,
-    isPlaceholderData,
-    data: blocksLanguageKeyData,
-    refetch: refetchLanguageKeys,
-  } = useGetBlocksLanguageKey(
+  // "all" is the virtualized All view (chunked, cursor-based); a number is a regular page size.
+  const isAllView = queryParams.pageSize === ALL_KEYS_PAGE_SIZE;
+  const pagedPageSize =
+    queryParams.pageSize === ALL_KEYS_PAGE_SIZE
+      ? DEFAULT_KEY_PAGE_SIZE
+      : (queryParams.pageSize ?? DEFAULT_KEY_PAGE_SIZE);
+  const createDateRange = getInclusiveDateRange(
+    queryParams.createStartDate,
+    queryParams.createEndDate,
+  );
+  const lastUpdateDateRange = getInclusiveDateRange(
+    queryParams.lastUpdateStartDate,
+    queryParams.lastUpdateEndDate,
+  );
+
+  const pagedKeysQuery = useGetBlocksLanguageKey(
     queryParams.pageNumber ?? 0,
-    queryParams.pageSize ?? 10,
+    pagedPageSize,
     queryParams.search ?? "",
     queryParams.moduleIds ?? [],
     false,
     sortQueryParams.property,
     sortQueryParams.isDescending,
-    getInclusiveDateRange(queryParams.createStartDate, queryParams.createEndDate),
-    getInclusiveDateRange(queryParams.lastUpdateStartDate, queryParams.lastUpdateEndDate),
+    createDateRange,
+    lastUpdateDateRange,
     resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
     queryParams.missingLanguages ?? [],
+    !isAllView,
   );
+  const allViewQuery = useGetBlocksLanguageKeysInfinite(
+    queryParams.search ?? "",
+    queryParams.moduleIds ?? [],
+    sortQueryParams.property,
+    sortQueryParams.isDescending,
+    createDateRange,
+    lastUpdateDateRange,
+    resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
+    queryParams.missingLanguages ?? [],
+    isAllView,
+  );
+  const allViewKeys = useMemo(
+    () => allViewQuery.data?.pages.flatMap((page) => page.keys) ?? [],
+    [allViewQuery.data],
+  );
+  // Every chunk carries the total forward, so the newest one is current even after eviction.
+  const allViewTotalCount = allViewQuery.data?.pages.at(-1)?.totalCount ?? 0;
+
+  const isLoading = isAllView ? allViewQuery.isLoading : pagedKeysQuery.isLoading;
+  const isFetching = isAllView ? allViewQuery.isFetching : pagedKeysQuery.isFetching;
+  const isPlaceholderData = isAllView ? false : pagedKeysQuery.isPlaceholderData;
+  const blocksLanguageKeyData = pagedKeysQuery.data;
+
+  const refetchLanguageKeys = isAllView
+    ? async () => {
+        const result = await allViewQuery.refetch();
+        return {
+          data: {
+            totalCount: result.data?.pages.at(-1)?.totalCount ?? 0,
+            keys: result.data?.pages.flatMap((page) => page.keys),
+          },
+        };
+      }
+    : pagedKeysQuery.refetch;
 
   const {
     progress: importProgress,
@@ -305,7 +376,7 @@ export function LanguageTable() {
     onImportStarted,
     onImportRequestFailed,
   } = useLanguageImportProgress({
-    totalCount: blocksLanguageKeyData?.totalCount ?? 0,
+    totalCount: (isAllView ? allViewTotalCount : blocksLanguageKeyData?.totalCount) ?? 0,
     refetch: refetchLanguageKeys,
   });
 
@@ -553,12 +624,14 @@ export function LanguageTable() {
     setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
-      pageSize,
+      pageSize: toKeyPageSize(pageSize, stableTotalCount),
       pageNumber: 0,
     }));
   };
 
-  const currentTotalCount = blocksLanguageKeyData?.totalCount ?? 0;
+  const currentTotalCount = isAllView
+    ? allViewTotalCount
+    : (blocksLanguageKeyData?.totalCount ?? 0);
   const areTableFiltersDisabled = !isLoading && !hasActiveFilters && currentTotalCount === 0;
   const areLanguageKeyActionsDisabled = isLoading || areTableFiltersDisabled;
   const previousTotalCountRef = useRef(currentTotalCount);
@@ -581,25 +654,31 @@ export function LanguageTable() {
     selectedOptionalColumns,
     sortQueryParams,
     translatingKeys,
+    selectAllLabel: isAllView ? `Select all loaded (${allViewKeys.length})` : undefined,
   });
 
   const tableData = useMemo(() => {
+    if (isAllView) return allViewKeys;
     return blocksLanguageKeyData?.keys || [];
-  }, [blocksLanguageKeyData]);
+  }, [isAllView, allViewKeys, blocksLanguageKeyData]);
 
-  const requestedPageSize = queryParams.pageSize ?? 10;
-  const requestedPageNumber = queryParams.pageNumber ?? 0;
-  const skeletonRowCount =
+  const requestedPageSize = pagedPageSize;
+  const requestedPageNumber = isAllView ? 0 : (queryParams.pageNumber ?? 0);
+  const expectedRowCount =
     stableTotalCount > 0
       ? Math.max(
           Math.min(stableTotalCount - requestedPageNumber * requestedPageSize, requestedPageSize),
           1,
         )
       : requestedPageSize;
+  const skeletonRowCount = isAllView
+    ? MAX_SKELETON_ROWS
+    : Math.min(expectedRowCount, MAX_SKELETON_ROWS);
   const isFetchingNewPage = isFetching && isPlaceholderData;
   const showLoadingSkeleton =
-    isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
-  const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
+    isLoading || (isFetchingNewPage && tableData.length !== expectedRowCount);
+  const tableViewportMinHeight =
+    80 + Math.min(pagedPageSize, MAX_SKELETON_ROWS) * TABLE_ROW_HEIGHT_ESTIMATE;
   const tableViewportRef = useRef<HTMLDivElement>(null);
   const [tableViewportWidth, setTableViewportWidth] = useState(0);
 
@@ -631,6 +710,52 @@ export function LanguageTable() {
     tableViewportWidth,
     globalThis.window?.innerWidth ?? 0,
   );
+
+  const tableRows = table.getRowModel().rows;
+  const queryClient = useQueryClient();
+  const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
+  const { fetchNextPage } = allViewQuery;
+  const loadNextAllViewChunk = useCallback(() => void fetchNextPage(), [fetchNextPage]);
+
+  const resetAllView = useCallback(() => {
+    void queryClient.resetQueries({ queryKey: localizationQueryKeys.languageKeys.infinitePrefix });
+    if (tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
+  }, [queryClient]);
+
+  // New filters or sort start the All view from the top.
+  const allViewFiltersHash = JSON.stringify([
+    queryParams.search,
+    queryParams.moduleIds,
+    queryParams.missingLanguages,
+    createDateRange,
+    lastUpdateDateRange,
+    resourceSearchFilters,
+    sortQueryParams,
+  ]);
+  const cursorResetDoneRef = useRef(false);
+  useEffect(() => {
+    cursorResetDoneRef.current = false;
+    if (isAllView && tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
+  }, [isAllView, allViewFiltersHash]);
+
+  // A cursor the server no longer accepts (e.g. data changed shape) restarts the view once; a repeat
+  // failure is left to the Retry row rather than looping.
+  const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
+  useEffect(() => {
+    if (!isAllView || !allViewErrorCode || !CURSOR_RESET_ERROR_CODES.has(allViewErrorCode)) return;
+    if (cursorResetDoneRef.current) return;
+    cursorResetDoneRef.current = true;
+    resetAllView();
+  }, [isAllView, allViewErrorCode, resetAllView]);
+
+  // Old "All (n)" bookmarks carry a number the parser maps to "all" (and odd sizes to a preset);
+  // rewrite the URL so it matches what is shown.
+  useEffect(() => {
+    const rawPageSize = new URLSearchParams(globalThis.location?.search ?? "").get("pageSize");
+    if (rawPageSize !== null && rawPageSize !== String(queryParams.pageSize)) {
+      void setQueryParams((prev) => ({ ...prev, pageSize: prev.pageSize }));
+    }
+  }, [queryParams.pageSize, setQueryParams]);
 
   const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
   const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
@@ -791,6 +916,60 @@ export function LanguageTable() {
       });
     }
   }
+
+  // Placeholder rows with stable keys, so a loading table doesn't remount them every render.
+  const renderSkeletonRows = () =>
+    Array.from({ length: skeletonRowCount }).map((_, skeletonIndex) => (
+      <TableRow key={skeletonIndex} className="group h-9 md:h-11">
+        {table.getVisibleLeafColumns().map((column) => (
+          <TableCell key={column.id} className={getStickyBodyCellClassName(column.id)}>
+            <Skeleton className={getTableSkeletonClassName(column.id)} />
+          </TableCell>
+        ))}
+        <TableCell aria-hidden="true" className="p-0" />
+      </TableRow>
+    ));
+
+  const tableColSpan = table.getVisibleLeafColumns().length + 1;
+  // Column header row(s) plus the per-column search row.
+  const headerRowCount = table.getHeaderGroups().length + 1;
+
+  // A key's row plus its inline details when expanded; shared by the paged table and the All view.
+  const renderKeyRow = (row: Row<IBlocksLanguageKey>, ariaRowIndex?: number) => {
+    const isRowExpanded = expandedRowId === row.original.itemId;
+    return (
+      <>
+        <TableRow
+          isHoverable
+          className="group font-normal text-medium-emphasis"
+          data-state={row.getIsSelected() && "selected"}
+          aria-rowindex={ariaRowIndex}
+          onClick={() => handleRowClick(row.original.itemId)}
+        >
+          {row.getVisibleCells().map((cell) => (
+            <TableCell key={cell.id} className={getStickyBodyCellClassName(cell.column.id)}>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          ))}
+          <TableCell aria-hidden="true" className="p-0" />
+        </TableRow>
+        {isRowExpanded && (
+          <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
+            <TableCell colSpan={tableColSpan} className="p-0">
+              <InlineKeyDetails
+                key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
+                keyDetails={row.original}
+                languageListData={languageListData ?? []}
+                languageModules={languageModules ?? []}
+                onDelete={() => onDeleteClick(row.original.itemId)}
+                onTranslate={() => onTranslateClick(row.original.itemId)}
+              />
+            </TableCell>
+          </TableRow>
+        )}
+      </>
+    );
+  };
 
   return (
     <main className="flex flex-col">
@@ -1045,12 +1224,19 @@ export function LanguageTable() {
               </div>
               <CardContent>
                 <div
-                  className="language-table-scrollbar w-full overflow-x-auto @container [&>div]:overflow-visible"
-                  style={{ minHeight: `${tableViewportMinHeight}px` }}
+                  className={`language-table-scrollbar w-full ${isAllView ? "overflow-auto" : "overflow-x-auto"} @container [&>div]:overflow-visible`}
+                  style={
+                    isAllView
+                      ? { maxHeight: "calc(100dvh - 280px)", minHeight: "320px" }
+                      : { minHeight: `${tableViewportMinHeight}px` }
+                  }
                   data-testid="language-table-viewport"
                   ref={tableViewportRef}
                 >
-                  <Table className="table-fixed text-sm">
+                  <Table
+                    className="table-fixed text-sm"
+                    aria-rowcount={isAllView ? allViewTotalCount + headerRowCount : undefined}
+                  >
                     <colgroup>
                       {table.getVisibleLeafColumns().map((column) => (
                         <col
@@ -1065,7 +1251,10 @@ export function LanguageTable() {
                       ))}
                       <col />
                     </colgroup>
-                    <TableHeader>
+                    <TableHeader
+                      ref={tableHeaderRef}
+                      className={isAllView ? "sticky top-0 z-20 bg-card" : undefined}
+                    >
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
                           {headerGroup.headers.map((header) => (
@@ -1132,84 +1321,55 @@ export function LanguageTable() {
                         <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {showLoadingSkeleton
-                        ? Array.from({ length: skeletonRowCount }).map(() => (
-                            <TableRow key={crypto.randomUUID()} className="group h-9 md:h-11">
-                              {table.getVisibleLeafColumns().map((column) => (
-                                <TableCell
-                                  key={column.id}
-                                  className={getStickyBodyCellClassName(column.id)}
-                                >
-                                  <Skeleton className={getTableSkeletonClassName(column.id)} />
-                                </TableCell>
-                              ))}
-                              <TableCell aria-hidden="true" className="p-0" />
-                            </TableRow>
-                          ))
-                        : (() => {
-                            const tableRows = table.getRowModel().rows;
-                            return tableRows?.length ? (
-                              tableRows.map((row) => {
-                                const isRowExpanded = expandedRowId === row.original.itemId;
-                                return (
-                                  <Fragment key={row.id}>
-                                    <TableRow
-                                      isHoverable
-                                      className="group font-normal text-medium-emphasis"
-                                      data-state={row.getIsSelected() && "selected"}
-                                      onClick={() => handleRowClick(row.original.itemId)}
-                                    >
-                                      {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                          key={cell.id}
-                                          className={getStickyBodyCellClassName(cell.column.id)}
-                                        >
-                                          {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext(),
-                                          )}
-                                        </TableCell>
-                                      ))}
-                                      <TableCell aria-hidden="true" className="p-0" />
-                                    </TableRow>
-                                    {isRowExpanded && (
-                                      <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
-                                        <TableCell
-                                          colSpan={table.getVisibleLeafColumns().length + 1}
-                                          className="p-0"
-                                        >
-                                          <InlineKeyDetails
-                                            key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
-                                            keyDetails={row.original}
-                                            languageListData={languageListData ?? []}
-                                            languageModules={languageModules ?? []}
-                                            onDelete={() => onDeleteClick(row.original.itemId)}
-                                            onTranslate={() =>
-                                              onTranslateClick(row.original.itemId)
-                                            }
-                                          />
-                                        </TableCell>
-                                      </TableRow>
+                    {isAllView && !showLoadingSkeleton && tableRows.length > 0 ? (
+                      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
+                        <VirtualKeyRows
+                          rows={tableRows}
+                          scrollElementRef={tableViewportRef}
+                          headerRef={tableHeaderRef}
+                          headerRowCount={headerRowCount}
+                          colSpan={tableColSpan}
+                          renderKeyRow={renderKeyRow}
+                          headCursor={allViewQuery.data?.pageParams[0]}
+                          hasNextPage={allViewQuery.hasNextPage}
+                          isFetchingNextPage={allViewQuery.isFetchingNextPage}
+                          isFetchNextPageError={allViewQuery.isFetchNextPageError}
+                          onLoadMore={loadNextAllViewChunk}
+                          onBackToTop={resetAllView}
+                          loadError={<AllViewLoadError onRetry={loadNextAllViewChunk} />}
+                        />
+                      </Suspense>
+                    ) : (
+                      <TableBody>
+                        {showLoadingSkeleton
+                          ? renderSkeletonRows()
+                          : (() => {
+                              return tableRows?.length ? (
+                                tableRows.map((row) => (
+                                  <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell
+                                    colSpan={table.getVisibleLeafColumns().length + 1}
+                                    className="h-24 text-center"
+                                  >
+                                    {isAllView && allViewQuery.isError ? (
+                                      <AllViewLoadError
+                                        onRetry={() => void allViewQuery.refetch()}
+                                      />
+                                    ) : (
+                                      <LanguageTableEmptyState
+                                        hasActiveFilters={hasActiveFilters}
+                                        importProgress={importProgress}
+                                      />
                                     )}
-                                  </Fragment>
-                                );
-                              })
-                            ) : (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={table.getVisibleLeafColumns().length + 1}
-                                  className="h-24 text-center"
-                                >
-                                  <LanguageTableEmptyState
-                                    hasActiveFilters={hasActiveFilters}
-                                    importProgress={importProgress}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })()}
-                    </TableBody>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })()}
+                      </TableBody>
+                    )}
                   </Table>
                 </div>
               </CardContent>
@@ -1219,12 +1379,15 @@ export function LanguageTable() {
                   aria-hidden={showLoadingSkeleton || undefined}
                 >
                   <Pagination
-                    page={queryParams.pageNumber}
-                    pageSize={queryParams.pageSize}
+                    page={isAllView ? 0 : queryParams.pageNumber}
+                    // In the All view the select shows its "All (n)" option, which is the total.
+                    pageSize={isAllView ? stableTotalCount : pagedPageSize}
                     totalCount={stableTotalCount}
                     pageSizeOptions={pageSizeOptions}
                     onChange={onPageChangeHandler}
                     onPageSizeChange={onPageSizeChangeHandler}
+                    mode={isAllView ? "all" : "paged"}
+                    loadedCount={tableData.length}
                   />
                 </div>
               )}

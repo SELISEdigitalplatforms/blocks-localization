@@ -2,6 +2,7 @@ import { useProjectStore } from "@seliseblocks/genesis-os";
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
+  IBlocksLanguageKeyResponse,
   IDeleteModuleRequest,
   IGlossary,
   ILanguageConfig,
@@ -9,14 +10,28 @@ import {
   ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQueries,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from "@tanstack/react-query";
+import {
+  refreshLanguageKeyLists,
+  removeLanguageKeyRows,
+  replaceLanguageKeyRows,
+} from "./language-key-list-cache";
+
+/** Paged lists stay fresh this long; mutations still invalidate them immediately. */
+export const LANGUAGE_KEY_PAGE_STALE_TIME = 30_000;
+/** Rows per chunk in the All view. */
+export const LANGUAGE_KEY_CHUNK_SIZE = 100;
+/** Chunks the All view keeps in memory (5,000 rows); older ones are evicted. */
+export const MAX_LOADED_LANGUAGE_KEY_CHUNKS = 50;
 
 export const useGetBlocksLanguageKey = (
   pageNumber: number,
@@ -30,12 +45,14 @@ export const useGetBlocksLanguageKey = (
   lastUpdateDateRange?: { startDate: string; endDate: string },
   resourceSearchFilters?: { culture: string; searchText: string }[],
   missingLanguages?: string[],
+  enabled = true,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  return useQuery({
+  const queryClient = useQueryClient();
+  const pageQuery = (page: number) => ({
     queryKey: localizationQueryKeys.languageKeys.list(
       tenantId,
-      pageNumber,
+      page,
       pageSize,
       searchKey,
       moduleIds,
@@ -49,23 +66,122 @@ export const useGetBlocksLanguageKey = (
       resourceSearchFilters ?? [],
       missingLanguages ?? [],
     ),
-    queryFn: () =>
-      languageManagerService.fetchBlocksLanguageKey({
-        pageNumber: pageNumber,
-        pageSize: pageSize,
-        searchKey: searchKey,
-        moduleIds: moduleIds,
-        isPartiallyTranslated: isPartiallyTranslated,
-        sortProperty: sortProperty,
-        isDescending: isDescending,
-        createDateRange: createDateRange,
-        lastUpdateDateRange: lastUpdateDateRange,
-        resourceSearchFilters: resourceSearchFilters,
-        missingLanguages: missingLanguages,
-      }),
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      languageManagerService.fetchBlocksLanguageKey(
+        {
+          pageNumber: page,
+          pageSize: pageSize,
+          searchKey: searchKey,
+          moduleIds: moduleIds,
+          isPartiallyTranslated: isPartiallyTranslated,
+          sortProperty: sortProperty,
+          isDescending: isDescending,
+          createDateRange: createDateRange,
+          lastUpdateDateRange: lastUpdateDateRange,
+          resourceSearchFilters: resourceSearchFilters,
+          missingLanguages: missingLanguages,
+        },
+        { signal },
+      ),
+    staleTime: LANGUAGE_KEY_PAGE_STALE_TIME,
+  });
+
+  const query = useQuery({
+    ...pageQuery(pageNumber),
     placeholderData: keepPreviousData,
-    staleTime: 0,
     refetchOnMount: true,
+    enabled,
+  });
+
+  // Prefetch the next page once this one has settled, so paging forward renders from cache.
+  const isSettled = query.isSuccess && !query.isPlaceholderData && !query.isFetching;
+  const hasNextPage = (pageNumber + 1) * pageSize < (query.data?.totalCount ?? 0);
+  const nextPage = enabled && isSettled && hasNextPage ? pageQuery(pageNumber + 1) : null;
+  const nextPageHash = nextPage ? JSON.stringify(nextPage.queryKey) : "";
+  const prefetchNextPage = useEffectEvent(() => {
+    if (nextPage) void queryClient.prefetchQuery(nextPage);
+  });
+
+  useEffect(() => {
+    if (nextPageHash) prefetchNextPage();
+  }, [nextPageHash]);
+
+  return query;
+};
+
+/**
+ * The All view: keys in chunks of {@link LANGUAGE_KEY_CHUNK_SIZE} through the keyset cursor, at most
+ * {@link MAX_LOADED_LANGUAGE_KEY_CHUNKS} chunks in memory. Only the first chunk asks for the total;
+ * later chunks carry it forward so it survives the first chunk being evicted.
+ */
+export const useGetBlocksLanguageKeysInfinite = (
+  searchKey: string,
+  moduleIds: string[],
+  sortProperty: string,
+  isDescending: boolean,
+  createDateRange?: { startDate: string; endDate: string },
+  lastUpdateDateRange?: { startDate: string; endDate: string },
+  resourceSearchFilters?: { culture: string; searchText: string }[],
+  missingLanguages?: string[],
+  enabled = true,
+) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const queryClient = useQueryClient();
+  const queryKey = localizationQueryKeys.languageKeys.infinite(
+    tenantId,
+    searchKey,
+    moduleIds,
+    sortProperty,
+    isDescending,
+    createDateRange?.startDate ?? "",
+    createDateRange?.endDate ?? "",
+    lastUpdateDateRange?.startDate ?? "",
+    lastUpdateDateRange?.endDate ?? "",
+    resourceSearchFilters ?? [],
+    missingLanguages ?? [],
+  );
+
+  return useInfiniteQuery<
+    IBlocksLanguageKeyResponse,
+    Error,
+    InfiniteData<IBlocksLanguageKeyResponse, string | null>,
+    typeof queryKey,
+    string | null
+  >({
+    queryKey,
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await languageManagerService.fetchBlocksLanguageKey(
+        {
+          pageNumber: 0,
+          pageSize: LANGUAGE_KEY_CHUNK_SIZE,
+          searchKey,
+          moduleIds,
+          isPartiallyTranslated: false,
+          sortProperty,
+          isDescending,
+          createDateRange,
+          lastUpdateDateRange,
+          resourceSearchFilters,
+          missingLanguages,
+          cursor: pageParam ?? undefined,
+          includeTotalCount: pageParam === null,
+        },
+        { signal },
+      );
+      if (pageParam === null) return page;
+      const loaded = queryClient.getQueryData<InfiniteData<IBlocksLanguageKeyResponse>>(queryKey);
+      return { ...page, totalCount: loaded?.pages.at(-1)?.totalCount ?? null };
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    maxPages: MAX_LOADED_LANGUAGE_KEY_CHUNKS,
+    enabled,
+    // Refetching would re-request every loaded chunk; mutations patch or reset this view instead,
+    // and it is dropped when the table unmounts so a return visit starts from fresh first rows.
+    staleTime: Infinity,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -113,13 +229,19 @@ export const useSaveBlocksLanguageKey = () => {
   return useMutation({
     mutationKey: ["add-blocksLanguageKey"],
     mutationFn: languageManagerService.saveBlocksLanguageKey,
-    onSuccess: () => {
+    onSuccess: (response, payload) => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+      const { isNewKey, ...savedKey } = payload;
+      refreshLanguageKeyLists(
+        queryClient,
+        response?.success === false
+          ? "keep"
+          : isNewKey
+            ? "reset"
+            : replaceLanguageKeyRows([savedKey]),
+      );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -135,13 +257,19 @@ export const useSaveBlocksLanguageKeys = () => {
   return useMutation({
     mutationKey: ["save-blocks-language-keys", "bulk"],
     mutationFn: languageManagerService.saveBlocksLanguageKeys,
-    onSuccess: () => {
+    onSuccess: (response, payload) => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+      const savedKeys = payload.map(({ isNewKey: _isNewKey, ...savedKey }) => savedKey);
+      refreshLanguageKeyLists(
+        queryClient,
+        response?.success === false
+          ? "keep"
+          : payload.some((key) => key.isNewKey)
+            ? "reset"
+            : replaceLanguageKeyRows(savedKeys),
+      );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -197,9 +325,7 @@ export const useDeleteLanguageModule = () => {
         queryKey: localizationQueryKeys.modules.all,
       });
       if (payload.targetModuleId || payload.deleteKeys) {
-        queryClient.invalidateQueries({
-          queryKey: localizationQueryKeys.languageKeys.all,
-        });
+        refreshLanguageKeyLists(queryClient, "reset");
         queryClient.invalidateQueries({
           queryKey: localizationQueryKeys.languageKeys.detailPrefix,
         });
@@ -252,9 +378,7 @@ export const useTranslateAll = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+      refreshLanguageKeyLists(queryClient, "keep");
     },
   });
 };
@@ -268,9 +392,7 @@ export const useTranslateKey = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+      refreshLanguageKeyLists(queryClient, "keep");
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -313,9 +435,7 @@ export const useTranslateKeyWithPolling = (
 
         if (hasTranslations) {
           // Translation is complete, invalidate list queries to refresh table
-          queryClient.invalidateQueries({
-            queryKey: localizationQueryKeys.languageKeys.all,
-          });
+          refreshLanguageKeyLists(queryClient, replaceLanguageKeyRows([data]));
           queryClient.invalidateQueries({
             queryKey: localizationQueryKeys.languageKeys.detailPrefix,
           });
@@ -360,10 +480,11 @@ export const useDeleteLanguageKey = () => {
   return useMutation({
     mutationKey: ["language-key", "delete"],
     mutationFn: (payload: { itemId: string }) => languageManagerService.deleteLanguageKey(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+    onSuccess: (response, payload) => {
+      refreshLanguageKeyLists(
+        queryClient,
+        response?.isSuccess ? removeLanguageKeyRows([payload.itemId]) : "keep",
+      );
     },
   });
 };
@@ -373,10 +494,11 @@ export const useDeleteLanguageKeys = () => {
   return useMutation({
     mutationKey: ["language-keys", "bulk-delete"],
     mutationFn: languageManagerService.deleteLanguageKeys,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+    onSuccess: (response, payload) => {
+      refreshLanguageKeyLists(
+        queryClient,
+        response?.isSuccess ? removeLanguageKeyRows(payload.itemIds) : "keep",
+      );
     },
   });
 };
@@ -390,9 +512,7 @@ export const useTranslateLanguageKeys = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.languageKeys.all,
-      });
+      refreshLanguageKeyLists(queryClient, "keep");
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
       });
@@ -876,7 +996,7 @@ export const useDeleteGlossaryWithCascade = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
   const invalidateKeys = () => {
-    queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+    refreshLanguageKeyLists(queryClient, "reset");
     queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
   };
 

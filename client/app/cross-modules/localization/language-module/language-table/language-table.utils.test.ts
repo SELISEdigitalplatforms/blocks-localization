@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getKeyListErrorCode,
   getPageSizeOptions,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
   isStickyLeftColumn,
+  parseKeyPageSize,
+  toKeyPageSize,
 } from "./language-table.utils";
 
 describe("language-table sticky column helpers", () => {
@@ -73,5 +76,58 @@ describe("getPageSizeOptions", () => {
   it("appends totalCount as the all option", () => {
     expect(getPageSizeOptions(25)).toEqual([10, 25]);
     expect(getPageSizeOptions(250)).toEqual([10, 30, 50, 100, 250]);
+  });
+});
+
+describe("parseKeyPageSize", () => {
+  it("keeps the presets and the All view", () => {
+    expect(parseKeyPageSize("10")).toBe(10);
+    expect(parseKeyPageSize("100")).toBe(100);
+    expect(parseKeyPageSize("all")).toBe("all");
+  });
+
+  it("opens the All view for an old bookmarked All (n) size", () => {
+    expect(parseKeyPageSize("101")).toBe("all");
+    expect(parseKeyPageSize("1234")).toBe("all");
+  });
+
+  it("snaps any other size up to the nearest preset", () => {
+    expect(parseKeyPageSize("1")).toBe(10);
+    expect(parseKeyPageSize("20")).toBe(30);
+    expect(parseKeyPageSize("31")).toBe(50);
+  });
+
+  it("rejects invalid sizes so the default applies", () => {
+    expect(parseKeyPageSize("abc")).toBeNull();
+    expect(parseKeyPageSize("-5")).toBeNull();
+    expect(parseKeyPageSize("0")).toBeNull();
+    expect(parseKeyPageSize("2.5")).toBeNull();
+    expect(parseKeyPageSize("")).toBeNull();
+  });
+});
+
+describe("toKeyPageSize", () => {
+  it("maps the All (n) option to the All view", () => {
+    expect(toKeyPageSize(250, 250)).toBe("all");
+    expect(toKeyPageSize(25, 25)).toBe("all");
+  });
+
+  it("keeps a preset, even when it equals the total", () => {
+    expect(toKeyPageSize(30, 250)).toBe(30);
+    expect(toKeyPageSize(100, 100)).toBe(100);
+  });
+});
+
+describe("getKeyListErrorCode", () => {
+  it("reads the code from a failed request's errors map", () => {
+    expect(getKeyListErrorCode({ status: 400, errors: { Cursor: "CURSOR_MISMATCH" } })).toBe(
+      "CURSOR_MISMATCH",
+    );
+    expect(getKeyListErrorCode({ errors: { Query: ["QUERY_TIMEOUT"] } })).toBe("QUERY_TIMEOUT");
+  });
+
+  it("returns undefined when there is no errors map", () => {
+    expect(getKeyListErrorCode(null)).toBeUndefined();
+    expect(getKeyListErrorCode(new Error("network"))).toBeUndefined();
   });
 });

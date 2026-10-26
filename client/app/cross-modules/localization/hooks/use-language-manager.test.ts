@@ -74,7 +74,166 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
       expect.objectContaining({ pageNumber: 0, pageSize: 25, searchKey: "search" }),
+      // The query's AbortSignal, so a superseded request is cancelled.
+      { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("useGetBlocksLanguageKey prefetches the next page once the current one settles", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 30, keys: [] } as never);
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() =>
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 1, pageSize: 10 }),
+        expect.anything(),
+      ),
+    );
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2);
+  });
+
+  it("useGetBlocksLanguageKey does not prefetch past the last page", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 10, keys: [] } as never);
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("useGetBlocksLanguageKey stays idle while the All view is active", () => {
+    renderQ(() =>
+      hooks.useGetBlocksLanguageKey(
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+      ),
+    );
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("useGetBlocksLanguageKeysInfinite counts on the first chunk and follows the cursor after it", async () => {
+    svc.fetchBlocksLanguageKey
+      .mockResolvedValueOnce({
+        totalCount: 150,
+        keys: [{ itemId: "k1" }],
+        hasMore: true,
+        nextCursor: "cursor-1",
+      } as never)
+      .mockResolvedValueOnce({
+        totalCount: null,
+        keys: [{ itemId: "k2" }],
+        hasMore: false,
+        nextCursor: null,
+      } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetBlocksLanguageKeysInfinite("hello", ["m1"], "KeyName", false),
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pageSize: hooks.LANGUAGE_KEY_CHUNK_SIZE,
+        includeTotalCount: true,
+        cursor: undefined,
+        searchKey: "hello",
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(result.current.hasNextPage).toBe(true);
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: "cursor-1", includeTotalCount: false }),
+      { signal: expect.any(AbortSignal) },
+    );
+    // The uncounted chunk carries the first chunk's total forward.
+    expect(result.current.data?.pages[1].totalCount).toBe(150);
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+  });
+
+  it("useGetBlocksLanguageKeysInfinite stays idle until the All view is selected", () => {
+    renderQ(() =>
+      hooks.useGetBlocksLanguageKeysInfinite(
+        "",
+        [],
+        "KeyName",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+      ),
+    );
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("editing or deleting a key patches the All view in place instead of refetching it", async () => {
+    const { queryClient, wrapper } = createQueryWrapper();
+    const allViewKey = localizationQueryKeys.languageKeys.infinite(
+      "tenant-1",
+      "",
+      [],
+      "KeyName",
+      false,
+      "",
+      "",
+      "",
+      "",
+      [],
+      [],
+    );
+    // Seeded without an observer, so keep it from being garbage-collected mid-test.
+    queryClient.setQueryDefaults(localizationQueryKeys.languageKeys.infinitePrefix, {
+      gcTime: Infinity,
+    });
+    queryClient.setQueryData(allViewKey, {
+      pages: [
+        {
+          totalCount: 3,
+          keys: [
+            { itemId: "a", keyName: "a", resources: [] },
+            { itemId: "b", keyName: "b", resources: [] },
+            { itemId: "c", keyName: "c", resources: [] },
+          ],
+          hasMore: false,
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    });
+    svc.saveBlocksLanguageKey.mockResolvedValue({ success: true } as never);
+    svc.deleteLanguageKey.mockResolvedValue({ isSuccess: true } as never);
+
+    const save = renderHook(() => hooks.useSaveBlocksLanguageKey(), { wrapper });
+    await save.result.current.mutateAsync({
+      itemId: "b",
+      keyName: "b",
+      moduleId: "m",
+      resources: [{ culture: "de-DE", value: "Hallo" }],
+      routes: [],
+      isPartiallyTranslated: false,
+    });
+    const remove = renderHook(() => hooks.useDeleteLanguageKey(), { wrapper });
+    await remove.result.current.mutateAsync({ itemId: "a" });
+
+    const page = queryClient.getQueryData<{
+      pages: Array<{ totalCount: number; keys: Array<{ itemId: string; resources: unknown[] }> }>;
+    }>(allViewKey)!.pages[0];
+    expect(page.keys.map((key) => key.itemId)).toEqual(["b", "c"]);
+    expect(page.keys[0].resources).toEqual([{ culture: "de-DE", value: "Hallo" }]);
+    expect(page.totalCount).toBe(2);
+    expect(queryClient.getQueryState(allViewKey)?.isInvalidated).toBe(false);
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
   });
 
   it("useGetBlocksLanguageKey should keep the current rows during a search refetch", async () => {

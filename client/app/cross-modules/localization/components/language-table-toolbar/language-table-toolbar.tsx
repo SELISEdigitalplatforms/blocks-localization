@@ -4,12 +4,22 @@ import {
   FilterToolbar,
   useSortQueryParams,
 } from "@/components/filter-toolbar";
-import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import { createParser, parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import {
+  DEFAULT_KEY_PAGE_SIZE,
+  parseKeyPageSize,
+  type KeyPageSize,
+} from "@blocks-localization/language-module/language-table/language-table.utils";
+
+const parseAsKeyPageSize = createParser<KeyPageSize>({
+  parse: parseKeyPageSize,
+  serialize: String,
+});
 
 export const useKeysFilterQueryParams = () => {
   const [queryParams, setQueryParams] = useQueryStates({
     pageNumber: parseAsInteger.withDefault(0),
-    pageSize: parseAsInteger.withDefault(10),
+    pageSize: parseAsKeyPageSize.withDefault(DEFAULT_KEY_PAGE_SIZE),
     search: parseAsString.withDefault(""),
     moduleIds: parseAsArrayOf(parseAsString).withDefault([]),
     missingLanguages: parseAsArrayOf(parseAsString).withDefault([]),

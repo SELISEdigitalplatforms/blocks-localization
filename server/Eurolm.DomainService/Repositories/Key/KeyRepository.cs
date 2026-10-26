@@ -1,5 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Linq.Expressions;
@@ -10,12 +12,18 @@ namespace Eurolm.DomainService.Repositories
     public class KeyRepository : IKeyRepository
     {
         private readonly IDbContextProvider _dbContextProvider;
+        private readonly ILogger<KeyRepository> _logger;
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
 
-        public KeyRepository(IDbContextProvider dbContextProvider)
+        public const int DefaultKeyPageSize = 10;
+        public const int MaxKeyPageSize = 1000;
+        public static readonly TimeSpan KeyListQueryMaxTime = TimeSpan.FromSeconds(15);
+
+        public KeyRepository(IDbContextProvider dbContextProvider, ILogger<KeyRepository>? logger = null)
         {
             _dbContextProvider = dbContextProvider;
+            _logger = logger ?? NullLogger<KeyRepository>.Instance;
         }
 
 
@@ -58,31 +66,76 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<GetKeysQueryResponse> GetAllKeysAsync(GetKeysRequest request)
         {
-            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
             var collection = dataBase.GetCollection<Key>(_collectionName);
+            _ = KeyIndexInitializer.EnsureStarted(tenantId, collection, _logger);
+
+            var pageSize = request.PageSize <= 0 ? DefaultKeyPageSize : Math.Min(request.PageSize, MaxKeyPageSize);
+            var sortField = KeyListCursor.ResolveSortField(request.SortProperty)
+                ?? throw new KeyListException(KeyListErrorCodes.InvalidSortProperty, nameof(GetKeysRequest.SortProperty));
+            var isDescending = request.IsDescending;
 
             var filter = getAllKeysFilter(request);
+            var filterHash = KeyListCursor.ComputeFilterHash(filter, sortField, isDescending);
 
-            var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
-            var sortProperty = hasSortProperty ? request.SortProperty : "KeyName";
-            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(sortProperty) : Builders<Key>.Sort.Ascending(sortProperty);
-
-            var findKeysTask = collection
-                .Find(filter)
-                .Skip(request.PageNumber * request.PageSize)
-                .Limit(request.PageSize)
-                .Sort(sort)
-                .ToListAsync();
-
-            var countDocumentsTask = collection.CountDocumentsAsync(filter);
-
-            await Task.WhenAll(findKeysTask, countDocumentsTask);
-
-            return new GetKeysQueryResponse
+            // Validate the cursor before touching the database so a bad token never costs a query.
+            var cursor = string.IsNullOrEmpty(request.Cursor) ? null : KeyListCursor.Decode(request.Cursor);
+            if (cursor != null && (cursor.FilterHash != filterHash || cursor.SortField != sortField || cursor.IsDescending != isDescending))
             {
-                Keys = findKeysTask.Result,
-                TotalCount = countDocumentsTask.Result
-            };
+                throw new KeyListException(KeyListErrorCodes.CursorMismatch, nameof(GetKeysRequest.Cursor));
+            }
+
+            // _id breaks ties so rows sharing a sort value (bulk imports stamp identical dates) keep a stable order across pages.
+            var sort = isDescending
+                ? Builders<Key>.Sort.Descending(sortField).Descending(k => k.ItemId)
+                : Builders<Key>.Sort.Ascending(sortField).Ascending(k => k.ItemId);
+
+            var find = collection
+                .Find(cursor == null ? filter : filter & cursor.AfterFilter(), new FindOptions { MaxTime = KeyListQueryMaxTime });
+            if (cursor == null)
+            {
+                // Computed in long so a huge PageNumber cannot overflow into a negative Skip.
+                var skip = (long)Math.Max(request.PageNumber, 0) * pageSize;
+                find = find.Skip((int)Math.Min(skip, int.MaxValue));
+            }
+
+            try
+            {
+                // One extra row tells us whether another page exists without a second query.
+                var findKeysTask = find.Limit(pageSize + 1).Sort(sort).ToListAsync();
+                var countDocumentsTask = request.IncludeTotalCount == false
+                    ? Task.FromResult<long?>(null)
+                    : CountAsync(collection, filter);
+
+                await Task.WhenAll(findKeysTask, countDocumentsTask);
+
+                var keys = findKeysTask.Result;
+                string? nextCursor = null;
+                if (keys.Count > pageSize)
+                {
+                    keys.RemoveRange(pageSize, keys.Count - pageSize);
+                    nextCursor = KeyListCursor.Encode(keys[^1], sortField, isDescending, filterHash);
+                }
+
+                return new GetKeysQueryResponse
+                {
+                    Keys = keys,
+                    TotalCount = countDocumentsTask.Result,
+                    NextCursor = nextCursor
+                };
+            }
+            catch (MongoExecutionTimeoutException ex)
+            {
+                // Search text is user content; only the tenant and the filter hash are logged.
+                _logger.LogWarning("Key list query exceeded {MaxTime} for tenant {TenantId}, filter {FilterHash}", KeyListQueryMaxTime, tenantId, filterHash);
+                throw new KeyListException(KeyListErrorCodes.QueryTimeout, "Query", 503, ex);
+            }
+        }
+
+        private static async Task<long?> CountAsync(IMongoCollection<Key> collection, FilterDefinition<Key> filter)
+        {
+            return await collection.CountDocumentsAsync(filter, new CountOptions { MaxTime = KeyListQueryMaxTime });
         }
 
         private static FilterDefinition<Key> getAllKeysFilter(GetKeysRequest query)
@@ -113,7 +166,7 @@ namespace Eurolm.DomainService.Repositories
                         var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
                             Builders<Resource>.Filter.And(
                                 Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
-                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{resourceFilter.SearchText}.*", "i"))
+                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
                             ));
                         matchFilters.Add(cultureAndValueFilter);
                     }

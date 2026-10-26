@@ -105,8 +105,45 @@ export const getStretchedColumnWidths = (
   );
 };
 
+/** Rendered height of a collapsed key row (md:h-11). */
+export const TABLE_ROW_HEIGHT_ESTIMATE = 44;
+
+export const KEY_PAGE_SIZE_PRESETS = [10, 30, 50, 100];
+export const DEFAULT_KEY_PAGE_SIZE = KEY_PAGE_SIZE_PRESETS[0];
+export const ALL_KEYS_PAGE_SIZE = "all";
+export type KeyPageSize = number | typeof ALL_KEYS_PAGE_SIZE;
+
+/**
+ * Reads the `pageSize` URL value. "all" opens the virtualized All view. A number above the largest
+ * preset is an old bookmarked "All (n)" link and also opens the All view; any other positive number
+ * snaps up to the nearest preset. Anything else is invalid (null), so the default applies.
+ */
+export const parseKeyPageSize = (value: string): KeyPageSize | null => {
+  if (value === ALL_KEYS_PAGE_SIZE) return ALL_KEYS_PAGE_SIZE;
+  if (!/^\d+$/.test(value)) return null;
+  const pageSize = Number(value);
+  if (pageSize <= 0) return null;
+  return KEY_PAGE_SIZE_PRESETS.find((preset) => preset >= pageSize) ?? ALL_KEYS_PAGE_SIZE;
+};
+
+/**
+ * The rows-per-page select lists the total itself as its "All (n)" option. Picking it means the
+ * All view, unless the total is itself a preset, where one page of that size already shows everything.
+ */
+export const toKeyPageSize = (selected: number, totalCount: number): KeyPageSize =>
+  selected === totalCount && !KEY_PAGE_SIZE_PRESETS.includes(selected)
+    ? ALL_KEYS_PAGE_SIZE
+    : selected;
+
+/** The Key/Gets error code (e.g. CURSOR_MISMATCH) carried in a failed request's `errors` map. */
+export const getKeyListErrorCode = (error: unknown): string | undefined => {
+  const errors = (error as { errors?: Record<string, string | string[]> } | null)?.errors;
+  if (!errors || typeof errors !== "object") return undefined;
+  return Object.values(errors).flat()[0];
+};
+
 export const getPageSizeOptions = (totalCount: number) => {
-  const fixedOptions = [10, 30, 50, 100];
+  const fixedOptions = KEY_PAGE_SIZE_PRESETS;
   // A single page already shows everything, so no "All" option is needed.
   if (totalCount <= fixedOptions[0]) return [fixedOptions[0]];
   // Exclude options equal to totalCount so it is not listed twice.
