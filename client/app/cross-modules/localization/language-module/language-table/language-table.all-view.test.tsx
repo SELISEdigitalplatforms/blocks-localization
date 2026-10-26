@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -208,6 +208,33 @@ describe("language-table All view", () => {
 
     const selectAll = screen.getByLabelText("Select all loaded (300)");
     expect(selectAll.getAttribute("title")).toBe("Select all loaded (300)");
+  });
+
+  it("keeps select-all covering the rows of chunks loaded after it", async () => {
+    setAllView(100);
+    const { rerender } = await renderAllView();
+
+    fireEvent.click(screen.getByLabelText("Select all loaded (100)"));
+    expect(screen.getByText(/100 keys selected/)).toBeTruthy();
+
+    setAllView(200);
+    rerender(<LanguageTable />);
+
+    expect(await screen.findByText(/200 keys selected/)).toBeTruthy();
+  });
+
+  it("stops selecting later chunks once a row is unticked", async () => {
+    setAllView(100);
+    const { rerender } = await renderAllView();
+
+    fireEvent.click(screen.getByLabelText("Select all loaded (100)"));
+    fireEvent.click(screen.getAllByLabelText("Select row")[0]);
+    expect(screen.getByText(/99 keys selected/)).toBeTruthy();
+
+    setAllView(200);
+    rerender(<LanguageTable />);
+
+    expect(await screen.findByText(/99 keys selected/)).toBeTruthy();
   });
 
   it("exposes the full row count to assistive tech", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  areAllRowsSelected,
   getDeleteKeyErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
@@ -10,6 +11,7 @@ import {
   isStickyLeftColumn,
   parseKeyPageSize,
   toKeyPageSize,
+  withRowsSelected,
 } from "./language-table.utils";
 
 describe("getDeleteKeyErrorMessage", () => {
@@ -146,5 +148,27 @@ describe("getKeyListErrorCode", () => {
   it("returns undefined when there is no errors map", () => {
     expect(getKeyListErrorCode(null)).toBeUndefined();
     expect(getKeyListErrorCode(new Error("network"))).toBeUndefined();
+  });
+});
+
+describe("areAllRowsSelected", () => {
+  it("is true only when every row is selected", () => {
+    expect(areAllRowsSelected(["a", "b"], { a: true, b: true, c: true })).toBe(true);
+    expect(areAllRowsSelected(["a", "b"], { a: true })).toBe(false);
+  });
+
+  it("is false when there are no rows", () => {
+    expect(areAllRowsSelected([], { a: true })).toBe(false);
+  });
+});
+
+describe("withRowsSelected", () => {
+  it("adds the unselected rows and keeps the rest", () => {
+    expect(withRowsSelected({ a: true }, ["a", "b"])).toEqual({ a: true, b: true });
+  });
+
+  it("returns the same selection when nothing is added", () => {
+    const selection = { a: true };
+    expect(withRowsSelected(selection, ["a"])).toBe(selection);
   });
 });

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useScopedPath, useProjectStore } from "@seliseblocks/genesis-os";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Row, RowSelectionState } from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import {
   EllipsisVertical,
   FolderInput,
@@ -98,6 +98,7 @@ import {
   type LanguageImportProgress,
 } from "./hooks/use-language-import-progress";
 import {
+  areAllRowsSelected,
   getDeleteKeyErrorMessage,
   getDeleteKeysErrorMessage,
   getKeyListErrorCode,
@@ -110,6 +111,7 @@ import {
   TABLE_ROW_HEIGHT_ESTIMATE,
   toKeyPageSize,
   updateResourceSearchValue,
+  withRowsSelected,
 } from "./language-table.utils";
 
 // The virtualizer is only needed in the All view, so it stays out of the main bundle.
@@ -493,7 +495,23 @@ export function LanguageTable() {
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
   const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(new Set());
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [rowSelection, setRowSelectionState] = useState<RowSelectionState>({});
+  // In the All view, while every loaded row is selected, the rows of later chunks are selected as
+  // they load, so select-all keeps covering the list while scrolling.
+  const isSelectingAllLoadedRef = useRef(false);
+  const setRowSelection = useCallback<OnChangeFn<RowSelectionState>>(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(rowSelection) : updater;
+      isSelectingAllLoadedRef.current =
+        isAllView &&
+        areAllRowsSelected(
+          allViewKeys.map((key) => key.itemId),
+          next,
+        );
+      setRowSelectionState(next);
+    },
+    [rowSelection, isAllView, allViewKeys],
+  );
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -767,6 +785,17 @@ export function LanguageTable() {
     cursorResetDoneRef.current = false;
     if (isAllView && tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
   }, [isAllView, allViewFiltersHash]);
+
+  // A new filter or leaving the All view is a different list; select-all doesn't carry over to it.
+  useEffect(() => {
+    isSelectingAllLoadedRef.current = false;
+  }, [isAllView, allViewFiltersHash]);
+
+  useEffect(() => {
+    if (!isSelectingAllLoadedRef.current) return;
+    const loadedKeyIds = allViewKeys.map((key) => key.itemId);
+    setRowSelectionState((current) => withRowsSelected(current, loadedKeyIds));
+  }, [allViewKeys]);
 
   const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
   useEffect(() => {

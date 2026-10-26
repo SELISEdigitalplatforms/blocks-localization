@@ -1,3 +1,5 @@
+import type { RowSelectionState } from "@tanstack/react-table";
+
 const DELETE_KEY_FALLBACK_MESSAGE = "Failed to delete key. Please try again.";
 
 /** A single key delete's errors come back as a list or as a field-to-message map. */
@@ -161,4 +163,15 @@ export const getPageSizeOptions = (totalCount: number) => {
   if (totalCount <= fixedOptions[0]) return [fixedOptions[0]];
   // Exclude options equal to totalCount so it is not listed twice.
   return fixedOptions.filter((option) => option < totalCount).concat(totalCount);
+};
+
+/** Whether every one of the rows is selected; false when there are none. */
+export const areAllRowsSelected = (rowIds: string[], selection: RowSelectionState) =>
+  rowIds.length > 0 && rowIds.every((rowId) => selection[rowId]);
+
+/** The selection with the rows added; the same object when they already all are. */
+export const withRowsSelected = (selection: RowSelectionState, rowIds: string[]) => {
+  const unselected = rowIds.filter((rowId) => !selection[rowId]);
+  if (unselected.length === 0) return selection;
+  return { ...selection, ...Object.fromEntries(unselected.map((rowId) => [rowId, true])) };
 };
