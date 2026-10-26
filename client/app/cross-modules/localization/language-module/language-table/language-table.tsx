@@ -266,6 +266,19 @@ async function runKeyAction({
 
 const stringifyError = (error: unknown) => JSON.stringify(error);
 
+// Returns a new Set so React state updaters see a changed reference.
+const addKeysToSet = (keys: Set<string>, keyIds: Iterable<string>) => {
+  const next = new Set(keys);
+  for (const keyId of keyIds) next.add(keyId);
+  return next;
+};
+
+const removeKeysFromSet = (keys: Set<string>, keyIds: Iterable<string>) => {
+  const next = new Set(keys);
+  for (const keyId of keyIds) next.delete(keyId);
+  return next;
+};
+
 function LanguageTableEmptyState({
   hasActiveFilters,
   importProgress,
@@ -827,21 +840,13 @@ export function LanguageTable() {
       onSuccess: () => {
         // Track all selected keys as translating (for showing skeleton/loading state)
         const keysToTranslate = new Set(selectedKeys);
-        setTranslatingKeys((prev) => {
-          const next = new Set(prev);
-          selectedKeys.forEach((keyId) => next.add(keyId));
-          return next;
-        });
+        setTranslatingKeys((prev) => addKeysToSet(prev, selectedKeys));
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
 
         // Clear translating state after timeout (bulk translate doesn't have individual polling)
         setTimeout(() => {
-          setTranslatingKeys((prev) => {
-            const next = new Set(prev);
-            keysToTranslate.forEach((keyId) => next.delete(keyId));
-            return next;
-          });
+          setTranslatingKeys((prev) => removeKeysFromSet(prev, keysToTranslate));
         }, 60000); // 60 seconds timeout
       },
       describeErrors: stringifyError,
