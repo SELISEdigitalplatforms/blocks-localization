@@ -137,18 +137,63 @@ export interface GlossarySuggestionDeps {
   isCurrent?: () => boolean;
 }
 
-const STALE = { status: "stale" } as const;
+/** The terminology payload for the first call; matches are already scoped by the client. */
+const buildGlossaryPayload = (
+  input: GlossarySuggestionInput,
+  matches: GlossaryMatch[],
+): { payload: TranslationSuggestionPayload; prompt: string } => {
+  const targetCulture = input.targetLanguage.languageCode;
+  const prompt = buildTranslationPrompt({ keyContext: input.keyContext, matches, targetCulture });
+  const payload: TranslationSuggestionPayload = {
+    sourceText: input.sourceText,
+    destinationLanguage: input.targetLanguage.languageName || "English",
+    currentLanguage: input.defaultLanguage?.languageName || "English",
+    temperature: 0.1,
+    elementDetailContext: prompt,
+    // The client already applied key and module scope; moduleId is omitted on purpose.
+    glossaryIds: [],
+    destinationLanguageCode: targetCulture,
+  };
+  return { payload, prompt };
+};
 
-/** Sends the legacy (flag-off) payload unchanged: one AI call, no terminology rules. */
-const requestLegacySuggestion = async (
+/** Resolves the glossary, or `{ ok: false }` when there is no loader or it failed (C6). */
+const tryLoadGlossaries = async (
+  loadGlossaries: GlossarySuggestionDeps["loadGlossaries"],
+): Promise<{ ok: true; glossaries: IGlossary[] } | { ok: false }> => {
+  if (!loadGlossaries) return { ok: false };
+  try {
+    return { ok: true, glossaries: await loadGlossaries() };
+  } catch {
+    return { ok: false };
+  }
+};
+
+/** The single correction retry (H6); a failed or empty retry keeps `fallback` (C5). */
+const retryWithCorrection = async (
+  requestSuggestion: GlossarySuggestionDeps["requestSuggestion"],
   payload: TranslationSuggestionPayload,
+  correctionPrompt: string,
+  fallback: string,
+): Promise<string> => {
+  try {
+    const retry = await requestSuggestion({ ...payload, elementDetailContext: correctionPrompt });
+    return retry?.content || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/** Sends today's payload unchanged: flag off (C1) or glossary unavailable (C6). */
+const runLegacySuggestion = async (
+  legacyPayload: TranslationSuggestionPayload,
   requestSuggestion: GlossarySuggestionDeps["requestSuggestion"],
   current: () => boolean,
   glossaryUnavailable: boolean,
 ): Promise<GlossarySuggestionOutcome> => {
   try {
-    const response = await requestSuggestion(payload);
-    if (!current()) return STALE;
+    const response = await requestSuggestion(legacyPayload);
+    if (!current()) return { status: "stale" };
     if (!response?.content) {
       return { status: "empty", errors: response?.errors, glossaryUnavailable };
     }
@@ -162,22 +207,7 @@ const requestLegacySuggestion = async (
       requestCount: 1,
     };
   } catch (error) {
-    return current() ? { status: "error", error, glossaryUnavailable } : STALE;
-  }
-};
-
-/** The single correction retry (H6); a failed or empty retry keeps `fallback` (C5). */
-const requestCorrectedContent = async (
-  payload: TranslationSuggestionPayload,
-  requestSuggestion: GlossarySuggestionDeps["requestSuggestion"],
-  correctionPrompt: string,
-  fallback: string,
-): Promise<string> => {
-  try {
-    const retry = await requestSuggestion({ ...payload, elementDetailContext: correctionPrompt });
-    return retry?.content || fallback;
-  } catch {
-    return fallback;
+    return current() ? { status: "error", error, glossaryUnavailable } : { status: "stale" };
   }
 };
 
@@ -187,47 +217,33 @@ export const runGlossaryAwareSuggestion = async (
   { enabled, requestSuggestion, loadGlossaries, isCurrent = () => true }: GlossarySuggestionDeps,
 ): Promise<GlossarySuggestionOutcome> => {
   const current = () => isCurrent() && !input.signal?.aborted;
+  const stale = { status: "stale" } as const;
+
   const legacy = (glossaryUnavailable: boolean) =>
-    requestLegacySuggestion(input.legacyPayload, requestSuggestion, current, glossaryUnavailable);
+    runLegacySuggestion(input.legacyPayload, requestSuggestion, current, glossaryUnavailable);
 
   if (!enabled) return legacy(false);
 
-  let glossaries: IGlossary[];
-  try {
-    if (!loadGlossaries) throw new Error("No glossary loader");
-    glossaries = await loadGlossaries();
-  } catch {
-    if (!current()) return STALE;
-    return legacy(true);
-  }
-  if (!current()) return STALE;
+  const loaded = await tryLoadGlossaries(loadGlossaries);
+  if (!current()) return stale;
+  if (!loaded.ok) return legacy(true);
 
   const targetCulture = input.targetLanguage.languageCode;
-  const matches = buildGlossaryMatcher(glossaries).match(input.sourceText, {
+  const matches = buildGlossaryMatcher(loaded.glossaries).match(input.sourceText, {
     scopeMode: "applicable",
     sourceCulture: input.defaultLanguage?.languageCode ?? "",
     keyGlossaryIds: input.keyGlossaryIds,
     moduleId: input.moduleId,
   });
-  const prompt = buildTranslationPrompt({ keyContext: input.keyContext, matches, targetCulture });
-  const payload: TranslationSuggestionPayload = {
-    sourceText: input.sourceText,
-    destinationLanguage: input.targetLanguage.languageName || "English",
-    currentLanguage: input.defaultLanguage?.languageName || "English",
-    temperature: 0.1,
-    elementDetailContext: prompt,
-    // The client already applied key and module scope; moduleId is omitted on purpose.
-    glossaryIds: [],
-    destinationLanguageCode: targetCulture,
-  };
+  const { payload, prompt } = buildGlossaryPayload(input, matches);
 
   let first: TranslationSuggestionResponse;
   try {
     first = await requestSuggestion(payload);
   } catch (error) {
-    return current() ? { status: "error", error, glossaryUnavailable: false } : STALE;
+    return current() ? { status: "error", error, glossaryUnavailable: false } : stale;
   }
-  if (!current()) return STALE;
+  if (!current()) return stale;
   if (!first?.content)
     return { status: "empty", errors: first?.errors, glossaryUnavailable: false };
 
@@ -249,13 +265,13 @@ export const runGlossaryAwareSuggestion = async (
   if (firstViolations.length === 0) return success(first.content, [], 1);
 
   // Exactly one retry (H6); a failed or empty retry keeps the first output (C5).
-  const content = await requestCorrectedContent(
-    payload,
+  const content = await retryWithCorrection(
     requestSuggestion,
+    payload,
     buildCorrectionPrompt(prompt, firstViolations),
     first.content,
   );
-  if (!current()) return STALE;
+  if (!current()) return stale;
   return success(content, validateTranslation(content, matches, targetCulture), 2);
 };
 

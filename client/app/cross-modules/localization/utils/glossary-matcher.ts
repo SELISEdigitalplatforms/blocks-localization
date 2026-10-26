@@ -40,14 +40,19 @@ const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
 
 const SCOPE_RANK: Record<GlossaryScope, number> = { key: 0, module: 1, global: 2, other: 3 };
 
-const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+const isLowSurrogate = (code: number | undefined) =>
+  code !== undefined && code >= 0xdc00 && code <= 0xdfff;
+
+/**
+ * True at the second unit of a surrogate pair (or a lone low surrogate). `codePointAt` there
+ * returns the low surrogate itself, so this equals a code-unit check.
+ */
+const isTrailingUnit = (text: string, index: number) => isLowSurrogate(text.codePointAt(index));
 
 /** The code point ending right before `index`, or "" at the start. */
 const charBefore = (text: string, index: number): string => {
   if (index <= 0) return "";
-  if (isLowSurrogate(text.codePointAt(index - 1) ?? 0) && index >= 2) {
-    return text.slice(index - 2, index);
-  }
+  if (isTrailingUnit(text, index - 1) && index >= 2) return text.slice(index - 2, index);
   return text[index - 1];
 };
 
@@ -153,18 +158,8 @@ interface Candidate {
   scope: GlossaryScope;
 }
 
-/** One table searched in its own haystack (the original or the case-folded text). */
-interface TableSearch {
-  table: AlternativeTable;
-  haystack: string;
-  /** Original offset → haystack offset. */
-  toHaystack: (index: number) => number;
-  /** Haystack offset → original offset, or undefined inside a multi-unit fold. */
-  toOriginal: (to: number) => number | undefined;
-}
-
-/** What stays the same for every position of one `match` call. */
-interface MatchContext {
+/** Per-`match` state shared by every scanned position. */
+interface ScanContext {
   text: string;
   wholeWord: boolean;
   opts: MatchOptions;
@@ -211,12 +206,15 @@ const createMatcher = (glossaries: IGlossary[]): GlossaryMatcher => {
     }
   }
 
+  /** Collects the alternatives of `table` starting at `from` in `haystack` (text `index`). */
   const collectAt = (
-    { table, haystack, toHaystack, toOriginal }: TableSearch,
+    table: AlternativeTable,
+    haystack: string,
+    from: number,
+    toOriginal: (to: number) => number | undefined,
     index: number,
-    { text, wholeWord, opts, into }: MatchContext,
+    { text, wholeWord, opts, into }: ScanContext,
   ) => {
-    const from = toHaystack(index);
     for (const length of table.lengthsByFirstChar.get(haystack[from]) ?? []) {
       if (from + length > haystack.length) continue;
       const alternative = table.byKey.get(haystack.slice(from, from + length));
@@ -237,25 +235,14 @@ const createMatcher = (glossaries: IGlossary[]): GlossaryMatcher => {
       // Offsets always refer to the original text; the folded copy is only searched.
       const { folded, toFolded, toOriginal } = foldWithOffsets(text);
       const sameOffset = (to: number) => to;
-      const sensitiveSearch: TableSearch = {
-        table: sensitive,
-        haystack: text,
-        toHaystack: sameOffset,
-        toOriginal: sameOffset,
-      };
-      const insensitiveSearch: TableSearch = {
-        table: insensitive,
-        haystack: folded,
-        toHaystack: (index) => toFolded[index],
-        toOriginal: (to) => toOriginal[to],
-      };
+      const foldedOffset = (to: number) => toOriginal[to];
       const candidates: Candidate[] = [];
-      const context: MatchContext = { text, wholeWord, opts, into: candidates };
+      const context: ScanContext = { text, wholeWord, opts, into: candidates };
       for (let index = 0; index < text.length; index++) {
-        if (isLowSurrogate(text.codePointAt(index) ?? 0)) continue;
+        if (isTrailingUnit(text, index)) continue;
         if (wholeWord && !isWordStart(text, index)) continue;
-        collectAt(sensitiveSearch, index, context);
-        collectAt(insensitiveSearch, index, context);
+        collectAt(sensitive, text, index, sameOffset, index, context);
+        collectAt(insensitive, folded, toFolded[index], foldedOffset, index, context);
       }
 
       return resolveOverlaps(candidates).map(({ entry, start, length, scope }) => ({

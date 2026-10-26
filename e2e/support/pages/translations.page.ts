@@ -1038,9 +1038,13 @@ export class TranslationsPage {
     await this.editTranslationDialog.getByRole("button", { name: "Auto-Translate" }).click();
   }
 
-  /** The glossary violation list under a target field (a polite live region). */
+  /**
+   * The glossary violation list under a target field: a polite live region (status role,
+   * an <output> element) that holds the list. The "Glossary unavailable" note is also a
+   * status region but has no list.
+   */
   violationList(scope: Locator) {
-    return scope.locator("output:has(ul)");
+    return scope.getByRole("status").filter({ has: this.page.getByRole("list") });
   }
 
   violationItem(scope: Locator, message: string) {

@@ -47,7 +47,6 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
   const request = useCallback(
     async (input: GlossarySuggestionInput): Promise<GlossarySuggestionOutcome> => {
       const outcome = await suggest(input);
-      // A stale outcome was superseded by a newer request, so it must not touch the row.
       if (outcome.status !== "stale") {
         const row: GlossaryRowState =
           outcome.status === "success"

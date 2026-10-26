@@ -5,6 +5,7 @@ import {
 } from "@blocks-localization/utils/glossary-matcher";
 import {
   groupMatchesByGlossary,
+  MatchedGlossaryGroup,
   sanitizePromptText,
 } from "@blocks-localization/utils/translation-prompt";
 
@@ -32,10 +33,9 @@ const lowerWithMap = (text: string, locale: string) => {
   const map: number[] = [];
   let index = 0;
   for (const char of text) {
-    const lower = safeLower(char, locale);
-    // One entry per UTF-16 unit of `lower`, so not a for-of (that iterates code points).
-    map.push(...new Array<number>(lower.length).fill(index));
-    lowered += lower;
+    lowered += safeLower(char, locale);
+    // One entry per lowered code unit.
+    while (map.length < lowered.length) map.push(index);
     index += char.length;
   }
   map.push(index);
@@ -89,44 +89,47 @@ export const findInTarget = (
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
+type FindValue = (value: string, caseInsensitive: boolean) => Occurrence | null;
+
 type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
 
-/** What every rule check of one `validateTranslation` call shares. */
-interface RuleCheck {
-  text: string;
-  targetCulture: string;
-  contains: (value: string, caseInsensitive: boolean) => Occurrence | null;
-  add: (violation: GlossaryViolation) => void;
-}
-
 /** Keep rule: every matched source surface must appear unchanged. */
-const checkKeep = (surfaces: string[], base: ViolationBase, { contains, add }: RuleCheck) => {
+const keepViolations = (
+  surfaces: Iterable<string>,
+  base: ViolationBase,
+  find: FindValue,
+): GlossaryViolation[] => {
+  const violations: GlossaryViolation[] = [];
   for (const surface of surfaces) {
-    if (!contains(surface, false)) add({ ...base, kind: "missing-keep", expected: surface });
+    if (!find(surface, false))
+      violations.push({ ...base, kind: "missing-keep", expected: surface });
   }
+  return violations;
 };
 
-/** Translate rule: the approved translation for the target culture must appear. */
-const checkTranslation = (
+/** Translate rule: the approved value for the target culture must appear. */
+const translationViolations = (
   match: GlossaryMatch,
+  targetCulture: string,
   base: ViolationBase,
-  { targetCulture, contains, add }: RuleCheck,
-) => {
+  find: FindValue,
+): GlossaryViolation[] => {
   const expected = match.meta.translations[targetCulture]?.trim();
-  if (expected && !contains(expected, true)) {
-    add({ ...base, kind: "missing-translation", expected });
-  }
+  if (!expected || find(expected, true)) return [];
+  return [{ ...base, kind: "missing-translation", expected }];
 };
 
 /**
  * Forbidden rule: the term and its variants. Translate or forbidden rule: the stored
  * forbidden values. Longest first, so "Dashboards" isn't also reported as "Dashboard".
  */
-const checkForbidden = (
+const forbiddenViolations = (
+  text: string,
   match: GlossaryMatch,
+  targetCulture: string,
   base: ViolationBase,
-  { text, targetCulture, contains, add }: RuleCheck,
-) => {
+  find: FindValue,
+): GlossaryViolation[] => {
   const { meta } = match;
   const banned = [
     ...(meta.rule === "forbidden"
@@ -134,17 +137,36 @@ const checkForbidden = (
       : []),
     ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
   ].sort((a, b) => b.value.length - a.value.length);
+  const violations: GlossaryViolation[] = [];
   const reportedStarts = new Set<number>();
   for (const { value, caseInsensitive } of banned) {
-    const occurrence = contains(value, caseInsensitive);
+    const occurrence = find(value, caseInsensitive);
     if (!occurrence || reportedStarts.has(occurrence.start)) continue;
     reportedStarts.add(occurrence.start);
-    add({
+    violations.push({
       ...base,
       kind: "forbidden-used",
       found: text.slice(occurrence.start, occurrence.start + occurrence.length),
     });
   }
+  return violations;
+};
+
+/** All violations of one glossary's rule, before de-duplication. */
+const glossaryViolations = (
+  text: string,
+  { matches: glossaryMatches, surfaces }: MatchedGlossaryGroup,
+  targetCulture: string,
+  find: FindValue,
+): GlossaryViolation[] => {
+  const [match] = glossaryMatches;
+  const { glossary, meta } = match;
+  const base: ViolationBase = { glossaryId: glossary.itemId, term: glossary.name };
+  if (meta.rule === "keep") return keepViolations(surfaces, base, find);
+  return [
+    ...(meta.rule === "translate" ? translationViolations(match, targetCulture, base, find) : []),
+    ...forbiddenViolations(text, match, targetCulture, base, find),
+  ];
 };
 
 /**
@@ -159,35 +181,21 @@ export const validateTranslation = (
   const text = (output ?? "").normalize("NFC");
   if (!text.trim()) return [];
 
+  const find: FindValue = (value, caseInsensitive) =>
+    findInTarget(text, value, { caseInsensitive, targetCulture });
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
-  const check: RuleCheck = {
-    text,
-    targetCulture,
-    contains: (value, caseInsensitive) =>
-      findInTarget(text, value, { caseInsensitive, targetCulture }),
-    add: (violation) => {
+  for (const group of groupMatchesByGlossary(matches)) {
+    for (const violation of glossaryViolations(text, group, targetCulture, find)) {
       const id = [
         violation.glossaryId,
         violation.kind,
         violation.found ?? violation.expected ?? "",
       ].join("\u0000");
-      if (seen.has(id)) return;
+      if (seen.has(id)) continue;
       seen.add(id);
       violations.push(violation);
-    },
-  };
-
-  for (const { matches: glossaryMatches, surfaces } of groupMatchesByGlossary(matches)) {
-    const [match] = glossaryMatches;
-    const base: ViolationBase = { glossaryId: match.glossary.itemId, term: match.glossary.name };
-
-    if (match.meta.rule === "keep") {
-      checkKeep(surfaces, base, check);
-      continue;
     }
-    if (match.meta.rule === "translate") checkTranslation(match, base, check);
-    checkForbidden(match, base, check);
   }
   return violations;
 };
