@@ -31,6 +31,16 @@ const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
   }
 };
 
+/**
+ * Whether the glossary has a rule for this language: Keep and Forbidden always do; a translate
+ * term needs an approved value or banned words for the culture. Others can't be followed or
+ * broken, so they never count towards "followed".
+ */
+const isCheckable = (match: GlossaryMatch, targetCulture: string) =>
+  match.meta.rule !== "translate" ||
+  !!match.meta.translations[targetCulture]?.trim() ||
+  (match.meta.forbidden[targetCulture]?.length ?? 0) > 0;
+
 /** The short problem line under a term; the term row already shows the expected value. */
 const issueText = (violation: GlossaryViolation) => {
   switch (violation.kind) {
@@ -85,27 +95,40 @@ const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
 const issueCountText = (count: number) =>
   count === 1 ? "1 glossary issue" : `${count} glossary issues`;
 
+interface ChecklistCounts {
+  terms: number;
+  /** Terms the glossary has a rule for in this language (`isCheckable`). */
+  checkable: number;
+  issues: number;
+}
+
+const nothingToCheckText = (language: string) => `Nothing to check for ${language}`;
+
 /** The announced summary: empty until the row has text and the source has terms. */
-const checklistSummary = (termCount: number, hasText: boolean, issueCount: number) => {
-  if (termCount === 0 || !hasText) return "";
-  if (issueCount === 0) return "All glossary terms followed";
-  return issueCountText(issueCount);
+const checklistSummary = (counts: ChecklistCounts, hasText: boolean, language: string) => {
+  if (counts.terms === 0 || !hasText) return "";
+  if (counts.checkable === 0) return nothingToCheckText(language);
+  if (counts.issues > 0) return issueCountText(counts.issues);
+  return counts.checkable < counts.terms
+    ? "All checked terms followed"
+    : "All glossary terms followed";
 };
 
 /** The visible header hint next to "Glossary". */
-const checklistHint = (hasText: boolean, summary: string, issueCount: number) => {
+const checklistHint = (
+  counts: ChecklistCounts,
+  hasText: boolean,
+  summary: string,
+  language: string,
+) => {
+  if (counts.checkable === 0) return nothingToCheckText(language);
   if (!hasText) return "Use these terms in this translation";
-  if (issueCount === 0) return summary;
+  if (counts.issues === 0) return summary;
   return `${summary} · you can still save`;
 };
 
-const termStatus = (
-  match: GlossaryMatch,
-  value: string | null,
-  hasText: boolean,
-  issueCount: number,
-): TermStatus => {
-  if (!value && match.meta.rule === "translate") return "no-value";
+const termStatus = (checkable: boolean, hasText: boolean, issueCount: number): TermStatus => {
+  if (!checkable) return "no-value";
   if (!hasText) return "pending";
   return issueCount > 0 ? "issue" : "followed";
 };
@@ -172,7 +195,7 @@ const ChecklistTerm = ({
     Icon,
     className: iconClass,
     label,
-  } = STATUS_ICON[termStatus(match, value, hasText, violations.length)];
+  } = STATUS_ICON[termStatus(isCheckable(match, culture), hasText, violations.length)];
   const noteClass = rule === "forbidden" ? "text-error" : "text-low-emphasis";
   return (
     <li className="py-1.5">
@@ -268,7 +291,13 @@ export const GlossaryTargetChecklist = ({
     live.checkNow(fixed);
   };
 
-  const summary = checklistSummary(terms.length, hasText, issueCount);
+  const language = languageName || targetCulture;
+  const counts: ChecklistCounts = {
+    terms: terms.length,
+    checkable: terms.filter((match) => isCheckable(match, culture)).length,
+    issues: issueCount,
+  };
+  const summary = checklistSummary(counts, hasText, language);
   const sectionClass =
     issueCount > 0 && hasText ? "border-warning-200 bg-warning-50" : "border-border bg-muted/30";
 
@@ -280,13 +309,13 @@ export const GlossaryTargetChecklist = ({
       </output>
       {terms.length > 0 && (
         <section
-          aria-label={`Glossary terms for ${languageName || targetCulture}`}
+          aria-label={`Glossary terms for ${language}`}
           className={cn("rounded-md border px-3 py-2", sectionClass)}
         >
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="text-xs font-semibold text-medium-emphasis">Glossary</p>
             <p className="text-xs text-low-emphasis" aria-hidden="true">
-              {checklistHint(hasText, summary, issueCount)}
+              {checklistHint(counts, hasText, summary, language)}
             </p>
             {canRetry && (
               <Button

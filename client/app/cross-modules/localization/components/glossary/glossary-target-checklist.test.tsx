@@ -94,6 +94,35 @@ describe("GlossaryTargetChecklist", () => {
     expect(screen.queryByRole("button", { name: /Copy "Arbeitsbereich"/ })).toBeNull();
   });
 
+  it("never calls a term without a rule for the language followed", () => {
+    const portalOnly = buildGlossaryMatcher([
+      term("g4", "Customer Portal", {
+        rule: "translate",
+        translations: { "de-DE": "Kundenportal" },
+      }),
+    ]).match("Go to Customer Portal", { scopeMode: "applicable", sourceCulture: "en-US" });
+    render(
+      <GlossaryTargetChecklist
+        row={IDLE_ROW}
+        targetText="কাস্টমার পোর্টালে যান"
+        targetCulture="bn-BD"
+        languageName="Bengali"
+        liveMatches={portalOnly}
+        onSuggestionFix={vi.fn()}
+        onRetry={vi.fn()}
+        onLiveFix={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status").textContent).toBe("Nothing to check for Bengali");
+    expect(screen.queryByText(/followed/)).toBeNull();
+    expect(screen.getByText("No rule to check:")).toBeTruthy();
+  });
+
+  it("says only the checked terms were followed when some have no rule", () => {
+    renderChecklist("Ouvrez SELISE", "fr-FR");
+    expect(screen.getByRole("status").textContent).toBe("All checked terms followed");
+  });
+
   it("renders only the empty live region without matches", () => {
     render(
       <GlossaryTargetChecklist
