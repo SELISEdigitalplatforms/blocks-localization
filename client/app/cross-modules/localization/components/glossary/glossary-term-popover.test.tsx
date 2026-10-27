@@ -43,13 +43,13 @@ const matchOf = (glossary: IGlossary, text = glossary.name): GlossaryMatch =>
 
 const DE = { languageCode: "de-DE", languageName: "German" };
 
-const renderPopover = (match: GlossaryMatch, onInsert = vi.fn(), showInsertTarget = false) =>
+const renderPopover = (match: GlossaryMatch, onInsert = vi.fn(), targetText = "") =>
   render(
     <GlossaryTermPopover
       match={match}
       targetLanguage={DE}
       onInsert={onInsert}
-      showInsertTarget={showInsertTarget}
+      targetText={targetText}
     >
       <button type="button">{match.surface}</button>
     </GlossaryTermPopover>,
@@ -114,14 +114,12 @@ describe("GlossaryTermPopover", () => {
     );
   });
 
-  it("shows 'Keep as written' and inserts the surface, not a leftover translation (C16)", async () => {
-    const onInsert = vi.fn();
-    renderPopover(matchOf(G2), onInsert);
+  it("shows 'Keep as written' without Insert and ignores a leftover translation (C16)", async () => {
+    renderPopover(matchOf(G2));
     fireEvent.click(screen.getByRole("button", { name: "SELISE" }));
     expect(await screen.findByText("Keep as written")).toBeTruthy();
     expect(screen.queryByText("Selise GmbH")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
-    expect(onInsert).toHaveBeenCalledWith("SELISE");
+    expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
   });
 
   it("hides Insert for Forbidden and lists the active forbidden values (C4, C16)", async () => {
@@ -134,10 +132,11 @@ describe("GlossaryTermPopover", () => {
     expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
   });
 
-  it("names the target row in multi-row editors", async () => {
-    renderPopover(matchOf(G1), vi.fn(), true);
+  it("says 'Already used' instead of Insert when the target has the value", async () => {
+    renderPopover(matchOf(G1), vi.fn(), "Öffnen Sie Ihren arbeitsbereich");
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    expect(await screen.findByRole("button", { name: "Insert into German" })).toBeTruthy();
+    expect(await screen.findByText("Already used")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Insert" })).toBeNull();
   });
 
   it("opens the term in a new tab (H4)", async () => {

@@ -234,6 +234,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                 languageCode: destinationLanguageCode,
                 languageName: destinationLanguage?.languageName ?? "",
               }}
+              targetText={translation}
               onInsert={destinationLanguage?.isDefault ? undefined : insert}
             />
           </DialogDescription>

@@ -34,7 +34,9 @@ describe("components/modals/auto-translate", () => {
   it("renders the auto-translate dialog", () => {
     render(withDialog(<AutoTranslate />));
     expect(screen.getByText("Auto-translate all keys")).toBeTruthy();
-    expect(screen.getByText("Are you sure you want to automatically translate all keys?")).toBeTruthy();
+    expect(
+      screen.getByText("Are you sure you want to automatically translate all keys?"),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Yes" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
   });
@@ -48,9 +50,7 @@ describe("components/modals/auto-translate", () => {
       fireEvent.click(screen.getByRole("button", { name: "Yes" }));
 
       await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({ variant: "success" }),
-        );
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(onClose).toHaveBeenCalledWith(false);
       });
@@ -177,7 +177,9 @@ describe("components/modals/auto-translate", () => {
       } as never);
       render(withDialog(<AutoTranslate />));
 
-      expect((screen.getByRole("button", { name: "Yes" }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole("button", { name: "Yes" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
     });
   });
 

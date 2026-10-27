@@ -212,24 +212,28 @@ test.describe("Glossary — SPEC4 evidence", () => {
           await shoot(page, testInfo, `live-warning-${suffix}`);
           await translations.closeEditTranslation();
 
-          // Inline editor chip row.
+          // Inline editor glossary checklist.
           await openTranslations(page);
           await setTheme(page, theme);
           await translations.openTranslationKeysTab();
           await translations.expandKey(names.key);
-          await expect(translations.glossaryTerm(page, names.translate)).toBeVisible({
+          await expect(
+            page.getByRole("region", { name: /^Glossary terms for / }).first(),
+          ).toBeVisible({
             timeout: 15_000,
           });
-          await shoot(page, testInfo, `inline-chip-row-${suffix}`);
+          await shoot(page, testInfo, `inline-checklist-${suffix}`);
 
-          // New key chip row.
+          // New key glossary checklist.
           await openNewKey(page);
           await setTheme(page, theme);
           await page.getByPlaceholder("Enter default value").fill(fixtures.source);
-          await expect(translations.glossaryTerm(page, names.translate)).toBeVisible({
+          await expect(
+            page.getByRole("region", { name: /^Glossary terms for / }).first(),
+          ).toBeVisible({
             timeout: 15_000,
           });
-          await shoot(page, testInfo, `new-key-chip-row-${suffix}`);
+          await shoot(page, testInfo, `new-key-checklist-${suffix}`);
 
           // Picker: results, empty + create, chips including an unresolved one.
           const unknownId = `unknown-${fixtures.tag}`;

@@ -6,29 +6,41 @@
  */
 import { FocusEvent, SyntheticEvent, useCallback, useRef, useState } from "react";
 
+import { isNoSpaceCulture } from "@blocks-localization/utils/glossary-matcher";
+
 interface SelectionRange {
   start: number;
   end: number;
 }
 
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
 /**
  * Replaces `range` of `text` with `value`. Without a range (never focused) the value is
- * appended after one space. Returns the new text and the caret position after the value.
+ * appended after one space. A space is added on either side where the value would otherwise
+ * run into a word ("login" + "SELISE" → "login SELISE"), except in no-space languages.
+ * Returns the new text and the caret position after the value.
  */
 export const insertAtRange = (
   text: string,
   value: string,
   range?: SelectionRange,
+  culture?: string,
 ): { text: string; caret: number } => {
-  if (!range) {
-    const prefix = text && !/\s$/.test(text) ? `${text} ` : text;
-    return { text: prefix + value, caret: prefix.length + value.length };
-  }
-  const start = Math.max(0, Math.min(range.start, text.length));
-  const end = Math.max(start, Math.min(range.end, text.length));
+  const start = range ? Math.max(0, Math.min(range.start, text.length)) : text.length;
+  const end = range ? Math.max(start, Math.min(range.end, text.length)) : text.length;
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const spaced = !isNoSpaceCulture(culture);
+  const joins = (left?: string, right?: string) =>
+    spaced && !!left && !!right && WORD_CHAR.test(left) && WORD_CHAR.test(right);
+  const lead = (range ? joins(before.at(-1), value[0]) : spaced && !!before && !/\s$/.test(before))
+    ? " "
+    : "";
+  const trail = joins(value.at(-1), after[0]) ? " " : "";
   return {
-    text: text.slice(0, start) + value + text.slice(end),
-    caret: start + value.length,
+    text: before + lead + value + trail + after,
+    caret: before.length + lead.length + value.length,
   };
 };
 
@@ -68,7 +80,12 @@ export const useTargetInsertion = ({ cultures, getValue, setValue }: UseTargetIn
     (value: string) => {
       const culture = targetCulture;
       if (!culture) return;
-      const result = insertAtRange(getValue(culture), value, rangesRef.current.get(culture));
+      const result = insertAtRange(
+        getValue(culture),
+        value,
+        rangesRef.current.get(culture),
+        culture,
+      );
       setValue(culture, result.text);
       rangesRef.current.set(culture, { start: result.caret, end: result.caret });
       const element = elementsRef.current.get(culture);

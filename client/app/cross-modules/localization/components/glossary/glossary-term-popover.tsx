@@ -1,5 +1,5 @@
 import { ReactElement, ReactNode, useRef, useState } from "react";
-import { Ban, ExternalLink } from "lucide-react";
+import { Ban, Check, ExternalLink } from "lucide-react";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 
 import { Button } from "@/components/ui-kits/button/button";
@@ -8,6 +8,7 @@ import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { findInTarget } from "@blocks-localization/utils/glossary-validation";
 
 export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languageName">;
 
@@ -93,8 +94,8 @@ interface GlossaryTermPopoverProps {
   match: GlossaryMatch;
   /** The editor's target language: the value shown and inserted is for this culture. */
   targetLanguage?: TermTargetLanguage;
-  /** Multi-row editors name the target row: "Insert into <languageName>". */
-  showInsertTarget?: boolean;
+  /** The current target text: Insert is disabled when the value is already in it. */
+  targetText?: string;
   onInsert?: (value: string) => void;
   /** The trigger (a highlighted term or a chip); it gets focus back on Escape. */
   children: ReactElement;
@@ -104,7 +105,7 @@ interface GlossaryTermPopoverProps {
 const GlossaryTermPopover = ({
   match,
   targetLanguage,
-  showInsertTarget = false,
+  targetText = "",
   onInsert,
   children,
 }: Readonly<GlossaryTermPopoverProps>) => {
@@ -114,11 +115,12 @@ const GlossaryTermPopover = ({
   const code = targetLanguage?.languageCode ?? "";
   const languageName = targetLanguage?.languageName || code;
   const term = getGlossaryTermValue(match.meta, match.surface, code);
-  const insertValue = term.kind === "translate" || term.kind === "keep" ? term.value : null;
-  const insertLabel =
-    showInsertTarget && targetLanguage?.languageName
-      ? `Insert into ${targetLanguage.languageName}`
-      : "Insert";
+  // Keep terms are already right in the source wording, so there is nothing to insert.
+  const insertValue = term.kind === "translate" ? term.value : null;
+  const alreadyUsed =
+    insertValue !== null &&
+    !!findInTarget(targetText, insertValue, { caseInsensitive: true, targetCulture: code });
+  const showInsert = onInsert && (term.kind === "translate" || term.kind === "missing");
 
   const handleInsert = () => {
     if (insertValue === null || !onInsert) return;
@@ -161,11 +163,22 @@ const GlossaryTermPopover = ({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-border bg-muted/40 px-4 py-2.5">
-          {term.kind !== "forbidden" && onInsert && (
-            <Button type="button" size="sm" disabled={insertValue === null} onClick={handleInsert}>
-              {insertLabel}
-            </Button>
-          )}
+          {showInsert &&
+            (alreadyUsed ? (
+              <p className="flex items-center gap-1.5 text-sm text-medium-emphasis">
+                <Check className="h-4 w-4 text-success" aria-hidden="true" />
+                Already used
+              </p>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={insertValue === null}
+                onClick={handleInsert}
+              >
+                Insert
+              </Button>
+            ))}
           <Button
             type="button"
             variant="ghost"

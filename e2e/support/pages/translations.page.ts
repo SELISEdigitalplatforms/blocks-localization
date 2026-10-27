@@ -1070,6 +1070,11 @@ export class TranslationsPage {
   // --- Glossary terms in the source (SPEC4) ---
 
   /** A highlighted term (Edit translation) or a "Glossary terms" chip (inline / new key). */
+  /** The per-language glossary checklist under a target row (inline editor, new key). */
+  glossaryChecklist(scope: Locator | Page, languageName: string) {
+    return scope.getByRole("region", { name: `Glossary terms for ${languageName}` });
+  }
+
   glossaryTerm(scope: Locator | Page, surface: string) {
     return scope.getByRole("button", {
       name: new RegExp(`^Glossary term ${escapeRegex(surface)}:`),

@@ -4,11 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
 import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
-import {
-  distinctGlossaryMatches,
-  GlossaryTermChips,
-  HighlightedSourceText,
-} from "./highlighted-source-text";
+import { distinctGlossaryMatches, HighlightedSourceText } from "./highlighted-source-text";
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
@@ -75,61 +71,12 @@ describe("HighlightedSourceText", () => {
   });
 });
 
-describe("GlossaryTermChips", () => {
-  it("shows one chip per distinct glossary in first-occurrence order (H12)", () => {
+describe("distinctGlossaryMatches", () => {
+  it("keeps the first match of each glossary, in source order", () => {
     const text = "SELISE Workspace, another workspace and SELISE";
     expect(distinctGlossaryMatches(matches(text)).map((match) => match.surface)).toEqual([
       "SELISE",
       "Workspace",
     ]);
-    render(<GlossaryTermChips matches={matches(text)} getTargetLanguage={() => undefined} />);
-    expect(screen.getByText("Glossary terms")).toBeTruthy();
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "SELISE",
-      "Workspace",
-    ]);
-  });
-
-  it("is hidden without matches", () => {
-    const { container } = render(
-      <GlossaryTermChips matches={[]} getTargetLanguage={() => undefined} />,
-    );
-    expect(container.innerHTML).toBe("");
-  });
-
-  it("uses the current target row's language for the value and Insert (H13)", async () => {
-    const onInsert = vi.fn();
-    const { rerender } = render(
-      <GlossaryTermChips
-        matches={matches("Open your Workspace")}
-        getTargetLanguage={() => ({ languageCode: "de-DE", languageName: "German" })}
-        onInsert={onInsert}
-      />,
-    );
-    rerender(
-      <GlossaryTermChips
-        matches={matches("Open your Workspace")}
-        getTargetLanguage={() => ({ languageCode: "fr-FR", languageName: "French" })}
-        onInsert={onInsert}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Glossary term Workspace/ }));
-    expect(await screen.findByText("Espace de travail")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Insert into French" }));
-    expect(onInsert).toHaveBeenCalledWith("Espace de travail");
-  });
-
-  it("re-matches when the source changes", () => {
-    const { rerender } = render(
-      <GlossaryTermChips matches={matches("Workspace")} getTargetLanguage={() => undefined} />,
-    );
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    rerender(
-      <GlossaryTermChips
-        matches={matches("Workspace and SELISE")}
-        getTargetLanguage={() => undefined}
-      />,
-    );
-    expect(screen.getAllByRole("button")).toHaveLength(2);
   });
 });

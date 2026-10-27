@@ -925,6 +925,8 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await term.focus();
         await page.keyboard.press("Enter");
         await expect(popover).toBeVisible();
+        // The value is now in the target, so Insert gives way to "Already used".
+        await expect(popover.getByText("Already used")).toBeVisible();
         await page.keyboard.press("Escape");
         await expect(popover).toHaveCount(0);
         await expect(term).toBeFocused();
@@ -972,38 +974,28 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         }
       });
 
-      await test.step("Step 10: inline chips insert into the last-focused row (H12, H13)", async () => {
+      await test.step("Step 10: each inline row checks its own glossary terms (H12, H13)", async () => {
         const languages = await api.languages();
         const targets = languages.filter((language) => !language.isDefault);
         await openTranslations(page);
         await translations.openTranslationKeysTab();
         await translations.expandKey(names.ws);
-        const chip = translations.glossaryTerm(page, names.g1);
-        await expect(chip).toBeVisible({ timeout: 15_000 });
-        // H13: the last-focused target row is the target; another row stays untouched.
+        const checklist = translations.glossaryChecklist(page, target.languageName);
+        await expect(checklist).toBeVisible({ timeout: 15_000 });
+        // H12: the row lists the approved value; there is no shared Insert.
+        await expect(checklist.getByText("Arbeitsbereich", { exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: /^Insert/ })).toHaveCount(0);
+        // H13: typing the approved value marks the term followed in that row only.
+        await translations.inlineTranslation(target.languageName).fill("Arbeitsbereich");
+        await expect(checklist.getByText("All glossary terms followed")).toBeVisible();
         const other = targets.find((language) => language.languageCode !== target.languageCode);
-        await translations.inlineTranslation(target.languageName).focus();
-        await chip.click();
-        await translations.termPopover
-          .getByRole("button", { name: `Insert into ${target.languageName}` })
-          .click();
-        await expect(translations.inlineTranslation(target.languageName)).toHaveValue(
-          "Arbeitsbereich",
-        );
         if (other) {
-          await expect(translations.inlineTranslation(other.languageName)).toHaveValue("");
-          // A row without a value for the term: Insert is disabled (C3).
-          await translations.inlineTranslation(other.languageName).focus();
-          await chip.click();
+          // A language without a value for the term says so (C3).
           await expect(
-            translations.termPopover.getByText(`No ${other.languageCode} translation`),
+            translations
+              .glossaryChecklist(page, other.languageName)
+              .getByText(/No translation in the glossary/),
           ).toBeVisible();
-          await expect(
-            translations.termPopover.getByRole("button", {
-              name: `Insert into ${other.languageName}`,
-            }),
-          ).toBeDisabled();
-          await page.keyboard.press("Escape");
         }
         await page.getByRole("button", { name: "Discard" }).click();
       });

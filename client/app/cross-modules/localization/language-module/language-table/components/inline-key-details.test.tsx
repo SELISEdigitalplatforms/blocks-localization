@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -92,8 +92,14 @@ const deferred = <T,>() => {
  * No violation list and no info line. The polite live region stays mounted while empty, so
  * this checks that every status region is empty instead of that none exists.
  */
-const expectNoStatusContent = () =>
-  expect(screen.queryAllByRole("status").filter((region) => region.textContent !== "")).toEqual([]);
+/** No row reports a glossary issue ("All glossary terms followed" is fine). */
+const expectNoGlossaryIssues = () =>
+  expect(
+    screen.queryAllByRole("status").filter((region) => /issue/.test(region.textContent ?? "")),
+  ).toEqual([]);
+
+const glossaryRegion = (language: string) =>
+  screen.findByRole("region", { name: `Glossary terms for ${language}` });
 
 describe("InlineKeyDetails — glossary-aware suggestions", () => {
   beforeEach(() => {
@@ -133,19 +139,19 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
       suggestAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Werkbereich" });
       renderEditor();
       fireEvent.click(button("Auto-translate German"));
-      await screen.findByText('"Werkbereich" is not allowed');
+      await screen.findByText(/"Werkbereich" is not allowed/);
       expect(textbox("German translation").value).toBe("Öffnen Sie Ihren Werkbereich");
       expect(button("Save changes").disabled).toBe(false);
 
       fireEvent.click(button("Fix"));
       expect(textbox("German translation").value).toBe("Öffnen Sie Ihren Arbeitsbereich");
-      expect(screen.queryByText('"Werkbereich" is not allowed')).toBeNull();
-      expectNoStatusContent();
+      expect(screen.queryByText(/"Werkbereich" is not allowed/)).toBeNull();
+      expectNoGlossaryIssues();
 
       fireEvent.click(button("Auto-translate German"));
-      await screen.findByText('"Werkbereich" is not allowed');
+      await screen.findByText(/"Werkbereich" is not allowed/);
       fireEvent.change(textbox("German translation"), { target: { value: "Hallo" } });
-      expectNoStatusContent();
+      expectNoGlossaryIssues();
     });
 
     it("shows the info line when the glossary cannot be loaded (C6)", async () => {
@@ -195,46 +201,43 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
     });
   });
 
-  describe("glossary terms chips and live checks (Phase 4)", () => {
-    const chip = () => screen.findByRole("button", { name: /^Glossary term Workspace/ });
-
-    it("shows a chip row under the default language and follows source edits (H12)", async () => {
+  describe("per-language glossary checklist and live checks (Phase 4)", () => {
+    it("lists each row's approved values and follows source edits (H12)", async () => {
       renderEditor();
-      expect(await chip()).toBeTruthy();
-      expect(screen.getByText("Glossary terms")).toBeTruthy();
+      const german = await glossaryRegion("German");
+      expect(within(german).getByText("Arbeitsbereich")).toBeTruthy();
+      expect(within(german).getByText("Use these terms in this translation")).toBeTruthy();
+      const french = await glossaryRegion("French");
+      expect(within(french).getByText("Espace de travail")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
+
       fireEvent.change(textbox("English translation"), { target: { value: "Hello" } });
-      await waitFor(() => expect(screen.queryByText("Glossary terms")).toBeNull());
+      await waitFor(() =>
+        expect(screen.queryByRole("region", { name: "Glossary terms for German" })).toBeNull(),
+      );
     });
 
-    it("targets the first target row before any focus (H13)", async () => {
+    it("marks a term followed once the row uses it (H13)", async () => {
       renderEditor();
-      fireEvent.click(await chip());
-      fireEvent.click(await screen.findByRole("button", { name: "Insert into German" }));
-      expect(textbox("German translation").value).toBe("Arbeitsbereich");
-      expect(textbox("French translation").value).toBe("");
-    });
-
-    it("inserts the last-focused row's value into that row (H13, Example 6)", async () => {
-      renderEditor();
-      fireEvent.focus(textbox("French translation"));
-      fireEvent.click(await chip());
-      expect(await screen.findByText("Espace de travail")).toBeTruthy();
-      fireEvent.click(screen.getByRole("button", { name: "Insert into French" }));
-      expect(textbox("French translation").value).toBe("Espace de travail");
-      expect(textbox("German translation").value).toBe("");
-      expect(document.activeElement).toBe(textbox("French translation"));
+      const german = await glossaryRegion("German");
+      fireEvent.change(textbox("German translation"), {
+        target: { value: "Öffnen Sie Ihren Arbeitsbereich" },
+      });
+      expect(await within(german).findByText("Followed:")).toBeTruthy();
     });
 
     it("checks each target row live without Retry and keeps Save enabled (H5, C6)", async () => {
       renderEditor();
-      await chip();
+      await glossaryRegion("German");
       fireEvent.change(textbox("German translation"), { target: { value: "Ihr Werkbereich" } });
-      expect(await screen.findByText('"Werkbereich" is not allowed')).toBeTruthy();
+      expect(
+        await screen.findByText('"Werkbereich" is not allowed · use "Arbeitsbereich"'),
+      ).toBeTruthy();
       expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
       expect(button("Save changes").disabled).toBe(false);
       fireEvent.click(button("Fix"));
       expect(textbox("German translation").value).toBe("Ihr Arbeitsbereich");
-      expectNoStatusContent();
+      expectNoGlossaryIssues();
     });
   });
 });

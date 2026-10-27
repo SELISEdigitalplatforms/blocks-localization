@@ -8,8 +8,6 @@ import {
   useDebouncedValue,
   useLoadedGlossaries,
 } from "@blocks-localization/hooks/use-live-glossary-check";
-import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
-import { getTargetLanguages } from "@blocks-localization/utils/glossary-rule-marker";
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
@@ -70,10 +68,9 @@ export const useInlineKeyEditor = (
     [clearViolations],
   );
 
-  // "Glossary terms" chips and live checks follow the editable default-language draft.
+  // Each target row's glossary checklist follows the editable default-language draft.
   const defaultLanguage =
     sortedLanguages.find((language) => language.isDefault) ?? sortedLanguages[0];
-  const targetLanguages = useMemo(() => getTargetLanguages(sortedLanguages), [sortedLanguages]);
   const glossaries = useLoadedGlossaries(loadGlossaries);
   const debouncedSource = useDebouncedValue(
     draftTranslations[defaultLanguage?.languageCode ?? ""] ?? "",
@@ -84,27 +81,6 @@ export const useInlineKeyEditor = (
     keyGlossaryIds: keyDetails.glossaryIds,
     moduleId: keyDetails.moduleId,
   });
-  const targetCultures = useMemo(
-    () => targetLanguages.map((language) => language.languageCode),
-    [targetLanguages],
-  );
-  const getDraft = useCallback(
-    (culture: string) => draftTranslations[culture] ?? "",
-    [draftTranslations],
-  );
-  const {
-    bindTarget,
-    insert: insertGlossaryValue,
-    targetCulture: insertTargetCulture,
-  } = useTargetInsertion({
-    cultures: targetCultures,
-    getValue: getDraft,
-    setValue: setTranslation,
-  });
-  const insertTargetLanguage = targetLanguages.find(
-    (language) => language.languageCode === insertTargetCulture,
-  );
-
   const discardChanges = () => {
     setDraftTranslations({ ...savedTranslations });
     clearViolations();
@@ -213,15 +189,12 @@ export const useInlineKeyEditor = (
   return {
     applyLiveFix,
     autoTranslate,
-    bindTarget,
     discardChanges,
     draftTranslations,
     fixViolation,
     getGlossaryRow,
     hasChanges,
     hasEmptyChange,
-    insertGlossaryValue,
-    insertTargetLanguage,
     isAutoTranslating,
     isSaving,
     saveChanges,

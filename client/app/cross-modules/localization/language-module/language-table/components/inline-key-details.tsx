@@ -20,11 +20,8 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
-import {
-  GlossaryTargetChecks,
-  GlossaryUnavailableNote,
-} from "@blocks-localization/components/glossary/glossary-violation-list";
-import { GlossaryTermChips } from "@blocks-localization/components/glossary/highlighted-source-text";
+import { GlossaryUnavailableNote } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -96,15 +93,12 @@ export const InlineKeyDetails = memo(
     const {
       applyLiveFix,
       autoTranslate,
-      bindTarget,
       discardChanges,
       draftTranslations,
       fixViolation,
       getGlossaryRow,
       hasChanges,
       hasEmptyChange,
-      insertGlossaryValue,
-      insertTargetLanguage,
       isAutoTranslating,
       isSaving,
       saveChanges,
@@ -185,28 +179,20 @@ export const InlineKeyDetails = memo(
                       className="min-h-[96px] resize-y border-border bg-background text-high-emphasis caret-primary shadow-none placeholder:text-low-emphasis focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
                       placeholder="Enter translation"
                       value={draftTranslations[language.languageCode] ?? ""}
-                      {...(language.isDefault ? {} : bindTarget(language.languageCode))}
                       onChange={(event) =>
                         setTranslation(language.languageCode, event.target.value)
                       }
                       onClick={(event) => event.stopPropagation()}
                     />
-                    {language.isDefault && (
-                      <GlossaryTermChips
-                        className="mt-2"
-                        matches={sourceMatches}
-                        getTargetLanguage={() => insertTargetLanguage}
-                        onInsert={insertTargetLanguage ? insertGlossaryValue : undefined}
-                      />
-                    )}
                     {glossaryRow.glossaryUnavailable && (
                       <GlossaryUnavailableNote className="mt-1" />
                     )}
                     {!language.isDefault && (
-                      <GlossaryTargetChecks
+                      <GlossaryTargetChecklist
                         row={glossaryRow}
                         targetText={draftTranslations[language.languageCode] ?? ""}
                         targetCulture={language.languageCode}
+                        languageName={language.languageName}
                         liveMatches={sourceMatches}
                         disabled={isRowTranslating}
                         onSuggestionFix={(violation) =>

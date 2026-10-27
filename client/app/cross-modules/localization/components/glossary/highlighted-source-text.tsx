@@ -1,10 +1,6 @@
 import { ReactNode } from "react";
 
-import { Button } from "@/components/ui-kits/button/button";
-import {
-  GLOSSARY_RULE_LABELS,
-  GlossaryRuleIcon,
-} from "@blocks-localization/components/glossary/glossary-rule-badge";
+import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import GlossaryTermPopover, {
   TermTargetLanguage,
 } from "@blocks-localization/components/glossary/glossary-term-popover";
@@ -18,6 +14,8 @@ interface HighlightedSourceTextProps {
   /** `useApplicableGlossaryMatches` of `text`; empty while the glossary loads or failed (C2). */
   matches: GlossaryMatch[];
   targetLanguage?: TermTargetLanguage;
+  /** The current target text, so Insert can say "Already used". */
+  targetText?: string;
   onInsert?: (value: string) => void;
 }
 
@@ -29,6 +27,7 @@ export const HighlightedSourceText = ({
   text,
   matches,
   targetLanguage,
+  targetText,
   onInsert,
 }: Readonly<HighlightedSourceTextProps>) => {
   if (matches.length === 0) return <>{text}</>;
@@ -43,6 +42,7 @@ export const HighlightedSourceText = ({
         key={`${match.start}-${match.glossary.itemId}`}
         match={match}
         targetLanguage={targetLanguage}
+        targetText={targetText}
         onInsert={onInsert}
       >
         <button
@@ -68,61 +68,4 @@ export const distinctGlossaryMatches = (matches: GlossaryMatch[]): GlossaryMatch
     seen.add(match.glossary.itemId);
     return true;
   });
-};
-
-interface GlossaryTermChipsProps {
-  /** Matches of the (debounced) editable source; the row is hidden when empty. */
-  matches: GlossaryMatch[];
-  /** The last-focused target row's language, or the first target row's. */
-  getTargetLanguage: () => TermTargetLanguage | undefined;
-  onInsert?: (value: string) => void;
-  className?: string;
-}
-
-/**
- * "Glossary terms" chips for editors whose source is an editable field, where inline
- * highlights are impossible (A5). One chip per distinct glossary; each opens the popover.
- */
-export const GlossaryTermChips = ({
-  matches,
-  getTargetLanguage,
-  onInsert,
-  className,
-}: Readonly<GlossaryTermChipsProps>) => {
-  const distinct = distinctGlossaryMatches(matches);
-  if (distinct.length === 0) return null;
-  const targetLanguage = getTargetLanguage();
-  return (
-    <div className={className}>
-      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <p className="text-xs font-medium text-medium-emphasis">Glossary terms</p>
-        {onInsert && targetLanguage?.languageName && (
-          <p className="text-xs text-low-emphasis">Insert goes to {targetLanguage.languageName}</p>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {distinct.map((match) => (
-          <GlossaryTermPopover
-            key={match.glossary.itemId}
-            match={match}
-            targetLanguage={targetLanguage}
-            showInsertTarget
-            onInsert={onInsert}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 max-w-full gap-1.5 rounded-full px-2.5 text-xs font-normal text-high-emphasis data-[state=open]:border-primary data-[state=open]:bg-primary/10"
-              aria-label={termLabel(match)}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <GlossaryRuleIcon rule={match.meta.rule} className="text-medium-emphasis" />
-              <span className="truncate">{match.surface}</span>
-            </Button>
-          </GlossaryTermPopover>
-        ))}
-      </div>
-    </div>
-  );
 };

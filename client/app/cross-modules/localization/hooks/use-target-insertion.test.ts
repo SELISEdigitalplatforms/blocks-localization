@@ -24,7 +24,33 @@ describe("insertAtRange", () => {
   });
 
   it("clamps a range that is past the end of the text", () => {
-    expect(insertAtRange("ab", "X", { start: 10, end: 12 })).toEqual({ text: "abX", caret: 3 });
+    expect(insertAtRange("ab ", "X", { start: 10, end: 12 })).toEqual({ text: "ab X", caret: 4 });
+  });
+
+  it("adds a space where the value would run into a word", () => {
+    expect(insertAtRange("SELISE login", "Portal", { start: 12, end: 12 })).toEqual({
+      text: "SELISE login Portal",
+      caret: 19,
+    });
+    expect(insertAtRange("Ihren öffnen", "Bereich", { start: 5, end: 5 })).toEqual({
+      text: "Ihren Bereich öffnen",
+      caret: 13,
+    });
+    expect(insertAtRange("Ihrenöffnen", "Bereich", { start: 5, end: 5 })).toEqual({
+      text: "Ihren Bereich öffnen",
+      caret: 13,
+    });
+  });
+
+  it("adds no space next to punctuation or in no-space languages", () => {
+    expect(insertAtRange("(", "Portal", { start: 1, end: 1 })).toEqual({
+      text: "(Portal",
+      caret: 7,
+    });
+    expect(insertAtRange("开始", "工作区", { start: 2, end: 2 }, "zh-CN")).toEqual({
+      text: "开始工作区",
+      caret: 5,
+    });
   });
 });
 

@@ -55,7 +55,11 @@ export class LanguageManagerService {
     glossaryId?: string;
     missingLanguages?: string[];
     onlyDuplicates?: boolean;
-  }): Promise<{ totalCount: number; keys: IBlocksLanguageKey[]; duplicatesTruncated?: boolean }> => {
+  }): Promise<{
+    totalCount: number;
+    keys: IBlocksLanguageKey[];
+    duplicatesTruncated?: boolean;
+  }> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
     if (!request.createDateRange) {
@@ -80,7 +84,10 @@ export class LanguageManagerService {
   };
 
   enforceUniqueness = (): Promise<IEnforceUniquenessResult> => {
-    return this.httpClient.post<IEnforceUniquenessResult>(LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS, {});
+    return this.httpClient.post<IEnforceUniquenessResult>(
+      LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS,
+      {},
+    );
   };
 
   fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {
