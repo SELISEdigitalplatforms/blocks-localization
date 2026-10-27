@@ -82,6 +82,134 @@ const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
   );
 };
 
+const issueCountText = (count: number) =>
+  count === 1 ? "1 glossary issue" : `${count} glossary issues`;
+
+/** The announced summary: empty until the row has text and the source has terms. */
+const checklistSummary = (termCount: number, hasText: boolean, issueCount: number) => {
+  if (termCount === 0 || !hasText) return "";
+  if (issueCount === 0) return "All glossary terms followed";
+  return issueCountText(issueCount);
+};
+
+/** The visible header hint next to "Glossary". */
+const checklistHint = (hasText: boolean, summary: string, issueCount: number) => {
+  if (!hasText) return "Use these terms in this translation";
+  if (issueCount === 0) return summary;
+  return `${summary} · you can still save`;
+};
+
+const termStatus = (
+  match: GlossaryMatch,
+  value: string | null,
+  hasText: boolean,
+  issueCount: number,
+): TermStatus => {
+  if (!value && match.meta.rule === "translate") return "no-value";
+  if (!hasText) return "pending";
+  return issueCount > 0 ? "issue" : "followed";
+};
+
+interface TermIssueProps {
+  violation: GlossaryViolation;
+  matches: GlossaryMatch[];
+  culture: string;
+  disabled: boolean;
+  onFix: (violation: GlossaryViolation) => void;
+}
+
+const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<TermIssueProps>) => {
+  const fixable = canApplyFix(violation, matches, culture);
+  const replacement = getFixReplacement(violation, matches, culture);
+  return (
+    <div className="ml-6 mt-1 flex items-center gap-2">
+      <p className="min-w-0 flex-1 break-words text-xs text-warning-700">
+        {issueText(violation)}
+        {fixable && replacement && ` · use "${replacement}"`}
+      </p>
+      {fixable && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-6 shrink-0 bg-background px-2 text-xs"
+          disabled={disabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            onFix(violation);
+          }}
+        >
+          Fix
+        </Button>
+      )}
+    </div>
+  );
+};
+
+interface ChecklistTermProps {
+  match: GlossaryMatch;
+  culture: string;
+  /** This term's violations; shown only once the row has text. */
+  violations: GlossaryViolation[];
+  matches: GlossaryMatch[];
+  hasText: boolean;
+  disabled: boolean;
+  onFix: (violation: GlossaryViolation) => void;
+}
+
+const ChecklistTerm = ({
+  match,
+  culture,
+  violations,
+  matches,
+  hasText,
+  disabled,
+  onFix,
+}: Readonly<ChecklistTermProps>) => {
+  const { value, note } = termGuidance(match, culture);
+  const { rule } = match.meta;
+  const {
+    Icon,
+    className: iconClass,
+    label,
+  } = STATUS_ICON[termStatus(match, value, hasText, violations.length)];
+  const noteClass = rule === "forbidden" ? "text-error" : "text-low-emphasis";
+  return (
+    <li className="py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <Icon className={cn("h-4 w-4 shrink-0", iconClass)} aria-hidden="true" />
+        <span className="sr-only">{label}:</span>
+        <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm">
+          <span className="text-medium-emphasis">{match.surface}</span>
+          {value && rule === "translate" && (
+            <>
+              <span className="text-low-emphasis" aria-hidden="true">
+                →
+              </span>
+              <span className="sr-only">use</span>
+              <span className="break-all font-medium text-high-emphasis">{value}</span>
+            </>
+          )}
+          {note && <span className={cn("text-xs", noteClass)}>· {note}</span>}
+          <span className="sr-only">({GLOSSARY_RULE_LABELS[rule]})</span>
+        </p>
+        {value && <CopyValueButton value={value} />}
+      </div>
+      {hasText &&
+        violations.map((violation) => (
+          <TermIssue
+            key={`${violation.kind}-${violation.found ?? violation.expected ?? ""}`}
+            violation={violation}
+            matches={matches}
+            culture={culture}
+            disabled={disabled}
+            onFix={onFix}
+          />
+        ))}
+    </li>
+  );
+};
+
 interface GlossaryTargetChecklistProps {
   /** The row's suggestion state (`useGlossarySuggestionRows().getRow`). */
   row: GlossaryRowState;
@@ -140,13 +268,9 @@ export const GlossaryTargetChecklist = ({
     live.checkNow(fixed);
   };
 
-  let summary = "";
-  if (terms.length > 0 && hasText) {
-    summary =
-      issueCount === 0
-        ? "All glossary terms followed"
-        : `${issueCount === 1 ? "1 glossary issue" : `${issueCount} glossary issues`}`;
-  }
+  const summary = checklistSummary(terms.length, hasText, issueCount);
+  const sectionClass =
+    issueCount > 0 && hasText ? "border-warning-200 bg-warning-50" : "border-border bg-muted/30";
 
   return (
     <div className={cn(terms.length > 0 && "mt-2", className)}>
@@ -157,19 +281,12 @@ export const GlossaryTargetChecklist = ({
       {terms.length > 0 && (
         <section
           aria-label={`Glossary terms for ${languageName || targetCulture}`}
-          className={cn(
-            "rounded-md border px-3 py-2",
-            issueCount > 0 && hasText
-              ? "border-warning-200 bg-warning-50"
-              : "border-border bg-muted/30",
-          )}
+          className={cn("rounded-md border px-3 py-2", sectionClass)}
         >
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="text-xs font-semibold text-medium-emphasis">Glossary</p>
             <p className="text-xs text-low-emphasis" aria-hidden="true">
-              {hasText
-                ? summary + (issueCount > 0 ? " · you can still save" : "")
-                : "Use these terms in this translation"}
+              {checklistHint(hasText, summary, issueCount)}
             </p>
             {canRetry && (
               <Button
@@ -188,79 +305,20 @@ export const GlossaryTargetChecklist = ({
             )}
           </div>
           <ul className="divide-y divide-border/60">
-            {terms.map((match) => {
-              const { value, note } = termGuidance(match, culture);
-              const termViolations = violations.filter(
-                (violation) => violation.glossaryId === match.glossary.itemId,
-              );
-              let status: TermStatus = "pending";
-              if (!value && match.meta.rule === "translate") status = "no-value";
-              else if (hasText) status = termViolations.length > 0 ? "issue" : "followed";
-              const { Icon, className: iconClass, label } = STATUS_ICON[status];
-              return (
-                <li key={match.glossary.itemId} className="py-1.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Icon className={cn("h-4 w-4 shrink-0", iconClass)} aria-hidden="true" />
-                    <span className="sr-only">{label}:</span>
-                    <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm">
-                      <span className="text-medium-emphasis">{match.surface}</span>
-                      {value && match.meta.rule === "translate" && (
-                        <>
-                          <span className="text-low-emphasis" aria-hidden="true">
-                            →
-                          </span>
-                          <span className="sr-only">use</span>
-                          <span className="break-all font-medium text-high-emphasis">{value}</span>
-                        </>
-                      )}
-                      {note && (
-                        <span
-                          className={cn(
-                            "text-xs",
-                            match.meta.rule === "forbidden" ? "text-error" : "text-low-emphasis",
-                          )}
-                        >
-                          · {note}
-                        </span>
-                      )}
-                      <span className="sr-only">({GLOSSARY_RULE_LABELS[match.meta.rule]})</span>
-                    </p>
-                    {value && <CopyValueButton value={value} />}
-                  </div>
-                  {hasText &&
-                    termViolations.map((violation) => {
-                      const fixable = canApplyFix(violation, matches, culture);
-                      const replacement = getFixReplacement(violation, matches, culture);
-                      return (
-                        <div
-                          key={`${violation.kind}-${violation.found ?? violation.expected ?? ""}`}
-                          className="ml-6 mt-1 flex items-center gap-2"
-                        >
-                          <p className="min-w-0 flex-1 break-words text-xs text-warning-700">
-                            {issueText(violation)}
-                            {fixable && replacement && ` · use "${replacement}"`}
-                          </p>
-                          {fixable && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-6 shrink-0 bg-background px-2 text-xs"
-                              disabled={disabled}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                fixViolation(violation);
-                              }}
-                            >
-                              Fix
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                </li>
-              );
-            })}
+            {terms.map((match) => (
+              <ChecklistTerm
+                key={match.glossary.itemId}
+                match={match}
+                culture={culture}
+                violations={violations.filter(
+                  (violation) => violation.glossaryId === match.glossary.itemId,
+                )}
+                matches={matches}
+                hasText={hasText}
+                disabled={disabled}
+                onFix={fixViolation}
+              />
+            ))}
           </ul>
         </section>
       )}

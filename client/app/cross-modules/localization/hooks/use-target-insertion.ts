@@ -34,9 +34,12 @@ export const insertAtRange = (
   const spaced = !isNoSpaceCulture(culture);
   const joins = (left?: string, right?: string) =>
     spaced && !!left && !!right && WORD_CHAR.test(left) && WORD_CHAR.test(right);
-  const lead = (range ? joins(before.at(-1), value[0]) : spaced && !!before && !/\s$/.test(before))
-    ? " "
-    : "";
+  // At a caret or selection, space only where words would join; when appending (never
+  // focused), space after any text that doesn't already end in whitespace.
+  const needsLead = range
+    ? joins(before.at(-1), value[0])
+    : spaced && !!before && !/\s$/.test(before);
+  const lead = needsLead ? " " : "";
   const trail = joins(value.at(-1), after[0]) ? " " : "";
   return {
     text: before + lead + value + trail + after,
