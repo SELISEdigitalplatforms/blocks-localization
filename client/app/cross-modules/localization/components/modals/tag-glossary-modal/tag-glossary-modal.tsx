@@ -105,9 +105,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
       );
     }
     return (
-      <p role="status" className="text-sm text-medium-emphasis">
-        Loading tagged glossaries…
-      </p>
+      <output className="block text-sm text-medium-emphasis">Loading tagged glossaries…</output>
     );
   };
 

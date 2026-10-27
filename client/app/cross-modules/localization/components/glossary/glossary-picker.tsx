@@ -235,13 +235,10 @@ const GlossaryPicker = ({
     }
     if (isSearching) {
       return (
-        <div
-          role="status"
-          className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-medium-emphasis"
-        >
+        <output className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-medium-emphasis">
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
           Searching…
-        </div>
+        </output>
       );
     }
     return (
