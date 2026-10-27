@@ -94,6 +94,29 @@ describe("components/glossary/glossary-details", () => {
     expect(screen.getByText("No keys are tagged with this glossary.")).toBeTruthy();
   });
 
+  it("should label empty fields instead of leaving them blank", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: {
+        itemId: "g1",
+        name: "Customer Portal",
+        language: "",
+        type: "",
+        isGlobal: false,
+        context: "  ",
+        createDate: "not-a-date",
+        lastUpdateDate: "",
+        moduleIds: [],
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />);
+    // Language, Type, Created on and Last updated.
+    expect(screen.getAllByText("Not provided")).toHaveLength(4);
+    expect(screen.getByText("No modules tagged.")).toBeTruthy();
+    expect(screen.getByText("No definition provided.")).toBeTruthy();
+    expect(screen.getByText("No internal note.")).toBeTruthy();
+  });
+
   it("should render tagged keys and navigate on row click", () => {
     h.useGetGlossaryById.mockReturnValue({
       data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },

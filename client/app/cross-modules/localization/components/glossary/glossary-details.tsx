@@ -52,6 +52,45 @@ interface GlossaryDetailsProps {
   itemId: string;
 }
 
+const NOT_PROVIDED = "Not provided";
+
+const hasText = (value: string | null | undefined): value is string => !!value?.trim();
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString();
+};
+
+// Empty table cells show a muted dash; screen readers hear "None" instead of a stray symbol.
+const EmptyCell = () => (
+  <span className="text-low-emphasis">
+    <span aria-hidden="true">—</span>
+    <span className="sr-only">None</span>
+  </span>
+);
+
+const DetailField = ({
+  label,
+  children,
+}: Readonly<{ label: string; children: React.ReactNode }>) => (
+  <div className="grid min-w-0 content-start gap-1">
+    <h3 className="text-sm font-medium text-low-emphasis">{label}</h3>
+    {children}
+  </div>
+);
+
+const DetailValue = ({ value }: Readonly<{ value: string | null | undefined }>) =>
+  hasText(value) ? (
+    <p className="break-words text-base font-normal text-high-emphasis">{value}</p>
+  ) : (
+    <p className="text-base font-normal italic text-low-emphasis">{NOT_PROVIDED}</p>
+  );
+
+const EmptyText = ({ children }: Readonly<{ children: React.ReactNode }>) => (
+  <p className="text-base italic text-low-emphasis">{children}</p>
+);
+
 const ForbiddenList = ({ values }: Readonly<{ values: string[] }>) =>
   values.length > 0 ? (
     <div className="flex flex-wrap gap-1">
@@ -62,7 +101,7 @@ const ForbiddenList = ({ values }: Readonly<{ values: string[] }>) =>
       ))}
     </div>
   ) : (
-    <span>-</span>
+    <EmptyCell />
   );
 
 function renderTranslationsTable(meta: GlossaryMeta, targets: ILanguageConfig[]) {
@@ -204,9 +243,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const definition = stripRuleMarker(glossary.context);
 
   const resolvedLanguage =
-    languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ??
-    glossary.language ??
-    "-";
+    languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ||
+    glossary.language;
 
   const renderTaggedKeysContent = () => {
     if (isTaggedKeysLoading) {
@@ -270,7 +308,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                       {key.keyName}
                     </TableCell>
                     <TableCell>{mod?.moduleName ?? key.moduleId}</TableCell>
-                    <TableCell className="line-clamp-2">{defaultResource?.value || "-"}</TableCell>
+                    <TableCell className="line-clamp-2">
+                      {hasText(defaultResource?.value) ? defaultResource.value : <EmptyCell />}
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -379,29 +419,24 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           <CardHeader>
             <CardTitle className="text-xl">Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Language</h3>
-                <p className="text-base font-normal text-high-emphasis">{resolvedLanguage}</p>
-              </div>
-              <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
-                <p className="text-base font-normal text-high-emphasis">{glossary.type ?? "-"}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
-                <p className="text-base font-normal text-high-emphasis">
-                  {glossary.createDate ? new Date(glossary.createDate).toLocaleDateString() : "-"}
-                </p>
-              </div>
+          <CardContent className="grid gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <DetailField label="Language">
+                <DetailValue value={resolvedLanguage} />
+              </DetailField>
+              <DetailField label="Type">
+                <DetailValue value={glossary.type} />
+              </DetailField>
+              <DetailField label="Created on">
+                <DetailValue value={formatDate(glossary.createDate)} />
+              </DetailField>
+              <DetailField label="Last updated">
+                <DetailValue value={formatDate(glossary.lastUpdateDate)} />
+              </DetailField>
             </div>
 
-            {(glossary.moduleIds?.length ?? 0) > 0 && (
-              <div className="grid gap-2">
-                <h3 className="text-sm font-medium text-low-emphasis">Tagged Modules</h3>
+            <DetailField label="Tagged Modules">
+              {moduleCount > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {glossary.moduleIds?.map((id) => {
                     const mod = moduleListData?.find((m) => m.itemId === id);
@@ -412,8 +447,12 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                     );
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <EmptyText>
+                  {glossary.isGlobal ? "Applies to every module." : "No modules tagged."}
+                </EmptyText>
+              )}
+            </DetailField>
           </CardContent>
         </Card>
 
@@ -423,9 +462,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               <CardTitle className="text-xl">Definition</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-base text-medium-emphasis">
-                {definition || "No definition provided."}
-              </p>
+              {hasText(definition) ? (
+                <p className="whitespace-pre-wrap break-words text-base text-medium-emphasis">
+                  {definition}
+                </p>
+              ) : (
+                <EmptyText>No definition provided.</EmptyText>
+              )}
             </CardContent>
           </Card>
 
@@ -449,7 +492,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-base text-medium-emphasis">{meta.note || "No internal note."}</p>
+              {hasText(meta.note) ? (
+                <p className="whitespace-pre-wrap break-words text-base text-medium-emphasis">
+                  {meta.note}
+                </p>
+              ) : (
+                <EmptyText>No internal note.</EmptyText>
+              )}
             </CardContent>
           </Card>
         </div>
