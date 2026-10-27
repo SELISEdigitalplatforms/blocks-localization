@@ -10,6 +10,50 @@ describe("localization/constants/query-keys", () => {
     });
   });
 
+  // ─── languageKeys.infinite ────────────────────────────────────────────────
+  describe("languageKeys.infinite", () => {
+    const filters = {
+      searchKey: "search",
+      moduleIds: ["m1", "m2"],
+      sortProperty: "KeyName",
+      isDescending: true,
+      createStartDate: "2026-01-01",
+      createEndDate: "2026-01-31",
+      lastUpdateStartDate: "2026-02-01",
+      lastUpdateEndDate: "2026-02-28",
+      resourceSearchFilters: [{ culture: "en", searchText: "hi" }],
+      missingLanguages: ["de", "fr"],
+    };
+
+    it("should embed every filter in a fixed order under the infinite prefix", () => {
+      expect(localizationQueryKeys.languageKeys.infinite("tenant-1", filters)).toEqual([
+        "get-blocksLanguageKeys",
+        "infinite",
+        "tenant-1",
+        "search",
+        JSON.stringify(["m1", "m2"]),
+        "KeyName",
+        true,
+        "2026-01-01",
+        "2026-01-31",
+        "2026-02-01",
+        "2026-02-28",
+        JSON.stringify([{ culture: "en", searchText: "hi" }]),
+        JSON.stringify(["de", "fr"]),
+        false,
+      ]);
+    });
+
+    it("should keep the duplicates filter in the key", () => {
+      const on = localizationQueryKeys.languageKeys.infinite("t", {
+        ...filters,
+        onlyDuplicates: true,
+      });
+      expect(on.at(-1)).toBe(true);
+      expect(on).not.toEqual(localizationQueryKeys.languageKeys.infinite("t", filters));
+    });
+  });
+
   // ─── languageKeys.list ────────────────────────────────────────────────────
   describe("languageKeys.list", () => {
     it("should embed all arguments and JSON-stringify the array params", () => {

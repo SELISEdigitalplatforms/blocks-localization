@@ -1,8 +1,10 @@
 using Api.Controllers;
 using Blocks.Genesis;
 using BlocksTemplate.Api.Controllers;
+using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
+using Eurolm.DomainService.Validation;
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -27,7 +29,7 @@ namespace XUnitTest
 
             
             var httpContext = new DefaultHttpContext();
-            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object, _validatorsMock.Object)
+            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object, _validatorsMock.Object, new GetKeysRequestValidator())
             {
                 ControllerContext = new ControllerContext
                 {
@@ -108,6 +110,46 @@ namespace XUnitTest
 
         #region Gets Tests
 
+        private static IDictionary<string, string> ErrorsOf(IActionResult? result, int expectedStatus)
+        {
+            var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+            objectResult.StatusCode.Should().Be(expectedStatus);
+            var body = objectResult.Value.Should().BeOfType<BaseMutationResponse>().Subject;
+            body.IsSuccess.Should().BeFalse();
+            return body.Errors;
+        }
+
+        [Theory]
+        [InlineData(-1, 0, null, "PageSize", "INVALID_PAGE_SIZE")]
+        [InlineData(10, -1, null, "PageNumber", "INVALID_PAGE_NUMBER")]
+        [InlineData(10, 0, "Resources.Value", "SortProperty", "INVALID_SORT_PROPERTY")]
+        public async Task Gets_WithInvalidPagingOrSort_Returns400WithErrorCodeAndSkipsTheService(
+            int pageSize, int pageNumber, string? sortProperty, string field, string code)
+        {
+            var query = new GetKeysRequest { PageSize = pageSize, PageNumber = pageNumber, SortProperty = sortProperty };
+
+            var result = await _controller.Gets(query);
+
+            ErrorsOf(result.Result, 400).Should().Contain(field, code);
+            _keyManagementServiceMock.Verify(x => x.GetKeysAsync(It.IsAny<GetKeysRequest>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("INVALID_CURSOR", 400)]
+        [InlineData("CURSOR_MISMATCH", 400)]
+        [InlineData("QUERY_TIMEOUT", 503)]
+        public async Task Gets_WhenTheQueryIsRejected_MapsTheErrorCodeAndStatus(string code, int status)
+        {
+            var query = new GetKeysRequest { PageSize = 10, Cursor = "abc" };
+            _keyManagementServiceMock
+                .Setup(x => x.GetKeysAsync(query))
+                .ThrowsAsync(new KeyListException(code, "Cursor", status));
+
+            var result = await _controller.Gets(query);
+
+            ErrorsOf(result.Result, status).Should().Contain("Cursor", code);
+        }
+
         [Fact]
         public async Task Gets_WithValidQuery_ReturnsKeyList()
         {
@@ -120,7 +162,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -138,7 +180,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -180,7 +222,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -218,7 +260,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -251,7 +293,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(2);
@@ -279,7 +321,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -297,7 +339,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -335,7 +377,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -368,7 +410,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -402,7 +444,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(2);
@@ -438,7 +480,7 @@ namespace XUnitTest
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _controller.Gets(query);
+            var result = (await _controller.Gets(query)).Value!;
 
             // Assert
             result.Keys.Should().HaveCount(1);
@@ -917,7 +959,7 @@ namespace XUnitTest
         [Fact]
         public async Task Gets_WithNullQuery_ReturnsEmptyWithoutCallingService()
         {
-            var result = await _controller.Gets(null);
+            var result = (await _controller.Gets(null)).Value!;
 
             result.Should().NotBeNull();
             result.Keys.Should().NotBeNull();

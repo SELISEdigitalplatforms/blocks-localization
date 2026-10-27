@@ -7,6 +7,8 @@ using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -301,6 +303,117 @@ namespace XUnitTest.Repositories
                     It.IsAny<CancellationToken>()),
                 Times.Once);
             RenderedFilter().Should().Contain("welcome");
+        }
+
+        [Theory]
+        [InlineData("%%%")]
+        [InlineData("bm90LWpzb24")] // base64url of "not-json"
+        [InlineData("eyJ2IjoyfQ")] // {"v":2}: an unknown cursor version
+        public async Task A_malformed_cursor_is_rejected_before_any_query_runs(string cursor)
+        {
+            var request = Request();
+            request.Cursor = cursor;
+
+            var act = () => _repo.GetAllKeysAsync(request);
+
+            (await act.Should().ThrowAsync<KeyListException>()).Which.ErrorCode.Should().Be(KeyListErrorCodes.InvalidCursor);
+            _keyCollection.Verify(x => x.FindAsync(It.IsAny<FilterDefinition<Key>>(), It.IsAny<FindOptions<Key, Key>>(), It.IsAny<CancellationToken>()), Times.Never);
+            _keyCollection.Verify(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<Key>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task An_unlisted_sort_property_is_rejected_rather_than_sorted_on()
+        {
+            var request = Request();
+            request.SortProperty = "Resources.Value";
+
+            var act = () => _repo.GetAllKeysAsync(request);
+
+            (await act.Should().ThrowAsync<KeyListException>()).Which.ErrorCode.Should().Be(KeyListErrorCodes.InvalidSortProperty);
+        }
+
+        [Fact]
+        public async Task Both_queries_are_bounded_by_the_server_time_limit()
+        {
+            FindOptions<Key, Key>? findOptions = null;
+            CountOptions? countOptions = null;
+            _keyCollection
+                .Setup(x => x.FindAsync(It.IsAny<FilterDefinition<Key>>(), It.IsAny<FindOptions<Key, Key>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Key>, FindOptions<Key, Key>, CancellationToken>((_, o, _) => findOptions = o)
+                .ReturnsAsync(MockCursorHelper.CreateCursor(new List<Key>()).Object);
+            _keyCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<Key>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Key>, CountOptions, CancellationToken>((_, o, _) => countOptions = o)
+                .ReturnsAsync(0L);
+
+            await _repo.GetAllKeysAsync(Request());
+
+            findOptions!.MaxTime.Should().Be(KeyRepository.KeyListQueryMaxTime);
+            countOptions!.MaxTime.Should().Be(KeyRepository.KeyListQueryMaxTime);
+        }
+
+        [Fact]
+        public async Task A_query_timeout_surfaces_as_query_timeout_with_503()
+        {
+            _keyCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<Key>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new MongoExecutionTimeoutException(
+                    new MongoDB.Driver.Core.Connections.ConnectionId(
+                        new MongoDB.Driver.Core.Servers.ServerId(
+                            new MongoDB.Driver.Core.Clusters.ClusterId(1), new System.Net.DnsEndPoint("localhost", 27017))),
+                    "operation exceeded time limit"));
+
+            var logger = new Mock<ILogger<KeyRepository>>();
+            var repo = new KeyRepository(_dbContextProvider.Object, logger.Object);
+
+            var act = () => repo.GetAllKeysAsync(Request());
+
+            var error = (await act.Should().ThrowAsync<KeyListException>()).Which;
+            error.ErrorCode.Should().Be(KeyListErrorCodes.QueryTimeout);
+            error.StatusCode.Should().Be(503);
+            // The timeout is logged with the caught exception, so its details reach the logs.
+            logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.Is<Exception?>(e => e is MongoExecutionTimeoutException),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task A_failed_index_build_is_logged_and_never_thrown()
+        {
+            var indexes = new Mock<IMongoIndexManager<Key>>();
+            indexes
+                .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("not authorized"));
+            var collection = new Mock<IMongoCollection<Key>>();
+            collection.Setup(x => x.Indexes).Returns(indexes.Object);
+            var logger = new Mock<ILogger>();
+
+            var act = () => KeyIndexInitializer.EnsureAsync("tenant-x", collection.Object, logger.Object);
+
+            await act.Should().NotThrowAsync();
+            // The caught exception travels with the log entry, so its type and stack trace are kept.
+            logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.Is<Exception?>(e => e is InvalidOperationException && e.Message == "not authorized"),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Indexes_are_ensured_once_per_tenant_per_process()
+        {
+            var indexes = new Mock<IMongoIndexManager<Key>>();
+            indexes
+                .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<string>());
+            var collection = new Mock<IMongoCollection<Key>>();
+            collection.Setup(x => x.Indexes).Returns(indexes.Object);
+            var tenant = "once-" + Guid.NewGuid().ToString("N");
+
+            var first = KeyIndexInitializer.EnsureStarted(tenant, collection.Object, NullLogger.Instance);
+            var second = KeyIndexInitializer.EnsureStarted(tenant, collection.Object, NullLogger.Instance);
+            await first;
+
+            second.Should().BeSameAs(first);
+            indexes.Verify(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
 import { useScopedPath, useProjectStore } from "@seliseblocks/genesis-os";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import type { RowSelectionState } from "@tanstack/react-table";
+import { useQueryClient } from "@tanstack/react-query";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import {
   EllipsisVertical,
   FolderInput,
@@ -61,13 +62,13 @@ import {
   useDeleteLanguageKey,
   useDeleteLanguageKeys,
   useGenerateUilmFile,
-  useGetBlocksLanguageKey,
   useGetLanguageModules,
   useGetLanguages,
   useTranslateKey,
   useTranslateKeyWithPolling,
   useTranslateLanguageKeys,
 } from "@blocks-localization/hooks/use-language-manager";
+import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
 import {
   useLanguageViewStore,
   updateLanguageViewTenantId,
@@ -79,28 +80,52 @@ import { useNotificationListener } from "@blocks-utilities/notification";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
+import type {
+  IBaseMutationResponse,
+  IBlocksLanguageKey,
+  ILanguageConfig,
+} from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
 import { InlineKeyDetails } from "./components/inline-key-details";
 import { DuplicateKeysChips } from "./components/duplicate-keys-chips";
 import { BulkEditKeysDialog } from "./components/bulk-edit-keys-dialog";
 import { useLanguageTableColumns } from "./hooks/use-language-table-columns";
+import { useLanguageKeysQueries } from "./hooks/use-language-keys-queries";
 import {
   getImportFileLabel,
   useLanguageImportProgress,
   type LanguageImportProgress,
 } from "./hooks/use-language-import-progress";
 import {
+  areAllRowsSelected,
+  getDeleteKeyErrorMessage,
   getDeleteKeysErrorMessage,
-  getInclusiveDateRange,
+  getKeyListErrorCode,
   getPageSizeOptions,
   getResourceSearchFilters,
+  getSelectedKeysLabel,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
   parseResourceSearch,
+  TABLE_ROW_HEIGHT_ESTIMATE,
+  toKeyPageSize,
   updateResourceSearchValue,
+  withRowsSelected,
 } from "./language-table.utils";
+
+// The virtualizer is only needed in the All view, so it stays out of the main bundle.
+const VirtualKeyRows = lazy(() => import("./components/virtual-key-rows"));
+
+/** Skeleton rows are capped so a large page size doesn't mount (and reserve height for) hundreds of rows. */
+const MAX_SKELETON_ROWS = 20;
+const CURSOR_RESET_ERROR_CODES = new Set(["CURSOR_MISMATCH", "INVALID_CURSOR"]);
+/** Fixed ids for the placeholder rows, so a loading table keeps the same rows between renders. */
+const SKELETON_ROW_IDS = Array.from(
+  { length: MAX_SKELETON_ROWS },
+  (_, row) => `skeleton-row-${row}`,
+);
 
 const getTableSkeletonClassName = (columnId: string) => {
   if (columnId === "select") return "h-4 w-4 rounded";
@@ -125,6 +150,136 @@ const getTableColumnClassName = (columnId: string) => {
   if (columnId === "lastUpdateDate") return "w-[220px]";
   if (columnId === "actions") return "w-12";
   return "w-36";
+};
+
+type KeysFilterQueryParams = ReturnType<typeof useKeysFilterQueryParams>["queryParams"];
+
+const hasActiveKeyFilters = (
+  queryParams: KeysFilterQueryParams,
+  resourceSearchFilterCount: number,
+) =>
+  Boolean(
+    queryParams.search ||
+    (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
+    (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
+    queryParams.createStartDate ||
+    queryParams.createEndDate ||
+    queryParams.lastUpdateStartDate ||
+    queryParams.lastUpdateEndDate ||
+    queryParams.duplicates ||
+    resourceSearchFilterCount > 0,
+  );
+
+const getDefaultLanguageCode = (languages: ILanguageConfig[] | undefined) => {
+  if (!languages) return "en-US";
+  const defaultLang = languages.find((lang) => lang.isDefault);
+  return defaultLang?.languageCode ?? "en-US";
+};
+
+/** Rows the current page should show: a full page, fewer on the last page, at least one. */
+const getExpectedRowCount = (totalCount: number, pageNumber: number, pageSize: number) =>
+  totalCount > 0 ? Math.max(Math.min(totalCount - pageNumber * pageSize, pageSize), 1) : pageSize;
+
+/** How many rows to expect on screen, and how many placeholder rows to show while loading. */
+const getRowCountTargets = (
+  isAllView: boolean,
+  totalCount: number,
+  pageNumber: number,
+  pageSize: number,
+) => {
+  const expectedRowCount = getExpectedRowCount(totalCount, isAllView ? 0 : pageNumber, pageSize);
+  return {
+    expectedRowCount,
+    skeletonRowCount: isAllView ? MAX_SKELETON_ROWS : Math.min(expectedRowCount, MAX_SKELETON_ROWS),
+  };
+};
+
+const getSelectAllLabel = (isAllView: boolean, loadedCount: number) =>
+  isAllView ? `Select all loaded (${loadedCount})` : undefined;
+
+/** Where the paged table and the All view differ: scrolling, sticky header, row count and footer. */
+const getKeyTableLayout = ({
+  isAllView,
+  minHeight,
+  allViewRowCount,
+  pageNumber,
+  pagedPageSize,
+  totalCount,
+}: {
+  isAllView: boolean;
+  minHeight: number;
+  allViewRowCount: number;
+  pageNumber: number;
+  pagedPageSize: number;
+  totalCount: number;
+}) => ({
+  viewportClassName: `language-table-scrollbar w-full ${isAllView ? "overflow-auto" : "overflow-x-auto"} @container [&>div]:overflow-visible`,
+  viewportStyle: isAllView
+    ? { maxHeight: "calc(100dvh - 280px)", minHeight: "320px" }
+    : { minHeight: `${minHeight}px` },
+  ariaRowCount: isAllView ? allViewRowCount : undefined,
+  headerClassName: isAllView ? "sticky top-0 z-20 bg-card" : undefined,
+  paginationPage: isAllView ? 0 : pageNumber,
+  // In the All view the select shows its "All (n)" option, which is the total.
+  paginationPageSize: isAllView ? totalCount : pagedPageSize,
+  paginationMode: isAllView ? ("all" as const) : ("paged" as const),
+});
+
+const showErrorToast = (description: string) => {
+  toast({
+    variant: "destructive",
+    title: "Error",
+    description,
+  });
+};
+
+/**
+ * Runs a key action and reports it: a success toast and `onSuccess` when the server accepts it,
+ * otherwise an error toast built from the returned errors or from what was thrown.
+ */
+async function runKeyAction({
+  request,
+  success,
+  onSuccess,
+  describeErrors,
+  describeException,
+}: {
+  request: () => Promise<IBaseMutationResponse | undefined>;
+  success: { title: string; description: string };
+  onSuccess: () => void;
+  describeErrors: (errors: unknown) => string;
+  describeException: (error: unknown) => string;
+}) {
+  try {
+    const res = await request();
+    if (res?.isSuccess) {
+      toast({
+        variant: "success",
+        title: success.title,
+        description: success.description,
+      });
+      onSuccess();
+    } else {
+      showErrorToast(describeErrors(res?.errors));
+    }
+  } catch (error) {
+    showErrorToast(describeException(error));
+  }
+}
+
+const stringifyError = (error: unknown) => JSON.stringify(error);
+
+// Returns a new Set so React state updaters see a changed reference.
+const addKeysToSet = (keys: Set<string>, keyIds: Iterable<string>) => {
+  const next = new Set(keys);
+  for (const keyId of keyIds) next.add(keyId);
+  return next;
+};
+
+const removeKeysFromSet = (keys: Set<string>, keyIds: Iterable<string>) => {
+  const next = new Set(keys);
+  for (const keyId of keyIds) next.delete(keyId);
+  return next;
 };
 
 function LanguageTableEmptyState({
@@ -153,6 +308,17 @@ function LanguageTableEmptyState({
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
       <p className="font-medium text-high-emphasis">No translation keys yet</p>
       <p className="text-muted-foreground">Create your first translation key to get started.</p>
+    </div>
+  );
+}
+
+function AllViewLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <span className="text-sm text-medium-emphasis">Couldn&apos;t load more keys.</span>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Retry
+      </Button>
     </div>
   );
 }
@@ -264,17 +430,7 @@ export function LanguageTable() {
 
   const keySearch = queryParams.search || "";
 
-  const hasActiveFilters = Boolean(
-    queryParams.search ||
-    (queryParams.moduleIds && queryParams.moduleIds.length > 0) ||
-    (queryParams.missingLanguages && queryParams.missingLanguages.length > 0) ||
-    queryParams.createStartDate ||
-    queryParams.createEndDate ||
-    queryParams.lastUpdateStartDate ||
-    queryParams.lastUpdateEndDate ||
-    queryParams.duplicates ||
-    resourceSearchFilters.length > 0,
-  );
+  const hasActiveFilters = hasActiveKeyFilters(queryParams, resourceSearchFilters.length);
 
   const updateKeySearch = useCallback(
     (value: string) => {
@@ -288,25 +444,21 @@ export function LanguageTable() {
   );
 
   const {
+    isAllView,
+    pagedPageSize,
+    createDateRange,
+    lastUpdateDateRange,
+    allViewQuery,
+    allViewKeys,
+    allViewTotalCount,
+    pagedData: blocksLanguageKeyData,
     isLoading,
     isFetching,
     isPlaceholderData,
-    data: blocksLanguageKeyData,
-    refetch: refetchLanguageKeys,
-  } = useGetBlocksLanguageKey(
-    queryParams.pageNumber ?? 0,
-    queryParams.pageSize ?? 10,
-    queryParams.search ?? "",
-    queryParams.moduleIds ?? [],
-    false,
-    sortQueryParams.property,
-    sortQueryParams.isDescending,
-    getInclusiveDateRange(queryParams.createStartDate, queryParams.createEndDate),
-    getInclusiveDateRange(queryParams.lastUpdateStartDate, queryParams.lastUpdateEndDate),
-    resourceSearchFilters.length > 0 ? resourceSearchFilters : undefined,
-    queryParams.missingLanguages ?? [],
-    queryParams.duplicates,
-  );
+    currentTotalCount,
+    refetchLanguageKeys,
+    showDuplicatesTruncatedNote,
+  } = useLanguageKeysQueries({ queryParams, sortQueryParams, resourceSearchFilters });
 
   const {
     progress: importProgress,
@@ -314,18 +466,17 @@ export function LanguageTable() {
     onImportStarted,
     onImportRequestFailed,
   } = useLanguageImportProgress({
-    totalCount: blocksLanguageKeyData?.totalCount ?? 0,
+    totalCount: currentTotalCount,
     refetch: refetchLanguageKeys,
   });
 
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { data: languageListData } = useGetLanguages();
 
-  const defaultLanguageCode = useMemo(() => {
-    if (!languageListData) return "en-US";
-    const defaultLang = languageListData.find((lang) => lang.isDefault);
-    return defaultLang?.languageCode ?? "en-US";
-  }, [languageListData]);
+  const defaultLanguageCode = useMemo(
+    () => getDefaultLanguageCode(languageListData),
+    [languageListData],
+  );
 
   const navigate = useNavigate();
   const scoped = useScopedPath();
@@ -345,7 +496,23 @@ export function LanguageTable() {
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const [pollingKeyId, setPollingKeyId] = useState<string | null>(null);
   const [translatingKeys, setTranslatingKeys] = useState<Set<string>>(new Set());
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [rowSelectionState, setRowSelectionState] = useState<RowSelectionState>({});
+  // In the All view, while every loaded row is selected, the rows of later chunks are selected as
+  // they load, so select-all keeps covering the list while scrolling.
+  const isSelectingAllLoadedRef = useRef(false);
+  const setRowSelection = useCallback<OnChangeFn<RowSelectionState>>(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(rowSelectionState) : updater;
+      isSelectingAllLoadedRef.current =
+        isAllView &&
+        areAllRowsSelected(
+          allViewKeys.map((key) => key.itemId),
+          next,
+        );
+      setRowSelectionState(next);
+    },
+    [rowSelectionState, isAllView, allViewKeys],
+  );
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -381,7 +548,6 @@ export function LanguageTable() {
 
     const prevTenantId = prevTenantIdRef.current;
 
-    // On initial mount, load settings for the selected tenant without resetting filters.
     if (prevTenantId === null) {
       prevTenantIdRef.current = tenantId;
       updateLanguageViewTenantId(tenantId);
@@ -448,79 +614,32 @@ export function LanguageTable() {
       defaultLanguage: defaultLanguageCode,
     };
 
-    try {
-      const res = await translateKeyAsync(payload);
-
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Processing Translation",
-          description: "Key translation in progress.",
-        });
+    await runKeyAction({
+      request: () => translateKeyAsync(payload),
+      success: { title: "Processing Translation", description: "Key translation in progress." },
+      onSuccess: () => {
         setPollingKeyId(selectedLanguageKeyId);
         setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
         setIsTranslateDialogOpen(false);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(res?.errors),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
-      });
-    }
+      },
+      describeErrors: stringifyError,
+      describeException: stringifyError,
+    });
   };
 
   const onConfirmDelete = async () => {
     if (!tenantId || !selectedLanguageKeyId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Missing project or key identifier. Please try again.",
-      });
+      showErrorToast("Missing project or key identifier. Please try again.");
       return;
     }
-    try {
-      const payload = {
-        itemId: selectedLanguageKeyId,
-      };
-      const res = await deleteAsync(payload);
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "Deleted successfully",
-        });
-        setIsDeleteDialogOpen(false);
-      } else {
-        const rawErrors = res?.errors;
-        let errorMessage = "Failed to delete key. Please try again.";
-        if (rawErrors && typeof rawErrors === "object") {
-          if (Array.isArray(rawErrors) && rawErrors.length > 0) {
-            errorMessage = (rawErrors as string[]).join(", ");
-          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
-            const firstError = Object.values(rawErrors)[0];
-            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
-          }
-        }
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: errorMessage,
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-      });
-    }
+    await runKeyAction({
+      request: () => deleteAsync({ itemId: selectedLanguageKeyId }),
+      success: { title: "Success", description: "Deleted successfully" },
+      onSuccess: () => setIsDeleteDialogOpen(false),
+      describeErrors: getDeleteKeyErrorMessage,
+      describeException: (error) =>
+        error instanceof Error ? error.message : "An unexpected error occurred.",
+    });
   };
 
   useEffect(() => {
@@ -564,12 +683,11 @@ export function LanguageTable() {
     setRowSelection({});
     setQueryParams((prev) => ({
       ...prev,
-      pageSize,
+      pageSize: toKeyPageSize(pageSize, stableTotalCount),
       pageNumber: 0,
     }));
   };
 
-  const currentTotalCount = blocksLanguageKeyData?.totalCount ?? 0;
   const areTableFiltersDisabled = !isLoading && !hasActiveFilters && currentTotalCount === 0;
   const areLanguageKeyActionsDisabled = isLoading || areTableFiltersDisabled;
   const previousTotalCountRef = useRef(currentTotalCount);
@@ -592,25 +710,25 @@ export function LanguageTable() {
     selectedOptionalColumns,
     sortQueryParams,
     translatingKeys,
+    selectAllLabel: getSelectAllLabel(isAllView, allViewKeys.length),
   });
 
   const tableData = useMemo(() => {
+    if (isAllView) return allViewKeys;
     return blocksLanguageKeyData?.keys || [];
-  }, [blocksLanguageKeyData]);
+  }, [isAllView, allViewKeys, blocksLanguageKeyData]);
 
-  const requestedPageSize = queryParams.pageSize ?? 10;
-  const requestedPageNumber = queryParams.pageNumber ?? 0;
-  const skeletonRowCount =
-    stableTotalCount > 0
-      ? Math.max(
-          Math.min(stableTotalCount - requestedPageNumber * requestedPageSize, requestedPageSize),
-          1,
-        )
-      : requestedPageSize;
+  const { expectedRowCount, skeletonRowCount } = getRowCountTargets(
+    isAllView,
+    stableTotalCount,
+    queryParams.pageNumber ?? 0,
+    pagedPageSize,
+  );
   const isFetchingNewPage = isFetching && isPlaceholderData;
   const showLoadingSkeleton =
-    isLoading || (isFetchingNewPage && tableData.length !== skeletonRowCount);
-  const tableViewportMinHeight = 80 + (queryParams.pageSize ?? 10) * 44;
+    isLoading || (isFetchingNewPage && tableData.length !== expectedRowCount);
+  const tableViewportMinHeight =
+    80 + Math.min(pagedPageSize, MAX_SKELETON_ROWS) * TABLE_ROW_HEIGHT_ESTIMATE;
   const tableViewportRef = useRef<HTMLDivElement>(null);
   const [tableViewportWidth, setTableViewportWidth] = useState(0);
 
@@ -631,7 +749,7 @@ export function LanguageTable() {
     getRowId: (row) => row.itemId,
     getCoreRowModel: getCoreRowModel(),
     state: {
-      rowSelection,
+      rowSelection: rowSelectionState,
     },
     onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
@@ -642,6 +760,58 @@ export function LanguageTable() {
     tableViewportWidth,
     globalThis.window?.innerWidth ?? 0,
   );
+
+  const tableRows = table.getRowModel().rows;
+  const queryClient = useQueryClient();
+  const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
+  const { fetchNextPage } = allViewQuery;
+  const loadNextAllViewChunk = useCallback(() => void fetchNextPage(), [fetchNextPage]);
+
+  const resetAllView = useCallback(() => {
+    void queryClient.resetQueries({ queryKey: localizationQueryKeys.languageKeys.infinitePrefix });
+    if (tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
+  }, [queryClient]);
+
+  const allViewFiltersHash = JSON.stringify([
+    queryParams.search,
+    queryParams.moduleIds,
+    queryParams.missingLanguages,
+    createDateRange,
+    lastUpdateDateRange,
+    resourceSearchFilters,
+    sortQueryParams,
+  ]);
+  const cursorResetDoneRef = useRef(false);
+  useEffect(() => {
+    cursorResetDoneRef.current = false;
+    if (isAllView && tableViewportRef.current) tableViewportRef.current.scrollTop = 0;
+  }, [isAllView, allViewFiltersHash]);
+
+  // A new filter or leaving the All view is a different list; select-all doesn't carry over to it.
+  useEffect(() => {
+    isSelectingAllLoadedRef.current = false;
+  }, [isAllView, allViewFiltersHash]);
+
+  useEffect(() => {
+    if (!isSelectingAllLoadedRef.current) return;
+    const loadedKeyIds = allViewKeys.map((key) => key.itemId);
+    setRowSelectionState((current) => withRowsSelected(current, loadedKeyIds));
+  }, [allViewKeys]);
+
+  const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
+  useEffect(() => {
+    if (!isAllView || !allViewErrorCode || !CURSOR_RESET_ERROR_CODES.has(allViewErrorCode)) return;
+    if (cursorResetDoneRef.current) return;
+    cursorResetDoneRef.current = true;
+    resetAllView();
+  }, [isAllView, allViewErrorCode, resetAllView]);
+
+  useEffect(() => {
+    const rawPageSize = new URLSearchParams(globalThis.location?.search ?? "").get("pageSize");
+    if (rawPageSize !== null && rawPageSize !== String(queryParams.pageSize)) {
+      void setQueryParams((prev) => ({ ...prev, pageSize: prev.pageSize }));
+    }
+  }, [queryParams.pageSize, setQueryParams]);
 
   const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
   const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
@@ -663,34 +833,20 @@ export function LanguageTable() {
   const onConfirmBulkDelete = async () => {
     if (!tenantId || selectedKeys.length === 0) return;
 
-    const payload = {
-      itemIds: selectedKeys,
-    };
-
-    try {
-      const res = await bulkDeleteAsync(payload);
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "Keys deleted successfully",
-        });
+    await runKeyAction({
+      request: () => bulkDeleteAsync({ itemIds: selectedKeys }),
+      success: { title: "Success", description: "Keys deleted successfully" },
+      onSuccess: () => {
         setIsBulkDeleteDialogOpen(false);
         setRowSelection({});
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: getDeleteKeysErrorMessage(res?.errors),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: getDeleteKeysErrorMessage(error),
-      });
-    }
+      },
+      describeErrors: getDeleteKeysErrorMessage,
+      describeException: getDeleteKeysErrorMessage,
+    });
+  };
+
+  const clearTranslatingKeys = (keyIds: Set<string>) => {
+    setTranslatingKeys((prev) => removeKeysFromSet(prev, keyIds));
   };
 
   const onConfirmBulkTranslate = async () => {
@@ -703,46 +859,23 @@ export function LanguageTable() {
       defaultLanguage: defaultLanguageCode,
     };
 
-    try {
-      const res = await bulkTranslateAsync(payload);
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Processing Translation",
-          description: "Key translation in progress for selected keys.",
-        });
-        // Track all selected keys as translating (for showing skeleton/loading state)
+    await runKeyAction({
+      request: () => bulkTranslateAsync(payload),
+      success: {
+        title: "Processing Translation",
+        description: "Key translation in progress for selected keys.",
+      },
+      onSuccess: () => {
         const keysToTranslate = new Set(selectedKeys);
-        setTranslatingKeys((prev) => {
-          const next = new Set(prev);
-          selectedKeys.forEach((keyId) => next.add(keyId));
-          return next;
-        });
+        setTranslatingKeys((prev) => addKeysToSet(prev, selectedKeys));
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
 
-        // Clear translating state after timeout (bulk translate doesn't have individual polling)
-        setTimeout(() => {
-          setTranslatingKeys((prev) => {
-            const next = new Set(prev);
-            keysToTranslate.forEach((keyId) => next.delete(keyId));
-            return next;
-          });
-        }, 60000); // 60 seconds timeout
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(res?.errors),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
-      });
-    }
+        setTimeout(() => clearTranslatingKeys(keysToTranslate), 60000);
+      },
+      describeErrors: stringifyError,
+      describeException: stringifyError,
+    });
   };
 
   const handleExportClick = () => {
@@ -777,31 +910,76 @@ export function LanguageTable() {
   };
 
   async function generateUilmFiles() {
-    try {
-      const res = await mutateAsync({ guid: uuidv4() });
-
-      if (res?.isSuccess) {
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "File generation is in progress.",
-        });
-        setIsPublishChangesDialogOpen(false);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(res?.errors),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
-      });
-    }
+    await runKeyAction({
+      request: () => mutateAsync({ guid: uuidv4() }),
+      success: { title: "Success", description: "File generation is in progress." },
+      onSuccess: () => setIsPublishChangesDialogOpen(false),
+      describeErrors: stringifyError,
+      describeException: stringifyError,
+    });
   }
+
+  // Placeholder rows with stable keys, so a loading table doesn't remount them every render.
+  const renderSkeletonRows = () =>
+    SKELETON_ROW_IDS.slice(0, skeletonRowCount).map((skeletonRowId) => (
+      <TableRow key={skeletonRowId} className="group h-9 md:h-11">
+        {table.getVisibleLeafColumns().map((column) => (
+          <TableCell key={column.id} className={getStickyBodyCellClassName(column.id)}>
+            <Skeleton className={getTableSkeletonClassName(column.id)} />
+          </TableCell>
+        ))}
+        <TableCell aria-hidden="true" className="p-0" />
+      </TableRow>
+    ));
+
+  const tableColSpan = table.getVisibleLeafColumns().length + 1;
+  // Column header row(s) plus the per-column search row.
+  const headerRowCount = table.getHeaderGroups().length + 1;
+  const layout = getKeyTableLayout({
+    isAllView,
+    minHeight: tableViewportMinHeight,
+    allViewRowCount: allViewTotalCount + headerRowCount,
+    pageNumber: queryParams.pageNumber,
+    pagedPageSize,
+    totalCount: stableTotalCount,
+  });
+
+  // A key's row plus its inline details when expanded; shared by the paged table and the All view.
+  const renderKeyRow = (row: Row<IBlocksLanguageKey>, ariaRowIndex?: number) => {
+    const isRowExpanded = expandedRowId === row.original.itemId;
+    return (
+      <>
+        <TableRow
+          isHoverable
+          className="group font-normal text-medium-emphasis"
+          data-state={row.getIsSelected() && "selected"}
+          aria-rowindex={ariaRowIndex}
+          onClick={() => handleRowClick(row.original.itemId)}
+        >
+          {row.getVisibleCells().map((cell) => (
+            <TableCell key={cell.id} className={getStickyBodyCellClassName(cell.column.id)}>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          ))}
+          <TableCell aria-hidden="true" className="p-0" />
+        </TableRow>
+        {isRowExpanded && (
+          <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
+            <TableCell colSpan={tableColSpan} className="p-0">
+              <InlineKeyDetails
+                key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
+                keyDetails={row.original}
+                languageListData={languageListData ?? []}
+                languageModules={languageModules ?? []}
+                onDelete={() => onDeleteClick(row.original.itemId)}
+                onTranslate={() => onTranslateClick(row.original.itemId)}
+              />
+            </TableCell>
+          </TableRow>
+        )}
+      </>
+    );
+  };
 
   return (
     <main className="flex flex-col">
@@ -1016,8 +1194,10 @@ export function LanguageTable() {
                       <X className="h-4 w-4" />
                     </Button>
                     <span className="text-sm font-medium">
-                      {selectedKeys.length} key
-                      {selectedKeys.length > 1 ? "s" : ""} selected
+                      {getSelectedKeysLabel(
+                        selectedKeys.length,
+                        isAllView ? allViewTotalCount : undefined,
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1067,7 +1247,7 @@ export function LanguageTable() {
                 )}
               </div>
               <CardContent>
-                {queryParams.duplicates && blocksLanguageKeyData?.duplicatesTruncated && (
+                {showDuplicatesTruncatedNote && (
                   <p
                     className="mb-2 text-sm text-medium-emphasis"
                     data-testid="duplicates-truncated-note"
@@ -1076,12 +1256,12 @@ export function LanguageTable() {
                   </p>
                 )}
                 <div
-                  className="language-table-scrollbar w-full overflow-x-auto @container [&>div]:overflow-visible"
-                  style={{ minHeight: `${tableViewportMinHeight}px` }}
+                  className={layout.viewportClassName}
+                  style={layout.viewportStyle}
                   data-testid="language-table-viewport"
                   ref={tableViewportRef}
                 >
-                  <Table className="table-fixed text-sm">
+                  <Table className="table-fixed text-sm" aria-rowcount={layout.ariaRowCount}>
                     <colgroup>
                       {table.getVisibleLeafColumns().map((column) => (
                         <col
@@ -1096,7 +1276,7 @@ export function LanguageTable() {
                       ))}
                       <col />
                     </colgroup>
-                    <TableHeader>
+                    <TableHeader ref={tableHeaderRef} className={layout.headerClassName}>
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
                           {headerGroup.headers.map((header) => (
@@ -1163,84 +1343,55 @@ export function LanguageTable() {
                         <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {showLoadingSkeleton
-                        ? Array.from({ length: skeletonRowCount }).map(() => (
-                            <TableRow key={crypto.randomUUID()} className="group h-9 md:h-11">
-                              {table.getVisibleLeafColumns().map((column) => (
-                                <TableCell
-                                  key={column.id}
-                                  className={getStickyBodyCellClassName(column.id)}
-                                >
-                                  <Skeleton className={getTableSkeletonClassName(column.id)} />
-                                </TableCell>
-                              ))}
-                              <TableCell aria-hidden="true" className="p-0" />
-                            </TableRow>
-                          ))
-                        : (() => {
-                            const tableRows = table.getRowModel().rows;
-                            return tableRows?.length ? (
-                              tableRows.map((row) => {
-                                const isRowExpanded = expandedRowId === row.original.itemId;
-                                return (
-                                  <Fragment key={row.id}>
-                                    <TableRow
-                                      isHoverable
-                                      className="group font-normal text-medium-emphasis"
-                                      data-state={row.getIsSelected() && "selected"}
-                                      onClick={() => handleRowClick(row.original.itemId)}
-                                    >
-                                      {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                          key={cell.id}
-                                          className={getStickyBodyCellClassName(cell.column.id)}
-                                        >
-                                          {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext(),
-                                          )}
-                                        </TableCell>
-                                      ))}
-                                      <TableCell aria-hidden="true" className="p-0" />
-                                    </TableRow>
-                                    {isRowExpanded && (
-                                      <TableRow className="border-none bg-blocks-primary-shades-300 hover:bg-blocks-primary-shades-300">
-                                        <TableCell
-                                          colSpan={table.getVisibleLeafColumns().length + 1}
-                                          className="p-0"
-                                        >
-                                          <InlineKeyDetails
-                                            key={`${row.original.itemId}-${row.original.lastUpdateDate}-${languageListData?.map((language) => language.languageCode).join(",")}`}
-                                            keyDetails={row.original}
-                                            languageListData={languageListData ?? []}
-                                            languageModules={languageModules ?? []}
-                                            onDelete={() => onDeleteClick(row.original.itemId)}
-                                            onTranslate={() =>
-                                              onTranslateClick(row.original.itemId)
-                                            }
-                                          />
-                                        </TableCell>
-                                      </TableRow>
+                    {isAllView && !showLoadingSkeleton && tableRows.length > 0 ? (
+                      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
+                        <VirtualKeyRows
+                          rows={tableRows}
+                          scrollElementRef={tableViewportRef}
+                          headerRef={tableHeaderRef}
+                          headerRowCount={headerRowCount}
+                          colSpan={tableColSpan}
+                          renderKeyRow={renderKeyRow}
+                          headCursor={allViewQuery.data?.pageParams[0]}
+                          hasNextPage={allViewQuery.hasNextPage}
+                          isFetchingNextPage={allViewQuery.isFetchingNextPage}
+                          isFetchNextPageError={allViewQuery.isFetchNextPageError}
+                          onLoadMore={loadNextAllViewChunk}
+                          onBackToTop={resetAllView}
+                          loadError={<AllViewLoadError onRetry={loadNextAllViewChunk} />}
+                        />
+                      </Suspense>
+                    ) : (
+                      <TableBody>
+                        {showLoadingSkeleton
+                          ? renderSkeletonRows()
+                          : (() => {
+                              return tableRows?.length ? (
+                                tableRows.map((row) => (
+                                  <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell
+                                    colSpan={table.getVisibleLeafColumns().length + 1}
+                                    className="h-24 text-center"
+                                  >
+                                    {isAllView && allViewQuery.isError ? (
+                                      <AllViewLoadError
+                                        onRetry={() => void allViewQuery.refetch()}
+                                      />
+                                    ) : (
+                                      <LanguageTableEmptyState
+                                        hasActiveFilters={hasActiveFilters}
+                                        importProgress={importProgress}
+                                      />
                                     )}
-                                  </Fragment>
-                                );
-                              })
-                            ) : (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={table.getVisibleLeafColumns().length + 1}
-                                  className="h-24 text-center"
-                                >
-                                  <LanguageTableEmptyState
-                                    hasActiveFilters={hasActiveFilters}
-                                    importProgress={importProgress}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })()}
-                    </TableBody>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })()}
+                      </TableBody>
+                    )}
                   </Table>
                 </div>
               </CardContent>
@@ -1250,12 +1401,14 @@ export function LanguageTable() {
                   aria-hidden={showLoadingSkeleton || undefined}
                 >
                   <Pagination
-                    page={queryParams.pageNumber}
-                    pageSize={queryParams.pageSize}
+                    page={layout.paginationPage}
+                    pageSize={layout.paginationPageSize}
                     totalCount={stableTotalCount}
                     pageSizeOptions={pageSizeOptions}
                     onChange={onPageChangeHandler}
                     onPageSizeChange={onPageSizeChangeHandler}
+                    mode={layout.paginationMode}
+                    loadedCount={tableData.length}
                   />
                 </div>
               )}

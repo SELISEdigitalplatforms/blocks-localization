@@ -65,6 +65,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
+  useGetBlocksLanguageKeysInfinite: vi.fn(),
   useGetLanguageModules: vi.fn(),
   useGetLanguages: vi.fn(),
   useDeleteLanguageKey: vi.fn(),
@@ -87,6 +88,19 @@ const bulkTranslateAsync = vi.fn();
 const bulkSaveAsync = vi.fn();
 
 const setBaseMocks = () => {
+  // The All view is off at the default page size; its query stays idle.
+  h.useGetBlocksLanguageKeysInfinite.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    fetchNextPage: vi.fn(),
+    refetch: vi.fn(),
+    error: null,
+  } as never);
   vi.mocked(useLanguageImportProgress).mockReturnValue({
     progress: null,
     onImportStarted: vi.fn(),

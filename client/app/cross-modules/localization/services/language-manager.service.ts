@@ -11,6 +11,7 @@ import {
 import {
   ExportHistoryFilters,
   IBlocksLanguageKey,
+  IBlocksLanguageKeyResponse,
   IGetExportHistory,
   IGlossary,
   IGetGlossariesResponse,
@@ -35,31 +36,33 @@ import {
 
 export class LanguageManagerService {
   private readonly httpClient = serviceInstances.localizationService;
-  fetchBlocksLanguageKey = (request: {
-    pageNumber: number;
-    pageSize: number;
-    searchKey: string;
-    moduleIds: string[];
-    isPartiallyTranslated: boolean;
-    sortProperty: string;
-    isDescending: boolean;
-    createDateRange?: {
-      startDate?: string;
-      endDate?: string;
-    };
-    lastUpdateDateRange?: {
-      startDate?: string;
-      endDate?: string;
-    };
-    resourceSearchFilters?: { culture: string; searchText: string }[];
-    glossaryId?: string;
-    missingLanguages?: string[];
-    onlyDuplicates?: boolean;
-  }): Promise<{
-    totalCount: number;
-    keys: IBlocksLanguageKey[];
-    duplicatesTruncated?: boolean;
-  }> => {
+  fetchBlocksLanguageKey = (
+    request: {
+      pageNumber: number;
+      pageSize: number;
+      searchKey: string;
+      moduleIds: string[];
+      isPartiallyTranslated: boolean;
+      sortProperty: string;
+      isDescending: boolean;
+      createDateRange?: {
+        startDate?: string;
+        endDate?: string;
+      };
+      lastUpdateDateRange?: {
+        startDate?: string;
+        endDate?: string;
+      };
+      resourceSearchFilters?: { culture: string; searchText: string }[];
+      glossaryId?: string;
+      missingLanguages?: string[];
+      onlyDuplicates?: boolean;
+      /** Keyset token from a previous `nextCursor`; when set the server ignores `pageNumber`. */
+      cursor?: string;
+      includeTotalCount?: boolean;
+    },
+    options?: { signal?: AbortSignal },
+  ): Promise<IBlocksLanguageKeyResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
     if (!request.createDateRange) {
@@ -76,7 +79,7 @@ export class LanguageManagerService {
     } else if (payload?.lastUpdateDateRange?.endDate === "") {
       delete payload.lastUpdateDateRange.endDate;
     }
-    return this.httpClient.post(url, payload);
+    return this.httpClient.post(url, payload, undefined, { signal: options?.signal });
   };
 
   fetchDuplicateSummary = (): Promise<IDuplicateSummary> => {

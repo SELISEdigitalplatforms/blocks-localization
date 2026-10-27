@@ -72,7 +72,7 @@ namespace XUnitTest.Repositories
             var response = await _repo.GetAllKeysAsync(Request(onlyDuplicates: false));
 
             Rendered(_countFilter!).Should().Be("{ }");
-            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1 }").ToJson());
+            RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1, _id: 1 }").ToJson());
             response.DuplicatesTruncated.Should().BeFalse();
             _rawKeys.Verify(x => x.AggregateAsync(It.IsAny<PipelineDefinition<BsonDocument, BsonDocument>>(), It.IsAny<AggregateOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -130,6 +130,18 @@ namespace XUnitTest.Repositories
             await _repo.GetAllKeysAsync(request);
 
             RenderedSort().ToJson().Should().Be(BsonDocument.Parse("{ KeyName: 1, ModuleId: 1, CreateDate: 1, _id: 1 }").ToJson());
+        }
+
+        [Fact]
+        public async Task The_duplicates_view_pages_by_offset_and_refuses_a_keyset_cursor()
+        {
+            var cursor = KeyListCursor.Encode(new Key { ItemId = "id-0", KeyName = "a" }, "KeyName", false, "hash");
+            var request = Request();
+            request.Cursor = cursor;
+
+            var act = () => _repo.GetAllKeysAsync(request);
+
+            (await act.Should().ThrowAsync<KeyListException>()).Which.ErrorCode.Should().Be(KeyListErrorCodes.CursorMismatch);
         }
 
         [Fact]
