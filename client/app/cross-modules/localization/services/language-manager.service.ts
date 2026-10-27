@@ -269,6 +269,11 @@ export class LanguageManagerService {
     glossaryIds?: string[];
     moduleId?: string;
     destinationLanguageCode?: string;
+    /**
+     * True when `elementDetailContext` carries this client's terminology rules, so the Phase 6
+     * server skips its own rules and retry for this request. Ignored by servers without it.
+     */
+    clientGlossaryRules?: boolean;
   }): Promise<{
     content: string;
     errors: null | unknown;

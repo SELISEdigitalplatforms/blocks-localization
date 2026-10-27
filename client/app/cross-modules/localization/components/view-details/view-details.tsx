@@ -11,7 +11,6 @@ import {
   useGetLanguages,
   useGetGlossaries,
   useGetGlossariesByIds,
-  useGetSuggestedGlossaries,
   useGetGlobalGlossaries,
   useGetModuleGlossaries,
   useSaveBlocksLanguageKey,
@@ -23,7 +22,6 @@ import {
 import { IBlocksLanguageKey, IGlossary } from "../../models/language";
 import { buildGlossaryMatcher } from "../../utils/glossary-matcher";
 import { getDefaultLanguage } from "../../utils/glossary-rule-marker";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import EditRoute from "../modals/edit-route/edit-route";
@@ -55,16 +53,10 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   }
 
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
-  const glossaryEnforcement = isGlossaryEnforcementEnabled();
 
   const { data: allGlossariesData } = useGetGlossaries(0, 100);
-  // With the flag on, suggestions come from the matcher instead (no GetSuggestedGlossaries call).
-  const { data: suggestedGlossariesData } = useGetSuggestedGlossaries(
-    keyDetails.itemId,
-    !hasGlossaryIds && !glossaryEnforcement,
-  );
-  // The full glossary, loaded once (flag on): View Details suggestions and Edit translation.
-  const { data: allTerms } = useGetAllGlossaries(glossaryEnforcement);
+  // The full glossary, loaded once: View Details suggestions and Edit translation.
+  const { data: allTerms } = useGetAllGlossaries();
   const loadGlossaries = useLoadAllGlossaries();
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
@@ -117,7 +109,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
 
   // Untagged, non-global terms of other modules found in the default-language text (H10).
   const glossarySuggestions = useMemo(() => {
-    if (!glossaryEnforcement || !allTerms?.length) return [];
+    if (!allTerms?.length) return [];
     const defaultLanguage = getDefaultLanguage(languageListData);
     const source = keyDetails.resources?.find(
       (resource) => resource.culture === defaultLanguage?.languageCode,
@@ -138,7 +130,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     }
     return result;
   }, [
-    glossaryEnforcement,
     allTerms,
     languageListData,
     keyDetails.resources,
@@ -430,47 +421,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                     </div>
                   </div>
                 )}
-                {suggestedGlossariesData?.suggestedGlossaries &&
-                  suggestedGlossariesData.suggestedGlossaries.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Suggested glossaries
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {suggestedGlossariesData.suggestedGlossaries.map((glossary) => (
-                          <div key={glossary.itemId} className="flex items-center gap-1">
-                            <Badge variant="outline">
-                              {glossary.name}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-5 w-5 p-0"
-                                title="Tag to key"
-                                onClick={() =>
-                                  saveKey({
-                                    itemId: keyDetails.itemId,
-                                    keyName: keyDetails.keyName,
-                                    moduleId: keyDetails.moduleId,
-                                    resources: keyDetails.resources ?? [],
-                                    routes: keyDetails.routes ?? [],
-                                    context: keyDetails.context,
-                                    glossaryIds: [
-                                      ...(keyDetails.glossaryIds ?? []),
-                                      glossary.itemId,
-                                    ],
-                                    isPartiallyTranslated:
-                                      keyDetails.isPartiallyTranslated ?? false,
-                                  })
-                                }
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                              </Button>
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
               </div>
             )}
             {glossarySuggestions.length > 0 && (

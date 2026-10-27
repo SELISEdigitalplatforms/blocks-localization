@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { toast } from "@/hooks/use-toast";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import {
   useGetTranslationSuggestion,
   useSaveBlocksLanguageKey,
@@ -19,7 +18,6 @@ import EditTranslation from "./edit-translation";
 const saveKeyAsync = vi.fn();
 const autoTranslateAsync = vi.fn();
 
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled: vi.fn(() => false) }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useGetTranslationSuggestion: vi.fn(),
@@ -28,8 +26,6 @@ vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
-
-const flag = vi.mocked(isGlossaryEnforcementEnabled);
 
 const G1: IGlossary = {
   itemId: "g1",
@@ -114,7 +110,6 @@ const expectNoStatusContent = () =>
 describe("edit-translation — glossary-aware suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    flag.mockReturnValue(false);
     vi.mocked(useSaveBlocksLanguageKey).mockReturnValue({
       isPending: false,
       mutateAsync: saveKeyAsync,
@@ -125,34 +120,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
     } as never);
   });
 
-  describe("flag off (C1, C20)", () => {
-    it("sends today's payload with the isDefault language from an unsorted list", async () => {
-      const loadGlossaries = vi.fn();
-      autoTranslateAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Arbeitsbereich" });
-      renderModal({ loadGlossaries });
-
-      expect(screen.getByText("Default value (English)")).toBeTruthy();
-      expect(screen.getByText("Open your Workspace")).toBeTruthy();
-
-      fireEvent.click(autoTranslateButton());
-      await waitFor(() => expect(field().value).toBe("Öffnen Sie Ihren Arbeitsbereich"));
-      expect(autoTranslateAsync).toHaveBeenCalledTimes(1);
-      expect(autoTranslateAsync.mock.calls[0][0]).toStrictEqual({
-        sourceText: "Open your Workspace",
-        destinationLanguage: "German",
-        currentLanguage: "English",
-        temperature: 0.1,
-        glossaryIds: ["g9"],
-        moduleId: "M",
-        destinationLanguageCode: "de-DE",
-      });
-      expect(loadGlossaries).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("flag on", () => {
-    beforeEach(() => flag.mockReturnValue(true));
-
+  describe("glossary-aware", () => {
     it("sends the terminology prompt, glossaryIds [] and no moduleId (H1, H2, C20)", async () => {
       autoTranslateAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Arbeitsbereich" });
       renderModal({ loadGlossaries: async () => [G1] });
@@ -168,6 +136,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
         elementDetailContext: EXAMPLE_1_PROMPT,
         glossaryIds: [],
         destinationLanguageCode: "de-DE",
+        clientGlossaryRules: true,
       });
       expectNoStatusContent();
     });

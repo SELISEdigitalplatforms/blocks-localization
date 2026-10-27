@@ -2,7 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import {
@@ -15,7 +14,6 @@ import { useInlineKeyEditor } from "./use-inline-key-editor";
 const suggestAsync = vi.fn();
 const loadGlossaries = vi.fn();
 
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled: vi.fn(() => true) }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
@@ -74,7 +72,6 @@ const setup = () =>
 describe("useInlineKeyEditor — glossary rows", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(isGlossaryEnforcementEnabled).mockReturnValue(true);
     loadGlossaries.mockResolvedValue([G1]);
     suggestAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Werkbereich" });
     h.useSaveBlocksLanguageKey.mockReturnValue({ isPending: false, mutateAsync: vi.fn() } as never);

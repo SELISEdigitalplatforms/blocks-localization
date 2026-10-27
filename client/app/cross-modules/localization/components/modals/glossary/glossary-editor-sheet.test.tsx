@@ -9,9 +9,6 @@ import GlossaryEditorSheet from "./glossary-editor-sheet";
 
 const saveGlossaryAsync = vi.fn();
 const navigate = vi.fn();
-const { isGlossaryEnforcementEnabled } = vi.hoisted(() => ({
-  isGlossaryEnforcementEnabled: vi.fn(() => false),
-}));
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -21,7 +18,6 @@ vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled }));
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
   showErrorToast: vi.fn(),
@@ -75,7 +71,6 @@ const openForbidden = (code: string) => {
 describe("modals/glossary/glossary-editor-sheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isGlossaryEnforcementEnabled.mockReturnValue(false);
     saveGlossaryAsync.mockResolvedValue({ success: true });
     vi.mocked(hooks.useSaveGlossary).mockReturnValue({
       isPending: false,
@@ -216,25 +211,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(lastPayload().context).toBe("⟦rule: do not use this term; avoid de-DE: Werkraum⟧");
   });
 
-  it("should not show Variants or Case-sensitive with the flag off and keep their stored values on save (C17)", async () => {
-    const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"],"translations":{"de-DE":"Arbeitsbereich"}}`;
-    renderSheet(makeGlossary({ additionalNote }));
-    expect(screen.queryByLabelText("Variants")).toBeNull();
-    expect(screen.queryByText("Case-sensitive")).toBeNull();
-    fireEvent.change(screen.getByLabelText("German (de-DE)"), { target: { value: "Arbeitsraum" } });
-    save();
-    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    const saved = JSON.parse(lastPayload().additionalNote.slice(PREFIX.length));
-    expect(saved.caseSensitive).toBe(true);
-    expect(saved.variants).toEqual(["workspaces"]);
-    expect(saved.translations["de-DE"]).toBe("Arbeitsraum");
-  });
-
-  describe("variants and case-sensitive (flag on)", () => {
-    beforeEach(() => {
-      isGlossaryEnforcementEnabled.mockReturnValue(true);
-    });
-
+  describe("variants and case-sensitive", () => {
     const savedMeta = () => JSON.parse(lastPayload().additionalNote.slice(PREFIX.length));
 
     it("should add variants with Enter, comma or leaving the field as removable chips (H13)", async () => {

@@ -71,7 +71,6 @@ import {
 } from "@/components/ui-kits/command/command";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import {
   useGetLanguageModules,
   useGetLanguages,
@@ -185,7 +184,7 @@ const firstForbiddenError = (
  * Validation only covers languages shown in the editor; other stored entries pass through.
  * Variants are only validated while they are editable (flag on); otherwise they are kept as stored.
  */
-const buildSchema = (targetCodes: string[], validateVariants: boolean) =>
+const buildSchema = (targetCodes: string[]) =>
   z
     .object({
       name: z
@@ -212,9 +211,7 @@ const buildSchema = (targetCodes: string[], validateVariants: boolean) =>
       }),
     })
     .superRefine((values, ctx) => {
-      const variantError = validateVariants
-        ? firstVariantError(values.variants, values.name)
-        : undefined;
+      const variantError = firstVariantError(values.variants, values.name);
       if (variantError) {
         ctx.addIssue({ code: "custom", path: ["variants"], message: variantError });
       }
@@ -463,18 +460,12 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   // Parsed once per open: the form state is the single source of truth afterwards.
   const [parsed] = useState(() => parseGlossaryMeta(glossary?.additionalNote));
   const isReadOnly = parsed.status === "unsupported-version";
-  // Variants and Case-sensitive only affect glossary matching, which runs only with the flag on.
-  const [isEnforcementEnabled] = useState(isGlossaryEnforcementEnabled);
   const [noteOpen, setNoteOpen] = useState(() => !!parsed.meta.note);
 
   const targetLanguages = useMemo(() => getTargetLanguages(languageListData), [languageListData]);
   const schema = useMemo(
-    () =>
-      buildSchema(
-        targetLanguages.map((language) => language.languageCode),
-        isEnforcementEnabled,
-      ),
-    [targetLanguages, isEnforcementEnabled],
+    () => buildSchema(targetLanguages.map((language) => language.languageCode)),
+    [targetLanguages],
   );
 
   const form = useForm<GlossaryEditorValues>({
@@ -515,6 +506,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   const legacyModuleCount =
     glossary?.isGlobal && (glossary.moduleIds?.length ?? 0) > 0 ? glossary.moduleIds!.length : 0;
 
+  const taggedModuleCount = moduleIds?.length ?? 0;
+  const taggedModuleSuffix = taggedModuleCount === 1 ? "" : "s";
+  const moduleTriggerLabel =
+    taggedModuleCount > 0
+      ? `${taggedModuleCount} module${taggedModuleSuffix} tagged`
+      : "Tag modules...";
+
   const translationError = (code: string) => formState.errors.translations?.[code]?.message;
   const forbiddenError = (code: string) =>
     (formState.errors.forbidden?.[code] as { message?: string } | undefined)?.message;
@@ -536,9 +534,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   const formSubmitHandler = async (data: GlossaryEditorValues) => {
     const meta: GlossaryMeta = {
       rule: data.rule,
-      // Only editable with the flag on; otherwise keep the stored values.
-      caseSensitive: isEnforcementEnabled ? data.caseSensitive : parsed.meta.caseSensitive,
-      variants: isEnforcementEnabled ? data.variants : parsed.meta.variants,
+      caseSensitive: data.caseSensitive,
+      variants: data.variants,
       translations: data.translations,
       forbidden: data.forbidden,
       note: data.note,
@@ -748,9 +745,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             </FormLabel>
                             <FieldInfo label="name">
                               The word or phrase this glossary entry is about, e.g.
-                              &quot;Workspace&quot;.
-                              {isEnforcementEnabled &&
-                                " Only whole words are matched (substring for zh, ja, th, lo, km, my)."}
+                              &quot;Workspace&quot;. Only whole words are matched (substring for zh,
+                              ja, th, lo, km, my).
                             </FieldInfo>
                           </LabelRow>
                           <FormControl>
@@ -882,70 +878,66 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                     )}
                   />
 
-                  {isEnforcementEnabled && (
-                    <>
-                      <FormField
-                        name="caseSensitive"
-                        control={control}
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0 rounded-lg border border-input p-3">
-                            <div className="grid gap-0.5">
-                              <FormLabel className="cursor-pointer font-medium text-high-emphasis">
-                                Case-sensitive
-                              </FormLabel>
-                              <FormDescription className="text-xs text-medium-emphasis">
-                                Only match the same capitalisation, e.g. &quot;Apple&quot; but not
-                                &quot;apple&quot;.
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isReadOnly}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                    name="caseSensitive"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0 rounded-lg border border-input p-3">
+                        <div className="grid gap-0.5">
+                          <FormLabel className="cursor-pointer font-medium text-high-emphasis">
+                            Case-sensitive
+                          </FormLabel>
+                          <FormDescription className="text-xs text-medium-emphasis">
+                            Only match the same capitalisation, e.g. &quot;Apple&quot; but not
+                            &quot;apple&quot;. Use it for names that are also everyday words.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isReadOnly}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
-                      <FormField
-                        name="variants"
-                        control={control}
-                        render={({ field }) => (
-                          <FormItem>
-                            <LabelRow>
-                              <FormLabel
-                                htmlFor="glossary-variants"
-                                className="font-medium text-high-emphasis"
-                              >
-                                Variants
-                              </FormLabel>
-                              <FieldInfo label="variants">
-                                Other forms that should match this term too, such as plurals or
-                                synonyms, e.g. &quot;workspaces&quot;. Up to{" "}
-                                {GLOSSARY_LIMITS.variants}.
-                              </FieldInfo>
-                            </LabelRow>
-                            <ChipInput
-                              id="glossary-variants"
-                              ariaLabel="Variants"
-                              values={field.value}
-                              onChange={(values) =>
-                                form.setValue("variants", values, {
-                                  shouldValidate: formState.isSubmitted,
-                                })
-                              }
-                              placeholder="Plurals, synonyms… press Enter or comma"
-                              removeLabel={(value) => `Remove variant ${value}`}
-                              disabled={isReadOnly}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
+                  <FormField
+                    name="variants"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <LabelRow>
+                          <FormLabel
+                            htmlFor="glossary-variants"
+                            className="font-medium text-high-emphasis"
+                          >
+                            Variants
+                          </FormLabel>
+                          <FieldInfo label="variants">
+                            Other forms of this term, such as plurals, spellings or synonyms, e.g.
+                            &quot;Workspaces&quot; or &quot;work space&quot;. AI suggestions apply
+                            this entry&apos;s rule to them too. Up to {GLOSSARY_LIMITS.variants}.
+                          </FieldInfo>
+                        </LabelRow>
+                        <ChipInput
+                          id="glossary-variants"
+                          ariaLabel="Variants"
+                          values={field.value}
+                          onChange={(values) =>
+                            form.setValue("variants", values, {
+                              shouldValidate: formState.isSubmitted,
+                            })
+                          }
+                          placeholder="Plurals, synonyms… press Enter or comma"
+                          removeLabel={(value) => `Remove variant ${value}`}
+                          disabled={isReadOnly}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </section>
 
                 {rule !== "keep" && (
@@ -1107,9 +1099,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                   aria-label="Tag modules"
                                   className="w-full justify-between px-3 font-normal text-muted-foreground"
                                 >
-                                  {(moduleIds?.length ?? 0) > 0
-                                    ? `${moduleIds.length} module${moduleIds.length === 1 ? "" : "s"} tagged`
-                                    : "Tag modules..."}
+                                  {moduleTriggerLabel}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>

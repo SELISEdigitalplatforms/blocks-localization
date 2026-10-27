@@ -1,8 +1,8 @@
 /**
- * Glossary-aware single-key AI suggestions (behind BLOCKS_GLOSSARY_ENFORCEMENT).
+ * Glossary-aware single-key AI suggestions.
  *
- * - `useGetAllGlossaries(enabled)`: the project's whole glossary (paged by 500, 5 min cache).
- *   Call it with the flag to warm the cache; it needs a QueryClientProvider.
+ * - `useGetAllGlossaries()`: the project's whole glossary (paged by 500, 5 min cache).
+ *   Call it to warm the cache; it needs a QueryClientProvider.
  * - `useLoadAllGlossaries()`: `() => Promise<IGlossary[]>` reading the same cache entry
  *   (fetches when missing or stale). Pass it to `useGlossaryAwareSuggestion`.
  * - `useGlossaryAwareSuggestion({ loadGlossaries })` → `{ suggest, cancel, isPending, pendingKeys }`.
@@ -12,7 +12,6 @@
  *     - `empty` (call 1 had no content) / `error` (call 1 threw): show the existing error toast
  *     - `stale`: superseded by a newer `suggest` with the same `requestKey`, cancelled, aborted
  *       through `signal`, or the component unmounted (C22). Ignore it.
- *   Flag off: sends `legacyPayload` unchanged and loads nothing (C1).
  *   Glossary load failure: sends `legacyPayload` and sets `glossaryUnavailable` (C6).
  * The hook itself uses no query, so it also works in components rendered without a
  * QueryClientProvider when the caller passes its own `loadGlossaries`.
@@ -21,7 +20,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
@@ -69,9 +67,9 @@ const allGlossariesQuery = (tenantId: string) => ({
   staleTime: ALL_GLOSSARIES_STALE_TIME,
 });
 
-export const useGetAllGlossaries = (enabled: boolean) => {
+export const useGetAllGlossaries = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  return useQuery({ ...allGlossariesQuery(tenantId), enabled: enabled && !!tenantId });
+  return useQuery({ ...allGlossariesQuery(tenantId), enabled: !!tenantId });
 };
 
 /** Resolves the full glossary from the shared cache, fetching it when missing or stale. */
@@ -95,7 +93,7 @@ type TranslationSuggestionResponse = Awaited<
 export interface GlossarySuggestionInput {
   /** Identifies the row / target language; a newer request with the same key supersedes. */
   requestKey: string;
-  /** Exactly today's (flag-off) payload. Sent unchanged with the flag off or on C6. */
+  /** The payload without terminology rules, sent unchanged when the glossary is unavailable (C6). */
   legacyPayload: TranslationSuggestionPayload;
   /** Source text in the default language. */
   sourceText: string;
@@ -129,7 +127,6 @@ export type GlossarySuggestionOutcome =
   | { status: "stale" };
 
 export interface GlossarySuggestionDeps {
-  enabled: boolean;
   requestSuggestion: (
     payload: TranslationSuggestionPayload,
   ) => Promise<TranslationSuggestionResponse>;
@@ -158,6 +155,8 @@ const buildGlossaryPayload = (
     // The client already applied key and module scope; moduleId is omitted on purpose.
     glossaryIds: [],
     destinationLanguageCode: targetCulture,
+    // Only when rules were sent: the client then validates and retries itself.
+    ...(ruleGlossaryIds.length > 0 && { clientGlossaryRules: true }),
   };
   return { payload, prompt, ruleGlossaryIds };
 };
@@ -189,7 +188,7 @@ const retryWithCorrection = async (
   }
 };
 
-/** Sends today's payload unchanged: flag off (C1) or glossary unavailable (C6). */
+/** Sends the legacy payload unchanged when the glossary is unavailable (C6). */
 const runLegacySuggestion = async (
   legacyPayload: TranslationSuggestionPayload,
   requestSuggestion: GlossarySuggestionDeps["requestSuggestion"],
@@ -219,19 +218,14 @@ const runLegacySuggestion = async (
 /** The suggestion pipeline without React state (spec §6 Payload and Retry). */
 export const runGlossaryAwareSuggestion = async (
   input: GlossarySuggestionInput,
-  { enabled, requestSuggestion, loadGlossaries, isCurrent = () => true }: GlossarySuggestionDeps,
+  { requestSuggestion, loadGlossaries, isCurrent = () => true }: GlossarySuggestionDeps,
 ): Promise<GlossarySuggestionOutcome> => {
   const current = () => isCurrent() && !input.signal?.aborted;
   const stale = { status: "stale" } as const;
 
-  const legacy = (glossaryUnavailable: boolean) =>
-    runLegacySuggestion(input.legacyPayload, requestSuggestion, current, glossaryUnavailable);
-
-  if (!enabled) return legacy(false);
-
   const loaded = await tryLoadGlossaries(loadGlossaries);
   if (!current()) return stale;
-  if (!loaded.ok) return legacy(true);
+  if (!loaded.ok) return runLegacySuggestion(input.legacyPayload, requestSuggestion, current, true);
 
   const targetCulture = input.targetLanguage.languageCode;
   const matches = buildGlossaryMatcher(loaded.glossaries).match(input.sourceText, {
@@ -286,13 +280,10 @@ export const runGlossaryAwareSuggestion = async (
 export interface UseGlossaryAwareSuggestionOptions {
   /** From `useLoadAllGlossaries()`, or a parent's loader passed down as a prop. */
   loadGlossaries?: () => Promise<IGlossary[]>;
-  /** Defaults to `isGlossaryEnforcementEnabled()`. */
-  enabled?: boolean;
 }
 
 export const useGlossaryAwareSuggestion = ({
   loadGlossaries,
-  enabled = isGlossaryEnforcementEnabled(),
 }: UseGlossaryAwareSuggestionOptions = {}) => {
   const { mutateAsync } = useGetTranslationSuggestion();
   const tokensRef = useRef(new Map<string, number>());
@@ -328,7 +319,6 @@ export const useGlossaryAwareSuggestion = ({
       const isCurrent = () => mountedRef.current && tokensRef.current.get(requestKey) === token;
       try {
         return await runGlossaryAwareSuggestion(input, {
-          enabled,
           requestSuggestion: mutateAsync,
           loadGlossaries,
           isCurrent,
@@ -340,7 +330,7 @@ export const useGlossaryAwareSuggestion = ({
         }
       }
     },
-    [enabled, loadGlossaries, mutateAsync, setPending],
+    [loadGlossaries, mutateAsync, setPending],
   );
 
   /** Drops the in-flight request for one key (row collapsed), or all of them. */
@@ -359,5 +349,5 @@ export const useGlossaryAwareSuggestion = ({
 
   const isPending = useCallback((requestKey: string) => pendingKeys.has(requestKey), [pendingKeys]);
 
-  return { suggest, cancel, isPending, pendingKeys, enabled };
+  return { suggest, cancel, isPending, pendingKeys };
 };

@@ -63,7 +63,9 @@ describe("lib/runtime-env", () => {
 
     it("should fall through for empty string in window", () => {
       vi.stubEnv("BLOCKS_GOOGLE_SITE_KEY", "vite-value");
-      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = { BLOCKS_GOOGLE_SITE_KEY: "" };
+      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
+        BLOCKS_GOOGLE_SITE_KEY: "",
+      };
       // !!"" is false → not a placeholder → but also falsy → skip branch.
       expect(getRuntimeEnv("BLOCKS_GOOGLE_SITE_KEY")).toBe("vite-value");
     });
@@ -115,23 +117,6 @@ describe("lib/runtime-env", () => {
     });
   });
 
-  // ─── BLOCKS_GLOSSARY_ENFORCEMENT ──────────────────────────────────────────
-  describe("BLOCKS_GLOSSARY_ENFORCEMENT", () => {
-    it("returns the runtime value when the server replaced the placeholder", () => {
-      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
-        BLOCKS_GLOSSARY_ENFORCEMENT: "true",
-      };
-      expect(getRuntimeEnv("BLOCKS_GLOSSARY_ENFORCEMENT")).toBe("true");
-    });
-
-    it("treats the unreplaced placeholder as unset", () => {
-      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
-        BLOCKS_GLOSSARY_ENFORCEMENT: "__BLOCKS_GLOSSARY_ENFORCEMENT__",
-      };
-      expect(getRuntimeEnv("BLOCKS_GLOSSARY_ENFORCEMENT")).toBe("");
-    });
-  });
-
   // ─── import.meta.env fallback ────────────────────────────────────────────
   describe("import.meta.env fallback", () => {
     it("should fall back to vite env when window env is absent", () => {
@@ -148,12 +133,16 @@ describe("lib/runtime-env", () => {
   describe("__BLOCKS_ENV__ present but key absent", () => {
     it("should fall back to import.meta.env when the key is not in window.__BLOCKS_ENV__", () => {
       vi.stubEnv("BLOCKS_GOOGLE_SITE_KEY", "vite-value");
-      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = { BLOCKS_OTHER_KEY: "irrelevant" };
+      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
+        BLOCKS_OTHER_KEY: "irrelevant",
+      };
       expect(getRuntimeEnv("BLOCKS_GOOGLE_SITE_KEY")).toBe("vite-value");
     });
 
     it("should return empty string when neither __BLOCKS_ENV__ nor import.meta.env has the key", () => {
-      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = { BLOCKS_OTHER_KEY: "irrelevant" };
+      (window as unknown as { __BLOCKS_ENV__?: unknown }).__BLOCKS_ENV__ = {
+        BLOCKS_OTHER_KEY: "irrelevant",
+      };
       // Use a key that no prior test stubs to avoid cross-test env pollution.
       expect(getRuntimeEnv("BLOCKS_MONITOR_BASE_URL")).toBe("");
     });

@@ -157,7 +157,6 @@ static void ApplyFrontendRuntimeSettings(IConfiguration configuration, string we
         ["__BLOCKS_ALLOWED_SERVICES__"] = section["BLOCKS_ALLOWED_SERVICES"],
         ["__BLOCKS_ROLLBAR_CLIENT_TOKEN__"] = section["BLOCKS_ROLLBAR_CLIENT_TOKEN"],
         ["__BLOCKS_ROLLBAR_ENV__"] = section["BLOCKS_ROLLBAR_ENV"],
-        ["__BLOCKS_GLOSSARY_ENFORCEMENT__"] = section["BLOCKS_GLOSSARY_ENFORCEMENT"],
 
     };
 

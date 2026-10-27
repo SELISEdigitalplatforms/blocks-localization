@@ -161,7 +161,7 @@ describe("fetchAllGlossaries / useGetAllGlossaries", () => {
   it("caches per tenant under glossaries.all for 5 minutes", async () => {
     fetchGlossaries.mockResolvedValue(page([G1], 1));
     const { wrapper, queryClient } = createQueryWrapper();
-    const { result } = renderHook(() => useGetAllGlossaries(true), { wrapper });
+    const { result } = renderHook(() => useGetAllGlossaries(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual([G1]);
     expect(queryClient.getQueryData(["get-glossaries", "all-terms", "tenant-1"])).toEqual([G1]);
@@ -171,20 +171,18 @@ describe("fetchAllGlossaries / useGetAllGlossaries", () => {
     expect(ALL_GLOSSARIES_STALE_TIME).toBe(300_000);
 
     // A second consumer and the loader reuse the fresh cache: no new request.
-    const second = renderHook(() => useGetAllGlossaries(true), { wrapper });
+    const second = renderHook(() => useGetAllGlossaries(), { wrapper });
     await waitFor(() => expect(second.result.current.isSuccess).toBe(true));
     const loader = renderHook(() => useLoadAllGlossaries(), { wrapper });
     await expect(loader.result.current()).resolves.toEqual([G1]);
     expect(fetchGlossaries).toHaveBeenCalledTimes(1);
   });
 
-  it("makes no request when disabled or without a tenant (C1)", async () => {
+  it("makes no request without a tenant", async () => {
     const { wrapper } = createQueryWrapper();
-    const off = renderHook(() => useGetAllGlossaries(false), { wrapper });
     project.tenantId = "";
-    const noTenant = renderHook(() => useGetAllGlossaries(true), { wrapper });
+    const noTenant = renderHook(() => useGetAllGlossaries(), { wrapper });
     await Promise.resolve();
-    expect(off.result.current.fetchStatus).toBe("idle");
     expect(noTenant.result.current.fetchStatus).toBe("idle");
     expect(fetchGlossaries).not.toHaveBeenCalled();
     const loader = renderHook(() => useLoadAllGlossaries(), { wrapper });
@@ -209,27 +207,10 @@ describe("runGlossaryAwareSuggestion", () => {
     loadGlossaries.mockImplementation(async () => glossaries);
   });
 
-  const run = (overrides: Partial<GlossarySuggestionInput> = {}, enabled = true) =>
-    runGlossaryAwareSuggestion(input(overrides), { enabled, requestSuggestion, loadGlossaries });
+  const run = (overrides: Partial<GlossarySuggestionInput> = {}) =>
+    runGlossaryAwareSuggestion(input(overrides), { requestSuggestion, loadGlossaries });
 
-  it("flag off: sends the legacy payload unchanged and loads no glossary (C1)", async () => {
-    requestSuggestion.mockResolvedValue(reply("Öffnen Sie Ihren Werkbereich"));
-    const outcome = await run({}, false);
-    expect(loadGlossaries).not.toHaveBeenCalled();
-    expect(requestSuggestion).toHaveBeenCalledTimes(1);
-    expect(requestSuggestion).toHaveBeenCalledWith(legacyPayload);
-    expect(outcome).toEqual({
-      status: "success",
-      content: "Öffnen Sie Ihren Werkbereich",
-      violations: [],
-      matches: [],
-      usedGlossary: false,
-      glossaryUnavailable: false,
-      requestCount: 1,
-    });
-  });
-
-  it("flag on: sends the terminology prompt, glossaryIds [] and no moduleId (H1, H2)", async () => {
+  it("sends the terminology prompt, glossaryIds [] and no moduleId (H1, H2)", async () => {
     requestSuggestion.mockResolvedValue(reply("Öffnen Sie Ihren Arbeitsbereich"));
     const outcome = await run();
     expect(requestSuggestion).toHaveBeenCalledTimes(1);
@@ -242,6 +223,7 @@ describe("runGlossaryAwareSuggestion", () => {
       elementDetailContext: EXAMPLE_1_PROMPT,
       glossaryIds: [],
       destinationLanguageCode: "de-DE",
+      clientGlossaryRules: true,
     });
     expect("moduleId" in payload).toBe(false);
     expect(outcome).toMatchObject({ status: "success", violations: [], usedGlossary: true });
@@ -413,10 +395,7 @@ describe("runGlossaryAwareSuggestion", () => {
       violations: [],
     });
 
-    const noLoader = await runGlossaryAwareSuggestion(input(), {
-      enabled: true,
-      requestSuggestion,
-    });
+    const noLoader = await runGlossaryAwareSuggestion(input(), { requestSuggestion });
     expect(noLoader).toMatchObject({ status: "success", glossaryUnavailable: true });
   });
 
@@ -429,7 +408,7 @@ describe("runGlossaryAwareSuggestion", () => {
     expect(requestSuggestion).toHaveBeenCalledTimes(2);
 
     requestSuggestion.mockResolvedValueOnce(reply(""));
-    expect(await run({}, false)).toMatchObject({ status: "empty" });
+    expect(await run()).toMatchObject({ status: "empty" });
   });
 
   it("returns stale when aborted, without a retry", async () => {
@@ -460,13 +439,13 @@ describe("useGlossaryAwareSuggestion", () => {
   };
 
   const loadGlossaries = async () => glossaries;
+  // Tests that race requests pass no loader: each request then goes out at once (glossary
+  // unavailable), so the AI calls start in the order the test resolves them.
 
   it("uses the existing suggestion mutation and tracks pending state per key", async () => {
     const de = deferred<unknown>();
     mutateAsync.mockReturnValueOnce(de.promise);
-    const { result } = renderHook(() =>
-      useGlossaryAwareSuggestion({ loadGlossaries, enabled: true }),
-    );
+    const { result } = renderHook(() => useGlossaryAwareSuggestion({ loadGlossaries }));
     let pending!: Promise<unknown>;
     act(() => {
       pending = result.current.suggest(input());
@@ -486,15 +465,13 @@ describe("useGlossaryAwareSuggestion", () => {
     const first = deferred<unknown>();
     const second = deferred<unknown>();
     mutateAsync.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    const { result } = renderHook(() =>
-      useGlossaryAwareSuggestion({ loadGlossaries, enabled: false }),
-    );
+    const { result } = renderHook(() => useGlossaryAwareSuggestion());
     let older!: Promise<unknown>;
     let newer!: Promise<unknown>;
-    act(() => {
+    await act(async () => {
       older = result.current.suggest(input());
     });
-    act(() => {
+    await act(async () => {
       newer = result.current.suggest(input());
     });
     await act(async () => {
@@ -511,12 +488,10 @@ describe("useGlossaryAwareSuggestion", () => {
     const de = deferred<unknown>();
     const fr = deferred<unknown>();
     mutateAsync.mockReturnValueOnce(de.promise).mockReturnValueOnce(fr.promise);
-    const { result } = renderHook(() =>
-      useGlossaryAwareSuggestion({ loadGlossaries, enabled: false }),
-    );
+    const { result } = renderHook(() => useGlossaryAwareSuggestion());
     let dePromise!: Promise<unknown>;
     let frPromise!: Promise<unknown>;
-    act(() => {
+    await act(async () => {
       dePromise = result.current.suggest(input());
       frPromise = result.current.suggest(
         input({
@@ -540,9 +515,7 @@ describe("useGlossaryAwareSuggestion", () => {
   it("ignores responses that arrive after unmount (modal closed, C22)", async () => {
     const pendingReply = deferred<unknown>();
     mutateAsync.mockReturnValueOnce(pendingReply.promise);
-    const { result, unmount } = renderHook(() =>
-      useGlossaryAwareSuggestion({ loadGlossaries, enabled: true }),
-    );
+    const { result, unmount } = renderHook(() => useGlossaryAwareSuggestion({ loadGlossaries }));
     let promise!: Promise<unknown>;
     act(() => {
       promise = result.current.suggest(input());
@@ -557,11 +530,9 @@ describe("useGlossaryAwareSuggestion", () => {
   it("cancel() without a key drops every in-flight row", async () => {
     const de = deferred<unknown>();
     mutateAsync.mockReturnValueOnce(de.promise);
-    const { result } = renderHook(() =>
-      useGlossaryAwareSuggestion({ loadGlossaries, enabled: false }),
-    );
+    const { result } = renderHook(() => useGlossaryAwareSuggestion());
     let promise!: Promise<unknown>;
-    act(() => {
+    await act(async () => {
       promise = result.current.suggest(input());
     });
     act(() => result.current.cancel());

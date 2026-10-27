@@ -6,11 +6,6 @@ import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import GlossaryDetails from "./glossary-details";
 
 const navigate = vi.fn();
-const { isGlossaryEnforcementEnabled } = vi.hoisted(() => ({
-  isGlossaryEnforcementEnabled: vi.fn(() => false),
-}));
-
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled }));
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -55,7 +50,6 @@ const setDefaults = () => {
 describe("components/glossary/glossary-details", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isGlossaryEnforcementEnabled.mockReturnValue(false);
     setDefaults();
   });
 
@@ -221,15 +215,11 @@ describe("components/glossary/glossary-details", () => {
       });
       expect(screen.getByText("Keep")).toBeTruthy();
       expect(screen.getByText("Whole project")).toBeTruthy();
-      // Case-sensitive and variants are stored but not shown until Phase 3.
-      expect(screen.queryByText("Case-sensitive")).toBeNull();
-      expect(screen.queryByText("SELISE AG")).toBeNull();
       expect(screen.queryByText("Is Global")).toBeNull();
       expect(screen.getByText("Kept as-is in all languages.")).toBeTruthy();
     });
 
-    it("should show the Case-sensitive badge and Variants chips when the flag is on (H14)", () => {
-      isGlossaryEnforcementEnabled.mockReturnValue(true);
+    it("should show the Case-sensitive badge and Variants chips (H14)", () => {
       renderGlossary({
         isGlobal: true,
         additionalNote:
@@ -244,7 +234,6 @@ describe("components/glossary/glossary-details", () => {
     });
 
     it("should render duplicate stored variants without duplicate React keys (m7)", () => {
-      isGlossaryEnforcementEnabled.mockReturnValue(true);
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
       try {
         renderGlossary({
@@ -262,8 +251,7 @@ describe("components/glossary/glossary-details", () => {
       }
     });
 
-    it("should hide the Case-sensitive badge and Variants row when unset, flag on (H14)", () => {
-      isGlossaryEnforcementEnabled.mockReturnValue(true);
+    it("should hide the Case-sensitive badge and Variants row when unset (H14)", () => {
       renderGlossary({
         isGlobal: false,
         moduleIds: ["m1"],
@@ -272,16 +260,6 @@ describe("components/glossary/glossary-details", () => {
       expect(screen.getByText("1 module")).toBeTruthy();
       expect(screen.queryByText("Case-sensitive")).toBeNull();
       expect(screen.queryByText("Variants:")).toBeNull();
-    });
-
-    it("should hide Case-sensitive and Variants when the flag is off (C17)", () => {
-      renderGlossary({
-        additionalNote:
-          '@@glossary-meta:v1@@{"rule":"translate","caseSensitive":true,"variants":["workspaces"]}',
-      });
-      expect(screen.queryByText("Case-sensitive")).toBeNull();
-      expect(screen.queryByText("Variants:")).toBeNull();
-      expect(screen.queryByText("workspaces")).toBeNull();
     });
 
     it("should show the module count as scope", () => {

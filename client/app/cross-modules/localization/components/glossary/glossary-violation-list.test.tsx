@@ -1,7 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
@@ -13,7 +12,6 @@ import {
   useGlossarySuggestionRows,
 } from "./glossary-violation-list";
 
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled: vi.fn(() => true) }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
@@ -75,7 +73,7 @@ describe("GlossaryViolationList", () => {
     />
   );
 
-  it("keeps an empty polite live region mounted without violations (flag on)", () => {
+  it("keeps an empty polite live region mounted without violations", () => {
     render(list([]));
     const region = screen.getByRole("status");
     expect(region.getAttribute("aria-live")).toBe("polite");
@@ -94,12 +92,6 @@ describe("GlossaryViolationList", () => {
     rerender(list([]));
     expect(screen.getByRole("status")).toBe(region);
     expect(region.textContent).toBe("");
-  });
-
-  it("renders nothing without violations when the flag is off", () => {
-    vi.mocked(isGlossaryEnforcementEnabled).mockReturnValueOnce(false);
-    const { container } = render(list([]));
-    expect(container.innerHTML).toBe("");
   });
 
   it("announces each violation politely with Fix or Retry", () => {

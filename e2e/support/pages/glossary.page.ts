@@ -1,53 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
-import { e2eBaseUrl } from "../env";
 import { expectActionsColumnIsLast } from "../table-helpers";
-
-export const GLOSSARY_ENFORCEMENT_PLACEHOLDER = "__BLOCKS_GLOSSARY_ENFORCEMENT__";
-
-/**
- * Turns the BLOCKS_GLOSSARY_ENFORCEMENT client flag on for this page only (#354 Q1 A): every
- * app document (index.html, including deep-link fallbacks) is fetched from the real server and
- * its unreplaced `"__BLOCKS_GLOSSARY_ENFORCEMENT__"` placeholder is served as `"true"`.
- * Register it before the first navigation. Flag-off tests don't call this, so they run with the
- * placeholder exactly as the deployment serves it.
- */
-export async function enableGlossaryEnforcement(page: Page) {
-  const origin = new URL(e2eBaseUrl()).origin;
-  const state = { rewritten: 0, withoutPlaceholder: 0 };
-  const isAppUrl = (url: URL) => url.origin === origin;
-  await page.route(isAppUrl, async (route) => {
-    if (route.request().resourceType() !== "document") return route.fallback();
-    const response = await route.fetch();
-    const html = await response.text();
-    const placeholder = `"${GLOSSARY_ENFORCEMENT_PLACEHOLDER}"`;
-    if (html.includes(placeholder)) state.rewritten++;
-    else state.withoutPlaceholder++;
-    // The body is re-encoded by Playwright, so the original length/encoding headers don't apply.
-    const headers = Object.fromEntries(
-      Object.entries(response.headers()).filter(
-        ([name]) => !["content-length", "content-encoding", "transfer-encoding"].includes(name),
-      ),
-    );
-    await route.fulfill({
-      status: response.status(),
-      headers,
-      body: html.replaceAll(placeholder, '"true"'),
-    });
-  });
-  return {
-    state,
-    disable: () => page.unroute(isAppUrl),
-  };
-}
-
-/** The flag value the running app sees in `window.__BLOCKS_ENV__`. */
-export async function readGlossaryEnforcementFlag(page: Page): Promise<string | undefined> {
-  return page.evaluate(
-    () =>
-      (window as unknown as { __BLOCKS_ENV__?: Record<string, string> }).__BLOCKS_ENV__
-        ?.BLOCKS_GLOSSARY_ENFORCEMENT,
-  );
-}
 
 export class GlossaryPage {
   readonly page: Page;
@@ -209,12 +161,12 @@ export class GlossaryPage {
     await this.translationInput(code).fill(value);
   }
 
-  /** Variants chip input; rendered only with the glossary enforcement flag on. */
+  /** Variants chip input. */
   get variantsInput() {
     return this.editorSheet.getByRole("textbox", { name: "Variants" });
   }
 
-  /** Case-sensitive switch; rendered only with the glossary enforcement flag on. */
+  /** Case-sensitive switch. */
   get caseSensitiveSwitch() {
     return this.editorSheet.getByRole("switch", { name: "Case-sensitive" });
   }

@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui-kits/button/button";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import {
   GLOSSARY_UNAVAILABLE_MESSAGE,
@@ -42,7 +41,7 @@ const EMPTY_ROW: GlossaryRowState = {
  * and `fix` applies a deterministic Fix and re-validates against the same matches.
  */
 export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOptions = {}) => {
-  const { suggest, cancel, isPending, enabled } = useGlossaryAwareSuggestion(options);
+  const { suggest, cancel, isPending } = useGlossaryAwareSuggestion(options);
   const [rows, setRows] = useState<Record<string, GlossaryRowState>>({});
 
   const request = useCallback(
@@ -96,7 +95,7 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
     [rows],
   );
 
-  return { request, cancel, isPending, enabled, getRow, clearViolations, fix };
+  return { request, cancel, isPending, getRow, clearViolations, fix };
 };
 
 const violationKey = (violation: GlossaryViolation) =>
@@ -114,10 +113,10 @@ interface GlossaryViolationListProps {
 }
 
 /**
- * Glossary rule violations of a suggestion, shown directly under the target field. With the
- * flag on, the polite live region stays mounted (empty and visually hidden) while there are
- * no violations: screen readers announce content added to an existing region, not a region
- * that is inserted already filled.
+ * Glossary rule violations of a suggestion, shown directly under the target field. The
+ * polite live region stays mounted (empty and visually hidden) while there are no violations:
+ * screen readers announce content added to an existing region, not a region that is inserted
+ * already filled.
  */
 export const GlossaryViolationList = ({
   violations,
@@ -129,7 +128,6 @@ export const GlossaryViolationList = ({
   className,
 }: GlossaryViolationListProps) => {
   const hasViolations = violations.length > 0;
-  if (!hasViolations && !isGlossaryEnforcementEnabled()) return null;
   return (
     <output aria-live="polite" className={hasViolations ? cn("mt-2 block", className) : "sr-only"}>
       {hasViolations && (

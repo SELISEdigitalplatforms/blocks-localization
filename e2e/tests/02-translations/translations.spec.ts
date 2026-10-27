@@ -11,12 +11,7 @@ import {
 } from "../../support/pages/translations.page";
 import { ModulesPage } from "../../support/pages/modules.page";
 import { ConfigurationPage } from "../../support/pages/configuration.page";
-import {
-  GlossaryPage,
-  GLOSSARY_ENFORCEMENT_PLACEHOLDER,
-  enableGlossaryEnforcement,
-  readGlossaryEnforcementFlag,
-} from "../../support/pages/glossary.page";
+import { GlossaryPage } from "../../support/pages/glossary.page";
 import {
   openConfiguration,
   openGlossary,
@@ -597,7 +592,7 @@ test.describe("Translations", () => {
 });
 
 test.describe("Translations — glossary-aware suggestions (#354)", () => {
-  /** Opens Translations (with the flag route, when given) and creates this run's fixtures. */
+  /** Opens Translations and creates this run's fixtures. */
   async function setUp(page: import("@playwright/test").Page) {
     const api = await LocalizationApi.capture(page);
     const languages = await resolveLanguages(api);
@@ -606,24 +601,10 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
     return { api, fixtures, ...languages! };
   }
 
-  test("Flag off: the served HTML keeps the unreplaced placeholder (Q4)", async ({ page }) => {
-    // Q4 A evidence: with FrontendRuntime BLOCKS_GLOSSARY_ENFORCEMENT unset, Program.cs leaves
-    // the placeholder in the served index.html, which the client reads as off (C1).
-    const response = await page.request.get(`${e2eBaseUrl()}/`);
-    expect(response.ok()).toBe(true);
-    expect(await response.text()).toMatch(
-      new RegExp(`BLOCKS_GLOSSARY_ENFORCEMENT\\s*:\\s*"${GLOSSARY_ENFORCEMENT_PLACEHOLDER}"`),
-    );
-  });
-
-  test("Flag on: edit translation follows the glossary (steps 1-3, 6, 8)", async ({ page }) => {
+  test("Edit translation follows the glossary (steps 1-3, 6, 8)", async ({ page }) => {
     test.setTimeout(360_000);
     const translations = new TranslationsPage(page);
-    const flag = await enableGlossaryEnforcement(page);
     const { fixtures, source, target } = await setUp(page);
-    // Q1 A: the served placeholder was rewritten, and the app sees the flag on.
-    expect(flag.state.rewritten).toBeGreaterThan(0);
-    expect(await readGlossaryEnforcementFlag(page)).toBe("true");
 
     try {
       await test.step("Create fixtures", () => fixtures.create(source, target));
@@ -745,7 +726,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
           await translations.openEditTranslation(target.languageName);
           await translations.clickAutoTranslateInDialog();
           await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
-          // C6: the info line is shown and the legacy (flag-off) payload was sent.
+          // C6: the info line is shown and the legacy payload was sent.
           await expect(dialog.getByText(GLOSSARY_UNAVAILABLE, { exact: true })).toBeVisible();
           expect(ai.requests).toHaveLength(1);
           expect(ai.requests[0]).not.toHaveProperty("elementDetailContext");
@@ -756,7 +737,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         }
       });
 
-      await test.step("Smoke: the real backend accepts the flag-on payload", async () => {
+      await test.step("Smoke: the real backend accepts the glossary-aware payload", async () => {
         // Un-mocked: proves contract compatibility only (HTTP 200), not AI adherence.
         await ai.stop();
         await page.reload();
@@ -782,12 +763,10 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
     }
   });
 
-  test("Flag on: inline editor and View Details suggestions (steps 4, 5)", async ({ page }) => {
+  test("Inline editor and View Details suggestions (steps 4, 5)", async ({ page }) => {
     test.setTimeout(360_000);
     const translations = new TranslationsPage(page);
-    await enableGlossaryEnforcement(page);
     const { api, fixtures, source, target } = await setUp(page);
-    expect(await readGlossaryEnforcementFlag(page)).toBe("true");
 
     try {
       await test.step("Create fixtures", () => fixtures.create(source, target));
@@ -903,10 +882,9 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
     }
   });
 
-  test("Flag on: Keep terms send no inactive values (step 9)", async ({ page }) => {
+  test("Keep terms send no inactive values (step 9)", async ({ page }) => {
     test.setTimeout(300_000);
     const translations = new TranslationsPage(page);
-    await enableGlossaryEnforcement(page);
     const { fixtures, source, target } = await setUp(page);
 
     try {
@@ -959,103 +937,6 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         expect(ai.requests).toHaveLength(1);
         await expect(translations.violationList(translations.editTranslationDialog)).toHaveCount(0);
         await translations.closeEditTranslation();
-      });
-    } finally {
-      await test.step("Clean up fixtures", () => fixtures.cleanup());
-    }
-  });
-
-  test("Flag off: legacy payload, no glossary load, Tag to key keeps context (steps 7, 10)", async ({
-    page,
-  }) => {
-    test.setTimeout(300_000);
-    const translations = new TranslationsPage(page);
-    const { fixtures, source, target } = await setUp(page);
-    // C1: the HTML is served with the unreplaced placeholder (checked in the Q4 test); the
-    // loaded page may clear it to "", and either way the flag reads as off.
-    expect(["", GLOSSARY_ENFORCEMENT_PLACEHOLDER]).toContain(
-      await readGlossaryEnforcementFlag(page),
-    );
-
-    try {
-      await test.step("Create fixtures", () => fixtures.create(source, target));
-      const { names, ids, routes } = fixtures;
-      const loads = await trackFullGlossaryLoads(page);
-      const ai = await mockTranslationSuggestions(page);
-      const dialog = translations.editTranslationDialog;
-
-      await test.step("Step 7: today's payload, no PageSize=500 request (C1)", async () => {
-        await translations.openKeyDetails(ids.ws);
-        ai.script({ content: "Öffnen Sie Ihren Werkbereich" });
-        await translations.openEditTranslation(target.languageName);
-        await translations.clickAutoTranslateInDialog();
-        await expect(translations.editTranslationTextarea).toHaveValue(
-          "Öffnen Sie Ihren Werkbereich",
-        );
-        await page.waitForTimeout(1_500);
-        // C1: one request in today's shape, no elementDetailContext, no checks or retry.
-        expect(ai.requests).toHaveLength(1);
-        expect(ai.requests[0]).not.toHaveProperty("elementDetailContext");
-        expect(ai.requests[0]).toMatchObject({
-          sourceText: `Open your ${names.g1}`,
-          destinationLanguage: target.languageName,
-          currentLanguage: source.languageName,
-          temperature: 0.1,
-          moduleId: ids.m,
-          destinationLanguageCode: target.languageCode,
-        });
-        await expect(translations.violationList(dialog)).toHaveCount(0);
-        await translations.closeEditTranslation();
-        // C1: the full glossary is never requested.
-        expect(loads.urls).toHaveLength(0);
-      });
-
-      await test.step("Step 10: Tag to key saves the key's context (C15)", async () => {
-        // The server suggests from the shared project's first 100 glossaries only; make sure
-        // this run's G4 is among the real suggestions so the step doesn't depend on that.
-        const isSuggestUrl = (url: URL) =>
-          url.pathname.endsWith("/Glossary/GetSuggestedGlossaries");
-        await page.route(isSuggestUrl, async (route) => {
-          const response = await route.fetch();
-          const body = (await response.json()) as {
-            suggestedGlossaries?: { itemId: string }[];
-          };
-          const suggested = body.suggestedGlossaries ?? [];
-          if (!suggested.some((glossary) => glossary.itemId === ids.g4)) {
-            suggested.push({
-              itemId: ids.g4,
-              name: names.g4,
-              isGlobal: false,
-              moduleIds: [ids.m],
-            } as { itemId: string });
-          }
-          await route.fulfill({
-            status: response.status(),
-            json: { ...body, suggestedGlossaries: suggested },
-          });
-        });
-
-        await translations.openKeyDetails(ids.plain);
-        const tagToKey = page
-          .locator("div.flex.items-center.gap-1")
-          .filter({ hasText: names.g4 })
-          .getByRole("button", { name: "Tag to key" });
-        await expect(tagToKey).toBeVisible({ timeout: 15_000 });
-        // Q3 A: the flag-on Add buttons don't exist with the flag off.
-        await expect(page.getByRole("button", { name: `Tag ${names.g4} to key` })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Add all" })).toHaveCount(0);
-
-        const payload = await translations.captureKeySave(() => tagToKey.click());
-        // C15: context (new) and routes (already sent) are part of the save.
-        expect(payload).toMatchObject({
-          itemId: ids.plain,
-          context: CUSTOM_PROMPT,
-          routes: [routes.plain],
-          glossaryIds: [ids.g4],
-        });
-        // C1: still no full glossary load with the flag off.
-        expect(loads.urls).toHaveLength(0);
-        await page.unroute(isSuggestUrl);
       });
     } finally {
       await test.step("Clean up fixtures", () => fixtures.cleanup());

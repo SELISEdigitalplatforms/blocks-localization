@@ -6,7 +6,6 @@ interface ImportMetaEnv {
   readonly BLOCKS_GOOGLE_SITE_KEY: string;
   readonly BLOCKS_CONSTRUCT_URL: string;
   readonly BLOCKS_CLOUD_DASHBOARD_URL: string;
-  readonly BLOCKS_GLOSSARY_ENFORCEMENT?: string;
 }
 
 interface ImportMeta {

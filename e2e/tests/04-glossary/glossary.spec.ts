@@ -1,10 +1,5 @@
 import { test, expect } from "../../support/test-base";
-import {
-  GlossaryPage,
-  enableGlossaryEnforcement,
-  readGlossaryEnforcementFlag,
-  GLOSSARY_ENFORCEMENT_PLACEHOLDER,
-} from "../../support/pages/glossary.page";
+import { GlossaryPage } from "../../support/pages/glossary.page";
 import { openGlossary } from "../../support/localization-helpers";
 
 const META_PREFIX = "@@glossary-meta:v1@@";
@@ -71,7 +66,7 @@ test.describe("Glossary", () => {
 
       const meta = parseMeta(payload.additionalNote);
       expect(meta.rule).toBe("translate");
-      // This test runs with the flag off: Variants is hidden, so a new term stores none (C17).
+      // No variants were entered, so the new term stores none.
       expect(meta.variants ?? []).toEqual([]);
       expect(meta.note).toBe("This is Additional Notes");
       expect(payload.isGlobal).toBe(false);
@@ -308,14 +303,11 @@ test.describe("Glossary", () => {
     }
   });
 
-  test("Glossary — variants and case-sensitive with the flag on", async ({ page }) => {
+  test("Glossary — variants and case-sensitive", async ({ page }) => {
     test.setTimeout(240_000);
-    const flag = await enableGlossaryEnforcement(page);
     await openGlossary(page);
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
-    expect(await readGlossaryEnforcementFlag(page)).toBe("true");
-    expect(flag.state.rewritten).toBeGreaterThan(0);
 
     const stamp = Date.now();
     const variantName = `E2E Workspace ${stamp}`;
@@ -422,60 +414,6 @@ test.describe("Glossary", () => {
             .deleteGlossaryFromList(name)
             .catch((error) => console.warn(`[e2e] Cleanup could not delete "${name}":`, error));
         }
-      });
-    }
-  });
-
-  test("Glossary — flag off hides variants and case-sensitive and keeps them (C17)", async ({
-    page,
-  }) => {
-    test.setTimeout(180_000);
-    await openGlossary(page);
-    const glossary = new GlossaryPage(page);
-    await glossary.expectPageLoaded();
-    // C1: the HTML is served with the unreplaced placeholder (checked in the Q4 test); the
-    // loaded page may clear it to "", and either way the flag reads as off.
-    expect(["", GLOSSARY_ENFORCEMENT_PLACEHOLDER]).toContain(
-      await readGlossaryEnforcementFlag(page),
-    );
-
-    const name = `E2E Stored variants ${Date.now()}`;
-    const storedNote = `${META_PREFIX}${JSON.stringify({
-      rule: "translate",
-      caseSensitive: true,
-      variants: [`${name}s`],
-    })}`;
-    await glossary.createGlossaryWithStoredNote(name, storedNote);
-
-    try {
-      await test.step("The sheet hides both fields and saving keeps them (C17)", async () => {
-        await glossary.openEditFromList(name);
-        await expect(glossary.editorSheet.getByRole("textbox", { name: "Name *" })).toBeVisible();
-        // C17: no Variants input and no Case-sensitive switch with the flag off.
-        await expect(glossary.variantsInput).toHaveCount(0);
-        await expect(glossary.caseSensitiveSwitch).toHaveCount(0);
-        const payload = await glossary.saveAndCapturePayload();
-        await expect(
-          page.getByText("Glossary item updated successfully.", { exact: true }),
-        ).toBeVisible({ timeout: 20_000 });
-        // C17: the stored values survive the save unchanged.
-        expect(parseMeta(payload.additionalNote)).toMatchObject({
-          caseSensitive: true,
-          variants: [`${name}s`],
-        });
-      });
-
-      await test.step("The details page shows neither (C17)", async () => {
-        await glossary.searchGlossaries(name);
-        await glossary.openGlossaryDetail(name);
-        await expect(page.getByText("Variants:", { exact: true })).toHaveCount(0);
-        await expect(page.getByText("Case-sensitive", { exact: true })).toHaveCount(0);
-        await glossary.goBackToList();
-      });
-    } finally {
-      await test.step("Clean up fixtures", async () => {
-        await openGlossary(page);
-        await glossary.deleteGlossaryFromList(name);
       });
     }
   });

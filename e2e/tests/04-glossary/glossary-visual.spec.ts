@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { test, expect } from "../../support/test-base";
-import { GlossaryPage, enableGlossaryEnforcement } from "../../support/pages/glossary.page";
+import { GlossaryPage } from "../../support/pages/glossary.page";
 import { openGlossary } from "../../support/localization-helpers";
 
 /**
@@ -178,16 +178,15 @@ test.describe("Glossary — visual evidence", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("flag on: Variants chips, Case-sensitive and details (screenshots, keyboard)", async ({
+  test("Variants chips, Case-sensitive and details (screenshots, keyboard)", async ({
     page,
   }, testInfo) => {
     test.setTimeout(300_000);
-    await enableGlossaryEnforcement(page);
     await openGlossary(page);
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
 
-    const name = `E2E Visual flag ${Date.now()}`;
+    const name = `E2E Visual variants ${Date.now()}`;
     await glossary.createGlossaryWithStoredNote(
       name,
       `${META_PREFIX}${JSON.stringify({
@@ -221,13 +220,13 @@ test.describe("Glossary — visual evidence", () => {
           await setTheme(page, theme);
           await glossary.openEditFromList(name);
           await expect(glossary.caseSensitiveSwitch).toHaveAttribute("aria-checked", "true");
-          await shoot(page, testInfo, `flag-on-sheet-variants-${suffix}`);
+          await shoot(page, testInfo, `sheet-variants-${suffix}`);
           await glossary.cancelEditor();
 
           await glossary.openGlossaryDetail(name);
           await setTheme(page, theme);
           await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
-          await shoot(page, testInfo, `flag-on-details-${suffix}`);
+          await shoot(page, testInfo, `details-variants-${suffix}`);
           await glossary.goBackToList();
         }
       }

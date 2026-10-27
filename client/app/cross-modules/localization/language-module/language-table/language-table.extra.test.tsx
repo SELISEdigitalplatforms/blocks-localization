@@ -455,7 +455,7 @@ describe("language-table (extra coverage)", () => {
       const germanTranslation = await screen.findByRole("textbox", {
         name: "German translation",
       });
-      expect((germanTranslation as HTMLTextAreaElement).value).toBe("Hallo");
+      await waitFor(() => expect((germanTranslation as HTMLTextAreaElement).value).toBe("Hallo"));
       expect(suggestTranslationAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           sourceText: "Hello",

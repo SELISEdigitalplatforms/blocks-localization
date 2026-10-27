@@ -2,7 +2,6 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import * as glossaryHooks from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
@@ -12,7 +11,6 @@ const saveKey = vi.fn();
 const loadGlossaries = vi.fn();
 const editTranslationProps = vi.fn();
 
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled: vi.fn(() => false) }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
@@ -41,7 +39,6 @@ vi.mock("../modals/edit-key-glossary/edit-key-glossary", () => ({
   default: () => null,
 }));
 
-const flag = vi.mocked(isGlossaryEnforcementEnabled);
 const h = vi.mocked(hooks);
 const g = vi.mocked(glossaryHooks);
 
@@ -119,18 +116,15 @@ const expectedSave = (glossaryIds: string[]) => ({
 describe("view-details — glossary suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    flag.mockReturnValue(false);
     setDefaults();
   });
 
-  describe("flag on", () => {
-    beforeEach(() => flag.mockReturnValue(true));
-
+  describe("glossary-aware", () => {
     it("suggests untagged, non-global terms of other modules although the key has tags (H10)", () => {
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-      expect(g.useGetAllGlossaries).toHaveBeenCalledWith(true);
-      // No GetSuggestedGlossaries request with the flag on.
-      expect(h.useGetSuggestedGlossaries).toHaveBeenCalledWith("k1", false);
+      expect(g.useGetAllGlossaries).toHaveBeenCalledWith();
+      // Suggestions come from the matcher: no GetSuggestedGlossaries request.
+      expect(h.useGetSuggestedGlossaries).not.toHaveBeenCalled();
       expect(screen.queryByText("SuggestedTerm")).toBeNull();
       expect(screen.queryByTitle("Tag to key")).toBeNull();
 
@@ -265,30 +259,6 @@ describe("view-details — glossary suggestions", () => {
       expect(editTranslationProps).toHaveBeenCalledWith(
         expect.objectContaining({ loadGlossaries }),
       );
-    });
-  });
-
-  describe("flag off", () => {
-    it("keeps the existing suggestions and Tag to key now keeps the context (C15)", async () => {
-      renderWithProviders(
-        <ViewDetails keyDetails={{ ...(keyDetails as object), glossaryIds: [] } as never} />,
-      );
-      expect(g.useGetAllGlossaries).toHaveBeenCalledWith(false);
-      expect(h.useGetSuggestedGlossaries).toHaveBeenCalledWith("k1", true);
-      expect(screen.queryByRole("button", { name: "Add all" })).toBeNull();
-
-      fireEvent.click(screen.getByTitle("Tag to key"));
-      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
-      expect(saveKey.mock.calls[0][0]).toStrictEqual({
-        itemId: "k1",
-        keyName: "greeting",
-        moduleId: "m1",
-        resources: expectedSave([]).resources,
-        routes: ["/home"],
-        context: "Formal tone.",
-        glossaryIds: ["sg1"],
-        isPartiallyTranslated: false,
-      });
     });
   });
 });

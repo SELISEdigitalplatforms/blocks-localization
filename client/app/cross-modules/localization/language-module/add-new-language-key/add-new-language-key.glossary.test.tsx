@@ -2,7 +2,6 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
-import { isGlossaryEnforcementEnabled } from "@/lib/feature-flags";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
@@ -11,7 +10,6 @@ import { AddNewLanguageKey } from "./add-new-language-key";
 const suggestAsync = vi.fn();
 const loadGlossaries = vi.fn();
 
-vi.mock("@/lib/feature-flags", () => ({ isGlossaryEnforcementEnabled: vi.fn(() => false) }));
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => vi.fn(),
@@ -37,7 +35,6 @@ vi.mock("@blocks-localization/hooks/use-glossary-aware-suggestion", async (impor
   useLoadAllGlossaries: () => loadGlossaries,
 }));
 
-const flag = vi.mocked(isGlossaryEnforcementEnabled);
 const h = vi.mocked(hooks);
 const route = "/app/abc/services/language/translations/new-key";
 
@@ -89,7 +86,6 @@ const expectNoStatusContent = () =>
 describe("add-new-language-key — glossary-aware suggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    flag.mockReturnValue(false);
     loadGlossaries.mockResolvedValue([G1, G3]);
     h.useGetLanguageModules.mockReturnValue({
       isLoading: false,
@@ -113,29 +109,7 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
     expect(screen.getAllByRole("button", { name: /Auto-Translate/ })).toHaveLength(2);
   });
 
-  it("flag off: sends today's payload and loads no glossary (C1)", async () => {
-    suggestAsync.mockResolvedValue({ content: "Hallo" });
-    renderWithProviders(<AddNewLanguageKey />, { route });
-    fillDefault("Open your Workspace");
-    fireEvent.change(screen.getByPlaceholderText("Enter key context (optional)"), {
-      target: { value: "Formal tone." },
-    });
-    fireEvent.click(autoButtons()[0]);
-    await waitFor(() => expect(translationFields()[0].value).toBe("Hallo"));
-    expect(suggestAsync.mock.calls[0][0]).toStrictEqual({
-      sourceText: "Open your Workspace",
-      destinationLanguage: "German",
-      currentLanguage: "English",
-      temperature: 0.1,
-      moduleId: undefined,
-      destinationLanguageCode: "de-DE",
-    });
-    expect(loadGlossaries).not.toHaveBeenCalled();
-  });
-
-  describe("flag on", () => {
-    beforeEach(() => flag.mockReturnValue(true));
-
+  describe("glossary-aware", () => {
     it("uses the form context and module, glossaryIds [] and no moduleId (H2, H3)", async () => {
       suggestAsync.mockResolvedValue({ content: "Öffnen Sie Ihr Arbeitsbereich Portal" });
       renderWithProviders(<AddNewLanguageKey />, { route });
@@ -161,6 +135,7 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
           '- Translate "Portal" as "Portal".\n',
         glossaryIds: [],
         destinationLanguageCode: "de-DE",
+        clientGlossaryRules: true,
       });
     });
 
