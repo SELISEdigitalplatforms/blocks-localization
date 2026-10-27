@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui-kits/button/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -126,6 +127,12 @@ interface GlossaryEditorValues {
 }
 
 const RULE_OPTIONS: GlossaryRule[] = ["translate", "keep", "forbidden"];
+
+const RULE_DESCRIPTIONS: Record<GlossaryRule, string> = {
+  translate: "Always use the approved translation.",
+  keep: "Leave unchanged, e.g. brand names.",
+  forbidden: "Must not appear in translations.",
+};
 
 const withoutValue = (values: string[], value: string) => values.filter((item) => item !== value);
 
@@ -277,7 +284,7 @@ interface ChipInputProps {
   ariaLabel?: string;
 }
 
-/** Text input where Enter or a comma turns the text into a removable chip. */
+/** Token field: Enter or a comma turns the typed text into a removable chip inside the box. */
 const ChipInput = ({
   id,
   values,
@@ -312,32 +319,28 @@ const ChipInput = ({
   };
 
   return (
-    <div className="grid gap-2">
-      {values.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {values.map((value, index) => (
-            <Badge key={`${value}-${index}`} variant="secondary" className="gap-1 pr-1">
-              {value}
-              <button
-                type="button"
-                aria-label={removeLabel(value)}
-                disabled={disabled}
-                onClick={() => onChange(values.filter((_, i) => i !== index))}
-                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
+    <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-50">
+      {values.map((value, index) => (
+        <Badge
+          key={`${value}-${index}`}
+          variant="secondary"
+          className="h-6 max-w-full gap-1 rounded-md pr-1 font-normal"
+        >
+          <span className="truncate">{value}</span>
+          <RemoveChipButton
+            label={removeLabel(value)}
+            disabled={disabled}
+            onClick={() => onChange(values.filter((_, i) => i !== index))}
+          />
+        </Badge>
+      ))}
       <Input
         id={id}
         aria-label={ariaLabel}
         value={draft}
-        placeholder={placeholder}
+        placeholder={values.length > 0 ? "Add another…" : placeholder}
         disabled={disabled}
-        className="border-default border shadow-none"
+        className="h-6 w-auto min-w-32 flex-1 border-0 bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100"
         onChange={(event) => handleChange(event.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={() => {
@@ -349,6 +352,22 @@ const ChipInput = ({
   );
 };
 
+const RemoveChipButton = ({
+  label,
+  disabled,
+  onClick,
+}: Readonly<{ label: string; disabled?: boolean; onClick: () => void }>) => (
+  <button
+    type="button"
+    aria-label={label}
+    disabled={disabled}
+    onClick={onClick}
+    className="inline-flex shrink-0 rounded-sm p-0.5 text-medium-emphasis hover:bg-muted-foreground/20 hover:text-high-emphasis focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+  >
+    <X className="h-3 w-3" aria-hidden="true" />
+  </button>
+);
+
 /** Info icon beside a field label; hovering or focusing it explains the field. */
 const FieldInfo = ({ label, children }: Readonly<{ label: string; children: ReactNode }>) => (
   <Tooltip>
@@ -356,15 +375,71 @@ const FieldInfo = ({ label, children }: Readonly<{ label: string; children: Reac
       <button
         type="button"
         aria-label={`About ${label}`}
-        className="inline-flex shrink-0 rounded-full text-blue-600 hover:text-blue-800 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:text-blue-400 dark:hover:text-blue-300"
+        className="inline-flex shrink-0 rounded-full text-low-emphasis transition-colors hover:text-medium-emphasis focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
-        <Info className="h-4 w-4" aria-hidden="true" />
+        <Info className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </TooltipTrigger>
     <TooltipContent side="top" align="start" className="max-w-72 text-left text-xs font-normal">
       {children}
     </TooltipContent>
   </Tooltip>
+);
+
+/** Field label row: label text plus an optional info tooltip, on one baseline. */
+const LabelRow = ({ children }: Readonly<{ children: ReactNode }>) => (
+  <div className="flex items-center gap-1.5">{children}</div>
+);
+
+const SectionHeading = ({
+  id,
+  title,
+  description,
+}: Readonly<{ id: string; title: string; description?: ReactNode }>) => (
+  <div className="grid gap-1">
+    <h3 id={id} className="text-base leading-6 font-semibold text-high-emphasis">
+      {title}
+    </h3>
+    {description && <p className="text-sm text-medium-emphasis">{description}</p>}
+  </div>
+);
+
+interface ChoiceCardProps {
+  id: string;
+  value: string;
+  label: string;
+  description: string;
+}
+
+/** Radio option as a card; the label stretches over the card so the whole card is clickable. */
+const ChoiceCard = ({ id, value, label, description }: Readonly<ChoiceCardProps>) => (
+  <div className="relative flex items-start gap-3 rounded-lg border border-input p-3 transition-colors hover:bg-muted/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">
+    <RadioGroupItem
+      value={value}
+      id={id}
+      aria-describedby={`${id}-description`}
+      className="mt-0.5 shrink-0"
+    />
+    <div className="grid min-w-0 gap-0.5">
+      <Label
+        htmlFor={id}
+        className="cursor-pointer leading-5 text-high-emphasis after:absolute after:inset-0 after:content-['']"
+      >
+        {label}
+      </Label>
+      <p id={`${id}-description`} className="text-xs leading-4 text-medium-emphasis">
+        {description}
+      </p>
+    </div>
+  </div>
+);
+
+const CharacterCount = ({ value, max }: Readonly<{ value: string; max: number }>) => (
+  <span
+    className={`shrink-0 text-xs tabular-nums ${value.length > max ? "text-destructive" : "text-low-emphasis"}`}
+  >
+    {value.length.toLocaleString()}/{max.toLocaleString()}
+  </span>
 );
 
 const FieldError = ({ message }: Readonly<{ message?: string }>) =>
@@ -533,13 +608,16 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
         disabled={isReadOnly}
       />
     );
+    const languageLabel = (htmlFor: string) => (
+      <Label htmlFor={htmlFor} className="text-high-emphasis">
+        {language.languageName} <span className="font-normal text-low-emphasis">({code})</span>
+      </Label>
+    );
 
     if (rule === "forbidden") {
       return (
-        <div key={code} className="grid gap-2">
-          <Label htmlFor={`glossary-forbidden-${code}`} className="text-high-emphasis">
-            {label}
-          </Label>
+        <div key={code} className="grid gap-2 p-4">
+          {languageLabel(`glossary-forbidden-${code}`)}
           {forbiddenInput}
           <FieldError message={forbiddenError(code)} />
         </div>
@@ -547,31 +625,31 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
     }
 
     return (
-      <div key={code} className="grid gap-2">
-        <Label htmlFor={inputId} className="text-high-emphasis">
-          {label}
-        </Label>
+      <div key={code} className="grid gap-2 p-4">
+        {languageLabel(inputId)}
         <Input
           id={inputId}
           value={translations?.[code] ?? ""}
           onChange={(event) => setTranslation(code, event.target.value)}
           placeholder="Approved translation"
-          className="border-default border shadow-none"
           disabled={isReadOnly}
         />
         <FieldError message={translationError(code)} />
-        <Collapsible defaultOpen={forbiddenValues.length > 0}>
-          <div className="flex items-center gap-1">
+        <Collapsible defaultOpen={forbiddenValues.length > 0} className="group/forbidden">
+          <div className="flex items-center gap-1.5">
             <CollapsibleTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 w-fit gap-1 px-2 text-medium-emphasis"
+                className="h-6 w-fit gap-1 px-0 text-xs font-medium text-medium-emphasis hover:bg-transparent hover:text-high-emphasis"
               >
                 Forbidden alternatives
                 {forbiddenValues.length > 0 && ` (${forbiddenValues.length})`}
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown
+                  className="h-3.5 w-3.5 transition-transform group-data-[state=open]/forbidden:rotate-180"
+                  aria-hidden="true"
+                />
               </Button>
             </CollapsibleTrigger>
             <FieldInfo label="forbidden alternatives">
@@ -589,30 +667,40 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   const renderTranslationsBody = () => {
     if (targetLanguages.length === 0) {
       return (
-        <p className="text-sm text-medium-emphasis">
+        <p className="rounded-lg border border-dashed border-input px-4 py-6 text-center text-sm text-medium-emphasis">
           Add another language to the project to record translations.
         </p>
       );
     }
     return (
-      <>
-        {rule === "forbidden" && (
-          <p className="text-sm text-medium-emphasis">
-            Alternatives that must not be used, per language.
-          </p>
-        )}
+      <div className="divide-y divide-input overflow-hidden rounded-lg border border-input">
         {targetLanguages.map(renderTranslationRow)}
-      </>
+      </div>
     );
   };
 
   return (
     <>
-      <SheetHeader className="px-6 pt-6 pb-4">
-        <SheetTitle>{isEditMode ? "Edit Glossary" : "Add Glossary"}</SheetTitle>
-        <SheetDescription className="sr-only">
-          Define the term, its translations, meaning and scope.
-        </SheetDescription>
+      <SheetHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b px-6 py-5">
+        <div className="grid min-w-0 gap-1">
+          <SheetTitle className="leading-7 text-high-emphasis">
+            {isEditMode ? "Edit Glossary" : "Add Glossary"}
+          </SheetTitle>
+          <SheetDescription className="text-medium-emphasis">
+            Define the term, its translations, meaning and scope.
+          </SheetDescription>
+        </div>
+        <SheetClose asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="-mr-2 h-8 w-8 shrink-0 text-medium-emphasis hover:text-high-emphasis"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </SheetClose>
       </SheetHeader>
 
       <TooltipProvider delayDuration={200}>
@@ -623,7 +711,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
             noValidate
           >
             <ScrollArea className="min-h-0 flex-1">
-              <fieldset disabled={isReadOnly} className="grid min-w-0 gap-6 px-6 pb-6">
+              <fieldset disabled={isReadOnly} className="grid min-w-0 gap-6 p-6">
                 {parsed.status === "corrupt" && (
                   <Alert className="border-warning-200 bg-warning-50 text-warning-700">
                     <TriangleAlert />
@@ -642,164 +730,150 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                 )}
 
                 {/* Term */}
-                <section className="grid gap-4" aria-labelledby="glossary-section-term">
-                  <h3 id="glossary-section-term" className="text-sm font-medium text-high-emphasis">
-                    Term
-                  </h3>
-                  <FormField
-                    name="name"
-                    control={control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel className="text-left font-medium text-high-emphasis">
-                            Name <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <FieldInfo label="name">
-                            The word or phrase this glossary entry is about, e.g.
-                            &quot;Workspace&quot;.
-                            {isEnforcementEnabled &&
-                              " Only whole words are matched (substring for zh, ja, th, lo, km, my)."}
-                          </FieldInfo>
-                        </div>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter glossary name"
-                            className="border-default border shadow-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        {duplicateGlossary && (
-                          <FormDescription className="text-warning-700">
-                            &apos;{duplicateGlossary.name}&apos; already exists.{" "}
-                            <button
-                              type="button"
-                              className="font-medium underline underline-offset-4 hover:no-underline"
-                              onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
-                            >
-                              Open it
-                            </button>
-                          </FormDescription>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <section className="grid gap-5" aria-labelledby="glossary-section-term">
+                  <SectionHeading
+                    id="glossary-section-term"
+                    title="Term"
+                    description="The word or phrase, and how the AI should treat it."
                   />
-
-                  <FormField
-                    name="language"
-                    control={control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel className="text-left font-medium text-high-emphasis">
-                            Language
-                          </FormLabel>
-                          <FieldInfo label="language">
-                            The language the term is written in, usually your project&apos;s source
-                            language.
-                          </FieldInfo>
-                        </div>
-                        {/* Wrapper keeps space-y margins stable when the dropdown mounts. */}
-                        <div>
-                          <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
+                  <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:gap-4">
+                    <FormField
+                      name="name"
+                      control={control}
+                      render={({ field }) => (
+                        <FormItem>
+                          <LabelRow>
+                            <FormLabel className="font-medium text-high-emphasis">
+                              Name <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FieldInfo label="name">
+                              The word or phrase this glossary entry is about, e.g.
+                              &quot;Workspace&quot;.
+                              {isEnforcementEnabled &&
+                                " Only whole words are matched (substring for zh, ja, th, lo, km, my)."}
+                            </FieldInfo>
+                          </LabelRow>
+                          <FormControl>
+                            <Input placeholder="Enter glossary name" {...field} />
+                          </FormControl>
+                          {duplicateGlossary && (
+                            <FormDescription className="flex items-start gap-1.5 text-warning-700">
+                              <TriangleAlert
+                                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                                aria-hidden="true"
+                              />
+                              <span>
+                                &apos;{duplicateGlossary.name}&apos; already exists.{" "}
+                                <button
                                   type="button"
-                                  variant="outline"
-                                  role="combobox"
-                                  aria-expanded={languageOpen}
-                                  className="w-full justify-between font-normal"
+                                  className="font-medium underline underline-offset-4 hover:no-underline"
+                                  onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
                                 >
-                                  {selectedLanguage
-                                    ? (languageListData?.find(
-                                        (lang) => lang.languageCode === selectedLanguage,
-                                      )?.languageName ?? selectedLanguage)
-                                    : "Select language"}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              portalled={false}
-                              className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
-                              align="start"
-                            >
-                              <Command>
-                                <CommandInput placeholder="Search language..." />
-                                <CommandList>
-                                  <CommandEmpty>No language found.</CommandEmpty>
-                                  <CommandGroup>
-                                    {languageListData?.map((language) => (
-                                      <CommandItem
-                                        key={language.languageCode}
-                                        value={`${language.languageName} ${language.languageCode}`}
-                                        onSelect={() => {
-                                          field.onChange(language.languageCode);
-                                          setLanguageOpen(false);
-                                        }}
-                                      >
-                                        {language.languageName}
-                                        {selectedLanguage === language.languageCode && (
-                                          <Check className="ml-auto h-4 w-4" />
-                                        )}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                                  Open it
+                                </button>
+                              </span>
+                            </FormDescription>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="language"
+                      control={control}
+                      render={({ field }) => (
+                        <FormItem>
+                          <LabelRow>
+                            <FormLabel className="font-medium text-high-emphasis">
+                              Language
+                            </FormLabel>
+                            <FieldInfo label="language">
+                              The language the term is written in, usually your project&apos;s
+                              source language.
+                            </FieldInfo>
+                          </LabelRow>
+                          {/* Wrapper keeps space-y margins stable when the dropdown mounts. */}
+                          <div>
+                            <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={languageOpen}
+                                    className={`w-full justify-between px-3 font-normal ${selectedLanguage ? "" : "text-muted-foreground"}`}
+                                  >
+                                    <span className="truncate">
+                                      {selectedLanguage
+                                        ? (languageListData?.find(
+                                            (lang) => lang.languageCode === selectedLanguage,
+                                          )?.languageName ?? selectedLanguage)
+                                        : "Select language"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                portalled={false}
+                                className="z-60 w-[var(--radix-popover-trigger-width)] min-w-56 p-0"
+                                align="start"
+                              >
+                                <Command>
+                                  <CommandInput placeholder="Search language..." />
+                                  <CommandList>
+                                    <CommandEmpty>No language found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {languageListData?.map((language) => (
+                                        <CommandItem
+                                          key={language.languageCode}
+                                          value={`${language.languageName} ${language.languageCode}`}
+                                          onSelect={() => {
+                                            field.onChange(language.languageCode);
+                                            setLanguageOpen(false);
+                                          }}
+                                        >
+                                          {language.languageName}
+                                          {selectedLanguage === language.languageCode && (
+                                            <Check className="ml-auto h-4 w-4" />
+                                          )}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     name="rule"
                     control={control}
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel className="text-left font-medium text-high-emphasis">
-                            Rule
-                          </FormLabel>
-                          <FieldInfo label="rule">
-                            <ul className="grid gap-1">
-                              <li>
-                                <strong>Translate:</strong> always use the approved translation for
-                                each language.
-                              </li>
-                              <li>
-                                <strong>Keep:</strong> leave the term unchanged in every language,
-                                e.g. brand or product names.
-                              </li>
-                              <li>
-                                <strong>Forbidden:</strong> the term must not be used in
-                                translations.
-                              </li>
-                            </ul>
-                          </FieldInfo>
-                        </div>
+                        <FormLabel className="font-medium text-high-emphasis">Rule</FormLabel>
                         <FormControl>
                           <RadioGroup
                             value={field.value}
                             onValueChange={field.onChange}
                             disabled={isReadOnly}
-                            className="flex flex-wrap gap-4"
+                            className="grid gap-2 sm:grid-cols-3"
                           >
                             {RULE_OPTIONS.map((option) => (
-                              <div key={option} className="flex items-center gap-2">
-                                <RadioGroupItem value={option} id={`glossary-rule-${option}`} />
-                                <Label
-                                  htmlFor={`glossary-rule-${option}`}
-                                  className="cursor-pointer"
-                                >
-                                  {GLOSSARY_RULE_LABELS[option]}
-                                </Label>
-                              </div>
+                              <ChoiceCard
+                                key={option}
+                                id={`glossary-rule-${option}`}
+                                value={option}
+                                label={GLOSSARY_RULE_LABELS[option]}
+                                description={RULE_DESCRIPTIONS[option]}
+                              />
                             ))}
                           </RadioGroup>
                         </FormControl>
@@ -814,7 +888,16 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                         name="caseSensitive"
                         control={control}
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                          <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0 rounded-lg border border-input p-3">
+                            <div className="grid gap-0.5">
+                              <FormLabel className="cursor-pointer font-medium text-high-emphasis">
+                                Case-sensitive
+                              </FormLabel>
+                              <FormDescription className="text-xs text-medium-emphasis">
+                                Only match the same capitalisation, e.g. &quot;Apple&quot; but not
+                                &quot;apple&quot;.
+                              </FormDescription>
+                            </div>
                             <FormControl>
                               <Switch
                                 checked={field.value}
@@ -822,13 +905,6 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                 disabled={isReadOnly}
                               />
                             </FormControl>
-                            <FormLabel className="cursor-pointer text-left font-medium text-high-emphasis">
-                              Case-sensitive
-                            </FormLabel>
-                            <FieldInfo label="case-sensitive matching">
-                              When on, the term only matches with the same capitalisation, e.g.
-                              &quot;Apple&quot; but not &quot;apple&quot;.
-                            </FieldInfo>
                           </FormItem>
                         )}
                       />
@@ -838,10 +914,10 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                         control={control}
                         render={({ field }) => (
                           <FormItem>
-                            <div className="flex items-center gap-1.5">
+                            <LabelRow>
                               <FormLabel
                                 htmlFor="glossary-variants"
-                                className="text-left font-medium text-high-emphasis"
+                                className="font-medium text-high-emphasis"
                               >
                                 Variants
                               </FormLabel>
@@ -850,7 +926,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                 synonyms, e.g. &quot;workspaces&quot;. Up to{" "}
                                 {GLOSSARY_LIMITS.variants}.
                               </FieldInfo>
-                            </div>
+                            </LabelRow>
                             <ChipInput
                               id="glossary-variants"
                               ariaLabel="Variants"
@@ -875,20 +951,16 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                 {rule !== "keep" && (
                   <>
                     <Separator />
-                    <section className="grid gap-4" aria-labelledby="glossary-section-translations">
-                      <div className="flex items-center gap-1.5">
-                        <h3
-                          id="glossary-section-translations"
-                          className="text-sm font-medium text-high-emphasis"
-                        >
-                          Translations
-                        </h3>
-                        <FieldInfo label="translations">
-                          {rule === "forbidden"
+                    <section className="grid gap-5" aria-labelledby="glossary-section-translations">
+                      <SectionHeading
+                        id="glossary-section-translations"
+                        title="Translations"
+                        description={
+                          rule === "forbidden"
                             ? "Words that must not be used in each language instead of this term."
-                            : "The approved translation for each project language. The AI must use it wherever the term appears."}
-                        </FieldInfo>
-                      </div>
+                            : "The approved translation for each project language. The AI must use it wherever the term appears."
+                        }
+                      />
                       {renderTranslationsBody()}
                     </section>
                   </>
@@ -897,27 +969,24 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                 <Separator />
 
                 {/* Meaning */}
-                <section className="grid gap-4" aria-labelledby="glossary-section-meaning">
-                  <h3
+                <section className="grid gap-5" aria-labelledby="glossary-section-meaning">
+                  <SectionHeading
                     id="glossary-section-meaning"
-                    className="text-sm font-medium text-high-emphasis"
-                  >
-                    Meaning
-                  </h3>
+                    title="Meaning"
+                    description="Context that helps the AI and your team understand the term."
+                  />
                   <FormField
                     name="type"
                     control={control}
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel className="text-left font-medium text-high-emphasis">
-                            Type
-                          </FormLabel>
+                        <LabelRow>
+                          <FormLabel className="font-medium text-high-emphasis">Type</FormLabel>
                           <FieldInfo label="type">
                             What kind of term this is, e.g. an acronym or a phrase. Helps your team
                             understand and review it.
                           </FieldInfo>
-                        </div>
+                        </LabelRow>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
@@ -945,24 +1014,27 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                     control={control}
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1.5">
-                          <FormLabel className="text-left font-medium text-high-emphasis">
+                        <LabelRow>
+                          <FormLabel className="font-medium text-high-emphasis">
                             Definition
                           </FormLabel>
                           <FieldInfo label="definition">
                             What the term means in your product. It is sent to the AI as context, so
                             keep it short and clear.
                           </FieldInfo>
-                        </div>
+                        </LabelRow>
                         <FormControl>
                           <Textarea
                             placeholder="What the term means"
-                            className="border-default resize-none border shadow-none"
+                            className="resize-none"
                             rows={3}
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription>Sent to the AI</FormDescription>
+                        <div className="flex items-start justify-between gap-4">
+                          <FormDescription className="text-xs">Sent to the AI</FormDescription>
+                          <CharacterCount value={field.value} max={GLOSSARY_LIMITS.definition} />
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -972,19 +1044,12 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                 <Separator />
 
                 {/* Scope */}
-                <section className="grid gap-4" aria-labelledby="glossary-section-scope">
-                  <div className="flex items-center gap-1.5">
-                    <h3
-                      id="glossary-section-scope"
-                      className="text-sm font-medium text-high-emphasis"
-                    >
-                      Scope
-                    </h3>
-                    <FieldInfo label="scope">
-                      Where the term applies. <strong>Whole project</strong> covers every key;{" "}
-                      <strong>Specific modules</strong> only covers keys in the modules you tag.
-                    </FieldInfo>
-                  </div>
+                <section className="grid gap-5" aria-labelledby="glossary-section-scope">
+                  <SectionHeading
+                    id="glossary-section-scope"
+                    title="Scope"
+                    description="Where the term applies."
+                  />
                   <FormField
                     name="scope"
                     control={control}
@@ -999,20 +1064,20 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             }}
                             disabled={isReadOnly}
                             aria-label="Scope"
-                            className="flex flex-wrap gap-4"
+                            className="grid gap-2 sm:grid-cols-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="project" id="glossary-scope-project" />
-                              <Label htmlFor="glossary-scope-project" className="cursor-pointer">
-                                Whole project
-                              </Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="modules" id="glossary-scope-modules" />
-                              <Label htmlFor="glossary-scope-modules" className="cursor-pointer">
-                                Specific modules
-                              </Label>
-                            </div>
+                            <ChoiceCard
+                              id="glossary-scope-project"
+                              value="project"
+                              label="Whole project"
+                              description="Covers every key in the project."
+                            />
+                            <ChoiceCard
+                              id="glossary-scope-modules"
+                              value="modules"
+                              label="Specific modules"
+                              description="Only covers keys in the modules you tag."
+                            />
                           </RadioGroup>
                         </FormControl>
                         {scope === "project" && legacyModuleCount > 0 && (
@@ -1032,29 +1097,6 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                       control={control}
                       render={({ field }) => (
                         <FormItem>
-                          {(moduleIds?.length ?? 0) > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {moduleIds.map((id) => {
-                                const mod = moduleListData?.find((m) => m.itemId === id);
-                                return (
-                                  <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                                    {mod?.moduleName ?? id}
-                                    <button
-                                      type="button"
-                                      aria-label={`Remove module ${mod?.moduleName ?? id}`}
-                                      onClick={() => {
-                                        field.onChange(withoutValue(moduleIds, id));
-                                        void form.trigger("moduleIds");
-                                      }}
-                                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          )}
                           <div>
                             <Popover open={modulePopoverOpen} onOpenChange={setModulePopoverOpen}>
                               <PopoverTrigger asChild>
@@ -1063,9 +1105,11 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                   variant="outline"
                                   role="combobox"
                                   aria-label="Tag modules"
-                                  className="w-full justify-between font-normal"
+                                  className="w-full justify-between px-3 font-normal text-muted-foreground"
                                 >
-                                  Tag modules...
+                                  {(moduleIds?.length ?? 0) > 0
+                                    ? `${moduleIds.length} module${moduleIds.length === 1 ? "" : "s"} tagged`
+                                    : "Tag modules..."}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
@@ -1110,6 +1154,29 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                               </PopoverContent>
                             </Popover>
                           </div>
+                          {(moduleIds?.length ?? 0) > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {moduleIds.map((id) => {
+                                const mod = moduleListData?.find((m) => m.itemId === id);
+                                return (
+                                  <Badge
+                                    key={id}
+                                    variant="secondary"
+                                    className="h-6 gap-1 rounded-md pr-1 font-normal"
+                                  >
+                                    {mod?.moduleName ?? id}
+                                    <RemoveChipButton
+                                      label={`Remove module ${mod?.moduleName ?? id}`}
+                                      onClick={() => {
+                                        field.onChange(withoutValue(moduleIds, id));
+                                        void form.trigger("moduleIds");
+                                      }}
+                                    />
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1119,26 +1186,30 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
 
                 <Separator />
 
-                <Collapsible open={noteOpen} onOpenChange={setNoteOpen}>
-                  <div className="flex items-center gap-1.5">
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="h-auto gap-1 p-0 text-sm font-medium text-high-emphasis hover:bg-transparent"
-                      >
-                        Internal Note
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${noteOpen ? "rotate-180" : ""}`}
-                        />
-                      </Button>
-                    </CollapsibleTrigger>
+                <Collapsible open={noteOpen} onOpenChange={setNoteOpen} className="grid gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-auto gap-1.5 p-0 text-base font-semibold text-high-emphasis hover:bg-transparent"
+                        >
+                          Internal Note
+                          <ChevronDown
+                            className={`h-4 w-4 text-medium-emphasis transition-transform ${noteOpen ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <span className="text-xs text-low-emphasis">Optional</span>
+                    </div>
                     <FieldInfo label="additional note">
                       Notes for your team, such as where the term came from or who approved it.
                       Never sent to the AI.
                     </FieldInfo>
                   </div>
-                  <CollapsibleContent className="pt-4">
+                  <CollapsibleContent>
                     <FormField
                       name="note"
                       control={control}
@@ -1148,11 +1219,17 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                             <Textarea
                               aria-label="Additional note"
                               placeholder="Notes for your team"
-                              className="border-default resize-none border shadow-none"
+                              className="resize-none"
                               rows={3}
                               {...field}
                             />
                           </FormControl>
+                          <div className="flex items-start justify-between gap-4">
+                            <FormDescription className="text-xs">
+                              Never sent to the AI
+                            </FormDescription>
+                            <CharacterCount value={field.value} max={GLOSSARY_LIMITS.note} />
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1164,11 +1241,11 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
               </fieldset>
             </ScrollArea>
 
-            <SheetFooter className="gap-2 border-t bg-background px-6 py-4">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <SheetFooter className="gap-2 border-t bg-background px-6 py-4 sm:space-x-0">
+              <Button type="button" variant="outline" onClick={onClose} className="sm:min-w-24">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending || isReadOnly}>
+              <Button type="submit" disabled={isPending || isReadOnly} className="sm:min-w-24">
                 {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 Save
               </Button>
@@ -1200,7 +1277,7 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
 }) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-    <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+    <SheetContent side="right" hideClose className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
       {open && <GlossaryEditorForm glossary={glossary} onClose={() => onOpenChange(false)} />}
     </SheetContent>
   </Sheet>
