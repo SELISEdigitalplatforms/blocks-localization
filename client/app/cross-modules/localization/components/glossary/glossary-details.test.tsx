@@ -215,11 +215,51 @@ describe("components/glossary/glossary-details", () => {
       });
       expect(screen.getByText("Keep")).toBeTruthy();
       expect(screen.getByText("Whole project")).toBeTruthy();
-      // Case-sensitive and variants are stored but not shown until Phase 3.
-      expect(screen.queryByText("Case-sensitive")).toBeNull();
-      expect(screen.queryByText("SELISE AG")).toBeNull();
       expect(screen.queryByText("Is Global")).toBeNull();
       expect(screen.getByText("Kept as-is in all languages.")).toBeTruthy();
+    });
+
+    it("should show the Case-sensitive badge and Variants chips (H14)", () => {
+      renderGlossary({
+        isGlobal: true,
+        additionalNote:
+          '@@glossary-meta:v1@@{"rule":"keep","caseSensitive":true,"variants":["SELISE AG","Selise"]}',
+      });
+      expect(screen.getByText("Keep")).toBeTruthy();
+      expect(screen.getByText("Whole project")).toBeTruthy();
+      expect(screen.getByText("Case-sensitive")).toBeTruthy();
+      expect(screen.getByText("Variants:")).toBeTruthy();
+      expect(screen.getByText("SELISE AG")).toBeTruthy();
+      expect(screen.getByText("Selise")).toBeTruthy();
+    });
+
+    it("should render duplicate stored variants without duplicate React keys (m7)", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        renderGlossary({
+          isGlobal: true,
+          additionalNote:
+            '@@glossary-meta:v1@@{"rule":"keep","variants":["workspaces","workspaces"]}',
+        });
+        expect(screen.getAllByText("workspaces")).toHaveLength(2);
+        const keyWarnings = consoleError.mock.calls.filter((args) =>
+          args.some((arg) => String(arg).includes("same key")),
+        );
+        expect(keyWarnings).toEqual([]);
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
+    it("should hide the Case-sensitive badge and Variants row when unset (H14)", () => {
+      renderGlossary({
+        isGlobal: false,
+        moduleIds: ["m1"],
+        additionalNote: '@@glossary-meta:v1@@{"rule":"translate","caseSensitive":false}',
+      });
+      expect(screen.getByText("1 module")).toBeTruthy();
+      expect(screen.queryByText("Case-sensitive")).toBeNull();
+      expect(screen.queryByText("Variants:")).toBeNull();
     });
 
     it("should show the module count as scope", () => {

@@ -66,7 +66,7 @@ test.describe("Glossary", () => {
 
       const meta = parseMeta(payload.additionalNote);
       expect(meta.rule).toBe("translate");
-      // Variants are not editable until Phase 3, so a new term stores none.
+      // No variants were entered, so the new term stores none.
       expect(meta.variants ?? []).toEqual([]);
       expect(meta.note).toBe("This is Additional Notes");
       expect(payload.isGlobal).toBe(false);
@@ -299,6 +299,121 @@ test.describe("Glossary", () => {
         await page.keyboard.press("Escape");
         await glossary.deleteGlossaryFromList(legacyName);
         await glossary.deleteGlossaryFromList(corruptName);
+      });
+    }
+  });
+
+  test("Glossary — variants and case-sensitive", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openGlossary(page);
+    const glossary = new GlossaryPage(page);
+    await glossary.expectPageLoaded();
+
+    const stamp = Date.now();
+    const variantName = `E2E Workspace ${stamp}`;
+    const caseName = `E2E SELISE ${stamp}`;
+    const created: string[] = [];
+    let translationCodes: string[] = [];
+
+    try {
+      await test.step("The sheet shows Case-sensitive and Variants (A8)", async () => {
+        await glossary.openNewGlossaryDialog();
+        await expect(glossary.caseSensitiveSwitch).toBeVisible();
+        await expect(glossary.variantsInput).toBeVisible();
+        await glossary.fillGlossaryName(variantName);
+        await glossary.setRule("Translate");
+        translationCodes = await glossary.getTranslationCodes();
+      });
+
+      await test.step("Invalid variants block the save (C16)", async () => {
+        let saveRequests = 0;
+        const onRequest = (request: import("@playwright/test").Request) => {
+          if (/\/Glossary\/Save/.test(request.url())) saveRequests++;
+        };
+        page.on("request", onRequest);
+
+        // C16: a variant equal to the term (normalized) is rejected.
+        await glossary.addVariant(variantName.toLowerCase());
+        await glossary.clickSaveButton();
+        await glossary.expectFieldError("Variant can't be the same as the term");
+        await glossary.removeVariant(variantName.toLowerCase());
+
+        // C16: two variants that differ only in case are duplicates.
+        await glossary.addVariant(`${variantName}s`);
+        await glossary.addVariant(`${variantName.toUpperCase()}S`);
+        await glossary.clickSaveButton();
+        await glossary.expectFieldError("Variant already listed");
+        await glossary.removeVariant(`${variantName.toUpperCase()}S`);
+
+        page.off("request", onRequest);
+        expect(saveRequests).toBe(0);
+      });
+
+      await test.step("Comma adds a chip and chips are removable (H13)", async () => {
+        await glossary.addVariantWithComma(`${variantName}es`);
+        await expect(glossary.variantsInput).toHaveValue("");
+        const chipRemove = glossary.editorSheet.getByRole("button", {
+          name: `Remove variant ${variantName}es`,
+        });
+        await expect(chipRemove).toBeVisible();
+        await chipRemove.click();
+        await expect(chipRemove).toHaveCount(0);
+      });
+
+      await test.step("Save stores the variant (H13)", async () => {
+        if (translationCodes.length > 0) {
+          await glossary.fillTranslation(translationCodes[0], "Arbeitsbereich");
+          await glossary.addForbidden(translationCodes[0], "Werkbereich");
+        }
+        await glossary.setScope("Whole project");
+        const payload = await glossary.saveAndCapturePayload();
+        created.push(variantName);
+        await glossary.expectAddSuccess(variantName);
+        const meta = parseMeta(payload.additionalNote);
+        // H13: the chip entered with Enter is saved in `variants`.
+        expect(meta.variants).toEqual([`${variantName}s`]);
+        expect(meta.caseSensitive ?? false).toBe(false);
+      });
+
+      await test.step("Case-sensitive on is saved (H14)", async () => {
+        await glossary.openNewGlossaryDialog();
+        await glossary.fillGlossaryName(caseName);
+        await glossary.setRule("Keep");
+        await glossary.setCaseSensitive(true);
+        await glossary.setScope("Whole project");
+        const payload = await glossary.saveAndCapturePayload();
+        created.push(caseName);
+        await glossary.expectAddSuccess(caseName);
+        const meta = parseMeta(payload.additionalNote);
+        // H14: the switch is saved as `caseSensitive`.
+        expect(meta).toMatchObject({ rule: "keep", caseSensitive: true });
+      });
+
+      await test.step("Details pages show the variant chips and the badge (H13, H14)", async () => {
+        await glossary.searchGlossaries(variantName);
+        await glossary.openGlossaryDetail(variantName);
+        // H13: the details page lists the variants as chips.
+        await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
+        await expect(page.getByText(`${variantName}s`, { exact: true })).toBeVisible();
+        await expect(page.getByText("Case-sensitive", { exact: true })).toHaveCount(0);
+        await glossary.goBackToList();
+
+        await glossary.searchGlossaries(caseName);
+        await glossary.openGlossaryDetail(caseName);
+        // H14: the "Case-sensitive" badge is shown when set; no variants row without variants.
+        await expect(page.getByText("Case-sensitive", { exact: true })).toBeVisible();
+        await expect(page.getByText("Variants:", { exact: true })).toHaveCount(0);
+        await glossary.goBackToList();
+      });
+    } finally {
+      await test.step("Clean up fixtures", async () => {
+        // Back to a fresh list page, wherever a failed step left the browser.
+        await openGlossary(page);
+        for (const name of created) {
+          await glossary
+            .deleteGlossaryFromList(name)
+            .catch((error) => console.warn(`[e2e] Cleanup could not delete "${name}":`, error));
+        }
       });
     }
   });

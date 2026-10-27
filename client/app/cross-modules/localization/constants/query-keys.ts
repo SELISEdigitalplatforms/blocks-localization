@@ -167,6 +167,8 @@ export const localizationQueryKeys = {
     all: ["get-glossaries"] as const,
     list: (tenantId: string, pageNumber: number, pageSize: number, searchText: string) =>
       ["get-glossaries", tenantId, pageNumber, pageSize, searchText] as const,
+    /** Every term of the project (paged load); under `all`, so glossary writes refresh it. */
+    allTerms: (tenantId: string) => ["get-glossaries", "all-terms", tenantId] as const,
     global: (tenantId: string) => ["get-glossaries-global", tenantId] as const,
     globalPrefix: ["get-glossaries-global"] as const,
     module: (tenantId: string, moduleId: string) =>

@@ -299,6 +299,13 @@ describe("localization/constants/query-keys", () => {
         "search",
       ]);
     });
+    it("should build an all-terms key under the 'all' prefix", () => {
+      const key = localizationQueryKeys.glossaries.allTerms("t1");
+      expect(key).toEqual(["get-glossaries", "all-terms", "t1"]);
+      expect(key.slice(0, localizationQueryKeys.glossaries.all.length)).toEqual(
+        localizationQueryKeys.glossaries.all,
+      );
+    });
     it("should build a global key", () => {
       expect(localizationQueryKeys.glossaries.global("t1")).toEqual([
         "get-glossaries-global",

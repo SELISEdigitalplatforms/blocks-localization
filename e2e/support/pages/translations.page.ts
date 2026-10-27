@@ -1,6 +1,261 @@
-import { type Page, type Locator, expect } from "@playwright/test";
+import { type Page, type Locator, type Request, type Route, expect } from "@playwright/test";
+import { e2eBaseUrl } from "../env";
+import { openTranslations } from "../localization-helpers";
+import { KeyDetailsPage } from "./key-details.page";
 
-export { KeyDetailsPage } from "./key-details.page";
+export { KeyDetailsPage };
+
+export interface ProjectLanguage {
+  languageName: string;
+  languageCode: string;
+  isDefault: boolean;
+}
+
+interface ApiKey {
+  itemId: string;
+  keyName: string;
+  moduleId?: string;
+  context?: string;
+  routes?: string[];
+  glossaryIds?: string[];
+  resources?: { culture: string; value: string }[];
+}
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Direct calls to the localization API with the headers the app itself sends, for creating and
+ * removing per-run fixtures (keys, modules, glossaries) without driving every form.
+ */
+export class LocalizationApi {
+  private constructor(
+    private readonly page: Page,
+    private readonly base: string,
+    private readonly headers: Record<string, string>,
+  ) {}
+
+  /** Opens Translations and takes the API base and headers from the app's own Key/Gets request. */
+  static async capture(page: Page): Promise<LocalizationApi> {
+    const listRequest = page.waitForRequest(
+      (r) => r.url().includes("/Key/Gets") && r.method() === "POST",
+      { timeout: 30_000 },
+    );
+    await openTranslations(page);
+    const request: Request = await listRequest;
+    const headers = Object.fromEntries(
+      Object.entries(await request.allHeaders()).filter(
+        ([name]) =>
+          // HTTP/2 pseudo-headers (":authority", ":path", ...) are not valid request header names.
+          !name.startsWith(":") &&
+          !["content-length", "host", "cookie", "connection", "accept-encoding"].includes(
+            name.toLowerCase(),
+          ),
+      ),
+    );
+    return new LocalizationApi(page, request.url().replace(/\/Key\/Gets(\?.*)?$/, ""), headers);
+  }
+
+  private async json<T>(response: Awaited<ReturnType<Page["request"]["get"]>>, what: string) {
+    expect(response.ok(), `${what}: HTTP ${response.status()}`).toBe(true);
+    return (await response.json()) as T;
+  }
+
+  async languages(): Promise<ProjectLanguage[]> {
+    const response = await this.page.request.get(
+      `${this.base}/Language/GetLanguagesForCurrentTenant`,
+      { headers: this.headers },
+    );
+    return this.json<ProjectLanguage[]>(response, "list languages");
+  }
+
+  async createModule(moduleName: string): Promise<string> {
+    await this.json(
+      await this.page.request.post(`${this.base}/Module/Save`, {
+        headers: this.headers,
+        data: { moduleName },
+      }),
+      `create module ${moduleName}`,
+    );
+    const modules = await this.json<{ itemId: string; moduleName: string }[]>(
+      await this.page.request.get(
+        `${this.base}/Module/GetModulesForCurrentTenant?_=${Date.now()}`,
+        {
+          headers: this.headers,
+        },
+      ),
+      "list modules",
+    );
+    const created = modules.find((module) => module.moduleName === moduleName);
+    expect(created, `module ${moduleName} is listed`).toBeTruthy();
+    return created!.itemId;
+  }
+
+  async deleteModule(itemId: string) {
+    await this.page.request.delete(
+      `${this.base}/Module/Delete?itemId=${encodeURIComponent(itemId)}&deleteKeys=true`,
+      { headers: this.headers },
+    );
+  }
+
+  /** Saves a glossary with an exact stored `additionalNote` and an empty definition. */
+  async createGlossary(glossary: {
+    name: string;
+    additionalNote: string;
+    isGlobal: boolean;
+    moduleIds?: string[];
+  }): Promise<string> {
+    await this.json(
+      await this.page.request.post(`${this.base}/Glossary/Save`, {
+        headers: this.headers,
+        data: { context: "", language: "", type: "", moduleIds: [], ...glossary },
+      }),
+      `create glossary ${glossary.name}`,
+    );
+    const params = new URLSearchParams({
+      PageNumber: "0",
+      PageSize: "20",
+      SearchText: escapeRegex(glossary.name),
+    });
+    const found = await this.json<{ items: { itemId: string; name: string }[] }>(
+      await this.page.request.get(`${this.base}/Glossary/Gets?${params.toString()}`, {
+        headers: this.headers,
+      }),
+      "search glossaries",
+    );
+    const created = found.items.find((item) => item.name === glossary.name);
+    expect(created, `glossary ${glossary.name} is listed`).toBeTruthy();
+    return created!.itemId;
+  }
+
+  async deleteGlossary(itemId: string) {
+    await this.page.request.delete(
+      `${this.base}/Glossary/Delete?itemId=${encodeURIComponent(itemId)}`,
+      { headers: this.headers },
+    );
+  }
+
+  async createKey(key: {
+    keyName: string;
+    moduleId: string;
+    culture: string;
+    value: string;
+    context?: string;
+    routes?: string[];
+    glossaryIds?: string[];
+  }): Promise<string> {
+    const body = await this.json<{ success?: boolean; errorMessage?: string }>(
+      await this.page.request.post(`${this.base}/Key/Save`, {
+        headers: this.headers,
+        data: {
+          itemId: "",
+          keyName: key.keyName,
+          moduleId: key.moduleId,
+          isNewKey: true,
+          isPartiallyTranslated: false,
+          routes: key.routes ?? [],
+          context: key.context ?? "",
+          glossaryIds: key.glossaryIds ?? [],
+          resources: [
+            { culture: key.culture, value: key.value, characterLength: key.value.length },
+          ],
+        },
+      }),
+      `create key ${key.keyName}`,
+    );
+    expect(body.success, body.errorMessage ?? "").toBe(true);
+    const created = await this.findKey(key.keyName, key.moduleId);
+    expect(created, `key ${key.keyName} is listed`).toBeTruthy();
+    return created!.itemId;
+  }
+
+  async findKey(keyName: string, moduleId: string): Promise<ApiKey | undefined> {
+    const list = await this.json<{ keys: ApiKey[] }>(
+      await this.page.request.post(`${this.base}/Key/Gets`, {
+        headers: this.headers,
+        data: { pageNumber: 0, pageSize: 10, searchKey: keyName, moduleIds: [moduleId] },
+      }),
+      "search keys",
+    );
+    return list.keys.find((k) => k.keyName === keyName);
+  }
+
+  async deleteKey(itemId: string) {
+    await this.page.request.delete(`${this.base}/Key/Delete?itemId=${encodeURIComponent(itemId)}`, {
+      headers: this.headers,
+    });
+  }
+}
+
+/** A scripted reply for one GetTranslationSuggestion call: AI content, or an HTTP error. */
+export type SuggestionReply = { content: string } | { status: number };
+
+export const isTranslationSuggestionUrl = (url: URL) =>
+  url.pathname.endsWith("/Assistant/GetTranslationSuggestion");
+
+/** The real full-glossary page request: Glossary/Gets?PageNumber=n&PageSize=500. */
+export const isFullGlossaryPageUrl = (url: URL) =>
+  url.pathname.endsWith("/Glossary/Gets") && url.searchParams.get("PageSize") === "500";
+
+/**
+ * Intercepts Assistant/GetTranslationSuggestion: each call takes the next scripted reply and
+ * its request body is recorded. A call with no reply left gets HTTP 500, so an unexpected
+ * extra request shows up both in `requests` and in the UI.
+ */
+export async function mockTranslationSuggestions(page: Page) {
+  const requests: Record<string, unknown>[] = [];
+  const replies: SuggestionReply[] = [];
+  const handler = async (route: Route) => {
+    requests.push(route.request().postDataJSON() as Record<string, unknown>);
+    const reply = replies.shift() ?? { status: 500 };
+    if ("content" in reply) {
+      await route.fulfill({ json: { content: reply.content, errors: null, isSuccess: true } });
+    } else {
+      await route.fulfill({ status: reply.status, json: { errors: "scripted failure" } });
+    }
+  };
+  await page.route(isTranslationSuggestionUrl, handler);
+  return {
+    requests,
+    /** Clears the recorded requests and sets the replies for the next suggestion. */
+    script(...next: SuggestionReply[]) {
+      requests.length = 0;
+      replies.splice(0, replies.length, ...next);
+    },
+    stop: () => page.unroute(isTranslationSuggestionUrl, handler),
+  };
+}
+
+/**
+ * Counts the full-glossary page requests and, when `keep` is given, trims each real response to
+ * this run's fixture terms. The shared project can hold other terms; trimming keeps the expected
+ * prompts exact without touching them. The request itself still reaches the server.
+ */
+export async function trackFullGlossaryLoads(
+  page: Page,
+  keep?: (glossary: { name?: string }) => boolean,
+) {
+  const urls: string[] = [];
+  const state = { completed: 0 };
+  const handler = async (route: Route) => {
+    urls.push(route.request().url());
+    if (!keep) return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.json()) as { items?: { name?: string }[]; totalCount?: number };
+    const items = (body.items ?? []).filter(keep);
+    await route.fulfill({
+      status: response.status(),
+      json: { ...body, items, totalCount: items.length },
+    });
+    state.completed++;
+  };
+  await page.route(isFullGlossaryPageUrl, handler);
+  return {
+    urls,
+    /** Trimmed responses delivered so far (only counted when `keep` is given). */
+    completed: () => state.completed,
+    stop: () => page.unroute(isFullGlossaryPageUrl, handler),
+  };
+}
 
 export class TranslationsPage {
   readonly page: Page;
@@ -742,6 +997,83 @@ export class TranslationsPage {
     const dialog = this.page.getByRole("dialog", { name: "Auto-translate selected keys?" });
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
+  }
+
+  // --- Single-key suggestions (View Details, edit translation, inline editor) ---
+
+  /** The "Edit translation" modal opened from a View Details language row. */
+  get editTranslationDialog() {
+    return this.page.getByRole("dialog", { name: "Edit translation" });
+  }
+
+  /** Opens View Details for a key in the shared project. */
+  async openKeyDetails(itemId: string) {
+    await new KeyDetailsPage(this.page).navigateTo(itemId, e2eBaseUrl());
+    // The cards render once the project languages are loaded.
+    await expect(this.page.getByRole("button", { name: "Tag Glossary" })).toBeVisible({
+      timeout: 15_000,
+    });
+  }
+
+  /** Opens the edit translation modal for a non-default language on View Details. */
+  async openEditTranslation(languageName: string) {
+    const row = this.page
+      .locator("div.flex.items-center.justify-between")
+      .filter({ has: this.page.getByText(languageName, { exact: true }) });
+    await row.getByRole("button", { name: "Edit" }).first().click();
+    await expect(this.editTranslationDialog).toBeVisible();
+    return this.editTranslationDialog;
+  }
+
+  async closeEditTranslation() {
+    await this.editTranslationDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(this.editTranslationDialog).toHaveCount(0);
+  }
+
+  get editTranslationTextarea() {
+    return this.editTranslationDialog.getByPlaceholder("Enter translation");
+  }
+
+  async clickAutoTranslateInDialog() {
+    await this.editTranslationDialog.getByRole("button", { name: "Auto-Translate" }).click();
+  }
+
+  /**
+   * The glossary violation list under a target field: a polite live region (status role,
+   * an <output> element) that holds the list. The "Glossary unavailable" note is also a
+   * status region but has no list.
+   */
+  violationList(scope: Locator) {
+    return scope.getByRole("status").filter({ has: this.page.getByRole("list") });
+  }
+
+  violationItem(scope: Locator, message: string) {
+    return this.violationList(scope).getByRole("listitem").filter({ hasText: message });
+  }
+
+  /** Shows the key in the table by searching for it and expands its inline editor. */
+  async expandKey(keyName: string) {
+    await this.searchKeys(keyName);
+    const expand = this.page.getByRole("button", { name: `Expand ${keyName}` });
+    await expect(expand).toBeVisible({ timeout: 20_000 });
+    await expand.click();
+  }
+
+  inlineTranslation(languageName: string) {
+    return this.page.getByRole("textbox", { name: `${languageName} translation` });
+  }
+
+  async clickInlineAutoTranslate(languageName: string) {
+    await this.page.getByRole("button", { name: `Auto-translate ${languageName}` }).click();
+  }
+
+  /** Clicks a control and returns the body of the Key/Save request it triggers. */
+  async captureKeySave(action: () => Promise<void>): Promise<Record<string, unknown>> {
+    const requestPromise = this.page.waitForRequest(
+      (request) => request.method() === "POST" && /\/Key\/Save(\?|$)/.test(request.url()),
+    );
+    await action();
+    return (await requestPromise).postDataJSON() as Record<string, unknown>;
   }
 
   // --- New key routes ---

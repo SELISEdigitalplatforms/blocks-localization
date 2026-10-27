@@ -339,7 +339,23 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <Badge variant="outline" className="w-fit">
           {scopeLabel}
         </Badge>
+        {meta.caseSensitive && (
+          <Badge variant="outline" className="w-fit">
+            Case-sensitive
+          </Badge>
+        )}
       </div>
+      {meta.variants.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-medium-emphasis">Variants:</span>
+          {meta.variants.map((variant, index) => (
+            // Stored variants may repeat (written by other clients), so the index keeps keys unique.
+            <Badge key={`${variant}-${index}`} variant="secondary" className="w-fit">
+              {variant}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="rounded-sm shadow-none lg:col-span-2">

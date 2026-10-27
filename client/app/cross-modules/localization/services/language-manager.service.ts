@@ -271,10 +271,16 @@ export class LanguageManagerService {
     destinationLanguage: string;
     currentLanguage: string;
     temperature: number;
-    // elementDetailContext: string;
+    /** Replaces the server's default instruction; the server appends its glossary lines and the source text. */
+    elementDetailContext?: string;
     glossaryIds?: string[];
     moduleId?: string;
     destinationLanguageCode?: string;
+    /**
+     * True when `elementDetailContext` carries this client's terminology rules, so the Phase 6
+     * server skips its own rules and retry for this request. Ignored by servers without it.
+     */
+    clientGlossaryRules?: boolean;
   }): Promise<{
     content: string;
     errors: null | unknown;
