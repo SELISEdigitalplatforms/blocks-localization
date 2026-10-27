@@ -18,7 +18,8 @@ export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languag
  */
 export type GlossaryTermValue =
   | { kind: "translate"; value: string }
-  | { kind: "missing" }
+  /** No approved value for the culture; its banned words still apply. */
+  | { kind: "missing"; alsoAvoid: string[] }
   | { kind: "keep"; value: string }
   | { kind: "forbidden"; alsoAvoid: string[] };
 
@@ -32,12 +33,31 @@ export const getGlossaryTermValue = (
     return { kind: "forbidden", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
   }
   const value = meta.translations[targetCulture]?.trim();
-  return value ? { kind: "translate", value } : { kind: "missing" };
+  return value
+    ? { kind: "translate", value }
+    : { kind: "missing", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
 };
 
 const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (
   <p className="text-xs font-medium text-low-emphasis">{children}</p>
 );
+
+const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) =>
+  values.length > 0 ? (
+    <div className="space-y-1">
+      <ValueCaption>Also avoid</ValueCaption>
+      <ul className="flex flex-wrap gap-1">
+        {values.map((value) => (
+          <li
+            key={value}
+            className="rounded border border-border px-1.5 py-0.5 text-xs text-medium-emphasis line-through decoration-error/60"
+          >
+            {value}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
 
 /** The answer the translator came for: what to write in the target language. */
 const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; language: string }>) => {
@@ -51,9 +71,14 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
       );
     case "missing":
       return (
-        <div className="space-y-0.5">
-          <ValueCaption>{language}</ValueCaption>
-          <p className="text-sm italic text-low-emphasis">No {language} translation yet</p>
+        <div className="space-y-1.5">
+          <div className="space-y-0.5">
+            <ValueCaption>{language}</ValueCaption>
+            <p className="text-sm text-medium-emphasis">
+              The glossary has no {language} translation for this term yet.
+            </p>
+          </div>
+          <AlsoAvoid values={term.alsoAvoid} />
         </div>
       );
     case "keep":
@@ -70,21 +95,7 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
             <Ban className="h-4 w-4 shrink-0" aria-hidden="true" />
             Do not use
           </p>
-          {term.alsoAvoid.length > 0 && (
-            <div className="space-y-1">
-              <ValueCaption>Also avoid</ValueCaption>
-              <ul className="flex flex-wrap gap-1">
-                {term.alsoAvoid.map((value) => (
-                  <li
-                    key={value}
-                    className="rounded border border-border px-1.5 py-0.5 text-xs text-medium-emphasis line-through decoration-error/60"
-                  >
-                    {value}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <AlsoAvoid values={term.alsoAvoid} />
         </div>
       );
   }
@@ -120,7 +131,9 @@ const GlossaryTermPopover = ({
   const alreadyUsed =
     insertValue !== null &&
     !!findInTarget(targetText, insertValue, { caseInsensitive: true, targetCulture: code });
-  const showInsert = onInsert && (term.kind === "translate" || term.kind === "missing");
+  // Only an approved value can be inserted: no greyed-out button for a missing translation.
+  const showInsert = !!onInsert && term.kind === "translate";
+  const isMissing = term.kind === "missing";
 
   const handleInsert = () => {
     if (insertValue === null || !onInsert) return;
@@ -163,33 +176,42 @@ const GlossaryTermPopover = ({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-border bg-muted/40 px-4 py-2.5">
-          {showInsert &&
-            (alreadyUsed ? (
-              <p className="flex items-center gap-1.5 text-sm text-medium-emphasis">
-                <Check className="h-4 w-4 text-success" aria-hidden="true" />
-                Already used
-              </p>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                disabled={insertValue === null}
-                onClick={handleInsert}
-              >
-                Insert
-              </Button>
-            ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="ml-auto gap-1.5 px-2 text-medium-emphasis hover:text-high-emphasis"
-            aria-label="Open term (opens in a new tab)"
-            onClick={openTerm}
-          >
-            Open term
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
+          {showInsert && alreadyUsed && (
+            <p className="flex items-center gap-1.5 text-sm text-medium-emphasis">
+              <Check className="h-4 w-4 text-success" aria-hidden="true" />
+              Already used
+            </p>
+          )}
+          {showInsert && !alreadyUsed && (
+            <Button type="button" size="sm" onClick={handleInsert}>
+              Insert
+            </Button>
+          )}
+          {isMissing ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              aria-label={`Add the ${languageName} translation in the glossary (opens in a new tab)`}
+              onClick={openTerm}
+            >
+              Add it in the glossary
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto gap-1.5 px-2 text-medium-emphasis hover:text-high-emphasis"
+              aria-label="Open term (opens in a new tab)"
+              onClick={openTerm}
+            >
+              Open term
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          )}
         </div>
       </PopoverContent>
     </Popover>

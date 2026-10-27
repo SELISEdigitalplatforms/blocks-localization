@@ -13,6 +13,7 @@ import {
   canApplyFix,
   getFixReplacement,
   GlossaryViolation,
+  hasRuleForCulture,
 } from "@blocks-localization/utils/glossary-validation";
 
 type TermStatus = "pending" | "followed" | "issue" | "no-value";
@@ -26,20 +27,18 @@ const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
       return { value: null, note: "Do not use" };
     default: {
       const value = match.meta.translations[targetCulture]?.trim() || null;
-      return { value, note: value ? null : "No translation in the glossary" };
+      if (value) return { value, note: null };
+      const banned = match.meta.forbidden[targetCulture] ?? [];
+      return {
+        value,
+        note:
+          banned.length > 0
+            ? `No translation in the glossary; avoid ${banned.join(", ")}`
+            : "No translation in the glossary",
+      };
     }
   }
 };
-
-/**
- * Whether the glossary has a rule for this language: Keep and Forbidden always do; a translate
- * term needs an approved value or banned words for the culture. Others can't be followed or
- * broken, so they never count towards "followed".
- */
-const isCheckable = (match: GlossaryMatch, targetCulture: string) =>
-  match.meta.rule !== "translate" ||
-  !!match.meta.translations[targetCulture]?.trim() ||
-  (match.meta.forbidden[targetCulture]?.length ?? 0) > 0;
 
 /** The short problem line under a term; the term row already shows the expected value. */
 const issueText = (violation: GlossaryViolation) => {
@@ -97,7 +96,7 @@ const issueCountText = (count: number) =>
 
 interface ChecklistCounts {
   terms: number;
-  /** Terms the glossary has a rule for in this language (`isCheckable`). */
+  /** Terms the glossary has a rule for in this language (`hasRuleForCulture`). */
   checkable: number;
   issues: number;
 }
@@ -195,7 +194,7 @@ const ChecklistTerm = ({
     Icon,
     className: iconClass,
     label,
-  } = STATUS_ICON[termStatus(isCheckable(match, culture), hasText, violations.length)];
+  } = STATUS_ICON[termStatus(hasRuleForCulture(match.meta, culture), hasText, violations.length)];
   const noteClass = rule === "forbidden" ? "text-error" : "text-low-emphasis";
   return (
     <li className="py-1.5">
@@ -294,7 +293,7 @@ export const GlossaryTargetChecklist = ({
   const language = languageName || targetCulture;
   const counts: ChecklistCounts = {
     terms: terms.length,
-    checkable: terms.filter((match) => isCheckable(match, culture)).length,
+    checkable: terms.filter((match) => hasRuleForCulture(match.meta, culture)).length,
     issues: issueCount,
   };
   const summary = checklistSummary(counts, hasText, language);

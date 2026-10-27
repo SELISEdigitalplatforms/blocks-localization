@@ -260,6 +260,38 @@ describe("edit-translation — glossary-aware suggestions", () => {
       expect(screen.getByText(/Open your/).textContent).toBe("Open your Workspace");
     });
 
+    it("says the terms have approved wording when the glossary has it", async () => {
+      renderFresh({ loadGlossaries: async () => [G1] });
+      await highlight("Workspace");
+      expect(screen.getByText("1 glossary term · select to see the approved wording")).toBeTruthy();
+    });
+
+    it("is honest when the glossary has no wording for the target language", async () => {
+      renderFresh({
+        loadGlossaries: async () => [G1],
+        destinationLanguageCode: "bn-BD",
+        languageListData: [
+          ...unsortedLanguages,
+          { itemId: "l3", languageName: "Bengali", languageCode: "bn-BD" },
+        ],
+      });
+      expect((await highlight("Workspace")).getAttribute("aria-label")).toBe(
+        "Glossary term Workspace: Translate, no Bengali wording in the glossary",
+      );
+      expect(
+        screen.getByText("1 glossary term · no Bengali wording in the glossary yet"),
+      ).toBeTruthy();
+    });
+
+    it("shows plain source text when editing the default language itself", async () => {
+      const loader = vi.fn(async () => [G1]);
+      renderFresh({ loadGlossaries: loader, destinationLanguageCode: "en-US" });
+      await waitFor(() => expect(loader).toHaveBeenCalled());
+      await act(async () => {});
+      expect(screen.queryByRole("button", { name: /Glossary term/ })).toBeNull();
+      expect(screen.queryByText(/glossary term/)).toBeNull();
+    });
+
     it("renders plain source text without toasts when the glossary fails to load (C2)", async () => {
       const loader = vi.fn().mockRejectedValue(new Error("down"));
       renderFresh({ loadGlossaries: loader });

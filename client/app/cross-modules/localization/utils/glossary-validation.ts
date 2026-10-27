@@ -9,6 +9,18 @@ import {
   sanitizePromptText,
 } from "@blocks-localization/utils/translation-prompt";
 
+import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+
+/**
+ * Whether the glossary says anything for this language: Keep and Forbidden always do; a
+ * translate term needs an approved value or banned words for the culture. Without one there
+ * is nothing to apply or check, so UI must not offer Insert or report the term as followed.
+ */
+export const hasRuleForCulture = (meta: GlossaryMeta, culture: string): boolean =>
+  meta.rule !== "translate" ||
+  !!meta.translations[culture]?.trim() ||
+  (meta.forbidden[culture]?.length ?? 0) > 0;
+
 export type GlossaryViolationKind = "missing-translation" | "missing-keep" | "forbidden-used";
 
 export interface GlossaryViolation {

@@ -1083,9 +1083,8 @@ export class TranslationsPage {
 
   /** The open term popover. */
   get termPopover() {
-    return this.page
-      .getByRole("dialog")
-      .filter({ has: this.page.getByRole("button", { name: "Open term" }) });
+    // Named by the popover itself, so it also matches the "Add it in the glossary" state.
+    return this.page.getByRole("dialog", { name: /^Glossary term / });
   }
 
   /** Shows the key in the table by searching for it and expands its inline editor. */

@@ -63,6 +63,7 @@ describe("getGlossaryTermValue", () => {
     });
     expect(getGlossaryTermValue(matchOf(G1).meta, "Workspace", "fr-FR")).toEqual({
       kind: "missing",
+      alsoAvoid: [],
     });
     expect(getGlossaryTermValue(matchOf(G2).meta, "SELISE", "de-DE")).toEqual({
       kind: "keep",
@@ -96,22 +97,47 @@ describe("GlossaryTermPopover", () => {
     await waitFor(() => expect(screen.queryByText("Arbeitsbereich")).toBeNull());
   });
 
-  it("disables Insert and names the missing translation (C3)", async () => {
-    const onInsert = vi.fn();
+  it("offers no dead-end Insert for a missing translation, but a way to add it (C3)", async () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
     render(
       <GlossaryTermPopover
         match={matchOf(G1)}
         targetLanguage={{ languageCode: "fr-FR", languageName: "French" }}
-        onInsert={onInsert}
+        onInsert={vi.fn()}
       >
         <button type="button">Workspace</button>
       </GlossaryTermPopover>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    expect(await screen.findByText("No French translation yet")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Insert" }) as HTMLButtonElement).disabled).toBe(
-      true,
+    expect(
+      await screen.findByText("The glossary has no French translation for this term yet."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Add the French translation in the glossary (opens in a new tab)",
+      }),
     );
+    expect(open).toHaveBeenCalledWith("/app/p1/services/glossary/g1", "_blank", "noopener");
+  });
+
+  it("still lists the banned words of a term without a translation", async () => {
+    const banned = term("g5", "Workspace", {
+      rule: "translate",
+      translations: { "de-DE": "Arbeitsbereich" },
+      forbidden: { "fr-FR": ["Espace boulot"] },
+    });
+    render(
+      <GlossaryTermPopover
+        match={matchOf(banned)}
+        targetLanguage={{ languageCode: "fr-FR", languageName: "French" }}
+      >
+        <button type="button">Workspace</button>
+      </GlossaryTermPopover>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    expect(await screen.findByText("Also avoid")).toBeTruthy();
+    expect(screen.getByText("Espace boulot")).toBeTruthy();
   });
 
   it("shows 'Keep as written' without Insert and ignores a leftover translation (C16)", async () => {

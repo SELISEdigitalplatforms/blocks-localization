@@ -71,6 +71,27 @@ describe("HighlightedSourceText", () => {
   });
 });
 
+describe("HighlightedSourceText without a rule for the target", () => {
+  it("mutes and labels terms the glossary has no wording for in that language", () => {
+    render(
+      <HighlightedSourceText
+        text={SOURCE}
+        matches={matches(SOURCE)}
+        targetLanguage={{ languageCode: "bn-BD", languageName: "Bengali" }}
+      />,
+    );
+    const workspace = screen.getByRole("button", { name: /Glossary term Workspace/ });
+    expect(workspace.getAttribute("aria-label")).toBe(
+      "Glossary term Workspace: Translate, no Bengali wording in the glossary",
+    );
+    expect(workspace.className).toContain("decoration-low-emphasis/50");
+    // Keep and Forbidden apply to every language.
+    const selise = screen.getByRole("button", { name: /Glossary term SELISE/ });
+    expect(selise.getAttribute("aria-label")).toBe("Glossary term SELISE: Keep");
+    expect(selise.className).toContain("decoration-primary/70");
+  });
+});
+
 describe("distinctGlossaryMatches", () => {
   it("keeps the first match of each glossary, in source order", () => {
     const text = "SELISE Workspace, another workspace and SELISE";

@@ -32,8 +32,20 @@ import {
 } from "@blocks-localization/hooks/use-live-glossary-check";
 import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
 import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
+import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
+
+const NO_MATCHES: GlossaryMatch[] = [];
+
+/** The hint next to the source label, honest about what the glossary has for this language. */
+const sourceTermsHint = (termCount: number, withWording: number, language: string) => {
+  const terms = termCount === 1 ? "1 glossary term" : `${termCount} glossary terms`;
+  if (withWording === termCount) return `${terms} · select to see the approved wording`;
+  if (withWording === 0) return `${terms} · no ${language} wording in the glossary yet`;
+  return `${terms} · ${withWording} with ${language} wording`;
+};
 
 interface EditTranslationProps {
   dialogTitle: string;
@@ -202,7 +214,12 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     }
   }
 
-  const termCount = distinctGlossaryMatches(sourceMatches).length;
+  // Editing the default language itself: there is no target wording to look up or apply.
+  const highlightMatches = destinationLanguage?.isDefault ? NO_MATCHES : sourceMatches;
+  const terms = distinctGlossaryMatches(highlightMatches);
+  const termsWithWording = terms.filter((match) =>
+    hasRuleForCulture(match.meta, destinationLanguageCode),
+  ).length;
 
   return (
     <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[700px]">
@@ -218,18 +235,21 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             >
               {defaultLanguage?.languageName} (default)
             </p>
-            {termCount > 0 && (
+            {terms.length > 0 && (
               <p className="flex items-center gap-1.5 text-xs text-low-emphasis">
                 <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {termCount === 1 ? "1 glossary term" : `${termCount} glossary terms`} · select to
-                see the approved wording
+                {sourceTermsHint(
+                  terms.length,
+                  termsWithWording,
+                  destinationLanguage?.languageName || destinationLanguageCode,
+                )}
               </p>
             )}
           </div>
           <DialogDescription className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 px-3 py-2.5 text-left text-sm leading-7 text-high-emphasis">
             <HighlightedSourceText
               text={defaultLanguageText}
-              matches={sourceMatches}
+              matches={highlightMatches}
               targetLanguage={{
                 languageCode: destinationLanguageCode,
                 languageName: destinationLanguage?.languageName ?? "",
