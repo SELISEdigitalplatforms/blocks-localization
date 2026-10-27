@@ -1,4 +1,5 @@
 using Blocks.Genesis;
+using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Utilities;
@@ -22,6 +23,7 @@ namespace BlocksTemplate.Api.Controllers
         private readonly IKeyManagementService _keyManagementService;
         private readonly IValidator<TranslateBlocksLanguageKeyRequest> _translateBlocksLanguageKeyRequestValidator;
         private readonly IValidator<TranslateBlocksLanguageKeysRequest> _translateBlocksLanguageKeysRequestValidator;
+        private readonly IValidator<GetKeysRequest> _getKeysRequestValidator;
 
 
         /// <summary>
@@ -31,15 +33,18 @@ namespace BlocksTemplate.Api.Controllers
         /// <param name="changeControllerContext">The context for changing controller state.</param>
         /// <param name="translateBlocksLanguageKeyRequestValidator">The validator for TranslateBlocksLanguageKeyRequest.</param>
         /// <param name="translateBlocksLanguageKeysRequestValidator">The validator for TranslateBlocksLanguageKeysRequest.</param>
+        /// <param name="getKeysRequestValidator">The validator for GetKeysRequest.</param>
 
         public KeyController(
             IKeyManagementService keyManagementService,
             IValidator<TranslateBlocksLanguageKeyRequest> translateBlocksLanguageKeyRequestValidator,
-            IValidator<TranslateBlocksLanguageKeysRequest> translateBlocksLanguageKeysRequestValidator)
+            IValidator<TranslateBlocksLanguageKeysRequest> translateBlocksLanguageKeysRequestValidator,
+            IValidator<GetKeysRequest> getKeysRequestValidator)
         {
             _keyManagementService = keyManagementService;
             _translateBlocksLanguageKeyRequestValidator = translateBlocksLanguageKeyRequestValidator;
             _translateBlocksLanguageKeysRequestValidator = translateBlocksLanguageKeysRequestValidator;
+            _getKeysRequestValidator = getKeysRequestValidator;
         }
 
         /// <summary>
@@ -74,16 +79,42 @@ namespace BlocksTemplate.Api.Controllers
         /// Retrieves all available keys based on applied filters.
         /// </summary>
         /// <param name="query">The query parameters containing filters for key retrieval.</param>
-        /// <returns>A <see cref="GetKeysQueryResponse"/> containing the filtered list of keys.</returns>
+        /// <returns>A <see cref="GetKeysQueryResponse"/> containing the filtered list of keys; 400 for invalid paging,
+        /// sort, cursor or search input; 503 when the query exceeds its time limit. The error body's
+        /// <c>Errors</c> values are the error codes in <see cref="KeyListErrorCodes"/>.</returns>
         // Read-only, but intentionally POST: the query carries a complex filter body
         // (module, translation status, missing languages, date range, paging) that does not
         // fit safely in a query string. Not cacheable by design.
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
-        public async Task<GetKeysQueryResponse> Gets([FromBody] GetKeysRequest query)
+        public async Task<ActionResult<GetKeysQueryResponse>> Gets([FromBody] GetKeysRequest query)
         {
-            if (query == null) return new GetKeysQueryResponse { Keys = new List<Key>() };
-            return await _keyManagementService.GetKeysAsync(query);
+            if (query == null) return new GetKeysQueryResponse { Keys = new List<Key>(), TotalCount = 0 };
+
+            var validationResult = await _getKeysRequestValidator.ValidateAsync(query);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.First().ErrorCode)
+                });
+            }
+
+            try
+            {
+                return await _keyManagementService.GetKeysAsync(query);
+            }
+            catch (KeyListException ex)
+            {
+                return StatusCode(ex.StatusCode, new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string> { [ex.Field] = ex.ErrorCode }
+                });
+            }
         }
 
         /// <summary>

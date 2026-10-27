@@ -169,6 +169,11 @@ interface UseLanguageTableColumnsOptions {
   selectedOptionalColumns: string[];
   sortQueryParams: SortValue;
   translatingKeys: Set<string>;
+  /**
+   * Overrides the header checkbox's "Select all" label and adds it as a tooltip, e.g. to say that
+   * only the loaded rows of a progressively loaded view are selected.
+   */
+  selectAllLabel?: string;
 }
 
 const buildLanguageColumns = (
@@ -224,6 +229,7 @@ export const useLanguageTableColumns = ({
   selectedOptionalColumns,
   sortQueryParams,
   translatingKeys,
+  selectAllLabel,
 }: UseLanguageTableColumnsOptions) => {
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
@@ -238,7 +244,8 @@ export const useLanguageTableColumns = ({
             <Checkbox
               checked={checked}
               onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="Select all"
+              aria-label={selectAllLabel ?? "Select all"}
+              title={selectAllLabel}
             />
           );
         },
@@ -393,6 +400,7 @@ export const useLanguageTableColumns = ({
       selectedOptionalColumns,
       sortQueryParams,
       translatingKeys,
+      selectAllLabel,
     ],
   );
 };

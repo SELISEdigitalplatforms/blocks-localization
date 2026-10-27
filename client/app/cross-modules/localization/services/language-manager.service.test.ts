@@ -62,6 +62,35 @@ describe("LanguageManagerService", () => {
           pageNumber: 0,
           pageSize: 25,
         }),
+        undefined,
+        { signal: undefined },
+      );
+    });
+
+    it("should send the keyset cursor and count flag and pass the abort signal through", async () => {
+      vi.mocked(http.post).mockResolvedValue({ totalCount: null, keys: [], nextCursor: null });
+      const controller = new AbortController();
+
+      await service.fetchBlocksLanguageKey(
+        {
+          pageNumber: 0,
+          pageSize: 100,
+          searchKey: "",
+          moduleIds: [],
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          cursor: "abc",
+          includeTotalCount: false,
+        },
+        { signal: controller.signal },
+      );
+
+      expect(http.post).toHaveBeenCalledWith(
+        LANGUAGE_KEY_ENDPOINTS.GETS,
+        expect.objectContaining({ cursor: "abc", includeTotalCount: false, pageSize: 100 }),
+        undefined,
+        { signal: controller.signal },
       );
     });
 

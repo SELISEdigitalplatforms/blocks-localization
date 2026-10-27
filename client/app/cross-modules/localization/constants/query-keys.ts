@@ -1,3 +1,18 @@
+/** Filters of the "All" view's chunked list; each one is part of its query key. */
+export interface LanguageKeyInfiniteFilters {
+  searchKey: string;
+  moduleIds: string[];
+  sortProperty: string;
+  isDescending: boolean;
+  createStartDate: string;
+  createEndDate: string;
+  lastUpdateStartDate: string;
+  lastUpdateEndDate: string;
+  resourceSearchFilters: { culture: string; searchText: string }[];
+  missingLanguages: string[];
+  onlyDuplicates?: boolean;
+}
+
 export const localizationQueryKeys = {
   languageKeys: {
     all: ["get-blocksLanguageKeys"] as const,
@@ -36,6 +51,43 @@ export const localizationQueryKeys = {
         JSON.stringify(missingLanguages),
         onlyDuplicates,
       ] as const,
+    /**
+     * The "All" view's chunked list. Under the `all` prefix so broad invalidation still reaches it;
+     * the `infinite` marker lets mutations patch or reset it instead of refetching every loaded chunk.
+     */
+    infinite: (
+      tenantId: string,
+      {
+        searchKey,
+        moduleIds,
+        sortProperty,
+        isDescending,
+        createStartDate,
+        createEndDate,
+        lastUpdateStartDate,
+        lastUpdateEndDate,
+        resourceSearchFilters,
+        missingLanguages,
+        onlyDuplicates = false,
+      }: LanguageKeyInfiniteFilters,
+    ) =>
+      [
+        "get-blocksLanguageKeys",
+        "infinite",
+        tenantId,
+        searchKey,
+        JSON.stringify(moduleIds),
+        sortProperty,
+        isDescending,
+        createStartDate,
+        createEndDate,
+        lastUpdateStartDate,
+        lastUpdateEndDate,
+        JSON.stringify(resourceSearchFilters),
+        JSON.stringify(missingLanguages),
+        onlyDuplicates,
+      ] as const,
+    infinitePrefix: ["get-blocksLanguageKeys", "infinite"] as const,
     // Sits under `all`, so every key save or delete that refreshes the list refreshes the summary too.
     duplicateSummary: (tenantId: string) =>
       ["get-blocksLanguageKeys", "duplicate-summary", tenantId] as const,

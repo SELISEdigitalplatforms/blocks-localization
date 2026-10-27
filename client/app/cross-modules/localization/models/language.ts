@@ -33,6 +33,17 @@ export interface IResource {
   culture: string;
 }
 
+/** Key/Gets response. `totalCount` is null only when the request set `includeTotalCount: false`. */
+export interface IBlocksLanguageKeyResponse {
+  totalCount: number | null;
+  keys: IBlocksLanguageKey[];
+  /** Keyset token for the rows after this page; null on the last page. */
+  nextCursor?: string | null;
+  hasMore?: boolean;
+  /** True when the duplicates filter was on and the duplicate rows exceeded the server's cap. */
+  duplicatesTruncated?: boolean;
+}
+
 export interface ISaveBlocksLanguageKeyPayload {
   itemId: string;
   keyName: string;

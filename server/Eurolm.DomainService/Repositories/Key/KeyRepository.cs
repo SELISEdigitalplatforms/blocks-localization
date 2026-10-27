@@ -1,5 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Linq.Expressions;
@@ -10,13 +12,19 @@ namespace Eurolm.DomainService.Repositories
     public class KeyRepository : IKeyRepository
     {
         private readonly IDbContextProvider _dbContextProvider;
+        private readonly ILogger<KeyRepository> _logger;
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
         private const string KeyNameField = "KeyName";
 
-        public KeyRepository(IDbContextProvider dbContextProvider)
+        public const int DefaultKeyPageSize = 10;
+        public const int MaxKeyPageSize = 1000;
+        public static readonly TimeSpan KeyListQueryMaxTime = TimeSpan.FromSeconds(15);
+
+        public KeyRepository(IDbContextProvider dbContextProvider, ILogger<KeyRepository>? logger = null)
         {
             _dbContextProvider = dbContextProvider;
+            _logger = logger ?? NullLogger<KeyRepository>.Instance;
         }
 
 
@@ -59,14 +67,26 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<GetKeysQueryResponse> GetAllKeysAsync(GetKeysRequest request)
         {
-            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
             var collection = dataBase.GetCollection<Key>(_collectionName);
+            _ = KeyIndexInitializer.EnsureStarted(tenantId, collection, _logger);
+
+            var pageSize = request.PageSize <= 0 ? DefaultKeyPageSize : Math.Min(request.PageSize, MaxKeyPageSize);
+            var sortField = KeyListCursor.ResolveSortField(request.SortProperty)
+                ?? throw new KeyListException(KeyListErrorCodes.InvalidSortProperty, nameof(GetKeysRequest.SortProperty));
+            var isDescending = request.IsDescending;
 
             var filter = getAllKeysFilter(request);
+            var filterHash = KeyListCursor.ComputeFilterHash(filter, sortField, isDescending);
 
-            var hasSortProperty = !string.IsNullOrWhiteSpace(request.SortProperty);
-            var sortProperty = hasSortProperty ? request.SortProperty : KeyNameField;
-            var sort = hasSortProperty && request.IsDescending ? Builders<Key>.Sort.Descending(sortProperty) : Builders<Key>.Sort.Ascending(sortProperty);
+            // Validate the cursor before touching the database so a bad token never costs a query.
+            var cursor = DecodeCursor(request, filterHash, sortField, isDescending);
+
+            // _id breaks ties so rows sharing a sort value (bulk imports stamp identical dates) keep a stable order across pages.
+            var sort = isDescending
+                ? Builders<Key>.Sort.Descending(sortField).Descending(k => k.ItemId)
+                : Builders<Key>.Sort.Ascending(sortField).Ascending(k => k.ItemId);
 
             var duplicatesTruncated = false;
             if (request.OnlyDuplicates)
@@ -75,35 +95,83 @@ namespace Eurolm.DomainService.Repositories
                 duplicatesTruncated = truncated;
                 filter = Builders<Key>.Filter.And(filter, Builders<Key>.Filter.In(k => k.ItemId, ids));
 
-                // Copies of the same key sit next to each other unless the caller chose a sort. Either
-                // way the tie-breakers keep paging stable and copies of one key in order.
-                var primary = !hasSortProperty
-                    ? Builders<Key>.Sort.Ascending(k => k.KeyName)
-                    : sort;
+                // Copies of the same key sit next to each other under the chosen sort, and the
+                // tie-breakers keep paging stable and copies of one key in order.
                 sort = Builders<Key>.Sort.Combine(
-                    primary,
+                    isDescending ? Builders<Key>.Sort.Descending(sortField) : Builders<Key>.Sort.Ascending(sortField),
                     Builders<Key>.Sort.Ascending(k => k.ModuleId),
                     Builders<Key>.Sort.Ascending(k => k.CreateDate),
                     Builders<Key>.Sort.Ascending(k => k.ItemId));
             }
 
-            var findKeysTask = collection
-                .Find(filter)
-                .Skip(request.PageNumber * request.PageSize)
-                .Limit(request.PageSize)
-                .Sort(sort)
-                .ToListAsync();
-
-            var countDocumentsTask = collection.CountDocumentsAsync(filter);
-
-            await Task.WhenAll(findKeysTask, countDocumentsTask);
-
-            return new GetKeysQueryResponse
+            var find = collection
+                .Find(cursor == null ? filter : filter & cursor.AfterFilter(), new FindOptions { MaxTime = KeyListQueryMaxTime });
+            if (cursor == null)
             {
-                Keys = findKeysTask.Result,
-                TotalCount = countDocumentsTask.Result,
-                DuplicatesTruncated = duplicatesTruncated
-            };
+                // Computed in long so a huge PageNumber cannot overflow into a negative Skip.
+                var skip = (long)Math.Max(request.PageNumber, 0) * pageSize;
+                find = find.Skip((int)Math.Min(skip, int.MaxValue));
+            }
+
+            try
+            {
+                // One extra row tells us whether another page exists without a second query.
+                var findKeysTask = find.Limit(pageSize + 1).Sort(sort).ToListAsync();
+                var countDocumentsTask = request.IncludeTotalCount == false
+                    ? Task.FromResult<long?>(null)
+                    : CountAsync(collection, filter);
+
+                await Task.WhenAll(findKeysTask, countDocumentsTask);
+
+                var keys = findKeysTask.Result;
+                string? nextCursor = null;
+                if (keys.Count > pageSize)
+                {
+                    keys.RemoveRange(pageSize, keys.Count - pageSize);
+                    if (!request.OnlyDuplicates)
+                    {
+                        nextCursor = KeyListCursor.Encode(keys[^1], sortField, isDescending, filterHash);
+                    }
+                }
+
+                return new GetKeysQueryResponse
+                {
+                    Keys = keys,
+                    TotalCount = countDocumentsTask.Result,
+                    NextCursor = nextCursor,
+                    DuplicatesTruncated = duplicatesTruncated
+                };
+            }
+            catch (MongoExecutionTimeoutException ex)
+            {
+                // Search text is user content; only the tenant and the filter hash are logged.
+                _logger.LogWarning(ex, "Key list query exceeded {MaxTime} for tenant {TenantId}, filter {FilterHash}", KeyListQueryMaxTime, tenantId, filterHash);
+                throw new KeyListException(KeyListErrorCodes.QueryTimeout, "Query", 503, ex);
+            }
+        }
+
+        /// <summary>
+        /// The request's keyset cursor, or null when it pages by number.
+        /// </summary>
+        /// <exception cref="KeyListException">
+        /// INVALID_CURSOR for a malformed token; CURSOR_MISMATCH when it was issued for another filter
+        /// or sort, or sent with the duplicates filter.
+        /// </exception>
+        private static KeyListCursor? DecodeCursor(GetKeysRequest request, string filterHash, string sortField, bool isDescending)
+        {
+            var cursor = string.IsNullOrEmpty(request.Cursor) ? null : KeyListCursor.Decode(request.Cursor);
+            if (cursor != null && (request.OnlyDuplicates || cursor.FilterHash != filterHash || cursor.SortField != sortField || cursor.IsDescending != isDescending))
+            {
+                // The duplicates view pages by offset (its order is not a keyset), so it never takes a cursor.
+                throw new KeyListException(KeyListErrorCodes.CursorMismatch, nameof(GetKeysRequest.Cursor));
+            }
+
+            return cursor;
+        }
+
+        private static async Task<long?> CountAsync(IMongoCollection<Key> collection, FilterDefinition<Key> filter)
+        {
+            return await collection.CountDocumentsAsync(filter, new CountOptions { MaxTime = KeyListQueryMaxTime });
         }
 
         public const int DuplicateKeyIdCap = 10_000;
@@ -175,7 +243,7 @@ namespace Eurolm.DomainService.Repositories
                         var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
                             Builders<Resource>.Filter.And(
                                 Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
-                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{resourceFilter.SearchText}.*", "i"))
+                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
                             ));
                         matchFilters.Add(cultureAndValueFilter);
                     }
