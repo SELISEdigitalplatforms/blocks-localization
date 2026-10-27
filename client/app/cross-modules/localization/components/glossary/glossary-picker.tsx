@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, LoaderCircle, Plus, X } from "lucide-react";
+import { Check, ChevronsUpDown, CircleHelp, LoaderCircle, Plus, Search, X } from "lucide-react";
 
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
@@ -14,6 +14,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
@@ -81,7 +82,7 @@ const GlossaryResultRow = ({
         )}
       </div>
       <Check
-        className={selected ? "mt-0.5 h-4 w-4 shrink-0" : "mt-0.5 h-4 w-4 shrink-0 opacity-0"}
+        className={cn("mt-0.5 h-4 w-4 shrink-0 text-primary", !selected && "opacity-0")}
         aria-hidden="true"
       />
     </div>
@@ -91,12 +92,28 @@ const GlossaryResultRow = ({
 interface SelectedChipProps {
   label: string;
   loading?: boolean;
+  /** The id couldn't be resolved (C7): still removable, but visibly not a real name. */
+  unresolved?: boolean;
   disabled?: boolean;
   onRemove: () => void;
 }
 
-const SelectedChip = ({ label, loading = false, disabled, onRemove }: SelectedChipProps) => (
-  <Badge variant="secondary" className="max-w-full gap-1 pr-1">
+const SelectedChip = ({
+  label,
+  loading = false,
+  unresolved = false,
+  disabled,
+  onRemove,
+}: SelectedChipProps) => (
+  <Badge
+    variant="secondary"
+    className={cn(
+      "h-7 max-w-full gap-1 rounded-full py-0 pl-2.5 pr-1 font-medium",
+      unresolved &&
+        "border-dashed border-border-medium-emphasis bg-transparent text-medium-emphasis",
+    )}
+  >
+    {unresolved && <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
     {loading ? (
       <Skeleton className="h-3 w-16" aria-label="Loading glossary" />
     ) : (
@@ -156,6 +173,7 @@ const GlossaryPicker = ({
     data: searchResults,
     isLoading: isSearching,
     isError: isSearchError,
+    refetch: retrySearch,
   } = useSearchGlossaries(searchText, open);
   const { data: languages } = useGetLanguages();
   const results = searchResults?.items ?? NO_RESULTS;
@@ -227,10 +245,23 @@ const GlossaryPicker = ({
     resolvedById.get(id)?.name ??
     (failedIds.has(id) ? "Unknown glossary" : "");
 
+  const trimmedQuery = query.trim();
+  // Create stays reachable when the search only finds near matches ("Work" → "Workspace").
+  // The sheet's duplicate check covers case variants of an existing name (H15).
+  const canCreate =
+    allowCreate &&
+    !!trimmedQuery &&
+    !results.some((glossary) => glossary.name.toLowerCase() === trimmedQuery.toLowerCase());
+
   const renderResults = () => {
     if (isSearchError) {
       return (
-        <p className="px-3 py-6 text-center text-sm text-error">Couldn&apos;t search glossaries</p>
+        <div role="alert" className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+          <p className="text-sm text-error">Couldn&apos;t search glossaries</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void retrySearch()}>
+            Try again
+          </Button>
+        </div>
       );
     }
     if (isSearching) {
@@ -243,37 +274,39 @@ const GlossaryPicker = ({
     }
     return (
       <>
-        <CommandEmpty className="px-3 py-4 text-center text-sm">
-          {allowCreate && query.trim() ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={startCreate}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="truncate">Create &quot;{query.trim()}&quot;</span>
-            </Button>
-          ) : (
-            "No glossary found."
-          )}
+        <CommandEmpty className="px-3 py-6 text-center text-sm text-medium-emphasis">
+          {trimmedQuery ? `No glossary terms match "${trimmedQuery}".` : "No glossary terms yet."}
         </CommandEmpty>
-        <CommandGroup>
-          {results.map((glossary) => (
+        {results.length > 0 && (
+          <CommandGroup>
+            {results.map((glossary) => (
+              <CommandItem
+                key={glossary.itemId}
+                value={glossary.itemId}
+                className="py-2"
+                onSelect={() => toggle(glossary)}
+              >
+                <GlossaryResultRow
+                  glossary={glossary}
+                  languages={languages}
+                  selected={selectedIds.includes(glossary.itemId)}
+                />
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        {canCreate && (
+          <CommandGroup className={results.length > 0 ? "border-t border-border" : undefined}>
             <CommandItem
-              key={glossary.itemId}
-              value={glossary.itemId}
-              onSelect={() => toggle(glossary)}
+              value={`create:${trimmedQuery}`}
+              className="gap-2 py-2 text-primary"
+              onSelect={startCreate}
             >
-              <GlossaryResultRow
-                glossary={glossary}
-                languages={languages}
-                selected={selectedIds.includes(glossary.itemId)}
-              />
+              <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Create &quot;{trimmedQuery}&quot;</span>
             </CommandItem>
-          ))}
-        </CommandGroup>
+          </CommandGroup>
+        )}
       </>
     );
   };
@@ -281,19 +314,25 @@ const GlossaryPicker = ({
   return (
     <div className="flex flex-col gap-4">
       {selectedIds.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {selectedIds.map((id) => {
-            const label = chipLabel(id);
-            return (
-              <SelectedChip
-                key={id}
-                label={label || "glossary"}
-                loading={!label}
-                disabled={disabled}
-                onRemove={() => remove(id)}
-              />
-            );
-          })}
+        <div className="grid gap-2">
+          <p className="text-xs font-medium text-medium-emphasis">
+            Selected ({selectedIds.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedIds.map((id) => {
+              const label = chipLabel(id);
+              return (
+                <SelectedChip
+                  key={id}
+                  label={label || "glossary"}
+                  loading={!label}
+                  unresolved={failedIds.has(id) && !known.has(id) && !resolvedById.has(id)}
+                  disabled={disabled}
+                  onRemove={() => remove(id)}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -306,11 +345,14 @@ const GlossaryPicker = ({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between font-normal"
+              className="w-full justify-start gap-2 font-normal text-low-emphasis"
               disabled={disabled}
             >
-              Search glossary...
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
+              <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {allowCreate ? "Search or create glossary terms…" : "Search glossary terms…"}
+              </span>
+              <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
             </Button>
           </PopoverTrigger>
           <PopoverContent

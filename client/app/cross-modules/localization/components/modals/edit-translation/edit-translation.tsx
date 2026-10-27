@@ -10,7 +10,7 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
-import { Wand } from "lucide-react";
+import { BookOpen, LoaderCircle, Wand } from "lucide-react";
 import {
   IBlocksLanguageKey,
   IGlossary,
@@ -22,7 +22,10 @@ import {
   GlossaryUnavailableNote,
   useGlossarySuggestionRows,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
-import { HighlightedSourceText } from "@blocks-localization/components/glossary/highlighted-source-text";
+import {
+  distinctGlossaryMatches,
+  HighlightedSourceText,
+} from "@blocks-localization/components/glossary/highlighted-source-text";
 import {
   useApplicableGlossaryMatches,
   useLoadedGlossaries,
@@ -199,15 +202,31 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     }
   }
 
+  const termCount = distinctGlossaryMatches(sourceMatches).length;
+
   return (
-    <DialogContent className="rounded-md sm:max-w-[700px]">
+    <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[700px]">
       <DialogHeader>
         <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
-        <div className="py-4 text-left">
-          <p className="mb-2 text-[14px] text-low-emphasis">
-            Default value ({defaultLanguage?.languageName})
-          </p>
-          <DialogDescription className="text-high-emphasis">
+      </DialogHeader>
+      <div className="grid min-w-0 gap-5">
+        <section aria-labelledby="edit-translation-source-label" className="grid gap-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p
+              id="edit-translation-source-label"
+              className="text-sm font-medium text-medium-emphasis"
+            >
+              {defaultLanguage?.languageName} (default)
+            </p>
+            {termCount > 0 && (
+              <p className="flex items-center gap-1.5 text-xs text-low-emphasis">
+                <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {termCount === 1 ? "1 glossary term" : `${termCount} glossary terms`} · select to
+                see the approved wording
+              </p>
+            )}
+          </div>
+          <DialogDescription className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 px-3 py-2.5 text-left text-sm leading-7 text-high-emphasis">
             <HighlightedSourceText
               text={defaultLanguageText}
               matches={sourceMatches}
@@ -218,40 +237,45 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               onInsert={destinationLanguage?.isDefault ? undefined : insert}
             />
           </DialogDescription>
-          <div className="mt-3 flex justify-between">
-            <Label htmlFor="configName" className="mt-3 text-left font-medium text-high-emphasis">
-              {destinationLanguage?.languageName} Translation
-            </Label>
-            <div className="flex gap-2">
-              {/* <Button size="sm" variant="outline" className="gap-2">
-              <Bolt className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Configure auto translation
-              </span>
-            </Button> */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2"
-                disabled={isAutoTranslateLoading || destinationLanguage?.isDefault}
-                onClick={autoTranslate}
-              >
-                <Wand className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Auto-Translate</span>
-              </Button>
-            </div>
-          </div>
-          {glossaryRow.glossaryUnavailable && <GlossaryUnavailableNote className="mt-2" />}
+        </section>
 
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label
+              htmlFor="destinationLanguageText"
+              className="text-sm font-medium text-high-emphasis"
+            >
+              {destinationLanguage?.languageName} translation
+            </Label>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              aria-label="Auto-Translate"
+              disabled={isAutoTranslateLoading || destinationLanguage?.isDefault}
+              onClick={autoTranslate}
+            >
+              {isAutoTranslateLoading ? (
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Wand className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              <span className="hidden whitespace-nowrap sm:inline">
+                {isAutoTranslateLoading ? "Translating…" : "Auto-Translate"}
+              </span>
+            </Button>
+          </div>
+          {glossaryRow.glossaryUnavailable && <GlossaryUnavailableNote />}
           <Textarea
             id="destinationLanguageText"
-            className="border-default col-span-3 mt-1 min-h-[116px] border shadow-none"
+            className="border-default min-h-[116px] border shadow-none"
             placeholder="Enter translation"
             value={translation}
             {...bindTarget(destinationLanguageCode)}
             onChange={(e) => editTranslation(e.target.value)}
           />
           <GlossaryTargetChecks
+            className="mt-0"
             row={glossaryRow}
             targetText={translation}
             targetCulture={destinationLanguageCode}
@@ -265,15 +289,15 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             onLiveFix={editTranslation}
           />
         </div>
-      </DialogHeader>
-      <DialogFooter className="mt-[-14px] flex gap-2">
+      </div>
+      <DialogFooter className="gap-2 sm:gap-2">
         <DialogClose asChild>
           <Button variant="outline" size="default">
             Cancel
           </Button>
         </DialogClose>
         <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
-          Save
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </DialogContent>

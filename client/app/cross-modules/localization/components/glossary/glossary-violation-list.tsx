@@ -16,6 +16,7 @@ import {
   applyFix,
   canApplyFix,
   formatViolationMessage,
+  getFixReplacement,
   GlossaryViolation,
   validateTranslation,
 } from "@blocks-localization/utils/glossary-validation";
@@ -140,39 +141,65 @@ export const GlossaryViolationList = ({
   className,
 }: GlossaryViolationListProps) => {
   const hasViolations = violations.length > 0;
+  const count = violations.length;
   return (
-    <output aria-live="polite" className={hasViolations ? cn("mt-2 block", className) : "sr-only"}>
+    <output
+      aria-live="polite"
+      className={
+        hasViolations
+          ? cn("mt-2 block rounded-md border border-warning-200 bg-warning-50 px-3 py-2", className)
+          : "sr-only"
+      }
+    >
       {hasViolations && (
-        <ul className="space-y-1">
-          {violations.map((violation) => {
-            const fixable = canApplyFix(violation, matches, targetCulture);
-            const showAction = fixable || !!onRetry;
-            return (
-              <li key={violationKey(violation)} className="flex items-center gap-2">
-                <TriangleAlert className="h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
-                <span className="text-sm text-high-emphasis">
-                  {formatViolationMessage(violation)}
-                </span>
-                {showAction && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="h-auto px-1 py-0"
-                    disabled={disabled}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (fixable) onFix(violation);
-                      else onRetry?.();
-                    }}
-                  >
-                    {fixable ? "Fix" : "Retry"}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <p className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning-700" aria-hidden="true" />
+            <span className="font-semibold text-high-emphasis">
+              {count === 1 ? "1 glossary issue" : `${count} glossary issues`}
+            </span>
+            <span className="text-medium-emphasis">You can still save.</span>
+          </p>
+          <ul className="space-y-1.5">
+            {violations.map((violation) => {
+              const replacement = getFixReplacement(violation, matches, targetCulture);
+              const fixable = canApplyFix(violation, matches, targetCulture);
+              const showAction = fixable || !!onRetry;
+              return (
+                <li key={violationKey(violation)} className="flex items-start gap-2">
+                  <span
+                    className="mt-2 h-1 w-1 shrink-0 rounded-full bg-warning-700"
+                    aria-hidden="true"
+                  />
+                  <p className="min-w-0 flex-1 break-words">
+                    <span className="text-sm text-high-emphasis">
+                      {formatViolationMessage(violation)}
+                    </span>
+                    {fixable && replacement && (
+                      <span className="text-sm text-medium-emphasis"> · use “{replacement}”</span>
+                    )}
+                  </p>
+                  {showAction && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 bg-background px-2.5 text-xs"
+                      disabled={disabled}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (fixable) onFix(violation);
+                        else onRetry?.();
+                      }}
+                    >
+                      {fixable ? "Fix" : "Retry"}
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </output>
   );

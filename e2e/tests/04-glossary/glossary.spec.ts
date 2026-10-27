@@ -485,7 +485,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           timeout: 15_000,
         });
         await modules.searchInTagPicker(names.created);
-        await tagDialog.getByRole("button", { name: `Create "${names.created}"` }).click();
+        await tagDialog.getByRole("option", { name: `Create "${names.created}"` }).click();
         await expect(glossary.editorSheet).toBeVisible();
         await expect(glossary.editorSheet.getByRole("textbox", { name: "Name *" })).toHaveValue(
           names.created,
@@ -582,7 +582,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           timeout: 15_000,
         });
         await modules.searchInTagPicker(`${names.second}-nomatch`);
-        await tagDialog.getByRole("button", { name: `Create "${names.second}-nomatch"` }).click();
+        await tagDialog.getByRole("option", { name: `Create "${names.second}-nomatch"` }).click();
         const nameField = glossary.editorSheet.getByRole("textbox", { name: "Name *" });
         await nameField.fill(names.second.toLowerCase());
         await expect(page.getByText(`'${names.second}' already exists.`)).toBeVisible({
@@ -597,7 +597,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
 
         // C18: Escape inside the sheet closes only the sheet.
         await modules.searchInTagPicker(`${names.created}-again`);
-        await tagDialog.getByRole("button", { name: `Create "${names.created}-again"` }).click();
+        await tagDialog.getByRole("option", { name: `Create "${names.created}-again"` }).click();
         await glossary.editorSheet.getByRole("textbox", { name: "Name *" }).click();
         await page.keyboard.press("Escape");
         await expect(glossary.editorSheet).toHaveCount(0);
@@ -685,7 +685,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         await page.getByRole("button", { name: "Tag Glossary" }).click();
         await keyTagDialog.getByRole("button", { name: `Remove ${names.second}` }).click();
         const payload = await translations.captureKeySave(() =>
-          keyTagDialog.getByRole("button", { name: "Update" }).click(),
+          keyTagDialog.getByRole("button", { name: "Save" }).click(),
         );
         expect(payload).toMatchObject({
           itemId: ids.key,

@@ -255,7 +255,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
 
     it("labels and highlights the isDefault source even when it is listed second (C20, H1)", async () => {
       renderFresh({ loadGlossaries: async () => [G1] });
-      expect(screen.getByText("Default value (English)")).toBeTruthy();
+      expect(screen.getByText("English (default)")).toBeTruthy();
       expect((await highlight("Workspace")).textContent).toBe("Workspace");
       expect(screen.getByText(/Open your/).textContent).toBe("Open your Workspace");
     });

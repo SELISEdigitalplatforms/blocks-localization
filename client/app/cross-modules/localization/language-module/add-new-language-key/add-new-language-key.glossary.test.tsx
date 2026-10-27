@@ -250,7 +250,7 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
 
       fireEvent.focus(translationFields()[1]);
       fireEvent.click(await chip("Workspace"));
-      expect(await screen.findByText("No fr-FR translation")).toBeTruthy();
+      expect(await screen.findByText("No French translation yet")).toBeTruthy();
       expect(
         (screen.getByRole("button", { name: "Insert into French" }) as HTMLButtonElement).disabled,
       ).toBe(true);

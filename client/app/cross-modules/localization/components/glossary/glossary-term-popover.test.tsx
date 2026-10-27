@@ -108,7 +108,7 @@ describe("GlossaryTermPopover", () => {
       </GlossaryTermPopover>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    expect(await screen.findByText("No fr-FR translation")).toBeTruthy();
+    expect(await screen.findByText("No French translation yet")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Insert" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -128,7 +128,8 @@ describe("GlossaryTermPopover", () => {
     renderPopover(matchOf(G3));
     fireEvent.click(screen.getByRole("button", { name: "Dashboard" }));
     expect(await screen.findByText("Do not use")).toBeTruthy();
-    expect(screen.getByText("Also avoid: Kontrollzentrum")).toBeTruthy();
+    expect(screen.getByText("Also avoid")).toBeTruthy();
+    expect(screen.getByText("Kontrollzentrum")).toBeTruthy();
     expect(screen.queryByText("Armaturenbrett")).toBeNull();
     expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
   });
@@ -143,7 +144,7 @@ describe("GlossaryTermPopover", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     renderPopover(matchOf(G1));
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open term" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open term (opens in a new tab)" }));
     expect(open).toHaveBeenCalledWith("/app/p1/services/glossary/g1", "_blank", "noopener");
   });
 

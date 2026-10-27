@@ -307,7 +307,7 @@ describe("modals/edit-key-glossary", () => {
         />,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
   });
@@ -337,7 +337,7 @@ describe("modals/edit-key-glossary", () => {
       ),
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove Widget" }));
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(saveKeyAsync.mock.calls[0][0]).toEqual({
       itemId: tagged.itemId,

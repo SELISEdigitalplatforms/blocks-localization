@@ -48,7 +48,7 @@ export const HighlightedSourceText = ({
         <button
           type="button"
           aria-label={termLabel(match)}
-          className="rounded-sm bg-transparent p-0 text-inherit underline decoration-warning-500 decoration-dotted decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="cursor-pointer rounded-sm bg-transparent p-0 text-inherit underline decoration-primary/70 decoration-dotted decoration-2 underline-offset-4 transition-colors hover:bg-primary/10 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-primary/10 data-[state=open]:decoration-primary"
         >
           {text.slice(match.start, match.start + match.length)}
         </button>
@@ -94,7 +94,12 @@ export const GlossaryTermChips = ({
   const targetLanguage = getTargetLanguage();
   return (
     <div className={className}>
-      <p className="mb-1 text-xs text-medium-emphasis">Glossary terms</p>
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <p className="text-xs font-medium text-medium-emphasis">Glossary terms</p>
+        {onInsert && targetLanguage?.languageName && (
+          <p className="text-xs text-low-emphasis">Insert goes to {targetLanguage.languageName}</p>
+        )}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {distinct.map((match) => (
           <GlossaryTermPopover
@@ -108,12 +113,12 @@ export const GlossaryTermChips = ({
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1 px-2 text-xs"
+              className="h-7 max-w-full gap-1.5 rounded-full px-2.5 text-xs font-normal text-high-emphasis data-[state=open]:border-primary data-[state=open]:bg-primary/10"
               aria-label={termLabel(match)}
               onClick={(event) => event.stopPropagation()}
             >
-              <GlossaryRuleIcon rule={match.meta.rule} />
-              {match.surface}
+              <GlossaryRuleIcon rule={match.meta.rule} className="text-medium-emphasis" />
+              <span className="truncate">{match.surface}</span>
             </Button>
           </GlossaryTermPopover>
         ))}

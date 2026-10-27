@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
+import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import {
   useGetAllModuleGlossaries,
   useTagGlossary,
@@ -105,14 +107,26 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
       );
     }
     return (
-      <output className="block text-sm text-medium-emphasis">Loading tagged glossaries…</output>
+      <div className="grid gap-3">
+        <output className="block text-sm text-medium-emphasis">Loading tagged glossaries…</output>
+        <div className="flex gap-1.5" aria-hidden="true">
+          <Skeleton className="h-7 w-24 rounded-full" />
+          <Skeleton className="h-7 w-32 rounded-full" />
+          <Skeleton className="h-7 w-20 rounded-full" />
+        </div>
+        <Skeleton className="h-10 w-full" aria-hidden="true" />
+      </div>
     );
   };
 
   return (
     <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[520px]">
-      <DialogHeader className="space-y-3">
+      <DialogHeader className="space-y-1.5">
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
+        <DialogDescription className="text-left text-sm text-medium-emphasis">
+          Tagged terms guide AI translation and glossary checks for every key in{" "}
+          <span className="font-medium text-high-emphasis">{module.moduleName}</span>.
+        </DialogDescription>
       </DialogHeader>
 
       <div className="min-w-0">{renderSeedState()}</div>
@@ -134,7 +148,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
           size="default"
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </DialogContent>

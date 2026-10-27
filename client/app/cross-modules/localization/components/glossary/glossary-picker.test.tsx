@@ -219,7 +219,7 @@ describe("GlossaryPicker", () => {
     const startCreate = async (query: string) => {
       openPicker();
       typeQuery(query);
-      fireEvent.click(await screen.findByRole("button", { name: `Create "${query}"` }));
+      fireEvent.click(await screen.findByRole("option", { name: `Create "${query}"` }));
       return screen.findByPlaceholderText("Enter glossary name");
     };
 

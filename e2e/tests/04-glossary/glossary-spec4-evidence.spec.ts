@@ -260,7 +260,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
             await expect(tagDialog.getByRole("option").first()).toBeVisible({ timeout: 15_000 });
             await shoot(page, testInfo, `picker-results-and-chips-${suffix}`);
             await modules.searchInTagPicker(`zzz-none-${fixtures.tag}`);
-            await expect(tagDialog.getByRole("button", { name: /^Create "zzz-none-/ })).toBeVisible(
+            await expect(tagDialog.getByRole("option", { name: /^Create "zzz-none-/ })).toBeVisible(
               { timeout: 15_000 },
             );
             await shoot(page, testInfo, `picker-empty-create-${suffix}`);

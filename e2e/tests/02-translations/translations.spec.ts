@@ -627,7 +627,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         );
         await translations.openEditTranslation(target.languageName);
         // C20: the label names the isDefault language.
-        await expect(dialog.getByText(`Default value (${source.languageName})`)).toBeVisible();
+        await expect(dialog.getByText(`${source.languageName} (default)`)).toBeVisible();
         await translations.clickAutoTranslateInDialog();
         // H6: the retry's non-empty content fills the field.
         await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
@@ -826,14 +826,14 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await tagDialog.getByRole("combobox").click();
         await tagDialog.getByPlaceholder("Search glossary...").fill(names.gu);
         await tagDialog.getByRole("option", { name: names.gu }).click();
-        // The picker is multi-select and stays open over the footer; close it before Update.
+        // The picker is multi-select and stays open over the footer; close it before Save.
         // Escape closes only the picker's popover; the dialog stays open.
         const pickerSearch = tagDialog.getByPlaceholder("Search glossary...");
         await pickerSearch.press("Escape");
         await expect(pickerSearch).toBeHidden();
         await expect(tagDialog).toBeVisible();
         const payload = await translations.captureKeySave(() =>
-          tagDialog.getByRole("button", { name: "Update" }).click(),
+          tagDialog.getByRole("button", { name: "Save", exact: true }).click(),
         );
         expect(payload.glossaryIds).toEqual([ids.gu]);
         await expect(page.getByText("Glossary updated successfully", { exact: true })).toBeVisible({

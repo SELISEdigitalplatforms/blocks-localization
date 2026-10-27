@@ -3,6 +3,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -71,8 +72,12 @@ function EditKeyGlossaryBody({
 
   return (
     <>
-      <DialogHeader className="space-y-3">
+      <DialogHeader className="space-y-1.5">
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
+        <DialogDescription className="text-left text-sm text-medium-emphasis">
+          Tagged terms guide AI translation and glossary checks for the key{" "}
+          <span className="break-all font-medium text-high-emphasis">{keyDetails.keyName}</span>.
+        </DialogDescription>
       </DialogHeader>
 
       <div className="min-w-0">
@@ -87,7 +92,12 @@ function EditKeyGlossaryBody({
 
       <DialogFooter className="gap-2 sm:gap-2">
         <DialogClose asChild>
-          <Button variant="outline" size="default" className="flex-1 sm:flex-1">
+          <Button
+            variant="outline"
+            size="default"
+            disabled={isPending}
+            className="flex-1 sm:flex-1"
+          >
             Cancel
           </Button>
         </DialogClose>
@@ -97,7 +107,7 @@ function EditKeyGlossaryBody({
           disabled={isPending}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Updating..." : "Update"}
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </>
