@@ -252,11 +252,19 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                 const defaultResource = key.resources?.find(
                   (r) => r.culture === defaultLanguage?.languageCode,
                 );
+                const openKey = () =>
+                  navigate(scoped(`services/language/translations/${key.itemId}`));
                 return (
                   <TableRow
                     key={key.itemId}
-                    className="cursor-pointer font-normal text-medium-emphasis"
-                    onClick={() => navigate(scoped(`services/language/translations/${key.itemId}`))}
+                    tabIndex={0}
+                    className="cursor-pointer font-normal text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    onClick={openKey}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || event.key !== "Enter") return;
+                      event.preventDefault();
+                      openKey();
+                    }}
                   >
                     <TableCell className="font-mono text-xs text-high-emphasis">
                       {key.keyName}

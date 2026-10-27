@@ -19,6 +19,7 @@ const loadGlossaries = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
@@ -191,6 +192,49 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
       await act(async () => german.resolve({ content: "Öffnen Sie Ihren Werkbereich" }));
       expect(suggestAsync).toHaveBeenCalledTimes(1);
       expect(toast).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("glossary terms chips and live checks (Phase 4)", () => {
+    const chip = () => screen.findByRole("button", { name: /^Glossary term Workspace/ });
+
+    it("shows a chip row under the default language and follows source edits (H12)", async () => {
+      renderEditor();
+      expect(await chip()).toBeTruthy();
+      expect(screen.getByText("Glossary terms")).toBeTruthy();
+      fireEvent.change(textbox("English translation"), { target: { value: "Hello" } });
+      await waitFor(() => expect(screen.queryByText("Glossary terms")).toBeNull());
+    });
+
+    it("targets the first target row before any focus (H13)", async () => {
+      renderEditor();
+      fireEvent.click(await chip());
+      fireEvent.click(await screen.findByRole("button", { name: "Insert into German" }));
+      expect(textbox("German translation").value).toBe("Arbeitsbereich");
+      expect(textbox("French translation").value).toBe("");
+    });
+
+    it("inserts the last-focused row's value into that row (H13, Example 6)", async () => {
+      renderEditor();
+      fireEvent.focus(textbox("French translation"));
+      fireEvent.click(await chip());
+      expect(await screen.findByText("Espace de travail")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Insert into French" }));
+      expect(textbox("French translation").value).toBe("Espace de travail");
+      expect(textbox("German translation").value).toBe("");
+      expect(document.activeElement).toBe(textbox("French translation"));
+    });
+
+    it("checks each target row live without Retry and keeps Save enabled (H5, C6)", async () => {
+      renderEditor();
+      await chip();
+      fireEvent.change(textbox("German translation"), { target: { value: "Ihr Werkbereich" } });
+      expect(await screen.findByText('"Werkbereich" is not allowed')).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      expect(button("Save changes").disabled).toBe(false);
+      fireEvent.click(button("Fix"));
+      expect(textbox("German translation").value).toBe("Ihr Arbeitsbereich");
+      expectNoStatusContent();
     });
   });
 });

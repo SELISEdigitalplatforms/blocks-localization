@@ -36,22 +36,33 @@ import { cn } from "@/lib/utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
+  GlossaryTargetChecks,
   GlossaryUnavailableNote,
-  GlossaryViolationList,
   useGlossarySuggestionRows,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTermChips } from "@blocks-localization/components/glossary/highlighted-source-text";
 import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
+import {
+  LIVE_CHECK_DEBOUNCE_MS,
+  useApplicableGlossaryMatches,
+  useDebouncedValue,
+  useLoadedGlossaries,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
 import {
   useGetLanguageModules,
   useGetLanguages,
   useSaveBlocksLanguageKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { ILanguageConfig } from "@blocks-localization/models/language";
-import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
+import {
+  getDefaultLanguage,
+  getTargetLanguages,
+} from "@blocks-localization/utils/glossary-rule-marker";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 interface MutationResponse {
@@ -224,6 +235,59 @@ function AddNewLanguageKey() {
     control: form.control,
     name: "routes",
   });
+
+  // "Glossary terms" chips, Insert and live checks (Phase 4). Resources follow sortedLanguages.
+  const watchedResources = useWatch({ control: form.control, name: "resources" });
+  const watchedModuleId = useWatch({ control: form.control, name: "moduleId" });
+  const glossaries = useLoadedGlossaries(loadGlossaries);
+  const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
+  const debouncedSource = useDebouncedValue(
+    watchedResources?.[0]?.value ?? "",
+    LIVE_CHECK_DEBOUNCE_MS,
+  );
+  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+    sourceCulture: defaultLanguageCode,
+    moduleId: watchedModuleId || undefined,
+  });
+  const targetLanguages = React.useMemo(
+    () => getTargetLanguages(sortedLanguages),
+    [sortedLanguages],
+  );
+  const targetCultures = React.useMemo(
+    () => targetLanguages.map((language) => language.languageCode),
+    [targetLanguages],
+  );
+  const resourcePath = React.useCallback(
+    (culture: string) => {
+      const index = sortedLanguages?.findIndex((language) => language.languageCode === culture);
+      return `resources.${index ?? -1}.value` as const;
+    },
+    [sortedLanguages],
+  );
+  /** A user edit (Insert or a live Fix): the suggestion's list gives way to the live check. */
+  const editTranslation = React.useCallback(
+    (culture: string, value: string) => {
+      form.setValue(resourcePath(culture), value, { shouldDirty: true, shouldValidate: true });
+      clearViolations(culture);
+    },
+    [clearViolations, form, resourcePath],
+  );
+  const getTranslation = React.useCallback(
+    (culture: string) => form.getValues(resourcePath(culture)) ?? "",
+    [form, resourcePath],
+  );
+  const {
+    bindTarget,
+    insert: insertGlossaryValue,
+    targetCulture: insertTargetCulture,
+  } = useTargetInsertion({
+    cultures: targetCultures,
+    getValue: getTranslation,
+    setValue: editTranslation,
+  });
+  const insertTargetLanguage = targetLanguages.find(
+    (language) => language.languageCode === insertTargetCulture,
+  );
 
   React.useEffect(() => {
     if (!sortedLanguages?.length) {
@@ -554,6 +618,12 @@ function AddNewLanguageKey() {
                             />
                           </FormControl>
                           <FormMessage className="text-xs leading-4" />
+                          <GlossaryTermChips
+                            className="pt-1"
+                            matches={sourceMatches}
+                            getTargetLanguage={() => insertTargetLanguage}
+                            onInsert={insertTargetLanguage ? insertGlossaryValue : undefined}
+                          />
                         </FormItem>
                       )}
                     />
@@ -591,6 +661,7 @@ function AddNewLanguageKey() {
                       const glossaryRow = getGlossaryRow(rowKey);
                       const valuePath = `resources.${index + 1}.value` as const;
                       const translationField = form.register(valuePath);
+                      const insertionTarget = bindTarget(rowKey);
                       return (
                         <div key={field.id} className="grid gap-3">
                           <div className="grid grid-cols-2">
@@ -620,23 +691,35 @@ function AddNewLanguageKey() {
                               placeholder="Enter translation"
                               className="min-h-20 shadow-none"
                               {...translationField}
+                              ref={(element) => {
+                                translationField.ref(element);
+                                insertionTarget.ref(element);
+                              }}
+                              onFocus={insertionTarget.onFocus}
+                              onSelect={insertionTarget.onSelect}
+                              onBlur={(event) => {
+                                insertionTarget.onBlur(event);
+                                return translationField.onBlur(event);
+                              }}
                               onChange={(event) => {
                                 clearViolations(rowKey);
                                 return translationField.onChange(event);
                               }}
                             />
                           </FormControl>
-                          <GlossaryViolationList
+                          <GlossaryTargetChecks
                             className="mt-0"
-                            violations={glossaryRow.violations}
-                            matches={glossaryRow.matches}
-                            targetCulture={glossaryRow.targetCulture}
+                            row={glossaryRow}
+                            targetText={watchedResources?.[index + 1]?.value ?? ""}
+                            targetCulture={rowKey}
+                            liveMatches={sourceMatches}
                             disabled={isLoading}
-                            onFix={(violation) => {
+                            onSuggestionFix={(violation) => {
                               const fixed = fix(rowKey, violation, form.getValues(valuePath) ?? "");
                               if (fixed !== null) form.setValue(valuePath, fixed);
                             }}
                             onRetry={() => void runAutoTranslate(index)}
+                            onLiveFix={(fixed) => editTranslation(rowKey, fixed)}
                           />
                         </div>
                       );

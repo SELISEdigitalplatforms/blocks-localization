@@ -21,9 +21,10 @@ import type {
   IModuleGets,
 } from "@blocks-localization/models/language";
 import {
+  GlossaryTargetChecks,
   GlossaryUnavailableNote,
-  GlossaryViolationList,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTermChips } from "@blocks-localization/components/glossary/highlighted-source-text";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -93,18 +94,23 @@ export const InlineKeyDetails = memo(
       (languageModule) => languageModule.itemId === keyDetails.moduleId,
     )?.moduleName;
     const {
+      applyLiveFix,
       autoTranslate,
+      bindTarget,
       discardChanges,
       draftTranslations,
       fixViolation,
       getGlossaryRow,
       hasChanges,
       hasEmptyChange,
+      insertGlossaryValue,
+      insertTargetLanguage,
       isAutoTranslating,
       isSaving,
       saveChanges,
       setTranslation,
       sortedLanguages,
+      sourceMatches,
     } = useInlineKeyEditor(keyDetails, languageListData);
 
     return (
@@ -179,22 +185,37 @@ export const InlineKeyDetails = memo(
                       className="min-h-[96px] resize-y border-border bg-background text-high-emphasis caret-primary shadow-none placeholder:text-low-emphasis focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
                       placeholder="Enter translation"
                       value={draftTranslations[language.languageCode] ?? ""}
+                      {...(language.isDefault ? {} : bindTarget(language.languageCode))}
                       onChange={(event) =>
                         setTranslation(language.languageCode, event.target.value)
                       }
                       onClick={(event) => event.stopPropagation()}
                     />
+                    {language.isDefault && (
+                      <GlossaryTermChips
+                        className="mt-2"
+                        matches={sourceMatches}
+                        getTargetLanguage={() => insertTargetLanguage}
+                        onInsert={insertTargetLanguage ? insertGlossaryValue : undefined}
+                      />
+                    )}
                     {glossaryRow.glossaryUnavailable && (
                       <GlossaryUnavailableNote className="mt-1" />
                     )}
-                    <GlossaryViolationList
-                      violations={glossaryRow.violations}
-                      matches={glossaryRow.matches}
-                      targetCulture={glossaryRow.targetCulture}
-                      disabled={isRowTranslating}
-                      onFix={(violation) => fixViolation(language.languageCode, violation)}
-                      onRetry={() => void autoTranslate(language.languageCode)}
-                    />
+                    {!language.isDefault && (
+                      <GlossaryTargetChecks
+                        row={glossaryRow}
+                        targetText={draftTranslations[language.languageCode] ?? ""}
+                        targetCulture={language.languageCode}
+                        liveMatches={sourceMatches}
+                        disabled={isRowTranslating}
+                        onSuggestionFix={(violation) =>
+                          fixViolation(language.languageCode, violation)
+                        }
+                        onRetry={() => void autoTranslate(language.languageCode)}
+                        onLiveFix={(fixed) => applyLiveFix(language.languageCode, fixed)}
+                      />
+                    )}
                   </div>
                 );
               })}

@@ -127,6 +127,22 @@ export class LocalizationApi {
     return created!.itemId;
   }
 
+  /** The id of the glossary named exactly `name`, or undefined. */
+  async findGlossaryId(name: string): Promise<string | undefined> {
+    const params = new URLSearchParams({
+      PageNumber: "0",
+      PageSize: "20",
+      SearchText: escapeRegex(name),
+    });
+    const found = await this.json<{ items: { itemId: string; name: string }[] }>(
+      await this.page.request.get(`${this.base}/Glossary/Gets?${params.toString()}`, {
+        headers: this.headers,
+      }),
+      "search glossaries",
+    );
+    return found.items.find((item) => item.name === name)?.itemId;
+  }
+
   async deleteGlossary(itemId: string) {
     await this.page.request.delete(
       `${this.base}/Glossary/Delete?itemId=${encodeURIComponent(itemId)}`,
@@ -1049,6 +1065,22 @@ export class TranslationsPage {
 
   violationItem(scope: Locator, message: string) {
     return this.violationList(scope).getByRole("listitem").filter({ hasText: message });
+  }
+
+  // --- Glossary terms in the source (SPEC4) ---
+
+  /** A highlighted term (Edit translation) or a "Glossary terms" chip (inline / new key). */
+  glossaryTerm(scope: Locator | Page, surface: string) {
+    return scope.getByRole("button", {
+      name: new RegExp(`^Glossary term ${escapeRegex(surface)}:`),
+    });
+  }
+
+  /** The open term popover. */
+  get termPopover() {
+    return this.page
+      .getByRole("dialog")
+      .filter({ has: this.page.getByRole("button", { name: "Open term" }) });
   }
 
   /** Shows the key in the table by searching for it and expands its inline editor. */

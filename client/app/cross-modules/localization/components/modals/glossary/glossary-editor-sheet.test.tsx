@@ -459,6 +459,61 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     );
   });
 
+  describe("picker-mode props", () => {
+    it("should pre-fill the name from initialName and call onSaved with the trimmed name", async () => {
+      const onOpenChange = vi.fn();
+      const onSaved = vi.fn();
+      render(
+        <GlossaryEditorSheet
+          open
+          onOpenChange={onOpenChange}
+          initialName="  Onboardng "
+          onSaved={onSaved}
+        />,
+      );
+      expect((nameInput() as HTMLInputElement).value).toBe("  Onboardng ");
+      save();
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith("Onboardng"));
+      expect(lastPayload()).toEqual(expect.objectContaining({ name: "Onboardng" }));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("should ignore initialName when editing an existing glossary", () => {
+      render(
+        <GlossaryEditorSheet
+          open
+          onOpenChange={vi.fn()}
+          glossary={makeGlossary({ name: "Stored" })}
+          initialName="Other"
+        />,
+      );
+      expect((nameInput() as HTMLInputElement).value).toBe("Stored");
+    });
+
+    it("should not call onSaved when the server rejects the save (C8)", async () => {
+      saveGlossaryAsync.mockResolvedValue({ success: false, errorMessage: "Forbidden" });
+      const onSaved = vi.fn();
+      const onOpenChange = vi.fn();
+      render(
+        <GlossaryEditorSheet
+          open
+          onOpenChange={onOpenChange}
+          initialName="Gadget"
+          onSaved={onSaved}
+        />,
+      );
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("should start empty without initialName (H16)", () => {
+      renderSheet();
+      expect((nameInput() as HTMLInputElement).value).toBe("");
+    });
+  });
+
   describe("duplicate name warning", () => {
     const waitForDebounce = () =>
       act(async () => {
@@ -519,6 +574,26 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       typeName("Workspace");
       await waitForDebounce();
       expect(screen.queryByText(/already exists/)).toBeNull();
+    });
+
+    it("should offer 'Select it' in picker mode: selects the existing term and closes (H15)", async () => {
+      const onOpenChange = vi.fn();
+      const onSelectExisting = vi.fn();
+      render(
+        <GlossaryEditorSheet
+          open
+          onOpenChange={onOpenChange}
+          initialName="workspace"
+          onSelectExisting={onSelectExisting}
+        />,
+      );
+      await waitForDebounce();
+      expect(screen.getByText(/'Workspace' already exists/)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Open it" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Select it" }));
+      expect(onSelectExisting).toHaveBeenCalledWith(existingGlossaries[0]);
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(navigate).not.toHaveBeenCalled();
     });
 
     it("should not block submit when a duplicate is shown", async () => {

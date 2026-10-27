@@ -413,6 +413,10 @@ export class GlossaryPage {
     await expect(this.page.getByText(/already exists\./)).toBeHidden();
   }
 
+  async selectDuplicateGlossary() {
+    await this.page.getByRole("button", { name: "Select it" }).click();
+  }
+
   async openDuplicateGlossary() {
     await this.page.getByRole("button", { name: "Open it" }).click();
   }

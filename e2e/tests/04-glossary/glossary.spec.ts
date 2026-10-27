@@ -1,6 +1,8 @@
 import { test, expect } from "../../support/test-base";
 import { GlossaryPage } from "../../support/pages/glossary.page";
-import { openGlossary } from "../../support/localization-helpers";
+import { ModulesPage } from "../../support/pages/modules.page";
+import { LocalizationApi, TranslationsPage } from "../../support/pages/translations.page";
+import { openGlossary, openModules } from "../../support/localization-helpers";
 
 const META_PREFIX = "@@glossary-meta:v1@@";
 
@@ -414,6 +416,296 @@ test.describe("Glossary", () => {
             .deleteGlossaryFromList(name)
             .catch((error) => console.warn(`[e2e] Cleanup could not delete "${name}":`, error));
         }
+      });
+    }
+  });
+});
+
+test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
+  test("Tagging picker, create, seed, errors and row keyboard (steps 4-8, 11-13)", async ({
+    page,
+  }) => {
+    test.setTimeout(420_000);
+    const api = await LocalizationApi.capture(page);
+    const glossary = new GlossaryPage(page);
+    const modules = new ModulesPage(page);
+    const translations = new TranslationsPage(page);
+    const languages = await api.languages();
+    const source = languages.find((language) => language.isDefault) ?? languages[0];
+
+    const tag = Array.from({ length: 8 }, () =>
+      String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+    ).join("");
+    const names = {
+      module: `e2e-picker-m-${tag}`,
+      term: `Gadget${tag}`,
+      second: `Widget${tag}`,
+      created: `zzz-none-${tag}`,
+      key: `e2e.picker.${tag}`,
+    };
+    const ids = { module: "", term: "", second: "", key: "" };
+    const extraGlossaries: string[] = [];
+    const tagDialog = modules.tagGlossaryDialog;
+    const keyTagDialog = page.getByRole("dialog", { name: "Tag Glossary" });
+
+    const openModuleTagging = async () => {
+      await openModules(page);
+      await modules.searchModules(names.module);
+      await modules.openTagGlossaryDialog(names.module);
+    };
+
+    try {
+      await test.step("Create fixtures", async () => {
+        ids.module = await api.createModule(names.module);
+        ids.term = await api.createGlossary({
+          name: names.term,
+          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "translate" })}`,
+          isGlobal: false,
+          moduleIds: [ids.module],
+        });
+        ids.second = await api.createGlossary({
+          name: names.second,
+          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "keep" })}`,
+          isGlobal: true,
+        });
+        ids.key = await api.createKey({
+          keyName: names.key,
+          moduleId: ids.module,
+          culture: source.languageCode,
+          value: `Open the ${names.term}`,
+          context: "Formal tone.",
+          glossaryIds: [ids.term, ids.second],
+        });
+      });
+
+      await test.step("Step 4: module tagging creates a missing term and saves it (H7-H9)", async () => {
+        await openModuleTagging();
+        // H14: the seed shows the module's tagged term.
+        await expect(tagDialog.getByRole("button", { name: `Remove ${names.term}` })).toBeVisible({
+          timeout: 15_000,
+        });
+        await modules.searchInTagPicker(names.created);
+        await tagDialog.getByRole("button", { name: `Create "${names.created}"` }).click();
+        await expect(glossary.editorSheet).toBeVisible();
+        await expect(glossary.editorSheet.getByRole("textbox", { name: "Name *" })).toHaveValue(
+          names.created,
+        );
+        await glossary.clickSaveButton();
+        await expect(glossary.editorSheet).toHaveCount(0, { timeout: 20_000 });
+        const created = await api.findGlossaryId(names.created);
+        if (created) extraGlossaries.push(created);
+        await expect(
+          tagDialog.getByRole("button", { name: `Remove ${names.created}` }),
+        ).toBeVisible({ timeout: 15_000 });
+        const request = page.waitForRequest((r) => /\/Module\/TagGlossary/.test(r.url()));
+        await page.keyboard.press("Escape");
+        await tagDialog.getByRole("button", { name: "Save" }).click();
+        const body = (await request).postDataJSON() as { glossaryIds: string[] };
+        expect(body.glossaryIds).toEqual(expect.arrayContaining([ids.term, created]));
+        await expect(tagDialog).toHaveCount(0, { timeout: 15_000 });
+      });
+
+      await test.step("Step 7: the picker fits a 390 px screen (C11)", async () => {
+        const size = page.viewportSize();
+        await page.setViewportSize({ width: 390, height: 844 });
+        try {
+          await openModuleTagging();
+          await modules.searchInTagPicker(names.term);
+          const listbox = tagDialog.getByRole("listbox");
+          await expect(listbox).toBeVisible();
+          for (const box of [await listbox.boundingBox(), await tagDialog.boundingBox()]) {
+            expect(box).not.toBeNull();
+            expect(box!.x).toBeGreaterThanOrEqual(0);
+            expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+          }
+          await page.keyboard.press("Escape");
+          await tagDialog.getByRole("button", { name: "Cancel" }).click();
+        } finally {
+          if (size) await page.setViewportSize(size);
+        }
+      });
+
+      await test.step("Step 11: the seed loads every page; Save sends all ids (H14, C15)", async () => {
+        const fake = (from: number, count: number) =>
+          Array.from({ length: count }, (_, index) => ({
+            itemId: `seed-${tag}-${from + index}`,
+            name: `Seed ${from + index}`,
+          }));
+        const seedRequests: string[] = [];
+        let failSecondPage = false;
+        const seedRoute = async (route: import("@playwright/test").Route) => {
+          const url = new URL(route.request().url());
+          if (url.searchParams.get("ModuleId") !== ids.module) return route.continue();
+          seedRequests.push(url.toString());
+          const pageNumber = Number(url.searchParams.get("PageNumber"));
+          if (pageNumber === 1 && failSecondPage) {
+            return route.fulfill({ status: 500, json: { errors: "scripted failure" } });
+          }
+          return route.fulfill({
+            json:
+              pageNumber === 0
+                ? { items: fake(0, 100), totalCount: 101 }
+                : { items: fake(100, 1), totalCount: 101 },
+          });
+        };
+        const tagRoute = (route: import("@playwright/test").Route) =>
+          route.fulfill({ json: { isSuccess: true } });
+        await page.route(/\/Glossary\/Gets/, seedRoute);
+        await page.route(/\/Module\/TagGlossary/, tagRoute);
+        try {
+          await openModuleTagging();
+          await expect(tagDialog.getByRole("button", { name: /^Remove Seed/ })).toHaveCount(101, {
+            timeout: 15_000,
+          });
+          expect(seedRequests).toHaveLength(2);
+          const request = page.waitForRequest((r) => /\/Module\/TagGlossary/.test(r.url()));
+          await tagDialog.getByRole("button", { name: "Save" }).click();
+          const body = (await request).postDataJSON() as { glossaryIds: string[] };
+          expect(body.glossaryIds).toHaveLength(101);
+
+          failSecondPage = true;
+          await openModuleTagging();
+          await expect(tagDialog.getByText("Couldn't load this module's glossaries")).toBeVisible({
+            timeout: 15_000,
+          });
+          await expect(tagDialog.getByRole("button", { name: "Save" })).toBeDisabled();
+          await tagDialog.getByRole("button", { name: "Cancel" }).click();
+        } finally {
+          await page.unroute(/\/Glossary\/Gets/, seedRoute);
+          await page.unroute(/\/Module\/TagGlossary/, tagRoute);
+        }
+      });
+
+      await test.step("Step 12: a duplicate offers 'Select it'; Escape closes only the sheet (H15, C18, H16)", async () => {
+        await openModuleTagging();
+        await expect(tagDialog.getByRole("button", { name: `Remove ${names.term}` })).toBeVisible({
+          timeout: 15_000,
+        });
+        await modules.searchInTagPicker(`${names.second}-nomatch`);
+        await tagDialog.getByRole("button", { name: `Create "${names.second}-nomatch"` }).click();
+        const nameField = glossary.editorSheet.getByRole("textbox", { name: "Name *" });
+        await nameField.fill(names.second.toLowerCase());
+        await expect(page.getByText(`'${names.second}' already exists.`)).toBeVisible({
+          timeout: 10_000,
+        });
+        await glossary.selectDuplicateGlossary();
+        await expect(glossary.editorSheet).toHaveCount(0);
+        await expect(tagDialog).toBeVisible();
+        await expect(
+          tagDialog.getByRole("button", { name: `Remove ${names.second}` }),
+        ).toBeVisible();
+
+        // C18: Escape inside the sheet closes only the sheet.
+        await modules.searchInTagPicker(`${names.created}-again`);
+        await tagDialog.getByRole("button", { name: `Create "${names.created}-again"` }).click();
+        await glossary.editorSheet.getByRole("textbox", { name: "Name *" }).click();
+        await page.keyboard.press("Escape");
+        await expect(glossary.editorSheet).toHaveCount(0);
+        await expect(tagDialog).toBeVisible();
+        await expect(tagDialog.getByRole("button", { name: `Remove ${names.term}` })).toBeVisible();
+        await page.keyboard.press("Escape");
+        await tagDialog.getByRole("button", { name: "Cancel" }).click();
+
+        // H16: from the glossary table the warning still offers "Open it".
+        await openGlossary(page);
+        await glossary.expectPageLoaded();
+        await glossary.openNewGlossaryDialog();
+        await glossary.fillGlossaryName(names.second.toLowerCase());
+        await glossary.expectDuplicateNameWarning(names.second);
+        await glossary.cancelEditor();
+      });
+
+      await test.step("Steps 8 and 13: row keyboard navigation (H11, C17)", async () => {
+        await openGlossary(page);
+        await glossary.expectPageLoaded();
+        await glossary.searchGlossaries(names.term);
+        await glossary.waitForRowMenuButton(names.term);
+        // C17: Enter on the row's actions button opens the menu, no navigation.
+        const listUrl = page.url();
+        await glossary.getRowMenuButton(names.term).focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
+        expect(page.url()).toBe(listUrl);
+        await page.keyboard.press("Escape");
+        // H11: Enter on the focused row opens the details page.
+        await page.getByRole("row").filter({ hasText: names.term }).focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("heading", { name: names.term })).toBeVisible({
+          timeout: 15_000,
+        });
+        const keyRow = page.getByRole("row").filter({ hasText: names.key });
+        await expect(keyRow).toBeVisible({ timeout: 15_000 });
+        await keyRow.focus();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(new RegExp(`/services/language/translations/${ids.key}$`));
+      });
+
+      await test.step("Step 6: unknown tagged glossary and search error (C7, C9)", async () => {
+        // Force the key's tags to resolve through Glossary/Get, and make one of them fail.
+        const emptyLists = (route: import("@playwright/test").Route) => {
+          const url = new URL(route.request().url());
+          if (url.searchParams.get("ModuleId") || url.searchParams.get("IsGlobal")) {
+            return route.continue();
+          }
+          if (url.searchParams.get("SearchText")) {
+            return route.fulfill({ status: 500, json: { errors: "scripted failure" } });
+          }
+          return route.fulfill({ json: { items: [], totalCount: 0 } });
+        };
+        const missing = (route: import("@playwright/test").Route) =>
+          new URL(route.request().url()).searchParams.get("itemId") === ids.term
+            ? route.fulfill({ status: 404, json: {} })
+            : route.continue();
+        await page.route(/\/Glossary\/Gets/, emptyLists);
+        await page.route(/\/Glossary\/Get\?/, missing);
+        try {
+          await translations.openKeyDetails(ids.key);
+          await page.getByRole("button", { name: "Tag Glossary" }).click();
+          await expect(
+            keyTagDialog.getByRole("button", { name: "Remove Unknown glossary" }),
+          ).toBeVisible({ timeout: 15_000 });
+          await keyTagDialog.getByRole("combobox").click();
+          await keyTagDialog.getByPlaceholder("Search glossary...").fill(names.second);
+          await expect(keyTagDialog.getByText("Couldn't search glossaries")).toBeVisible({
+            timeout: 20_000,
+          });
+          await expect(
+            keyTagDialog.getByRole("button", { name: "Remove Unknown glossary" }),
+          ).toBeVisible();
+          await page.keyboard.press("Escape");
+          await keyTagDialog.getByRole("button", { name: "Cancel" }).click();
+        } finally {
+          await page.unroute(/\/Glossary\/Gets/, emptyLists);
+          await page.unroute(/\/Glossary\/Get\?/, missing);
+        }
+      });
+
+      await test.step("Step 5: View Details uses the same picker; key context is kept (H9, C13)", async () => {
+        await translations.openKeyDetails(ids.key);
+        await page.getByRole("button", { name: "Tag Glossary" }).click();
+        await keyTagDialog.getByRole("button", { name: `Remove ${names.second}` }).click();
+        const payload = await translations.captureKeySave(() =>
+          keyTagDialog.getByRole("button", { name: "Update" }).click(),
+        );
+        expect(payload).toMatchObject({
+          itemId: ids.key,
+          context: "Formal tone.",
+          glossaryIds: [ids.term],
+        });
+        await expect
+          .poll(async () => (await api.findKey(names.key, ids.module))?.glossaryIds ?? [], {
+            timeout: 15_000,
+          })
+          .toEqual([ids.term]);
+        expect((await api.findKey(names.key, ids.module))?.context).toBe("Formal tone.");
+      });
+    } finally {
+      await test.step("Clean up fixtures", async () => {
+        if (ids.key) await api.deleteKey(ids.key);
+        for (const id of [ids.term, ids.second, ...extraGlossaries]) {
+          if (id) await api.deleteGlossary(id);
+        }
+        if (ids.module) await api.deleteModule(ids.module);
       });
     }
   });

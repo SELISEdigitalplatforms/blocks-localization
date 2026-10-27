@@ -103,20 +103,30 @@ function renderTableRows(
     );
   }
 
-  return tableRows.map((row) => (
-    <TableRow
-      key={row.id}
-      isHoverable
-      className="font-normal text-medium-emphasis"
-      onClick={() => navigate(scoped(`services/glossary/${row.original.itemId}`))}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </TableCell>
-      ))}
-    </TableRow>
-  ));
+  return tableRows.map((row) => {
+    const openGlossary = () => navigate(scoped(`services/glossary/${row.original.itemId}`));
+    return (
+      <TableRow
+        key={row.id}
+        isHoverable
+        tabIndex={0}
+        className="font-normal text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        onClick={openGlossary}
+        onKeyDown={(event) => {
+          // Keys on the row's own controls (the actions menu) keep their behaviour (A10).
+          if (event.target !== event.currentTarget || event.key !== "Enter") return;
+          event.preventDefault();
+          openGlossary();
+        }}
+      >
+        {row.getVisibleCells().map((cell) => (
+          <TableCell key={cell.id}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </TableCell>
+        ))}
+      </TableRow>
+    );
+  });
 }
 
 function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {

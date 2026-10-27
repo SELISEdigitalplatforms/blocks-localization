@@ -438,6 +438,77 @@ describe("localization/hooks/use-language-manager", () => {
     );
   });
 
+  it("useTagGlossary should also refresh the module glossaries prefix", async () => {
+    svc.tagGlossary.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useTagGlossary(), { wrapper });
+    await result.current.mutateAsync({ moduleId: "m1", glossaryIds: [] } as never);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: localizationQueryKeys.glossaries.modulePrefix,
+    });
+  });
+
+  describe("fetchAllModuleGlossaries / useGetAllModuleGlossaries (H14)", () => {
+    const page = (from: number, count: number, totalCount: number) => ({
+      items: Array.from({ length: count }, (_, index) => ({
+        itemId: `g${from + index}`,
+        name: `Term ${from + index}`,
+      })),
+      totalCount,
+    });
+
+    it("loads one page for a module with up to 100 glossaries", async () => {
+      svc.fetchGlossaries.mockResolvedValueOnce(page(0, 30, 30) as never);
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(items).toHaveLength(30);
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(1);
+      expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+        pageNumber: 0,
+        pageSize: 100,
+        moduleId: "m1",
+      });
+    });
+
+    it("pages until totalCount and de-duplicates by itemId", async () => {
+      svc.fetchGlossaries
+        .mockResolvedValueOnce(page(0, 100, 130) as never)
+        // The server sort has no tie-breaker: g99 shows up again on page 2.
+        .mockResolvedValueOnce({
+          items: [{ itemId: "g99", name: "Term 99" }, ...page(100, 29, 130).items],
+          totalCount: 130,
+        } as never);
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(2);
+      expect(svc.fetchGlossaries).toHaveBeenLastCalledWith({
+        pageNumber: 1,
+        pageSize: 100,
+        moduleId: "m1",
+      });
+      expect(items).toHaveLength(129);
+      expect(new Set(items.map((item) => item.itemId)).size).toBe(129);
+    });
+
+    it("stops after 50 pages", async () => {
+      svc.fetchGlossaries.mockImplementation(
+        async ({ pageNumber }: { pageNumber: number }) =>
+          page(pageNumber * 100, 100, 1_000_000) as never,
+      );
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(50);
+      expect(items).toHaveLength(5000);
+    });
+
+    it("keys the query under the module prefix and surfaces a failed page", async () => {
+      svc.fetchGlossaries
+        .mockResolvedValueOnce(page(0, 100, 130) as never)
+        .mockRejectedValueOnce(new Error("500"));
+      const { result } = renderQ(() => hooks.useGetAllModuleGlossaries("m1"));
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.data).toBeUndefined();
+    });
+  });
+
   it("useTranslateAll should invoke the service", async () => {
     svc.translateAll.mockResolvedValue({ isSuccess: true } as never);
     const { result } = renderQ(() => hooks.useTranslateAll());

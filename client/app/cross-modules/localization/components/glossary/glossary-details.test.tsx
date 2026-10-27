@@ -121,6 +121,30 @@ describe("components/glossary/glossary-details", () => {
     expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
   });
 
+  it("should open a tagged key with Enter on the focused row (H11)", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },
+      isLoading: false,
+    } as never);
+    h.useGetKeysByGlossaryId.mockReturnValue({
+      data: {
+        keys: [{ itemId: "k1", keyName: "greeting", moduleId: "m1", resources: [] }],
+        totalCount: 1,
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />, {
+      route: "/app/abc/services/glossary/g1",
+    });
+    const row = screen.getByText("greeting").closest("tr")!;
+    expect(row.getAttribute("tabindex")).toBe("0");
+    fireEvent.keyDown(screen.getByText("greeting"), { key: "Enter" });
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.keyDown(row, { key: "Enter" });
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
+  });
+
   it("should request tagged keys by glossary id with page 0 and size 10", () => {
     h.useGetGlossaryById.mockReturnValue({
       data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },

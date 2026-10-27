@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Label } from "@/components/ui-kits/label/label";
 import {
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -8,7 +9,6 @@ import {
   DialogContent,
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
-import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
 import { Wand } from "lucide-react";
 import {
@@ -18,10 +18,16 @@ import {
 } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import {
+  GlossaryTargetChecks,
   GlossaryUnavailableNote,
-  GlossaryViolationList,
   useGlossarySuggestionRows,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { HighlightedSourceText } from "@blocks-localization/components/glossary/highlighted-source-text";
+import {
+  useApplicableGlossaryMatches,
+  useLoadedGlossaries,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
 import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
@@ -32,7 +38,7 @@ interface EditTranslationProps {
   destinationLanguageCode: string;
   languageListData: ILanguageConfig[];
   onClose: (value?: boolean) => void;
-  /** The project's full glossary (View Details' shared loader); used with the flag on. */
+  /** The project's full glossary (View Details' shared loader): suggestions, highlights, checks. */
   loadGlossaries?: () => Promise<IGlossary[]>;
 }
 
@@ -67,6 +73,27 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     keyDetails.resources?.find((resource) => resource.culture === destinationLanguageCode)?.value ||
       "",
   );
+
+  // Highlights and live checks: plain text and no warnings until the glossary loads (C2).
+  const glossaries = useLoadedGlossaries(loadGlossaries);
+  const sourceMatches = useApplicableGlossaryMatches(glossaries, defaultLanguageText, {
+    sourceCulture: defaultLanguage?.languageCode ?? "",
+    keyGlossaryIds: keyDetails.glossaryIds,
+    moduleId: keyDetails.moduleId,
+  });
+  /** A user edit (typing or Insert): the suggestion's list gives way to the live check. */
+  const editTranslation = useCallback(
+    (value: string) => {
+      setTranslation(value);
+      clearViolations(destinationLanguageCode);
+    },
+    [clearViolations, destinationLanguageCode],
+  );
+  const { bindTarget, insert } = useTargetInsertion({
+    cultures: [destinationLanguageCode],
+    getValue: () => translation,
+    setValue: (_culture, value) => editTranslation(value),
+  });
 
   async function runAutoTranslate() {
     const outcome = await request({
@@ -181,7 +208,15 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             Default value ({defaultLanguage?.languageName})
           </p>
           <DialogDescription className="text-high-emphasis">
-            {defaultLanguageText}
+            <HighlightedSourceText
+              text={defaultLanguageText}
+              matches={sourceMatches}
+              targetLanguage={{
+                languageCode: destinationLanguageCode,
+                languageName: destinationLanguage?.languageName ?? "",
+              }}
+              onInsert={destinationLanguage?.isDefault ? undefined : insert}
+            />
           </DialogDescription>
           <div className="mt-3 flex justify-between">
             <Label htmlFor="configName" className="mt-3 text-left font-medium text-high-emphasis">
@@ -213,30 +248,30 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             className="border-default col-span-3 mt-1 min-h-[116px] border shadow-none"
             placeholder="Enter translation"
             value={translation}
-            onChange={(e) => {
-              setTranslation(e.target.value);
-              clearViolations(destinationLanguageCode);
-            }}
+            {...bindTarget(destinationLanguageCode)}
+            onChange={(e) => editTranslation(e.target.value)}
           />
-          <GlossaryViolationList
-            violations={glossaryRow.violations}
-            matches={glossaryRow.matches}
-            targetCulture={glossaryRow.targetCulture}
+          <GlossaryTargetChecks
+            row={glossaryRow}
+            targetText={translation}
+            targetCulture={destinationLanguageCode}
+            liveMatches={destinationLanguage?.isDefault ? [] : sourceMatches}
             disabled={isAutoTranslateLoading}
-            onFix={(violation) => {
+            onSuggestionFix={(violation) => {
               const fixed = fix(destinationLanguageCode, violation, translation);
               if (fixed !== null) setTranslation(fixed);
             }}
             onRetry={() => void runAutoTranslate()}
+            onLiveFix={editTranslation}
           />
         </div>
       </DialogHeader>
       <DialogFooter className="mt-[-14px] flex gap-2">
-        <DialogTrigger asChild>
+        <DialogClose asChild>
           <Button variant="outline" size="default">
             Cancel
           </Button>
-        </DialogTrigger>
+        </DialogClose>
         <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
           Save
         </Button>

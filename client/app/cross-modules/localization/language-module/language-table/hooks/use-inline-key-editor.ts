@@ -1,7 +1,15 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
+import {
+  LIVE_CHECK_DEBOUNCE_MS,
+  useApplicableGlossaryMatches,
+  useDebouncedValue,
+  useLoadedGlossaries,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
+import { getTargetLanguages } from "@blocks-localization/utils/glossary-rule-marker";
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
@@ -53,16 +61,57 @@ export const useInlineKeyEditor = (
     setDraftTranslations((current) => ({ ...current, [culture]: value }));
   };
 
-  /** A user edit: the suggestion's violation list no longer applies (C11). */
-  const setTranslation = (culture: string, value: string) => {
-    setDraftTranslation(culture, value);
-    clearViolations(culture);
-  };
+  /** A user edit: the suggestion's violation list gives way to the live check. */
+  const setTranslation = useCallback(
+    (culture: string, value: string) => {
+      setDraftTranslations((current) => ({ ...current, [culture]: value }));
+      clearViolations(culture);
+    },
+    [clearViolations],
+  );
+
+  // "Glossary terms" chips and live checks follow the editable default-language draft.
+  const defaultLanguage =
+    sortedLanguages.find((language) => language.isDefault) ?? sortedLanguages[0];
+  const targetLanguages = useMemo(() => getTargetLanguages(sortedLanguages), [sortedLanguages]);
+  const glossaries = useLoadedGlossaries(loadGlossaries);
+  const debouncedSource = useDebouncedValue(
+    draftTranslations[defaultLanguage?.languageCode ?? ""] ?? "",
+    LIVE_CHECK_DEBOUNCE_MS,
+  );
+  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+    sourceCulture: defaultLanguage?.languageCode ?? "",
+    keyGlossaryIds: keyDetails.glossaryIds,
+    moduleId: keyDetails.moduleId,
+  });
+  const targetCultures = useMemo(
+    () => targetLanguages.map((language) => language.languageCode),
+    [targetLanguages],
+  );
+  const getDraft = useCallback(
+    (culture: string) => draftTranslations[culture] ?? "",
+    [draftTranslations],
+  );
+  const {
+    bindTarget,
+    insert: insertGlossaryValue,
+    targetCulture: insertTargetCulture,
+  } = useTargetInsertion({
+    cultures: targetCultures,
+    getValue: getDraft,
+    setValue: setTranslation,
+  });
+  const insertTargetLanguage = targetLanguages.find(
+    (language) => language.languageCode === insertTargetCulture,
+  );
 
   const discardChanges = () => {
     setDraftTranslations({ ...savedTranslations });
     clearViolations();
   };
+
+  /** A live Fix result is a user edit of the row. */
+  const applyLiveFix = (culture: string, fixed: string) => setTranslation(culture, fixed);
 
   const fixViolation = (culture: string, violation: GlossaryViolation) => {
     const fixed = fix(culture, violation, draftTranslations[culture] ?? "");
@@ -119,8 +168,6 @@ export const useInlineKeyEditor = (
   };
 
   const autoTranslate = async (destinationLanguageCode: string) => {
-    const defaultLanguage =
-      sortedLanguages.find((language) => language.isDefault) ?? sortedLanguages[0];
     const destinationLanguage = sortedLanguages.find(
       (language) => language.languageCode === destinationLanguageCode,
     );
@@ -164,17 +211,22 @@ export const useInlineKeyEditor = (
   };
 
   return {
+    applyLiveFix,
     autoTranslate,
+    bindTarget,
     discardChanges,
     draftTranslations,
     fixViolation,
     getGlossaryRow,
     hasChanges,
     hasEmptyChange,
+    insertGlossaryValue,
+    insertTargetLanguage,
     isAutoTranslating,
     isSaving,
     saveChanges,
     setTranslation,
     sortedLanguages,
+    sourceMatches,
   };
 };

@@ -146,6 +146,28 @@ describe("components/glossary/glossary-table", () => {
     expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
   });
 
+  it("should navigate with Enter on a focused row but not from its actions button (H11, C17)", () => {
+    mockGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g1", name: "Acme", createDate: "2026-01-01" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    const row = screen.getByText("Acme").closest("tr")!;
+    expect(row.getAttribute("tabindex")).toBe("0");
+    expect(row.className).toContain("focus-visible:ring-2");
+    const actions = row.querySelector("button")!;
+    fireEvent.keyDown(actions, { key: "Enter" });
+    fireEvent.keyDown(actions, { key: " " });
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.keyDown(row, { key: " " });
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.keyDown(row, { key: "Enter" });
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
+  });
+
   it("should debounce the search input", () => {
     vi.useFakeTimers();
     mockFilterableGlossaries();

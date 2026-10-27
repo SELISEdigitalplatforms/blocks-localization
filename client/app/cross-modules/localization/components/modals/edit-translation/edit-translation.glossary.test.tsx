@@ -25,6 +25,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 
 const G1: IGlossary = {
@@ -235,6 +236,82 @@ describe("edit-translation — glossary-aware suggestions", () => {
       });
       expect(autoTranslateAsync).toHaveBeenCalledTimes(1);
       expect(toast).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("highlights and live checks (Phase 4)", () => {
+    // A fresh key: saving mutates the caller's keyDetails in place (existing contract).
+    const freshKey = (): IBlocksLanguageKey => ({
+      ...keyDetails,
+      resources: [
+        { culture: "en-US", value: "Open your Workspace" },
+        { culture: "de-DE", value: "" },
+      ],
+    });
+    const renderFresh = (props: Partial<React.ComponentProps<typeof EditTranslation>>) =>
+      renderModal({ keyDetails: freshKey(), ...props });
+    const highlight = (name: string) =>
+      screen.findByRole("button", { name: new RegExp(`^Glossary term ${name}`) });
+
+    it("labels and highlights the isDefault source even when it is listed second (C20, H1)", async () => {
+      renderFresh({ loadGlossaries: async () => [G1] });
+      expect(screen.getByText("Default value (English)")).toBeTruthy();
+      expect((await highlight("Workspace")).textContent).toBe("Workspace");
+      expect(screen.getByText(/Open your/).textContent).toBe("Open your Workspace");
+    });
+
+    it("renders plain source text without toasts when the glossary fails to load (C2)", async () => {
+      const loader = vi.fn().mockRejectedValue(new Error("down"));
+      renderFresh({ loadGlossaries: loader });
+      await waitFor(() => expect(loader).toHaveBeenCalled());
+      await act(async () => {});
+      expect(screen.queryByRole("button", { name: /Glossary term/ })).toBeNull();
+      expect(toast).not.toHaveBeenCalled();
+    });
+
+    it("inserts the approved translation into the target and focuses it (H3)", async () => {
+      renderFresh({ loadGlossaries: async () => [G1] });
+      fireEvent.click(await highlight("Workspace"));
+      fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
+      expect(field().value).toBe("Arbeitsbereich");
+      expect(document.activeElement).toBe(field());
+    });
+
+    it("warns while typing, keeps Save enabled and Fix recomputes at once (H5, H6, C6)", async () => {
+      renderFresh({ loadGlossaries: async () => [G1] });
+      await highlight("Workspace");
+      fireEvent.change(field(), { target: { value: "Öffnen Sie Ihren Werkbereich" } });
+      expect(await screen.findByText('"Werkbereich" is not allowed')).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+      expect(field().value).toBe("Öffnen Sie Ihren Arbeitsbereich");
+      expectNoStatusContent();
+    });
+
+    it("shows no live warnings for an empty target (C5)", async () => {
+      renderFresh({ loadGlossaries: async () => [G1] });
+      await highlight("Workspace");
+      fireEvent.change(field(), { target: { value: "Werkbereich" } });
+      await screen.findByText('"Werkbereich" is not allowed');
+      fireEvent.change(field(), { target: { value: "" } });
+      expectNoStatusContent();
+    });
+
+    it("hands the suggestion's list (with Retry) over to the live list on the first edit (C21)", async () => {
+      autoTranslateAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Werkbereich" });
+      renderFresh({ loadGlossaries: async () => [G1] });
+      fireEvent.click(autoTranslateButton());
+      await screen.findByText('"Werkbereich" is not allowed');
+      expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+
+      fireEvent.change(field(), { target: { value: "Ihr Werkbereich" } });
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      expect(await screen.findByText('"Werkbereich" is not allowed')).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Fix" })).toBeTruthy();
     });
   });
 });

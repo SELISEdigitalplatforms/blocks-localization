@@ -226,4 +226,45 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
       expect(suggestAsync).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("glossary terms chips and live checks (Phase 4)", () => {
+    const chip = (name: string) =>
+      screen.findByRole("button", { name: new RegExp(`^Glossary term ${name}`) });
+
+    it("shows chips for the typed default value, module-scoped after choosing the module (H12)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace Portal");
+      expect(await chip("Workspace")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^Glossary term Portal/ })).toBeNull();
+      fireEvent.click(screen.getByRole("combobox"));
+      fireEvent.click(screen.getByRole("option", { name: /UILM/ }));
+      expect(await chip("Portal")).toBeTruthy();
+    });
+
+    it("inserts into the first target row, then the last-focused one (H13)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace");
+      fireEvent.click(await chip("Workspace"));
+      fireEvent.click(await screen.findByRole("button", { name: "Insert into German" }));
+      expect(translationFields()[0].value).toBe("Arbeitsbereich");
+
+      fireEvent.focus(translationFields()[1]);
+      fireEvent.click(await chip("Workspace"));
+      expect(await screen.findByText("No fr-FR translation")).toBeTruthy();
+      expect(
+        (screen.getByRole("button", { name: "Insert into French" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it("warns live under the target and Fix replaces the forbidden word (H5, H6)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace");
+      await chip("Workspace");
+      fireEvent.change(translationFields()[0], { target: { value: "Ihr Werkbereich" } });
+      expect(await screen.findByText('"Werkbereich" is not allowed')).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+      expect(translationFields()[0].value).toBe("Ihr Arbeitsbereich");
+      expectNoStatusContent();
+    });
+  });
 });

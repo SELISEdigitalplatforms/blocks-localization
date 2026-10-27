@@ -18,6 +18,15 @@ export const GLOSSARY_RULE_LABELS: Record<GlossaryRule, string> = {
   forbidden: RULE_DISPLAY.forbidden.label,
 };
 
+/** The rule's icon alone, for compact controls that already show the term. */
+export const GlossaryRuleIcon = ({
+  rule,
+  className,
+}: Readonly<{ rule: GlossaryRule; className?: string }>) => {
+  const { Icon } = RULE_DISPLAY[rule];
+  return <Icon className={cn("h-3 w-3", className)} aria-hidden="true" />;
+};
+
 interface GlossaryRuleBadgeProps {
   rule: GlossaryRule;
   className?: string;
