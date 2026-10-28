@@ -18,11 +18,19 @@ namespace Eurolm.DomainService.Services
                 .Length(1, 200).WithMessage("Name must be between 1 and 200 characters long.");
         }
 
+        /// <summary>
+        /// Names are compared trimmed, NFC-normalized and ignoring case. An existing case-duplicate
+        /// (legacy data) may still be saved as long as its own name is unchanged ignoring case.
+        /// </summary>
         private async Task<bool> IsNameUniqueAsync(string? itemId, string name)
         {
-            var existing = await _glossaryRepository.GetByNameAsync(name);
-            if (existing == null) return true;
-            return existing.ItemId == itemId;
+            if (string.IsNullOrWhiteSpace(name)) return true;
+
+            var matches = await _glossaryRepository.GetByNameInsensitiveAsync(name);
+            if (!matches.Any(g => g.ItemId != itemId)) return true;
+
+            // A create always collides; an update collides only when it renames into the other name.
+            return !string.IsNullOrEmpty(itemId) && matches.Any(g => g.ItemId == itemId);
         }
     }
 }

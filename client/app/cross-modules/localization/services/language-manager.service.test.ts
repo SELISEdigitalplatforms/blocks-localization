@@ -902,7 +902,7 @@ describe("LanguageManagerService", () => {
       expect(url).toContain("SearchText=term");
     });
 
-    it("should escape regex characters in SearchText", async () => {
+    it("should send regex characters in SearchText raw (the server escapes them)", async () => {
       vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
 
       await service.fetchGlossaries({
@@ -914,7 +914,7 @@ describe("LanguageManagerService", () => {
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       const params = new URLSearchParams(url.split("?")[1]);
-      expect(params.get("SearchText")).toBe("C\\+\\+ \\(beta\\)");
+      expect(params.get("SearchText")).toBe("C++ (beta)");
     });
 
     it("should include IsGlobal when explicitly provided (true)", async () => {

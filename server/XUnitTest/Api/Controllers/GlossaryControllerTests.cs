@@ -296,5 +296,84 @@ namespace XUnitTest
         }
 
         #endregion
+
+        [Fact]
+        public async Task Save_VersionConflict_ReturnsServiceValidationErrorsUnchanged()
+        {
+            var glossary = new Glossary { ItemId = "g1", Name = "API", Version = 4 };
+            var response = new ApiResponse(string.Empty, new List<FluentValidation.Results.ValidationFailure>
+            {
+                new("Version", "This glossary was changed by someone else. Reload and try again.")
+            });
+            _glossaryManagementServiceMock.Setup(x => x.SaveGlossaryAsync(glossary)).ReturnsAsync(response);
+
+            var result = await _controller.Save(glossary);
+
+            result.Should().BeSameAs(response);
+            result.Success.Should().BeFalse();
+            result.ValidationErrors.Should().ContainSingle(e => e.PropertyName == "Version");
+        }
+
+        [Fact]
+        public async Task Save_UnknownItemId_ReturnsItemIdValidationError()
+        {
+            var glossary = new Glossary { ItemId = "nope", Name = "X" };
+            var response = new ApiResponse(string.Empty, new List<FluentValidation.Results.ValidationFailure>
+            {
+                new("ItemId", "Glossary item not found")
+            });
+            _glossaryManagementServiceMock.Setup(x => x.SaveGlossaryAsync(glossary)).ReturnsAsync(response);
+
+            var result = await _controller.Save(glossary);
+
+            result.ValidationErrors.Should().ContainSingle(e => e.PropertyName == "ItemId" && e.ErrorMessage == "Glossary item not found");
+        }
+
+        [Fact]
+        public async Task Save_WithCurrentVersion_ReturnsSuccess()
+        {
+            var glossary = new Glossary { ItemId = "g1", Name = "API", Version = 4 };
+            _glossaryManagementServiceMock.Setup(x => x.SaveGlossaryAsync(glossary)).ReturnsAsync(new ApiResponse());
+
+            var result = await _controller.Save(glossary);
+
+            result.Success.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Get_ReturnsVersion()
+        {
+            _glossaryManagementServiceMock.Setup(x => x.GetGlossaryByIdAsync("g1"))
+                .ReturnsAsync(new Glossary { ItemId = "g1", Name = "API", Version = 4 });
+
+            var result = await _controller.Get("g1");
+
+            ((Glossary)((OkObjectResult)result).Value!).Version.Should().Be(4);
+        }
+
+        [Fact]
+        public async Task Gets_ReturnsVersionOfEachItem()
+        {
+            var request = new GetGlossariesRequest { PageNumber = 0, PageSize = 10 };
+            _glossaryManagementServiceMock.Setup(x => x.GetGlossariesAsync(request)).ReturnsAsync(new GetGlossariesResponse
+            {
+                Items = new List<Glossary> { new Glossary { ItemId = "g1", Name = "A", Version = 0 }, new Glossary { ItemId = "g2", Name = "B", Version = 2 } },
+                TotalCount = 2
+            });
+
+            var result = await _controller.Gets(request);
+
+            result.Items.Select(g => g.Version).Should().Equal(0, 2);
+        }
+
+        [Fact]
+        public void Glossary_SerializesVersionAsCamelCase()
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                new Glossary { ItemId = "g1", Name = "API", Version = 3 },
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+
+            json.Should().Contain("\"version\":3");
+        }
     }
 }

@@ -13,5 +13,7 @@ namespace Eurolm.DomainService.Repositories
         public string AdditionalNote { get; set; }
         public bool IsGlobal { get; set; }
         public List<string>? ModuleIds { get; set; }
+        /// <summary>Optimistic-concurrency counter; documents saved before it existed read as 0.</summary>
+        public int Version { get; set; }
     }
 }

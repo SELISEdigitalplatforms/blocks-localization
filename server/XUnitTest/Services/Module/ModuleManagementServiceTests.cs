@@ -290,13 +290,46 @@ namespace XUnitTest
                 {
                     new Glossary { ItemId = "g-new", Name = "New", ModuleIds = new List<string>() }
                 });
-            _glossaryRepositoryMock.Setup(r => r.SaveAsync(It.IsAny<BlocksGlossary>())).Returns(Task.CompletedTask);
 
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            // g-old removed from module -> saved; g-new added -> saved. 2 saves total.
-            _glossaryRepositoryMock.Verify(r => r.SaveAsync(It.IsAny<BlocksGlossary>()), Times.Exactly(2));
+            // g-old untagged, g-new tagged, each through a targeted update (H9).
+            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-old", "mod-1"), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync("g-new", "mod-1"), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-new", It.IsAny<string>()), Times.Never);
+            _glossaryRepositoryMock.Verify(r => r.ReplaceAsync(It.IsAny<BlocksGlossary>(), It.IsAny<int?>()), Times.Never);
+            _glossaryRepositoryMock.Verify(r => r.InsertAsync(It.IsAny<BlocksGlossary>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TagGlossaryAsync_AlreadyTaggedTarget_IsNotUpdated()
+        {
+            var request = new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string> { "g1" } };
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1"))
+                .ReturnsAsync(new List<Glossary> { new Glossary { ItemId = "g1", Name = "G", ModuleIds = new List<string> { "mod-1" } } });
+            _glossaryRepositoryMock.Setup(r => r.GetByIdsAsync(request.GlossaryIds))
+                .ReturnsAsync(new List<Glossary> { new Glossary { ItemId = "g1", Name = "G", ModuleIds = new List<string> { "mod-1" } } });
+
+            var result = await _service.TagGlossaryAsync(request);
+
+            result.IsSuccess.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TagGlossaryAsync_TargetWithNullModuleIds_IsAdded()
+        {
+            var request = new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string> { "g1" } };
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1")).ReturnsAsync(new List<Glossary>());
+            _glossaryRepositoryMock.Setup(r => r.GetByIdsAsync(request.GlossaryIds))
+                .ReturnsAsync(new List<Glossary> { new Glossary { ItemId = "g1", Name = "G", ModuleIds = null } });
+
+            var result = await _service.TagGlossaryAsync(request);
+
+            result.IsSuccess.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync("g1", "mod-1"), Times.Once);
         }
 
         [Fact]
@@ -308,12 +341,11 @@ namespace XUnitTest
                 {
                     new Glossary { ItemId = "g-old", Name = "Old", ModuleIds = new List<string> { "mod-1" } }
                 });
-            _glossaryRepositoryMock.Setup(r => r.SaveAsync(It.IsAny<BlocksGlossary>())).Returns(Task.CompletedTask);
 
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            _glossaryRepositoryMock.Verify(r => r.SaveAsync(It.IsAny<BlocksGlossary>()), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-old", "mod-1"), Times.Once);
             _glossaryRepositoryMock.Verify(r => r.GetByIdsAsync(It.IsAny<List<string>>()), Times.Never);
         }
 

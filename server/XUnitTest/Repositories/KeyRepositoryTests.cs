@@ -54,6 +54,51 @@ namespace XUnitTest.Repositories
             _repo = new KeyRepository(_dbContextProvider.Object);
         }
 
+        #region RemoveGlossaryIdFromKeysAsync
+
+        [Fact]
+        public async Task RemoveGlossaryIdFromKeysAsync_PullsIdFromEveryTaggedKey()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? filter = null;
+            UpdateDefinition<BlocksLanguageKey>? update = null;
+            _blkCollection.Setup(x => x.UpdateManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, UpdateDefinition<BlocksLanguageKey>, UpdateOptions, CancellationToken>((f, u, _, _) => { filter = f; update = u; })
+                .ReturnsAsync(new UpdateResult.Acknowledged(500, 500, null));
+
+            var modified = await _repo.RemoveGlossaryIdFromKeysAsync("g1");
+
+            modified.Should().Be(500);
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            var registry = BsonSerializer.SerializerRegistry;
+            var args = new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry);
+            filter!.Render(args).ToJson().Should().Be(BsonDocument.Parse("{ GlossaryIds: 'g1' }").ToJson());
+            var rendered = update!.Render(args).AsBsonDocument;
+            rendered.Names.Should().BeEquivalentTo(new[] { "$pull", "$set" });
+            rendered["$pull"].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse("{ GlossaryIds: 'g1' }").ToJson());
+            rendered["$set"].AsBsonDocument.Names.Should().Equal("LastUpdateDate");
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task RemoveGlossaryIdFromKeysAsync_BlankId_Throws(string? glossaryId)
+        {
+            var act = () => _repo.RemoveGlossaryIdFromKeysAsync(glossaryId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region SaveKeyAsync
 
         [Fact]

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import {
   DialogDescription,
   DialogFooter,
@@ -33,7 +33,6 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
     refetch: refetchUsageCount,
   } = useGetGlossaryUsageCount(itemId);
   const { isPending, mutateAsync } = useDeleteGlossaryWithCascade();
-  const [progress, setProgress] = useState<{ removed: number; total: number } | null>(null);
   const runningRef = useRef(false);
 
   const hasKnownCount = !isCountError && typeof usageCount === "number";
@@ -45,15 +44,9 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
       return;
     }
     runningRef.current = true;
-    setProgress(null);
     try {
-      const res = await mutateAsync({
-        glossaryId: itemId,
-        initialCount: usageCount,
-        onProgress: (removed, total) => {
-          if (total > 0) setProgress({ removed, total });
-        },
-      });
+      // The server removes the glossary from its keys before deleting it.
+      const res = await mutateAsync({ glossaryId: itemId });
 
       if (res.status === "deleted") {
         toast({
@@ -62,16 +55,6 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
           description: "Glossary item deleted successfully.",
         });
         onClose();
-      } else if (res.status === "keys-failed") {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description:
-            res.reason === "iteration-limit"
-              ? `Some keys still reference this glossary after repeated attempts (removed from ${res.removedCount} of ${res.totalCount} keys); glossary not deleted.`
-              : `Removed from ${res.removedCount} of ${res.totalCount} keys; glossary not deleted. Try again.`,
-        });
-        void refetchUsageCount();
       } else {
         toast({
           variant: "destructive",
@@ -89,7 +72,6 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
       void refetchUsageCount();
     } finally {
       runningRef.current = false;
-      setProgress(null);
     }
   };
 
@@ -113,12 +95,8 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
         </div>
       );
     }
-    if (progress) {
-      return (
-        <p className="text-sm text-medium-emphasis">
-          Removing from keys… {progress.removed} / {progress.total}
-        </p>
-      );
+    if (isPending) {
+      return <p className="text-sm text-medium-emphasis">Deleting…</p>;
     }
     if (!hasKnownCount) {
       return null;

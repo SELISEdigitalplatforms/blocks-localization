@@ -247,6 +247,80 @@ test.describe("Glossary", () => {
     });
   });
 
+  test("Glossary — server search escaping and version conflicts (SPEC5)", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openGlossary(page);
+    const glossary = new GlossaryPage(page);
+    await glossary.expectPageLoaded();
+
+    const stamp = Date.now();
+    const searchText = `C++ (beta) ${stamp}`;
+    const name = `E2E ${searchText}`;
+    const otherTabName = `${name} tab1`;
+
+    await test.step("Create a term whose name has regex characters", async () => {
+      await glossary.openNewGlossaryDialog();
+      await glossary.fillGlossaryName(name);
+      await glossary.clickSaveButton();
+      await glossary.expectAddSuccess(name);
+    });
+
+    await test.step("Search sends the raw text and finds the term (H1, H2)", async () => {
+      const searchRequest = page.waitForRequest(
+        (request) =>
+          /\/Glossary\/Gets/.test(request.url()) &&
+          new URL(request.url()).searchParams.get("SearchText") === searchText,
+      );
+      await glossary.searchGlossaries(searchText);
+      await searchRequest;
+      await glossary.expectGlossaryRowVisible(name);
+    });
+
+    await test.step("A stale save shows the conflict Alert; Reload latest shows the newer values (H11, C2)", async () => {
+      await glossary.openGlossaryDetail(name);
+      await glossary.clickEditButton();
+
+      // A second tab saves first, so the first tab's editor is now stale.
+      const otherPage = await page.context().newPage();
+      try {
+        await openGlossary(otherPage);
+        const other = new GlossaryPage(otherPage);
+        await other.expectPageLoaded();
+        await other.searchGlossaries(searchText);
+        await other.openGlossaryDetail(name);
+        await other.clickEditButton();
+        await other.fillEditName(otherTabName);
+        await other.clickUpdateButton();
+        await other.expectEditSuccess(otherTabName);
+      } finally {
+        await otherPage.close();
+      }
+
+      const saveResponse = page.waitForResponse((response) =>
+        /\/Glossary\/Save/.test(response.url()),
+      );
+      await glossary.fillEditName(`${name} tab2`);
+      await glossary.clickUpdateButton();
+      // Still HTTP 200, with the Version error in validationErrors.
+      const response = await saveResponse;
+      expect(response.status()).toBe(200);
+      expect((await response.json()).validationErrors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ propertyName: "Version" })]),
+      );
+      await glossary.expectVersionConflict();
+
+      await glossary.reloadLatest();
+      await glossary.expectEditName(otherTabName);
+      await glossary.clickUpdateButton();
+      await glossary.expectEditSuccess(otherTabName);
+    });
+
+    await test.step("Clean up", async () => {
+      await glossary.goBackToList();
+      await glossary.deleteGlossaryFromList(otherTabName);
+    });
+  });
+
   test("Glossary — stored terminology data from other clients", async ({ page }) => {
     test.setTimeout(180_000);
     await openGlossary(page);

@@ -72,6 +72,7 @@ import {
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import {
+  useFetchLatestGlossary,
   useGetLanguageModules,
   useGetLanguages,
   useSaveGlossary,
@@ -97,6 +98,12 @@ import {
 import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
 
 const DUPLICATE_CHECK_DEBOUNCE_MS = 300;
+
+/** `validationErrors` property the server uses when the term changed since the edit started. */
+const VERSION_ERROR_PROPERTY = "Version";
+
+const isNotFoundError = (error: unknown) =>
+  typeof error === "object" && error !== null && (error as { status?: unknown }).status === 404;
 
 export const GLOSSARY_LIMITS = {
   name: 200,
@@ -450,6 +457,8 @@ const FieldError = ({ message }: Readonly<{ message?: string }>) =>
 interface GlossaryEditorFormProps {
   glossary?: IGlossary;
   onClose: () => void;
+  /** Called with the freshly fetched term after "Reload latest"; the caller remounts the form with it. */
+  onReloaded?: (glossary: IGlossary) => void;
   initialName?: string;
   onSaved?: (savedName: string) => void;
   onSelectExisting?: (glossary: IGlossary) => void;
@@ -458,6 +467,7 @@ interface GlossaryEditorFormProps {
 const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
   glossary,
   onClose,
+  onReloaded,
   initialName,
   onSaved,
   onSelectExisting,
@@ -466,6 +476,9 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isPending, mutateAsync } = useSaveGlossary();
+  const fetchLatestGlossary = useFetchLatestGlossary();
+  const [hasVersionConflict, setHasVersionConflict] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -583,6 +596,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       additionalNote,
       isGlobal: data.scope === "project",
       moduleIds: data.scope === "project" ? [] : data.moduleIds,
+      // The version this edit started from, so the server rejects it if someone saved meanwhile.
+      ...(isEditMode && typeof glossary?.version === "number" ? { version: glossary.version } : {}),
     };
 
     try {
@@ -599,8 +614,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
         onSaved?.(payload.name);
         onClose();
       } else if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
+        // A version conflict shows the Alert (keeping the user's input); every other error is a toast.
         res.validationErrors.forEach((error) => {
-          showErrorToast({ errors: error.errorMessage });
+          if (error.propertyName === VERSION_ERROR_PROPERTY) {
+            setHasVersionConflict(true);
+          } else {
+            showErrorToast({ errors: error.errorMessage });
+          }
         });
       } else {
         showErrorToast({ errors: res?.errorMessage });
@@ -611,6 +631,29 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
         title: "Error",
         description: formatErrorMessage(error),
       });
+    }
+  };
+
+  const reloadLatest = async () => {
+    if (!glossary?.itemId || isReloading) return;
+    setIsReloading(true);
+    try {
+      const latest = await fetchLatestGlossary(glossary.itemId);
+      // Remounts this form, so the unsaved input, the Alert and the parsed stored note all reset.
+      onReloaded?.(latest);
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        showErrorToast({ errors: "This term no longer exists." });
+        onClose();
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: formatErrorMessage(error),
+      });
+    } finally {
+      setIsReloading(false);
     }
   };
 
@@ -1256,6 +1299,33 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
               </fieldset>
             </ScrollArea>
 
+            {hasVersionConflict && (
+              <div className="px-6 pb-4">
+                <Alert variant="destructive">
+                  <TriangleAlert />
+                  <AlertDescription>
+                    <p>
+                      This term was changed by someone else. Reload the latest version and re-apply
+                      your changes.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void reloadLatest()}
+                      disabled={isReloading}
+                      className="mt-1"
+                    >
+                      {isReloading && (
+                        <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      )}
+                      Reload latest
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <SheetFooter className="gap-2 border-t bg-background px-6 py-4 sm:space-x-0">
               <Button type="button" variant="outline" onClick={onClose} className="sm:min-w-24">
                 Cancel
@@ -1289,6 +1359,33 @@ interface GlossaryEditorSheetProps {
 }
 
 /**
+ * Holds the term the form edits for one open of the sheet. "Reload latest" swaps in the
+ * fetched term and remounts the form: it parses the stored note once per mount, so a
+ * `form.reset` alone would keep stale read-only state and rule values.
+ */
+const GlossaryEditorBody: FC<Omit<GlossaryEditorFormProps, "onReloaded">> = ({
+  glossary,
+  ...props
+}) => {
+  const [current, setCurrent] = useState(glossary);
+  const [reloadCount, setReloadCount] = useState(0);
+
+  const handleReloaded = (latest: IGlossary) => {
+    setCurrent(latest);
+    setReloadCount((count) => count + 1);
+  };
+
+  return (
+    <GlossaryEditorForm
+      key={`${current?.itemId ?? "new"}:${current?.version ?? ""}:${reloadCount}`}
+      glossary={current}
+      onReloaded={handleReloaded}
+      {...props}
+    />
+  );
+};
+
+/**
  * Side-sheet editor for a glossary term. The form mounts only while open, so closing
  * discards unsaved changes and every open starts from the stored values.
  */
@@ -1311,7 +1408,7 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
       onCloseAutoFocus={onCloseAutoFocus}
     >
       {open && (
-        <GlossaryEditorForm
+        <GlossaryEditorBody
           glossary={glossary}
           onClose={() => onOpenChange(false)}
           initialName={initialName}

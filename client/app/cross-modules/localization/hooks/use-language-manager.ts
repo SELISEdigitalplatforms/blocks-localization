@@ -7,7 +7,6 @@ import {
   IGlossary,
   ILanguageConfig,
   IKeyUilmExport,
-  ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import { useEffect, useEffectEvent } from "react";
@@ -947,6 +946,21 @@ export const useGetGlossaryById = (itemId: string) => {
   });
 };
 
+/**
+ * Returns a function that refetches one glossary from the server, bypassing the cache, and
+ * stores the result as that glossary's detail data (so an open details page shows it too).
+ */
+export const useFetchLatestGlossary = () => {
+  const queryClient = useQueryClient();
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return (itemId: string) =>
+    queryClient.fetchQuery({
+      queryKey: localizationQueryKeys.glossaries.detail(tenantId, itemId),
+      queryFn: () => languageManagerService.getGlossaryById({ itemId }),
+      staleTime: 0,
+    });
+};
+
 const combineSuccessfulGlossaries = (
   results: { status: string; data?: IGlossary }[],
 ): IGlossary[] =>
@@ -1029,8 +1043,6 @@ export const useGetKeysByGlossaryId = (
   });
 };
 
-export const GLOSSARY_CASCADE_BATCH_SIZE = 100;
-
 const fetchKeysTaggedWithGlossary = (glossaryId: string, pageSize: number) =>
   languageManagerService.fetchBlocksLanguageKey({
     pageNumber: 0,
@@ -1056,76 +1068,16 @@ export const useGetGlossaryUsageCount = (glossaryId: string, enabled = true) => 
 };
 
 export type GlossaryCascadeResult =
-  | { status: "deleted" }
-  | {
-      status: "keys-failed";
-      reason: "save-failed" | "iteration-limit";
-      removedCount: number;
-      totalCount: number;
-      errorMessage?: string;
-    }
-  | { status: "delete-failed"; errors: unknown };
+  { status: "deleted" } | { status: "delete-failed"; errors: unknown };
 
 export interface GlossaryCascadeVariables {
   glossaryId: string;
-  initialCount: number;
-  onProgress?: (removedCount: number, totalCount: number) => void;
 }
 
-type CascadeBatchSaveResult = { success: true } | { success: false; errorMessage?: string };
-
-type TaggedKeysPage = Awaited<ReturnType<typeof fetchKeysTaggedWithGlossary>>;
-
-const buildCascadeBatch = (
-  keys: NonNullable<TaggedKeysPage["keys"]>,
-  glossaryId: string,
-): ISaveBlocksLanguageKeyPayload[] =>
-  keys.map((key) => ({
-    itemId: key.itemId,
-    keyName: key.keyName,
-    moduleId: key.moduleId,
-    resources: key.resources,
-    context: key.context,
-    isPartiallyTranslated: key.isPartiallyTranslated,
-    routes: key.routes ?? [],
-    glossaryIds: (key.glossaryIds ?? []).filter((id) => id !== glossaryId),
-    isNewKey: false,
-  }));
-
-const saveCascadeBatch = async (
-  batch: ISaveBlocksLanguageKeyPayload[],
-): Promise<CascadeBatchSaveResult> => {
-  try {
-    const saveResponse = await languageManagerService.saveBlocksLanguageKeys(batch);
-    if (saveResponse?.success) return { success: true };
-    return { success: false, errorMessage: saveResponse?.errorMessage || undefined };
-  } catch (error) {
-    return { success: false, errorMessage: error instanceof Error ? error.message : undefined };
-  }
-};
-
-/** A failed batch may have partly succeeded, so re-count what is still tagged. */
-const recountRemovedKeys = async (
-  glossaryId: string,
-  totalCount: number,
-  knownRemoved: number,
-): Promise<number> => {
-  try {
-    const recount = await fetchKeysTaggedWithGlossary(glossaryId, 1);
-    return Math.max(0, totalCount - (recount.totalCount ?? 0));
-  } catch {
-    // Keep the count of keys from batches known to have succeeded.
-    return knownRemoved;
-  }
-};
-
 /**
- * Removes the glossary id from every key tagged with it (sequential batches of 100,
- * always re-reading page 0 because cleaned keys drop out of the filter) and only
- * deletes the glossary once every batch has succeeded and a final re-count confirms
- * no key still references it. SaveKeys matches keys by (KeyName, ModuleId), so a
- * "successful" save can still leave a duplicate or renamed key tagged, and keys can
- * be tagged after the dialog counted them.
+ * Deletes the glossary. `Glossary/Delete` removes the glossary id from every key on the
+ * server before deleting, so this only refreshes every glossary and key cache that the
+ * server-side cleanup touched.
  */
 export const useDeleteGlossaryWithCascade = () => {
   const queryClient = useQueryClient();
@@ -1151,75 +1103,9 @@ export const useDeleteGlossaryWithCascade = () => {
     mutationKey: ["glossary", "delete-with-cascade"],
     mutationFn: async ({
       glossaryId,
-      initialCount,
-      onProgress,
     }: GlossaryCascadeVariables): Promise<GlossaryCascadeResult> => {
       if (!tenantId) {
         throw new Error("No project selected");
-      }
-
-      let removedCount = 0;
-      let totalCount = initialCount;
-      // Distinct keys sent so far: a key that stays tagged is re-sent but counted once.
-      const sentKeyIds = new Set<string>();
-      let remaining = initialCount;
-      let savedAny = false;
-      const maxIterations = Math.ceil(initialCount / GLOSSARY_CASCADE_BATCH_SIZE) + 2;
-      onProgress?.(0, initialCount);
-
-      const keysFailed = async (
-        reason: "save-failed" | "iteration-limit",
-        errorMessage?: string,
-      ): Promise<GlossaryCascadeResult> => ({
-        status: "keys-failed",
-        reason,
-        removedCount: await recountRemovedKeys(glossaryId, totalCount, removedCount),
-        totalCount,
-        errorMessage,
-      });
-
-      try {
-        let iteration = 0;
-        let verifiedClean = false;
-        while (!verifiedClean) {
-          if (remaining <= 0) {
-            // Verify before deleting: never trust arithmetic alone.
-            remaining = (await fetchKeysTaggedWithGlossary(glossaryId, 1)).totalCount ?? 0;
-            verifiedClean = remaining <= 0;
-            continue;
-          }
-          if (iteration >= maxIterations) {
-            return await keysFailed("iteration-limit");
-          }
-          iteration++;
-
-          const page = await fetchKeysTaggedWithGlossary(glossaryId, GLOSSARY_CASCADE_BATCH_SIZE);
-          const keys = page.keys ?? [];
-          if (keys.length === 0) {
-            // The page disagrees with the count; re-verify (bounded by maxIterations).
-            remaining = 0;
-            continue;
-          }
-
-          const saveResult = await saveCascadeBatch(buildCascadeBatch(keys, glossaryId));
-          savedAny = true;
-          if (!saveResult.success) {
-            return await keysFailed("save-failed", saveResult.errorMessage);
-          }
-
-          const pageIds = new Set(keys.map((key) => key.itemId));
-          const earlierKeys = [...sentKeyIds].filter((id) => !pageIds.has(id)).length;
-          pageIds.forEach((id) => sentKeyIds.add(id));
-          const matching = page.totalCount ?? keys.length;
-          totalCount = Math.max(totalCount, earlierKeys + matching);
-          remaining = Math.max(0, matching - keys.length);
-          removedCount = Math.max(removedCount, totalCount - remaining);
-          onProgress?.(removedCount, totalCount);
-        }
-      } finally {
-        if (savedAny) {
-          invalidateKeys();
-        }
       }
 
       const deleteResponse = await languageManagerService.deleteGlossary({ itemId: glossaryId });

@@ -23,6 +23,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useResolveGlossariesByIds: vi.fn(),
   useSaveGlossary: vi.fn(),
   useGetLanguageModules: vi.fn(),
+  useFetchLatestGlossary: vi.fn(() => vi.fn()),
 }));
 vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: { fetchGlossaries: vi.fn() },

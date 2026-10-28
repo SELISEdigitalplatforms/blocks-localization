@@ -435,11 +435,9 @@ export class LanguageManagerService {
       PageSize: String(request.pageSize),
     });
 
+    // Sent raw: the server escapes the text and matches it literally.
     if (request.searchText) {
-      params.append(
-        "SearchText",
-        request.searchText.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`),
-      );
+      params.append("SearchText", request.searchText);
     }
 
     if (request.isGlobal !== undefined) {
@@ -462,6 +460,8 @@ export class LanguageManagerService {
     additionalNote?: string;
     isGlobal?: boolean;
     moduleIds?: string[];
+    /** The version the edit started from; a newer stored version fails with a `Version` error. */
+    version?: number;
   }): Promise<{
     success: boolean;
     errorMessage: string;

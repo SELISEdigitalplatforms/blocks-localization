@@ -296,6 +296,8 @@ export interface IGlossary {
   moduleIds?: string[];
   createDate: string;
   lastUpdateDate: string;
+  /** Optimistic-concurrency version (0 for terms saved before versioning). */
+  version?: number;
 }
 
 export interface IGetGlossariesResponse {

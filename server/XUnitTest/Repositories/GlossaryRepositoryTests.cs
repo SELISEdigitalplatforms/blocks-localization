@@ -2,6 +2,8 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using FluentAssertions;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Moq;
 using Xunit;
@@ -87,15 +89,131 @@ namespace XUnitTest.Repositories
             result.Should().BeNull();
         }
 
-        [Fact]
-        public async Task GetByNameAsync_WhenFound_ReturnsGlossary()
+        private static BsonDocument RenderFilter<T>(FilterDefinition<T> filter) =>
+            filter.Render(new RenderArgs<T>(BsonSerializer.SerializerRegistry.GetSerializer<T>(), BsonSerializer.SerializerRegistry));
+
+        private static BsonDocument RenderSort<T>(SortDefinition<T> sort) =>
+            sort.Render(new RenderArgs<T>(BsonSerializer.SerializerRegistry.GetSerializer<T>(), BsonSerializer.SerializerRegistry));
+
+        private static BsonDocument RenderUpdate<T>(UpdateDefinition<T> update) =>
+            update.Render(new RenderArgs<T>(BsonSerializer.SerializerRegistry.GetSerializer<T>(), BsonSerializer.SerializerRegistry)).AsBsonDocument;
+
+        private (Func<FilterDefinition<Glossary>?> Filter, Func<FindOptions<Glossary, Glossary>?> Options) CaptureFind(List<Glossary> items)
         {
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, new List<Glossary> { new Glossary { ItemId = "g1", Name = "API" } });
+            FilterDefinition<Glossary>? filter = null;
+            FindOptions<Glossary, Glossary>? options = null;
+            var cursor = MockCursorHelper.CreateCursor(items);
+            _glossaryCollection.Setup(x => x.FindAsync(
+                    It.IsAny<FilterDefinition<Glossary>>(),
+                    It.IsAny<FindOptions<Glossary, Glossary>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Glossary>, FindOptions<Glossary, Glossary>, CancellationToken>((f, o, _) => { filter = f; options = o; })
+                .ReturnsAsync(cursor.Object);
+            return (() => filter, () => options);
+        }
 
-            var result = await _repo.GetByNameAsync("API");
+        [Theory]
+        [InlineData("C++ (beta)", @"C\+\+\ \(beta\)")]
+        [InlineData(".*", @"\.\*")]
+        public async Task GetAllAsync_SearchText_IsEscapedAndCaseInsensitive(string searchText, string escaped)
+        {
+            var (filter, _) = CaptureFind(new List<Glossary>());
+            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
 
-            result.Should().NotBeNull();
-            result!.Name.Should().Be("API");
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = searchText });
+
+            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            regex.Pattern.Should().Be($".*{escaped}.*");
+            regex.Options.Should().Be("i");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_SearchText_MatchesLiterally()
+        {
+            var (filter, _) = CaptureFind(new List<Glossary>());
+            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = "C++ (beta)" });
+
+            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            var dotnet = new System.Text.RegularExpressions.Regex(regex.Pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            dotnet.IsMatch("my c++ (BETA) term").Should().BeTrue();
+            dotnet.IsMatch("c (beta)").Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task GetAllAsync_EmptySearchText_AppliesNoNameFilter(string? searchText)
+        {
+            var (filter, _) = CaptureFind(new List<Glossary>());
+            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = searchText });
+
+            RenderFilter(filter()!).Contains("Name").Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetAllAsync_SortsByCreateDateThenItemIdDescending()
+        {
+            var (_, options) = CaptureFind(new List<Glossary>());
+            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 1, PageSize = 2 });
+
+            RenderSort(options()!.Sort).ToJson().Should().Be(BsonDocument.Parse("{ CreateDate: -1, _id: -1 }").ToJson());
+            options()!.Skip.Should().Be(2);
+            options()!.Limit.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task GetByNameInsensitiveAsync_QueriesCaseInsensitiveRegexForNfcAndNfd()
+        {
+            var (filter, _) = CaptureFind(new List<Glossary>());
+
+            await _repo.GetByNameInsensitiveAsync("  Café ");
+
+            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            regex.Options.Should().Be("i");
+            regex.Pattern.Should().StartWith(@"^\s*(?:").And.EndWith(@")\s*$");
+            regex.Pattern.Should().Contain("Caf\u00e9").And.Contain("Cafe\u0301");
+        }
+
+        [Fact]
+        public async Task GetByNameInsensitiveAsync_ConfirmsCandidatesInMemory()
+        {
+            CaptureFind(new List<Glossary>
+            {
+                new Glossary { ItemId = "nfd", Name = "Cafe\u0301" },
+                new Glossary { ItemId = "upper", Name = " CAFÉ " },
+                new Glossary { ItemId = "other", Name = "Cafe" }
+            });
+
+            var result = await _repo.GetByNameInsensitiveAsync("café");
+
+            result.Select(g => g.ItemId).Should().BeEquivalentTo(new[] { "nfd", "upper" });
+        }
+
+        [Fact]
+        public async Task GetByNameInsensitiveAsync_BlankName_ReturnsEmptyWithoutQuerying()
+        {
+            var result = await _repo.GetByNameInsensitiveAsync("   ");
+
+            result.Should().BeEmpty();
+            _dbContextProvider.Verify(x => x.GetDatabase(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetStoredByIdAsync_ReturnsStoredEntity()
+        {
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", CreatedBy = "a", Version = 3 } });
+
+            var result = await _repo.GetStoredByIdAsync("g1");
+
+            result!.CreatedBy.Should().Be("a");
+            result.Version.Should().Be(3);
         }
 
         [Fact]
@@ -128,22 +246,125 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task SaveAsync_UpsertsGlossary()
+        public async Task InsertAsync_InsertsGlossary()
         {
+            var glossary = new BlocksGlossary { ItemId = "g1", Name = "API", Version = 1 };
+
+            await _repo.InsertAsync(glossary);
+
+            _blocksGlossaryCollection.Verify(x => x.InsertOneAsync(glossary, It.IsAny<InsertOneOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        private Func<(FilterDefinition<BlocksGlossary>? Filter, ReplaceOptions? Options)> CaptureReplace(long matched)
+        {
+            FilterDefinition<BlocksGlossary>? filter = null;
+            ReplaceOptions? options = null;
             _blocksGlossaryCollection.Setup(x => x.ReplaceOneAsync(
-                It.IsAny<FilterDefinition<BlocksGlossary>>(),
-                It.IsAny<BlocksGlossary>(),
-                It.IsAny<ReplaceOptions>(),
-                It.IsAny<CancellationToken>())).ReturnsAsync(Mock.Of<ReplaceOneResult>());
+                    It.IsAny<FilterDefinition<BlocksGlossary>>(),
+                    It.IsAny<BlocksGlossary>(),
+                    It.IsAny<ReplaceOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksGlossary>, BlocksGlossary, ReplaceOptions, CancellationToken>((f, _, o, _) => { filter = f; options = o; })
+                .ReturnsAsync(new ReplaceOneResult.Acknowledged(matched, matched, null));
+            return () => (filter, options);
+        }
 
-            var glossary = new BlocksGlossary { ItemId = "g1", Name = "API" };
-            await _repo.SaveAsync(glossary);
+        [Fact]
+        public async Task ReplaceAsync_WithoutVersion_FiltersByIdOnlyAndNeverUpserts()
+        {
+            var captured = CaptureReplace(1);
 
+            var matched = await _repo.ReplaceAsync(new BlocksGlossary { ItemId = "g1", Name = "API" }, null);
+
+            matched.Should().BeTrue();
+            captured().Options!.IsUpsert.Should().BeFalse();
+            RenderFilter(captured().Filter!).ToJson().Should().Be(BsonDocument.Parse("{ _id: 'g1' }").ToJson());
+        }
+
+        [Fact]
+        public async Task ReplaceAsync_WithVersion_FiltersByIdAndVersionAndNeverUpserts()
+        {
+            var captured = CaptureReplace(1);
+
+            await _repo.ReplaceAsync(new BlocksGlossary { ItemId = "g1", Name = "API", Version = 5 }, 4);
+
+            captured().Options!.IsUpsert.Should().BeFalse();
+            RenderFilter(captured().Filter!).ToJson().Should().Be(BsonDocument.Parse("{ _id: 'g1', Version: 4 }").ToJson());
+        }
+
+        [Fact]
+        public async Task ReplaceAsync_WithVersionZero_AlsoMatchesDocumentsWithoutVersion()
+        {
+            var captured = CaptureReplace(1);
+
+            await _repo.ReplaceAsync(new BlocksGlossary { ItemId = "g1", Name = "API", Version = 1 }, 0);
+
+            captured().Options!.IsUpsert.Should().BeFalse();
+            var rendered = RenderFilter(captured().Filter!).ToJson();
+            rendered.Should().Contain("\"_id\" : \"g1\"");
+            rendered.Should().Contain("\"Version\" : 0").And.Contain("\"Version\" : { \"$exists\" : false }").And.Contain("$or");
+        }
+
+        [Fact]
+        public async Task ReplaceAsync_WhenNothingMatched_ReturnsFalse()
+        {
+            CaptureReplace(0);
+
+            var matched = await _repo.ReplaceAsync(new BlocksGlossary { ItemId = "g1", Name = "API" }, 2);
+
+            matched.Should().BeFalse();
+        }
+
+        private Func<(FilterDefinition<BlocksGlossary>? Filter, UpdateDefinition<BlocksGlossary>? Update)> CaptureUpdateOne()
+        {
+            FilterDefinition<BlocksGlossary>? filter = null;
+            UpdateDefinition<BlocksGlossary>? update = null;
+            _blocksGlossaryCollection.Setup(x => x.UpdateOneAsync(
+                    It.IsAny<FilterDefinition<BlocksGlossary>>(),
+                    It.IsAny<UpdateDefinition<BlocksGlossary>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksGlossary>, UpdateDefinition<BlocksGlossary>, UpdateOptions, CancellationToken>((f, u, _, _) => { filter = f; update = u; })
+                .ReturnsAsync(new UpdateResult.Acknowledged(1, 1, null));
+            return () => (filter, update);
+        }
+
+        [Theory]
+        [InlineData(true, "$addToSet")]
+        [InlineData(false, "$pull")]
+        public async Task AddRemoveModuleAsync_ChangeOnlyModuleIdsVersionAndLastUpdate(bool add, string moduleOperator)
+        {
+            var captured = CaptureUpdateOne();
+
+            if (add) await _repo.AddModuleAsync("g1", "mod-1");
+            else await _repo.RemoveModuleAsync("g1", "mod-1");
+
+            RenderFilter(captured().Filter!).ToJson().Should().Be(BsonDocument.Parse("{ _id: 'g1' }").ToJson());
+            var update = RenderUpdate(captured().Update!);
+            update.Names.Should().BeEquivalentTo(new[] { moduleOperator, "$inc", "$set" });
+            update[moduleOperator].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse("{ ModuleIds: 'mod-1' }").ToJson());
+            update["$inc"].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse("{ Version: 1 }").ToJson());
+            update["$set"].AsBsonDocument.Names.Should().BeEquivalentTo(new[] { "LastUpdateDate", "LastUpdatedBy" });
+            update["$set"]["LastUpdatedBy"].AsString.Should().Be("test-user");
             _blocksGlossaryCollection.Verify(x => x.ReplaceOneAsync(
-                It.IsAny<FilterDefinition<BlocksGlossary>>(),
-                glossary,
-                It.Is<ReplaceOptions>(o => o.IsUpsert),
-                It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<FilterDefinition<BlocksGlossary>>(), It.IsAny<BlocksGlossary>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public void Version_MissingInStoredDocument_DeserializesAsZero()
+        {
+            var doc = new BsonDocument { { "_id", "g1" }, { "Name", "API" }, { "IsGlobal", true } };
+
+            BsonSerializer.Deserialize<Glossary>(doc).Version.Should().Be(0);
+            BsonSerializer.Deserialize<BlocksGlossary>(doc).Version.Should().Be(0);
+        }
+
+        [Fact]
+        public void Version_StoredInDocument_IsReturned()
+        {
+            var doc = new BsonDocument { { "_id", "g1" }, { "Name", "API" }, { "Version", 7 } };
+
+            BsonSerializer.Deserialize<Glossary>(doc).Version.Should().Be(7);
         }
 
         [Fact]

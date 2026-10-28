@@ -89,15 +89,14 @@ describe("modals/glossary/delete-glossary", () => {
     expect(cascadeAsync).not.toHaveBeenCalled();
   });
 
-  it("should run the cascade with the known count, toast and close on success", async () => {
+  it("should send only the glossary id, toast and close on success", async () => {
     cascadeAsync.mockResolvedValue({ status: "deleted" });
     const onClose = vi.fn();
     renderDialog(onClose);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(cascadeAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ glossaryId: "g1", initialCount: 3 }),
-    );
+    // The server removes the glossary from its keys; the dialog sends no count or progress callback.
+    expect(cascadeAsync).toHaveBeenCalledWith({ glossaryId: "g1" });
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: "success",
@@ -106,21 +105,11 @@ describe("modals/glossary/delete-glossary", () => {
     );
   });
 
-  it("should show progress while the cascade runs", async () => {
-    let finish: (value: unknown) => void = () => {};
-    cascadeAsync.mockImplementation(
-      ({ onProgress }: { onProgress: (r: number, t: number) => void }) => {
-        onProgress(1, 3);
-        return new Promise((resolve) => {
-          finish = resolve;
-        });
-      },
-    );
+  it("should show 'Deleting…' while the delete runs", () => {
+    mockCascade(true);
     renderDialog();
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByText("Removing from keys… 1 / 3")).toBeTruthy();
-    finish({ status: "deleted" });
-    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(screen.getByText("Deleting…")).toBeTruthy();
+    expect(screen.queryByText(/Removing from keys/)).toBeNull();
   });
 
   it("should ignore repeated confirm clicks so only one cascade runs", async () => {
@@ -144,50 +133,6 @@ describe("modals/glossary/delete-glossary", () => {
     );
   });
 
-  it("should keep the dialog open and report partial progress when a batch fails", async () => {
-    cascadeAsync.mockResolvedValue({
-      status: "keys-failed",
-      reason: "save-failed",
-      removedCount: 100,
-      totalCount: 250,
-    });
-    const onClose = vi.fn();
-    renderDialog(onClose);
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "destructive",
-          description: "Removed from 100 of 250 keys; glossary not deleted. Try again.",
-        }),
-      ),
-    );
-    expect(onClose).not.toHaveBeenCalled();
-    expect(refetchUsage).toHaveBeenCalled();
-  });
-
-  it("should explain when keys still reference the glossary after the retry limit", async () => {
-    cascadeAsync.mockResolvedValue({
-      status: "keys-failed",
-      reason: "iteration-limit",
-      removedCount: 2,
-      totalCount: 3,
-    });
-    const onClose = vi.fn();
-    renderDialog(onClose);
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "destructive",
-          description:
-            "Some keys still reference this glossary after repeated attempts (removed from 2 of 3 keys); glossary not deleted.",
-        }),
-      ),
-    );
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
   it("should toast the server error when the glossary delete fails", async () => {
     cascadeAsync.mockResolvedValue({ status: "delete-failed", errors: {} });
     const onClose = vi.fn();
@@ -197,6 +142,7 @@ describe("modals/glossary/delete-glossary", () => {
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
     );
     expect(onClose).not.toHaveBeenCalled();
+    expect(refetchUsage).toHaveBeenCalled();
   });
 
   it("should handle a thrown error", async () => {

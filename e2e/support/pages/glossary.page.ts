@@ -349,6 +349,26 @@ export class GlossaryPage {
     await expect(this.page.getByRole("heading", { name: name })).toBeVisible({ timeout: 15_000 });
   }
 
+  /** The editor's Alert after a save was rejected because someone else changed the term. */
+  async expectVersionConflict() {
+    await expect(
+      this.editorSheet.getByText(
+        "This term was changed by someone else. Reload the latest version and re-apply your changes.",
+        { exact: true },
+      ),
+    ).toBeVisible({ timeout: 20_000 });
+  }
+
+  async reloadLatest() {
+    await this.editorSheet.getByRole("button", { name: "Reload latest" }).click();
+  }
+
+  async expectEditName(name: string) {
+    await expect(this.editDialog.getByRole("textbox", { name: "Name *" })).toHaveValue(name, {
+      timeout: 15_000,
+    });
+  }
+
   async goBackToList() {
     await this.page.getByRole("link", { name: "Glossaries" }).click();
     await expect(this.heading).toBeVisible({ timeout: 15_000 });

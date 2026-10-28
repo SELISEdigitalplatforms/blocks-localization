@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 
@@ -12,17 +13,23 @@ namespace Eurolm.DomainService.Services
         private readonly IValidator<Glossary> _validator;
         private readonly ILogger<GlossaryManagementService> _logger;
         private readonly IGlossaryRepository _glossaryRepository;
+        private readonly IKeyRepository _keyRepository;
+
+        internal const string VersionConflictMessage = "This glossary was changed by someone else. Reload and try again.";
+        internal const string ItemNotFoundMessage = "Glossary item not found";
 
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a glossary.");
 
         public GlossaryManagementService(IValidator<Glossary> validator,
                                          ILogger<GlossaryManagementService> logger,
-                                         IGlossaryRepository glossaryRepository)
+                                         IGlossaryRepository glossaryRepository,
+                                         IKeyRepository keyRepository)
         {
             _validator = validator;
             _logger = logger;
             _glossaryRepository = glossaryRepository;
+            _keyRepository = keyRepository;
         }
 
         public async Task<ApiResponse> SaveGlossaryAsync(Glossary glossary)
@@ -34,8 +41,28 @@ namespace Eurolm.DomainService.Services
 
             try
             {
-                var repoGlossary = await MappedIntoRepoGlossaryAsync(glossary);
-                await _glossaryRepository.SaveAsync(repoGlossary);
+                if (string.IsNullOrEmpty(glossary.ItemId))
+                {
+                    await _glossaryRepository.InsertAsync(MapNewGlossary(glossary));
+                    return new ApiResponse();
+                }
+
+                var existing = await _glossaryRepository.GetStoredByIdAsync(glossary.ItemId);
+                if (existing == null)
+                    return ValidationError(nameof(Glossary.ItemId), ItemNotFoundMessage);
+
+                // Clients that omit version (CLI, extension) skip the check.
+                if (glossary.Version.HasValue && glossary.Version.Value != existing.Version)
+                    return ValidationError(nameof(Glossary.Version), VersionConflictMessage);
+
+                var matched = await _glossaryRepository.ReplaceAsync(MapUpdatedGlossary(glossary, existing), glossary.Version);
+                if (!matched)
+                {
+                    // A concurrent save won the versioned replace, or the glossary was deleted meanwhile.
+                    return glossary.Version.HasValue
+                        ? ValidationError(nameof(Glossary.Version), VersionConflictMessage)
+                        : ValidationError(nameof(Glossary.ItemId), ItemNotFoundMessage);
+                }
             }
             catch (Exception ex)
             {
@@ -70,7 +97,28 @@ namespace Eurolm.DomainService.Services
                     IsSuccess = false,
                     Errors = new Dictionary<string, string>
                     {
-                        { "itemId", "Glossary item not found" }
+                        { "itemId", ItemNotFoundMessage }
+                    }
+                };
+            }
+
+            // Untag every key first, so no key is left pointing at a deleted glossary. Retrying after a
+            // failed delete below is safe: the pull is idempotent.
+            try
+            {
+                var modifiedKeys = await _keyRepository.RemoveGlossaryIdFromKeysAsync(request.ItemId);
+                _logger.LogInformation("Deleting glossary -- removed from {ModifiedKeyCount} keys", modifiedKeys);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Deleting glossary end -- could not remove it from keys: {ErrorMessage}", ex.Message);
+
+                return new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "Error", "Could not remove the glossary from keys. Nothing was deleted." }
                     }
                 };
             }
@@ -81,53 +129,52 @@ namespace Eurolm.DomainService.Services
             return new BaseMutationResponse { IsSuccess = true };
         }
 
-        private async Task<BlocksGlossary> MappedIntoRepoGlossaryAsync(Glossary glossary)
+        private static ApiResponse ValidationError(string propertyName, string message) =>
+            new(string.Empty, new List<ValidationFailure> { new(propertyName, message) });
+
+        private static BlocksGlossary MapNewGlossary(Glossary glossary)
         {
-            BlocksGlossary repoGlossary;
-
-            if (!string.IsNullOrEmpty(glossary.ItemId))
+            var now = DateTime.UtcNow;
+            var userId = BlocksContext.GetContext()?.UserId;
+            var repoGlossary = new BlocksGlossary
             {
-                var existing = await _glossaryRepository.GetByIdAsync(glossary.ItemId);
-                if (existing != null)
-                {
-                    repoGlossary = new BlocksGlossary
-                    {
-                        ItemId = existing.ItemId,
-                        CreateDate = existing.CreateDate,
-                        TenantId = CurrentTenantId
-                    };
-                }
-                else
-                {
-                    repoGlossary = new BlocksGlossary
-                    {
-                        ItemId = glossary.ItemId,
-                        CreateDate = DateTime.UtcNow,
-                        TenantId = CurrentTenantId
-                    };
-                }
-            }
-            else
-            {
-                repoGlossary = new BlocksGlossary
-                {
-                    ItemId = Guid.NewGuid().ToString(),
-                    CreateDate = DateTime.UtcNow,
-                    TenantId = CurrentTenantId
-                };
-            }
+                ItemId = Guid.NewGuid().ToString(),
+                CreateDate = now,
+                LastUpdateDate = now,
+                CreatedBy = userId,
+                LastUpdatedBy = userId,
+                TenantId = CurrentTenantId,
+                Version = 1
+            };
+            CopyEditableFields(glossary, repoGlossary);
+            return repoGlossary;
+        }
 
-            repoGlossary.LastUpdateDate = DateTime.UtcNow;
-            repoGlossary.Name = glossary.Name;
+        private static BlocksGlossary MapUpdatedGlossary(Glossary glossary, BlocksGlossary existing)
+        {
+            var repoGlossary = new BlocksGlossary
+            {
+                ItemId = existing.ItemId,
+                CreateDate = existing.CreateDate,
+                CreatedBy = existing.CreatedBy,
+                LastUpdateDate = DateTime.UtcNow,
+                LastUpdatedBy = BlocksContext.GetContext()?.UserId,
+                TenantId = CurrentTenantId,
+                Version = existing.Version + 1
+            };
+            CopyEditableFields(glossary, repoGlossary);
+            return repoGlossary;
+        }
+
+        private static void CopyEditableFields(Glossary glossary, BlocksGlossary repoGlossary)
+        {
+            repoGlossary.Name = Glossary.NormalizeName(glossary.Name);
             repoGlossary.Language = glossary.Language;
             repoGlossary.Type = glossary.Type;
             repoGlossary.Context = glossary.Context;
             repoGlossary.AdditionalNote = glossary.AdditionalNote;
             repoGlossary.IsGlobal = glossary.IsGlobal;
             repoGlossary.ModuleIds = glossary.ModuleIds;
-            repoGlossary.CreatedBy = BlocksContext.GetContext().UserId;
-            repoGlossary.LastUpdatedBy = BlocksContext.GetContext().UserId;
-            return repoGlossary;
         }
     }
 }

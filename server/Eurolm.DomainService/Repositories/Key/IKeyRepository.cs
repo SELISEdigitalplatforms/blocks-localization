@@ -19,6 +19,10 @@ namespace Eurolm.DomainService.Repositories
         Task<bool> HasKeysInModuleAsync(string moduleId);
         Task MoveKeysAsync(IReadOnlyCollection<string> itemIds, string targetModuleId);
         Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds);
+
+        /// <summary>Pulls the glossary id from GlossaryIds of every key in the tenant. Returns the modified count.</summary>
+        Task<long> RemoveGlossaryIdFromKeysAsync(string glossaryId);
+
         Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size);
         Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys);
         Task<T> GetUilmResourceKey<T>(Expression<Func<BlocksLanguageKey, bool>> expression);

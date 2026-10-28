@@ -490,6 +490,24 @@ namespace Eurolm.DomainService.Repositories
             await collection.UpdateManyAsync(filter, update);
         }
 
+        public async Task<long> RemoveGlossaryIdFromKeysAsync(string glossaryId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(glossaryId);
+
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
+            _ = KeyIndexInitializer.EnsureStarted(tenantId, dataBase.GetCollection<Key>(_collectionName), _logger);
+
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.AnyEq(k => k.GlossaryIds, glossaryId);
+            var update = Builders<BlocksLanguageKey>.Update
+                .Pull(k => k.GlossaryIds, glossaryId)
+                .Set(k => k.LastUpdateDate, DateTime.UtcNow);
+
+            var result = await collection.UpdateManyAsync(filter, update);
+            return result.ModifiedCount;
+        }
+
         public async Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds)
         {
             ArgumentNullException.ThrowIfNull(itemIds);

@@ -265,8 +265,7 @@ namespace Eurolm.DomainService.Services
                 {
                     if (!request.GlossaryIds.Contains(glossary.ItemId ?? ""))
                     {
-                        glossary.ModuleIds?.Remove(request.ModuleId);
-                        await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
+                        await _glossaryRepository.RemoveModuleAsync(glossary.ItemId ?? "", request.ModuleId);
                     }
                 }
 
@@ -275,11 +274,9 @@ namespace Eurolm.DomainService.Services
                     var targetGlossaries = await _glossaryRepository.GetByIdsAsync(request.GlossaryIds);
                     foreach (var glossary in targetGlossaries)
                     {
-                        glossary.ModuleIds ??= new List<string>();
-                        if (!glossary.ModuleIds.Contains(request.ModuleId))
+                        if (glossary.ModuleIds == null || !glossary.ModuleIds.Contains(request.ModuleId))
                         {
-                            glossary.ModuleIds.Add(request.ModuleId);
-                            await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
+                            await _glossaryRepository.AddModuleAsync(glossary.ItemId ?? "", request.ModuleId);
                         }
                     }
                 }
@@ -316,20 +313,5 @@ namespace Eurolm.DomainService.Services
 
             return repoModule;
         }
-
-        private static BlocksGlossary MapToBlocksGlossary(Glossary glossary, string tenantId) => new BlocksGlossary
-        {
-            ItemId = glossary.ItemId ?? "",
-            Name = glossary.Name,
-            Language = glossary.Language ?? "",
-            Type = glossary.Type ?? "",
-            Context = glossary.Context ?? "",
-            AdditionalNote = glossary.AdditionalNote ?? "",
-            IsGlobal = glossary.IsGlobal,
-            ModuleIds = glossary.ModuleIds,
-            CreateDate = glossary.CreateDate,
-            LastUpdateDate = DateTime.UtcNow,
-            TenantId = tenantId
-        };
     }
 }

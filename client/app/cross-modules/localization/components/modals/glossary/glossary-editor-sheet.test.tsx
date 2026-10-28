@@ -8,6 +8,7 @@ import { IGlossary } from "@blocks-localization/models/language";
 import GlossaryEditorSheet from "./glossary-editor-sheet";
 
 const saveGlossaryAsync = vi.fn();
+const fetchLatestGlossary = vi.fn();
 const navigate = vi.fn();
 
 vi.mock("react-router", async (importOriginal) => ({
@@ -27,6 +28,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguages: vi.fn(),
   useGetLanguageModules: vi.fn(),
   useSearchGlossaries: vi.fn(),
+  useFetchLatestGlossary: vi.fn(),
 }));
 
 const PREFIX = "@@glossary-meta:v1@@";
@@ -76,6 +78,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       isPending: false,
       mutateAsync: saveGlossaryAsync,
     } as never);
+    vi.mocked(hooks.useFetchLatestGlossary).mockReturnValue(fetchLatestGlossary);
     vi.mocked(hooks.useGetLanguages).mockReturnValue({
       data: [
         { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
@@ -608,6 +611,149 @@ describe("modals/glossary/glossary-editor-sheet", () => {
           expect.objectContaining({ name: "workspace" }),
         ),
       );
+    });
+  });
+
+  describe("version conflict (SPEC5)", () => {
+    const CONFLICT_TEXT =
+      "This term was changed by someone else. Reload the latest version and re-apply your changes.";
+    const versionError = {
+      propertyName: "Version",
+      errorMessage: "This glossary was changed by someone else. Reload and try again.",
+    };
+    const reloadButton = () => screen.getByRole("button", { name: "Reload latest" });
+
+    const renderConflict = async (
+      glossary = makeGlossary({ version: 4 }),
+      onOpenChange = vi.fn(),
+    ) => {
+      saveGlossaryAsync.mockResolvedValueOnce({ success: false, validationErrors: [versionError] });
+      renderSheet(glossary, onOpenChange);
+      typeName("Workspace edited");
+      save();
+      await screen.findByText(CONFLICT_TEXT);
+      return onOpenChange;
+    };
+
+    it("should send the version the sheet was opened with on edit", async () => {
+      renderSheet(makeGlossary({ version: 4 }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().version).toBe(4);
+    });
+
+    it("should send version 0 for a legacy term", async () => {
+      renderSheet(makeGlossary({ version: 0 }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().version).toBe(0);
+    });
+
+    it("should not send a version on create", async () => {
+      renderSheet();
+      typeName("Brand new");
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload()).not.toHaveProperty("version");
+    });
+
+    it("should show the Alert instead of a toast and keep the user's input", async () => {
+      const onOpenChange = await renderConflict();
+      expect(screen.getByRole("alert").textContent).toContain(CONFLICT_TEXT);
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+    });
+
+    it("should show the Alert for the Version error and a toast for each other error (C16)", async () => {
+      saveGlossaryAsync.mockResolvedValueOnce({
+        success: false,
+        validationErrors: [
+          versionError,
+          { propertyName: "Name", errorMessage: "Glossary name must be unique." },
+        ],
+      });
+      renderSheet(makeGlossary({ version: 4 }));
+      typeName("Workspace edited");
+      save();
+      expect(await screen.findByText(CONFLICT_TEXT)).toBeTruthy();
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "Glossary name must be unique." });
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+    });
+
+    it("should remount the form with the fresh term, re-parsing the stored note (H11)", async () => {
+      await renderConflict(makeGlossary({ version: 4, additionalNote: "plain old note" }));
+      fetchLatestGlossary.mockResolvedValue(
+        makeGlossary({
+          name: "Workspace v5",
+          version: 5,
+          moduleIds: ["m1"],
+          isGlobal: false,
+          additionalNote: `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"]}`,
+        }),
+      );
+
+      fireEvent.click(reloadButton());
+
+      await waitFor(() => expect(screen.queryByText(CONFLICT_TEXT)).toBeNull());
+      expect(fetchLatestGlossary).toHaveBeenCalledWith("g1");
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace v5");
+      expect(screen.getByText("workspaces")).toBeTruthy();
+      expect(
+        screen.getByRole("switch", { name: /Case-sensitive/ }).getAttribute("aria-checked"),
+      ).toBe("true");
+      expect(screen.queryByLabelText("Additional note")).toBeNull();
+
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalledTimes(2));
+      expect(lastPayload()).toMatchObject({ name: "Workspace v5", version: 5, moduleIds: ["m1"] });
+    });
+
+    it("should show a spinner and disable Reload latest while refetching", async () => {
+      await renderConflict();
+      fetchLatestGlossary.mockReturnValue(new Promise(() => {}));
+      fireEvent.click(reloadButton());
+      await waitFor(() => expect((reloadButton() as HTMLButtonElement).disabled).toBe(true));
+      expect(reloadButton().querySelector(".animate-spin")).toBeTruthy();
+      fireEvent.click(reloadButton());
+      expect(fetchLatestGlossary).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep the form and the Alert and toast when the refetch fails", async () => {
+      const onOpenChange = await renderConflict();
+      fetchLatestGlossary.mockRejectedValue(new Error("network"));
+      fireEvent.click(reloadButton());
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
+      );
+      expect(screen.getByText(CONFLICT_TEXT)).toBeTruthy();
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+      expect((reloadButton() as HTMLButtonElement).disabled).toBe(false);
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("should close with a toast when the term was deleted meanwhile", async () => {
+      const onOpenChange = await renderConflict();
+      fetchLatestGlossary.mockRejectedValue(Object.assign(new Error("Not found"), { status: 404 }));
+      fireEvent.click(reloadButton());
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "This term no longer exists." });
+    });
+
+    it("should toast an ItemId error and keep the sheet open", async () => {
+      saveGlossaryAsync.mockResolvedValueOnce({
+        success: false,
+        validationErrors: [{ propertyName: "ItemId", errorMessage: "Glossary item not found" }],
+      });
+      const onOpenChange = vi.fn();
+      renderSheet(makeGlossary({ version: 4 }), onOpenChange);
+      save();
+      await waitFor(() =>
+        expect(showErrorToast).toHaveBeenCalledWith({ errors: "Glossary item not found" }),
+      );
+      expect(screen.queryByText(CONFLICT_TEXT)).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
     });
   });
 });
