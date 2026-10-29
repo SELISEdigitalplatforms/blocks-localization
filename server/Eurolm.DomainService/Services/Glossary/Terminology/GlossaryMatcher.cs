@@ -102,10 +102,11 @@ namespace Eurolm.DomainService.Services
             var (folded, foldedToNormalized) = FoldWithOffsets(normalized);
 
             var candidates = new List<Candidate>();
+            var context = new MatchContext(candidates, text, wholeWord, options, keyIds);
             void Collect(Automaton automaton, string haystack, Func<int, int> toOriginal)
             {
                 automaton.Search(haystack, (end, length, entries) =>
-                    AddCandidates(candidates, text, toOriginal(end - length), toOriginal(end), entries, wholeWord, options, keyIds));
+                    AddCandidates(context, toOriginal(end - length), toOriginal(end), entries));
             }
 
             Collect(_sensitive, normalized, p => normalizedToOriginal[p]);
@@ -130,17 +131,20 @@ namespace Eurolm.DomainService.Services
 
         private readonly record struct Candidate(Entry Entry, int Start, int Length, GlossaryScope Scope);
 
-        private static void AddCandidates(List<Candidate> candidates, string text, int start, int originalEnd, List<Entry> entries,
-                                          bool wholeWord, MatchOptions options, HashSet<string>? keyIds)
+        /// <summary>What every hit of one <see cref="Match"/> call is checked and collected against.</summary>
+        private sealed record MatchContext(List<Candidate> Candidates, string Text, bool WholeWord, MatchOptions Options, HashSet<string>? KeyIds);
+
+        private static void AddCandidates(MatchContext context, int start, int originalEnd, List<Entry> entries)
         {
+            var text = context.Text;
             if (start < 0 || originalEnd < 0 || originalEnd <= start) return;
             if (IsTrailingUnit(text, start)) return;
-            if (wholeWord && (!IsWordStart(text, start) || !IsWordEnd(text, originalEnd))) return;
+            if (context.WholeWord && (!IsWordStart(text, start) || !IsWordEnd(text, originalEnd))) return;
             foreach (Entry entry in entries)
             {
-                var scope = ScopeOf(entry.Glossary, options, keyIds);
+                var scope = ScopeOf(entry.Glossary, context.Options, context.KeyIds);
                 if (scope.HasValue)
-                    candidates.Add(new Candidate(entry, start, originalEnd - start, scope.Value));
+                    context.Candidates.Add(new Candidate(entry, start, originalEnd - start, scope.Value));
             }
         }
 
