@@ -40,6 +40,44 @@ const scopeOf = (glossary: IGlossary, options: FixtureMatchOptions): GlossarySco
 
 const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
 
+const isWholeWordAt = (text: string, start: number, end: number) =>
+  isWordStart(text, start) && !LETTER_OR_DIGIT.test(text.charAt(end));
+
+/** Every occurrence of one glossary's name and variants, or none when it can't match. */
+const glossaryCandidates = (
+  glossary: IGlossary,
+  text: string,
+  options: FixtureMatchOptions,
+  substring: boolean,
+): GlossaryMatch[] => {
+  const status = getGlossaryStatus(glossary);
+  if (status === "deprecated") return [];
+  const scope = scopeOf(glossary, options);
+  if (scope === "other" && options.scopeMode !== "all") return [];
+  const meta = metaOf(glossary);
+  const haystack = meta.caseSensitive ? text : text.toLowerCase();
+  const candidates: GlossaryMatch[] = [];
+  for (const alternative of [glossary.name, ...meta.variants]) {
+    const needle = meta.caseSensitive ? alternative.trim() : alternative.trim().toLowerCase();
+    if (!needle) continue;
+    for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
+      const end = at + needle.length;
+      if (!substring && !isWholeWordAt(text, at, end)) continue;
+      candidates.push({
+        glossary,
+        meta,
+        definition: stripRuleMarker(glossary.context),
+        start: at,
+        length: needle.length,
+        surface: text.slice(at, end),
+        scope,
+        status,
+      });
+    }
+  }
+  return candidates;
+};
+
 export const findGlossaryMatches = (
   glossaries: IGlossary[],
   text: string,
@@ -47,34 +85,9 @@ export const findGlossaryMatches = (
 ): GlossaryMatch[] => {
   const culture = options.sourceCulture ?? "en-US";
   const substring = isNoSpaceCulture(culture);
-  const candidates: GlossaryMatch[] = [];
-  for (const glossary of glossaries) {
-    const status = getGlossaryStatus(glossary);
-    if (status === "deprecated") continue;
-    const scope = scopeOf(glossary, options);
-    if (scope === "other" && options.scopeMode !== "all") continue;
-    const meta = metaOf(glossary);
-    const haystack = meta.caseSensitive ? text : text.toLowerCase();
-    for (const alternative of [glossary.name, ...meta.variants]) {
-      const needle = meta.caseSensitive ? alternative.trim() : alternative.trim().toLowerCase();
-      if (!needle) continue;
-      for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
-        const end = at + needle.length;
-        if (!substring && (!isWordStart(text, at) || LETTER_OR_DIGIT.test(text.charAt(end))))
-          continue;
-        candidates.push({
-          glossary,
-          meta,
-          definition: stripRuleMarker(glossary.context),
-          start: at,
-          length: needle.length,
-          surface: text.slice(at, end),
-          scope,
-          status,
-        });
-      }
-    }
-  }
+  const candidates = glossaries.flatMap((glossary) =>
+    glossaryCandidates(glossary, text, options, substring),
+  );
   candidates.sort(
     (a, b) => a.start - b.start || b.length - a.length || SCOPE_RANK[a.scope] - SCOPE_RANK[b.scope],
   );

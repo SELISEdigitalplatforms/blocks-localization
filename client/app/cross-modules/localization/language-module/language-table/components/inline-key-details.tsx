@@ -228,21 +228,15 @@ export const InlineKeyDetails = memo(
           </TooltipProvider>
         </div>
 
-        {/* React events from the portalled sheet bubble here; keep them away from the row. */}
-        <div
-          className="contents"
-          role="presentation"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-        >
-          <GlossaryEditorSheet
-            open={addTermName !== undefined}
-            onOpenChange={(open) => {
-              if (!open) setAddTermName(undefined);
-            }}
-            initialName={addTermName}
-          />
-        </div>
+        {/* React events from the portalled sheet would bubble here; keep them away from the row. */}
+        <GlossaryEditorSheet
+          open={addTermName !== undefined}
+          onOpenChange={(open) => {
+            if (!open) setAddTermName(undefined);
+          }}
+          initialName={addTermName}
+          isolateEvents
+        />
 
         <div className="sticky left-4 flex w-[calc(100cqw-2rem)] flex-col-reverse gap-2 border-t border-blocks-primary-50 pt-4 dark:border-blocks-primary-100 sm:flex-row sm:items-center sm:justify-end">
           {hasEmptyChange && (

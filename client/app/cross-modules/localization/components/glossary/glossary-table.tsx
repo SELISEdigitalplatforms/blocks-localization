@@ -192,12 +192,16 @@ const TruncatedText = ({ text, className }: Readonly<{ text: string; className: 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          tabIndex={0}
-          className={`block truncate rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+        <button
+          type="button"
+          className={`block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+          onKeyDown={(event) => {
+            // Only shows the tooltip: Enter and Space must not click through to the row and open the term.
+            if (event.key === "Enter" || event.key === " ") event.preventDefault();
+          }}
         >
-          {text}
-        </span>
+          <span className="block truncate">{text}</span>
+        </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-80 whitespace-pre-wrap text-sm font-normal">
         {text}
@@ -232,6 +236,211 @@ export const getGlossaryLanguageName = (
   languages: ILanguageConfig[] | undefined,
 ) => languages?.find((language) => language.languageCode === code)?.languageName ?? (code || "—");
 
+const ROW_CLICK_IGNORE = "data-row-click-ignore";
+
+type CheckedChange = (checked: boolean | "indeterminate") => void;
+
+const SelectAllHeader = ({
+  allSelected,
+  someSelected,
+  disabled,
+  onCheckedChange,
+}: Readonly<{
+  allSelected: boolean;
+  someSelected: boolean;
+  disabled: boolean;
+  onCheckedChange: CheckedChange;
+}>) => (
+  <Checkbox
+    aria-label="Select all terms on this page"
+    checked={allSelected || (someSelected && "indeterminate")}
+    disabled={disabled}
+    onCheckedChange={onCheckedChange}
+  />
+);
+
+const SelectRowCell = ({
+  glossary,
+  checked,
+  onToggle,
+}: Readonly<{
+  glossary: IGlossary;
+  checked: boolean;
+  onToggle: (itemId: string, checked: boolean) => void;
+}>) => (
+  <div className="flex items-center" {...{ [ROW_CLICK_IGNORE]: true }}>
+    <Checkbox
+      aria-label={`Select ${glossary.name}`}
+      checked={checked}
+      disabled={isUnsupportedGlossaryNote(glossary)}
+      onCheckedChange={(value) => onToggle(glossary.itemId, value === true)}
+    />
+  </div>
+);
+
+const GlossaryActionsCell = ({
+  glossary,
+  onEdit,
+  onDelete,
+}: Readonly<{
+  glossary: IGlossary;
+  onEdit: (glossary: IGlossary) => void;
+  onDelete: (glossary: IGlossary) => void;
+}>) => (
+  <DropdownMenu modal={false}>
+    <DropdownMenuTrigger
+      asChild
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <Button variant="ghost" className="h-8 w-8 p-0" aria-label={`Actions for ${glossary.name}`}>
+        <EllipsisVertical width={20} height={20} />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuItem
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          onEdit(glossary);
+        }}
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        <span>Edit</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        className="cursor-pointer text-error"
+        onClick={(e) => {
+          e.preventDefault();
+          onDelete(glossary);
+        }}
+      >
+        <Trash className="mr-2 h-4 w-4" />
+        <span>Delete</span>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
+
+interface GlossaryColumnsOptions {
+  sort: GlossarySort;
+  onSort: (sortBy: GlossarySortBy) => void;
+  selectedIds: ReadonlySet<string>;
+  allSelected: boolean;
+  someSelected: boolean;
+  selectAllDisabled: boolean;
+  onSelectAll: CheckedChange;
+  onToggleRow: (itemId: string, checked: boolean) => void;
+  languages: ILanguageConfig[] | undefined;
+  onEdit: (glossary: IGlossary) => void;
+  onDelete: (glossary: IGlossary) => void;
+}
+
+const buildGlossaryColumns = ({
+  sort,
+  onSort,
+  selectedIds,
+  allSelected,
+  someSelected,
+  selectAllDisabled,
+  onSelectAll,
+  onToggleRow,
+  languages,
+  onEdit,
+  onDelete,
+}: GlossaryColumnsOptions): ColumnDef<IGlossary>[] => [
+  {
+    id: "select",
+    enableHiding: false,
+    header: () => (
+      <SelectAllHeader
+        allSelected={allSelected}
+        someSelected={someSelected}
+        disabled={selectAllDisabled}
+        onCheckedChange={onSelectAll}
+      />
+    ),
+    cell: ({ row }) => (
+      <SelectRowCell
+        glossary={row.original}
+        checked={selectedIds.has(row.original.itemId)}
+        onToggle={onToggleRow}
+      />
+    ),
+  },
+  {
+    accessorKey: "name",
+    enableHiding: false,
+    header: () => <SortHeader label="Name" sortBy="name" sort={sort} onSort={onSort} />,
+    cell: ({ row }) => (
+      <div className="flex w-[150px] items-center">
+        <span>{row.original.name}</span>
+      </div>
+    ),
+  },
+  {
+    id: "rule",
+    header: () => <HeaderLabel>Rule</HeaderLabel>,
+    cell: ({ row }) => renderRuleCell(row),
+  },
+  {
+    id: "status",
+    header: () => <HeaderLabel>Status</HeaderLabel>,
+    cell: ({ row }) => <GlossaryStatusBadge status={getGlossaryStatus(row.original)} />,
+  },
+  {
+    id: "translations",
+    header: () => <HeaderLabel>Translations</HeaderLabel>,
+    cell: ({ row }) => renderTranslationsCell(row, languages),
+  },
+  {
+    accessorKey: "language",
+    header: () => <HeaderLabel>Language</HeaderLabel>,
+    cell: ({ row }) => <span>{getGlossaryLanguageName(row.original.language, languages)}</span>,
+  },
+  {
+    accessorKey: "type",
+    header: () => <HeaderLabel>Type</HeaderLabel>,
+    cell: ({ row }) => (
+      <TruncatedText
+        text={getOptionalCellText(row.original.type)}
+        className="max-w-[120px] lg:max-w-[200px]"
+      />
+    ),
+  },
+  {
+    accessorKey: "context",
+    header: () => <HeaderLabel>Definition</HeaderLabel>,
+    cell: ({ row }) => (
+      <TruncatedText
+        text={getOptionalCellText(stripRuleMarker(row.original.context))}
+        className="max-w-[200px]"
+      />
+    ),
+  },
+  {
+    accessorKey: "createDate",
+    header: () => <SortHeader label="Created" sortBy="createDate" sort={sort} onSort={onSort} />,
+    cell: ({ row }) => <span>{formatDate(row.original.createDate)}</span>,
+  },
+  {
+    accessorKey: "lastUpdateDate",
+    header: () => (
+      <SortHeader label="Last updated" sortBy="lastUpdateDate" sort={sort} onSort={onSort} />
+    ),
+    cell: ({ row }) => <span>{formatDate(row.original.lastUpdateDate)}</span>,
+  },
+  {
+    id: "actions",
+    enableHiding: false,
+    header: () => <HeaderLabel>Actions</HeaderLabel>,
+    cell: ({ row }) => (
+      <GlossaryActionsCell glossary={row.original} onEdit={onEdit} onDelete={onDelete} />
+    ),
+  },
+];
+
 function renderTableRows(
   tableRows: Row<IGlossary>[],
   columnCount: number,
@@ -258,7 +467,12 @@ function renderTableRows(
         tabIndex={0}
         data-state={row.getIsSelected() ? "selected" : undefined}
         className="font-normal text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={openGlossary}
+        onClick={(event) => {
+          // A click in the select cell only toggles its checkbox; it never opens the term.
+          if (event.target instanceof Element && event.target.closest(`[${ROW_CLICK_IGNORE}]`))
+            return;
+          openGlossary();
+        }}
         onKeyDown={(event) => {
           // Keys on the row's own controls (the actions menu) keep their behaviour (A10).
           if (event.target !== event.currentTarget || event.key !== "Enter") return;
@@ -458,166 +672,41 @@ const GlossaryTable = () => {
     selectableItems.length > 0 && selectedGlossaries.length === selectableItems.length;
   const someSelected = selectedGlossaries.length > 0 && !allSelected;
 
-  const columns = useMemo<ColumnDef<IGlossary>[]>(
-    () => [
-      {
-        id: "select",
-        enableHiding: false,
-        header: () => (
-          <Checkbox
-            aria-label="Select all terms on this page"
-            checked={allSelected || (someSelected && "indeterminate")}
-            disabled={selectableItems.length === 0}
-            onCheckedChange={(checked) =>
-              setSelectedIds(
-                checked === true
-                  ? new Set(selectableItems.map((glossary) => glossary.itemId))
-                  : new Set(),
-              )
-            }
-          />
-        ),
-        cell: ({ row }) => {
-          const isUnsupported = isUnsupportedGlossaryNote(row.original);
-          return (
-            // The cell stops the row's click and Enter so toggling never opens the term.
-            <div
-              className="flex items-center"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-              role="presentation"
-            >
-              <Checkbox
-                aria-label={`Select ${row.original.name}`}
-                checked={selectedIds.has(row.original.itemId)}
-                disabled={isUnsupported}
-                onCheckedChange={(checked) => toggleRow(row.original.itemId, checked === true)}
-              />
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "name",
-        enableHiding: false,
-        header: () => <SortHeader label="Name" sortBy="name" sort={sort} onSort={handleSort} />,
-        cell: ({ row }) => (
-          <div className="flex w-[150px] items-center">
-            <span>{row.original.name}</span>
-          </div>
-        ),
-      },
-      {
-        id: "rule",
-        header: () => <HeaderLabel>Rule</HeaderLabel>,
-        cell: ({ row }) => renderRuleCell(row),
-      },
-      {
-        id: "status",
-        header: () => <HeaderLabel>Status</HeaderLabel>,
-        cell: ({ row }) => <GlossaryStatusBadge status={getGlossaryStatus(row.original)} />,
-      },
-      {
-        id: "translations",
-        header: () => <HeaderLabel>Translations</HeaderLabel>,
-        cell: ({ row }) => renderTranslationsCell(row, languageListData),
-      },
-      {
-        accessorKey: "language",
-        header: () => <HeaderLabel>Language</HeaderLabel>,
-        cell: ({ row }) => (
-          <span>{getGlossaryLanguageName(row.original.language, languageListData)}</span>
-        ),
-      },
-      {
-        accessorKey: "type",
-        header: () => <HeaderLabel>Type</HeaderLabel>,
-        cell: ({ row }) => (
-          <TruncatedText
-            text={getOptionalCellText(row.original.type)}
-            className="max-w-[120px] lg:max-w-[200px]"
-          />
-        ),
-      },
-      {
-        accessorKey: "context",
-        header: () => <HeaderLabel>Definition</HeaderLabel>,
-        cell: ({ row }) => (
-          <TruncatedText
-            text={getOptionalCellText(stripRuleMarker(row.original.context))}
-            className="max-w-[200px]"
-          />
-        ),
-      },
-      {
-        accessorKey: "createDate",
-        header: () => (
-          <SortHeader label="Created" sortBy="createDate" sort={sort} onSort={handleSort} />
-        ),
-        cell: ({ row }) => <span>{formatDate(row.original.createDate)}</span>,
-      },
-      {
-        accessorKey: "lastUpdateDate",
-        header: () => (
-          <SortHeader label="Last updated" sortBy="lastUpdateDate" sort={sort} onSort={handleSort} />
-        ),
-        cell: ({ row }) => <span>{formatDate(row.original.lastUpdateDate)}</span>,
-      },
-      {
-        id: "actions",
-        enableHiding: false,
-        header: () => <HeaderLabel>Actions</HeaderLabel>,
-        cell: ({ row }) => (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              asChild
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0"
-                aria-label={`Actions for ${row.original.name}`}
-              >
-                <EllipsisVertical width={20} height={20} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleEditClick(row.original);
-                }}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                <span>Edit</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer text-error"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleDeleteClick(row.original);
-                }}
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-      },
-    ],
+  const handleSelectAll = useCallback(
+    (checked: boolean | "indeterminate") =>
+      setSelectedIds(
+        checked === true ? new Set(selectableItems.map((glossary) => glossary.itemId)) : new Set(),
+      ),
+    [selectableItems],
+  );
+
+  const selectAllDisabled = selectableItems.length === 0;
+
+  const columns = useMemo(
+    () =>
+      buildGlossaryColumns({
+        sort,
+        onSort: handleSort,
+        selectedIds,
+        allSelected,
+        someSelected,
+        selectAllDisabled,
+        onSelectAll: handleSelectAll,
+        onToggleRow: toggleRow,
+        languages: languageListData,
+        onEdit: handleEditClick,
+        onDelete: handleDeleteClick,
+      }),
     [
       handleEditClick,
       handleDeleteClick,
       handleSort,
       toggleRow,
+      handleSelectAll,
       languageListData,
       sort,
       selectedIds,
-      selectableItems,
+      selectAllDisabled,
       allSelected,
       someSelected,
     ],

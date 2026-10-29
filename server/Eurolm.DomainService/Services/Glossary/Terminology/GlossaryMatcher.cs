@@ -86,7 +86,7 @@ namespace Eurolm.DomainService.Services
                 }
             }
 
-            return new GlossaryMatcher(sensitive.Build(), insensitive.Build());
+            return new GlossaryMatcher(sensitive.ToAutomaton(), insensitive.ToAutomaton());
         }
 
         public List<GlossaryMatch> Match(string text, MatchOptions options)
@@ -105,19 +105,7 @@ namespace Eurolm.DomainService.Services
             void Collect(Automaton automaton, string haystack, Func<int, int> toOriginal)
             {
                 automaton.Search(haystack, (end, length, entries) =>
-                {
-                    var start = toOriginal(end - length);
-                    var originalEnd = toOriginal(end);
-                    if (start < 0 || originalEnd < 0 || originalEnd <= start) return;
-                    if (IsTrailingUnit(text, start)) return;
-                    if (wholeWord && (!IsWordStart(text, start) || !IsWordEnd(text, originalEnd))) return;
-                    foreach (Entry entry in entries)
-                    {
-                        var scope = ScopeOf(entry.Glossary, options, keyIds);
-                        if (scope.HasValue)
-                            candidates.Add(new Candidate(entry, start, originalEnd - start, scope.Value));
-                    }
-                });
+                    AddCandidates(candidates, text, toOriginal(end - length), toOriginal(end), entries, wholeWord, options, keyIds));
             }
 
             Collect(_sensitive, normalized, p => normalizedToOriginal[p]);
@@ -142,6 +130,20 @@ namespace Eurolm.DomainService.Services
 
         private readonly record struct Candidate(Entry Entry, int Start, int Length, GlossaryScope Scope);
 
+        private static void AddCandidates(List<Candidate> candidates, string text, int start, int originalEnd, List<Entry> entries,
+                                          bool wholeWord, MatchOptions options, HashSet<string>? keyIds)
+        {
+            if (start < 0 || originalEnd < 0 || originalEnd <= start) return;
+            if (IsTrailingUnit(text, start)) return;
+            if (wholeWord && (!IsWordStart(text, start) || !IsWordEnd(text, originalEnd))) return;
+            foreach (Entry entry in entries)
+            {
+                var scope = ScopeOf(entry.Glossary, options, keyIds);
+                if (scope.HasValue)
+                    candidates.Add(new Candidate(entry, start, originalEnd - start, scope.Value));
+            }
+        }
+
         private static GlossaryScope? ScopeOf(BlocksGlossary glossary, MatchOptions options, HashSet<string>? keyIds)
         {
             if (keyIds != null && glossary.ItemId != null && keyIds.Contains(glossary.ItemId)) return GlossaryScope.Key;
@@ -157,26 +159,13 @@ namespace Eurolm.DomainService.Services
         /// </summary>
         private static List<Candidate> ResolveOverlaps(List<Candidate> candidates, int textLength)
         {
-            candidates.Sort((a, b) =>
-            {
-                if (a.Length != b.Length) return b.Length.CompareTo(a.Length);
-                if (a.Scope != b.Scope) return ((int)a.Scope).CompareTo((int)b.Scope);
-                var aApproved = a.Entry.Terminology.Status == GlossaryStatus.Approved;
-                if (aApproved != (b.Entry.Terminology.Status == GlossaryStatus.Approved)) return aApproved ? -1 : 1;
-                var byId = string.CompareOrdinal(a.Entry.Glossary.ItemId, b.Entry.Glossary.ItemId);
-                return byId != 0 ? byId : a.Start.CompareTo(b.Start);
-            });
+            candidates.Sort(CompareCandidates);
 
             var taken = new bool[textLength];
             var kept = new List<Candidate>();
             foreach (var candidate in candidates)
             {
-                var free = true;
-                for (var i = candidate.Start; i < candidate.Start + candidate.Length; i++)
-                {
-                    if (taken[i]) { free = false; break; }
-                }
-                if (!free) continue;
+                if (!IsFree(taken, candidate)) continue;
                 for (var i = candidate.Start; i < candidate.Start + candidate.Length; i++) taken[i] = true;
                 kept.Add(candidate);
             }
@@ -184,12 +173,32 @@ namespace Eurolm.DomainService.Services
             return kept;
         }
 
+        private static int CompareCandidates(Candidate a, Candidate b)
+        {
+            if (a.Length != b.Length) return b.Length.CompareTo(a.Length);
+            if (a.Scope != b.Scope) return ((int)a.Scope).CompareTo((int)b.Scope);
+            var aApproved = a.Entry.Terminology.Status == GlossaryStatus.Approved;
+            if (aApproved != (b.Entry.Terminology.Status == GlossaryStatus.Approved)) return aApproved ? -1 : 1;
+            var byId = string.CompareOrdinal(a.Entry.Glossary.ItemId, b.Entry.Glossary.ItemId);
+            return byId != 0 ? byId : a.Start.CompareTo(b.Start);
+        }
+
+        private static bool IsFree(bool[] taken, Candidate candidate)
+        {
+            for (var i = candidate.Start; i < candidate.Start + candidate.Length; i++)
+            {
+                if (taken[i]) return false;
+            }
+            return true;
+        }
+
         private static readonly string[] NoSpaceLanguages = { "zh", "ja", "th", "lo", "km", "my" };
+        private static readonly char[] CultureSeparators = { '-', '_' };
 
         /// <summary>Cultures written without spaces between words: terms match as plain substrings.</summary>
         public static bool IsNoSpaceCulture(string? culture)
         {
-            var primary = (culture ?? "").Split('-', '_')[0].ToLowerInvariant();
+            var primary = (culture ?? "").Split(CultureSeparators)[0].ToLowerInvariant();
             return NoSpaceLanguages.Contains(primary, StringComparer.Ordinal);
         }
 
@@ -340,7 +349,7 @@ namespace Eurolm.DomainService.Services
                 if (!entries.Contains(entry)) entries.Add(entry);
             }
 
-            public Automaton Build() => new(_patterns);
+            public Automaton ToAutomaton() => new(_patterns);
         }
 
         private sealed class Automaton
@@ -348,7 +357,7 @@ namespace Eurolm.DomainService.Services
             // Transitions of every node in one dictionary keyed by (node, char) keeps memory low.
             private readonly Dictionary<long, int> _goto = new();
             private int[] _fail = Array.Empty<int>();
-            private int[] _patternAt = Array.Empty<int>();   // pattern ending at the node, -1 if none
+            private readonly int[] _patternAt;   // pattern ending at the node, -1 if none
             private int[] _outputLink = Array.Empty<int>();  // nearest fail ancestor with a pattern, -1 if none
             private readonly int[] _patternLength;
             private readonly List<Entry>[] _patternEntries;

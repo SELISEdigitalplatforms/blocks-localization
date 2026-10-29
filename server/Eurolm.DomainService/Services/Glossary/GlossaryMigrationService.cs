@@ -35,16 +35,7 @@ namespace Eurolm.DomainService.Services
             var all = await _glossaryRepository.GetAllEntitiesAsync(tenantId);
             var report = new MigrateGlossariesResponse { DryRun = dryRun, Total = all.Count };
             var writes = new List<(BlocksGlossary Glossary, int ExpectedVersion)>();
-            var leftLegacy = 0;
-
-            foreach (var glossary in all)
-            {
-                var outcome = Plan(glossary);
-                if (outcome.Corrupt) report.Corrupt.Add(glossary.ItemId);
-                if (outcome.Updated != null) writes.Add((outcome.Updated, glossary.Version));
-                else if (glossary.SchemaVersion < 2) leftLegacy++;
-                else report.AlreadyMigrated++;
-            }
+            var leftLegacy = PlanAll(all, report, writes);
 
             // Group by the name each document will have after the migration.
             report.DuplicateGroups = all
@@ -59,18 +50,9 @@ namespace Eurolm.DomainService.Services
             var migrated = writes.Count;
             if (!dryRun)
             {
-                long modified = 0;
-                foreach (var batch in writes.Chunk(BatchSize))
-                {
-                    modified += await _glossaryRepository.ReplaceManyAsync(batch);
-                }
-                if (modified < writes.Count)
-                {
-                    // A document changed between the read and the write; it is picked up by the next run.
-                    leftLegacy += (int)(writes.Count - modified);
-                    report.Notes.Add($"{writes.Count - modified} glossaries changed during the migration and were skipped; run it again.");
-                }
-                migrated = (int)modified;
+                var (modified, skipped) = await WriteAllAsync(writes, report);
+                leftLegacy += skipped;
+                migrated = modified;
             }
             report.Migrated = migrated;
 
@@ -99,6 +81,40 @@ namespace Eurolm.DomainService.Services
                 report.DuplicateGroups.Count, report.StaleKeyRefsRemoved, report.UniqueIndexCreated);
 
             return report;
+        }
+
+        /// <summary>Plans every document, collecting the writes; returns how many legacy documents stay unmigrated.</summary>
+        private static int PlanAll(List<BlocksGlossary> all, MigrateGlossariesResponse report, List<(BlocksGlossary Glossary, int ExpectedVersion)> writes)
+        {
+            var leftLegacy = 0;
+
+            foreach (var glossary in all)
+            {
+                var outcome = Plan(glossary);
+                if (outcome.Corrupt) report.Corrupt.Add(glossary.ItemId);
+                if (outcome.Updated != null) writes.Add((outcome.Updated, glossary.Version));
+                else if (glossary.SchemaVersion < 2) leftLegacy++;
+                else report.AlreadyMigrated++;
+            }
+
+            return leftLegacy;
+        }
+
+        private async Task<(int Modified, int Skipped)> WriteAllAsync(List<(BlocksGlossary Glossary, int ExpectedVersion)> writes, MigrateGlossariesResponse report)
+        {
+            long modified = 0;
+            var skipped = 0;
+            foreach (var batch in writes.Chunk(BatchSize))
+            {
+                modified += await _glossaryRepository.ReplaceManyAsync(batch);
+            }
+            if (modified < writes.Count)
+            {
+                // A document changed between the read and the write; it is picked up by the next run.
+                skipped = (int)(writes.Count - modified);
+                report.Notes.Add($"{writes.Count - modified} glossaries changed during the migration and were skipped; run it again.");
+            }
+            return ((int)modified, skipped);
         }
 
         private sealed record PlanOutcome(BlocksGlossary? Updated, bool Corrupt);

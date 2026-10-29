@@ -107,15 +107,20 @@ namespace Eurolm.DomainService.Services
                 var value = GlossaryMapper.NormalizeValue(translation.Value);
                 if (value.Length > MaxValueLength) return false;
 
-                var forbidden = translation.ForbiddenValues ?? new List<string>();
-                if (forbidden.Count > MaxForbiddenValues) return false;
-                var valueKey = GlossaryMapper.CompareKey(value);
-                foreach (var item in forbidden)
-                {
-                    var normalized = GlossaryMapper.NormalizeValue(item);
-                    if (normalized.Length is 0 or > MaxValueLength) return false;
-                    if (value.Length > 0 && GlossaryMapper.CompareKey(normalized) == valueKey) return false;
-                }
+                if (!AreForbiddenValuesValid(translation.ForbiddenValues ?? new List<string>(), value)) return false;
+            }
+            return true;
+        }
+
+        private static bool AreForbiddenValuesValid(List<string> forbidden, string value)
+        {
+            if (forbidden.Count > MaxForbiddenValues) return false;
+            var valueKey = GlossaryMapper.CompareKey(value);
+            foreach (var item in forbidden)
+            {
+                var normalized = GlossaryMapper.NormalizeValue(item);
+                if (normalized.Length is 0 or > MaxValueLength) return false;
+                if (value.Length > 0 && GlossaryMapper.CompareKey(normalized) == valueKey) return false;
             }
             return true;
         }

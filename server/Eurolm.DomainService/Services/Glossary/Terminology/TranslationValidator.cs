@@ -68,17 +68,7 @@ namespace Eurolm.DomainService.Services
             // Forbidden rule: the term and its variants. Translate or forbidden: the stored forbidden values.
             // Longest first, so "Dashboards" isn't also reported as "Dashboard". An occurrence inside the
             // approved translation ("Portal" in "Portalseite") is not a use.
-            var banned = new List<(string Value, bool CaseInsensitive)>();
-            if (terminology.Rule == GlossaryRule.Forbidden)
-            {
-                foreach (var alternative in new[] { group.Glossary.Name ?? "" }.Concat(terminology.Variants))
-                {
-                    var value = JsText.Trim(alternative ?? "");
-                    if (value.Length > 0) banned.Add((value, !terminology.CaseSensitive));
-                }
-            }
-            banned.AddRange(terminology.ActiveForbidden(targetCulture).Select(v => (v, true)));
-            banned = banned.OrderByDescending(b => b.Value.Length).ToList();
+            var banned = BannedValues(group, terminology, targetCulture);
 
             var approvedSpans = approved.Length > 0 ? find(approved, true) : new List<Occurrence>();
             var reportedStarts = new HashSet<int>();
@@ -97,26 +87,52 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        private static List<(string Value, bool CaseInsensitive)> BannedValues(
+            TerminologyPromptBuilder.MatchedGlossaryGroup group,
+            EffectiveTerminology terminology,
+            string targetCulture)
+        {
+            var banned = new List<(string Value, bool CaseInsensitive)>();
+            if (terminology.Rule == GlossaryRule.Forbidden)
+            {
+                foreach (var alternative in new[] { group.Glossary.Name ?? "" }.Concat(terminology.Variants))
+                {
+                    var value = JsText.Trim(alternative ?? "");
+                    if (value.Length > 0) banned.Add((value, !terminology.CaseSensitive));
+                }
+            }
+            banned.AddRange(terminology.ActiveForbidden(targetCulture).Select(v => (v, true)));
+            return banned.OrderByDescending(b => b.Value.Length).ToList();
+        }
+
         /// <summary>
         /// Every occurrence of <paramref name="value"/> in <paramref name="text"/> where it starts a word; trailing
         /// letters are allowed so inflected forms ("Arbeitsbereichs") count (A11). No-space languages: substring.
         /// </summary>
         private static List<Occurrence> FindAll(string text, string value, bool caseInsensitive, string targetCulture)
         {
-            var occurrences = new List<Occurrence>();
             var needle = NormalizeNfc(value);
-            if (needle.Length == 0 || text.Length == 0) return occurrences;
+            if (needle.Length == 0 || text.Length == 0) return new List<Occurrence>();
             var substring = GlossaryMatcher.IsNoSpaceCulture(targetCulture);
 
-            if (!caseInsensitive)
-            {
-                for (var at = text.IndexOf(needle, StringComparison.Ordinal); at != -1; at = text.IndexOf(needle, at + 1, StringComparison.Ordinal))
-                {
-                    if (substring || GlossaryMatcher.IsWordStart(text, at)) occurrences.Add(new Occurrence(at, needle.Length));
-                }
-                return occurrences;
-            }
+            return caseInsensitive
+                ? FindIgnoringCase(text, needle, substring, targetCulture)
+                : FindOrdinal(text, needle, substring);
+        }
 
+        private static List<Occurrence> FindOrdinal(string text, string needle, bool substring)
+        {
+            var occurrences = new List<Occurrence>();
+            for (var at = text.IndexOf(needle, StringComparison.Ordinal); at != -1; at = text.IndexOf(needle, at + 1, StringComparison.Ordinal))
+            {
+                if (substring || GlossaryMatcher.IsWordStart(text, at)) occurrences.Add(new Occurrence(at, needle.Length));
+            }
+            return occurrences;
+        }
+
+        private static List<Occurrence> FindIgnoringCase(string text, string needle, bool substring, string targetCulture)
+        {
+            var occurrences = new List<Occurrence>();
             var textInfo = TextInfoFor(targetCulture);
             var (lowered, map) = LowerWithMap(text, textInfo);
             var loweredNeedle = LowerWithMap(needle, textInfo).Lowered;

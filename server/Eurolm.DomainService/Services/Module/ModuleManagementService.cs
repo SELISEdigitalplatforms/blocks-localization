@@ -16,8 +16,7 @@ namespace Eurolm.DomainService.Services
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IKeyRepository _keyRepository;
         private readonly IKeyTimelineRepository _keyTimelineRepository;
-        private readonly IGlossaryMatcherCache? _matcherCache;
-        private readonly IGlossaryRecheckService? _recheckService;
+        private readonly IGlossaryChangeNotifier? _glossaryChangeNotifier;
 
         private const string ItemIdErrorKey = "ItemId";
         private const string TargetModuleIdErrorKey = "TargetModuleId";
@@ -29,8 +28,7 @@ namespace Eurolm.DomainService.Services
                                       IGlossaryRepository glossaryRepository,
                                       IKeyRepository keyRepository,
                                       IKeyTimelineRepository keyTimelineRepository,
-                                      IGlossaryMatcherCache? matcherCache = null,
-                                      IGlossaryRecheckService? recheckService = null)
+                                      IGlossaryChangeNotifier? glossaryChangeNotifier = null)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
@@ -39,8 +37,7 @@ namespace Eurolm.DomainService.Services
             _glossaryRepository = glossaryRepository;
             _keyRepository = keyRepository;
             _keyTimelineRepository = keyTimelineRepository;
-            _matcherCache = matcherCache;
-            _recheckService = recheckService;
+            _glossaryChangeNotifier = glossaryChangeNotifier;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -286,11 +283,9 @@ namespace Eurolm.DomainService.Services
                     await _glossaryRepository.UpdateModuleTagsAsync(request.ModuleId, addTo, removeFrom);
 
                 // Module scope feeds the matcher's key > module > global precedence.
-                if (!string.IsNullOrEmpty(tenantId)) _matcherCache?.Invalidate(tenantId);
-
                 // Re-check the keys of every glossary whose module scope changed (coalesced, flag on only).
                 var changed = removeFrom.Concat(addTo).Where(id => id.Length > 0).Distinct(StringComparer.Ordinal).ToList();
-                if (changed.Count > 0 && _recheckService != null) await _recheckService.TriggerAsync(changed);
+                if (_glossaryChangeNotifier != null) await _glossaryChangeNotifier.NotifyAsync(tenantId, changed);
 
                 return new BaseMutationResponse { IsSuccess = true };
             }

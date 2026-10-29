@@ -17,21 +17,24 @@ namespace XUnitTest
         private readonly Mock<IGlossaryMigrationService> _migrationServiceMock = new();
         private readonly Mock<IGlossaryTerminologyService> _terminologyServiceMock = new();
         private readonly GlossaryController _controller;
+        private readonly GlossarySuggestionController _suggestionController;
+        private readonly GlossaryMigrationController _migrationController;
+        private readonly GlossaryMatchController _matchController;
+        private readonly GlossaryRecheckController _recheckController;
 
         public GlossaryControllerTests()
         {
             _glossaryManagementServiceMock = new Mock<IGlossaryManagementService>();
             _keyManagementServiceMock = new Mock<IKeyManagementService>();
 
-            _controller = new GlossaryController(
-                _glossaryManagementServiceMock.Object,
-                _keyManagementServiceMock.Object,
-                _migrationServiceMock.Object,
-                _terminologyServiceMock.Object
-            )
+            _controller = new GlossaryController(_glossaryManagementServiceMock.Object)
             {
                 ControllerContext = new ControllerContext()
             };
+            _suggestionController = new GlossarySuggestionController(_keyManagementServiceMock.Object) { ControllerContext = new ControllerContext() };
+            _migrationController = new GlossaryMigrationController(_migrationServiceMock.Object) { ControllerContext = new ControllerContext() };
+            _matchController = new GlossaryMatchController(_terminologyServiceMock.Object) { ControllerContext = new ControllerContext() };
+            _recheckController = new GlossaryRecheckController() { ControllerContext = new ControllerContext() };
         }
 
         [Fact]
@@ -70,7 +73,7 @@ namespace XUnitTest
             var response = new GetSuggestedGlossariesResponse();
             _keyManagementServiceMock.Setup(x => x.GetSuggestedGlossariesAsync(request)).ReturnsAsync(response);
 
-            var result = await _controller.GetSuggestedGlossaries(request);
+            var result = await _suggestionController.GetSuggestedGlossaries(request);
 
             result.Should().BeSameAs(response);
         }
@@ -78,7 +81,7 @@ namespace XUnitTest
         [Fact]
         public async Task GetSuggestedGlossaries_WithNullRequest_ReturnsEmptyWithoutCallingService()
         {
-            var result = await _controller.GetSuggestedGlossaries(null);
+            var result = await _suggestionController.GetSuggestedGlossaries(null);
 
             result.Should().NotBeNull();
             result.SuggestedGlossaries.Should().BeEmpty();
@@ -459,7 +462,7 @@ namespace XUnitTest
             var report = new MigrateGlossariesResponse { DryRun = dryRun, Total = 2 };
             _migrationServiceMock.Setup(x => x.MigrateAsync(dryRun)).ReturnsAsync(report);
 
-            var result = await _controller.Migrate(dryRun);
+            var result = await _migrationController.Migrate(dryRun);
 
             ((OkObjectResult)result).Value.Should().BeSameAs(report);
         }
@@ -467,7 +470,7 @@ namespace XUnitTest
         [Fact]
         public void Migrate_IsProtectedByTheMigratePermission()
         {
-            typeof(GlossaryController).GetMethod(nameof(GlossaryController.Migrate))!
+            typeof(GlossaryMigrationController).GetMethod(nameof(GlossaryMigrationController.Migrate))!
                 .GetCustomAttributesData().Single(a => a.AttributeType.Name.StartsWith("ProtectedEndPoint", StringComparison.Ordinal))
                 .ConstructorArguments.Single().Value.Should().Be("blocks-localization::glossary::migrate");
         }
@@ -504,10 +507,8 @@ namespace XUnitTest
 
         #region Recheck (SPEC8 H28, C12, C13, C15)
 
-        private GlossaryController ControllerWithRecheck(Mock<IGlossaryRecheckService> recheck) =>
-            new(_glossaryManagementServiceMock.Object, _keyManagementServiceMock.Object, _migrationServiceMock.Object,
-                _terminologyServiceMock.Object, recheck.Object)
-            { ControllerContext = new ControllerContext() };
+        private static GlossaryRecheckController ControllerWithRecheck(Mock<IGlossaryRecheckService> recheck) =>
+            new(recheck.Object) { ControllerContext = new ControllerContext() };
 
         [Theory]
         [InlineData("g1", true)]
@@ -527,7 +528,7 @@ namespace XUnitTest
         [Fact]
         public async Task Recheck_without_a_registered_service_is_not_queued()
         {
-            var result = await _controller.Recheck("g1");
+            var result = await _recheckController.Recheck("g1");
 
             ((OkObjectResult)result).Value.Should().BeEquivalentTo(new RecheckGlossaryResponse { Queued = false });
         }
@@ -535,7 +536,7 @@ namespace XUnitTest
         [Fact]
         public void Recheck_is_a_post_protected_by_the_recheck_permission()
         {
-            var method = typeof(GlossaryController).GetMethod(nameof(GlossaryController.Recheck))!;
+            var method = typeof(GlossaryRecheckController).GetMethod(nameof(GlossaryRecheckController.Recheck))!;
             method.GetCustomAttributesData().Single(a => a.AttributeType.Name.StartsWith("ProtectedEndPoint", StringComparison.Ordinal))
                 .ConstructorArguments.Single().Value.Should().Be("blocks-localization::glossary::recheck");
             method.GetCustomAttributes(typeof(HttpPostAttribute), false).Should().ContainSingle();
@@ -586,7 +587,7 @@ namespace XUnitTest
         [InlineData("Open", " ", "Language")]
         public async Task Match_WithInvalidInput_ReturnsBadRequestWithTheFieldError(string? text, string? language, string field)
         {
-            var result = await _controller.Match(new MatchGlossaryRequest { Text = text, Language = language });
+            var result = await _matchController.Match(new MatchGlossaryRequest { Text = text, Language = language });
 
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
             badRequest.Value.Should().BeOfType<BaseMutationResponse>().Which.Errors.Should().ContainKey(field);
@@ -596,7 +597,7 @@ namespace XUnitTest
         [Fact]
         public async Task Match_WithTextLongerThan5000Characters_ReturnsBadRequest()
         {
-            var result = await _controller.Match(new MatchGlossaryRequest { Text = new string('a', 5001), Language = "en-US" });
+            var result = await _matchController.Match(new MatchGlossaryRequest { Text = new string('a', 5001), Language = "en-US" });
 
             result.Should().BeOfType<BadRequestObjectResult>()
                 .Which.Value.Should().BeOfType<BaseMutationResponse>().Which.Errors.Should().ContainKey("Text");
@@ -607,7 +608,7 @@ namespace XUnitTest
         {
             var ids = Enumerable.Range(0, 101).Select(i => $"g{i}").ToList();
 
-            var result = await _controller.Match(new MatchGlossaryRequest { Text = "Open", Language = "en-US", GlossaryIds = ids });
+            var result = await _matchController.Match(new MatchGlossaryRequest { Text = "Open", Language = "en-US", GlossaryIds = ids });
 
             result.Should().BeOfType<BadRequestObjectResult>();
         }
@@ -622,7 +623,7 @@ namespace XUnitTest
             };
             _terminologyServiceMock.Setup(s => s.MatchAsync(request)).ReturnsAsync(response);
 
-            var result = await _controller.Match(request);
+            var result = await _matchController.Match(request);
 
             result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeSameAs(response);
         }

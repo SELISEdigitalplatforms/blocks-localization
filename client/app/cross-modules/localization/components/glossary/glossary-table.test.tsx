@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -170,6 +171,44 @@ describe("components/glossary/glossary-table", () => {
     fireEvent.keyDown(row, { key: " " });
     expect(navigate).not.toHaveBeenCalled();
     fireEvent.keyDown(row, { key: "Enter" });
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
+  });
+
+  it("should open the term on a definition click but not on Enter or Space there", async () => {
+    const user = userEvent.setup();
+    mockGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g1", name: "Acme", context: "ctx", createDate: "2026-01-01" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    const definition = screen.getByRole("button", { name: "ctx" });
+    definition.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(navigate).not.toHaveBeenCalled();
+    await user.click(definition);
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
+  });
+
+  it("should toggle a row's checkbox without opening the term", async () => {
+    const user = userEvent.setup();
+    mockGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g1", name: "Acme", createDate: "2026-01-01" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    const checkbox = screen.getByRole("checkbox", { name: "Select Acme" });
+    await user.click(checkbox);
+    expect(screen.getByText("bulk-Acme")).toBeTruthy();
+    await user.click(checkbox.parentElement!);
+    expect(navigate).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Acme"));
     expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
   });
 

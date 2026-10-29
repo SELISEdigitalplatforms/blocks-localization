@@ -135,38 +135,8 @@ namespace Eurolm.DomainService.Services
                 var keys = await _keyRepository.GetKeysForGlossaryRecheckAsync(scope, after, PageSize);
                 if (keys.Count == 0) break;
 
-                var now = DateTime.UtcNow;
-                var updates = new List<(string KeyId, List<KeyGlossaryViolation> Violations)>();
-                foreach (var key in keys)
-                {
-                    result.Checked++;
-                    try
-                    {
-                        var computed = GlossaryTerminologyService.ComputeKeyViolations(key, matcher, defaultCulture, now);
-                        var merged = KeepDetectedAt(key.GlossaryViolations, computed);
-                        if (merged != null) updates.Add((key.ItemId, merged));
-                    }
-                    catch (Exception ex)
-                    {
-                        // This key keeps its stored violations; the rest of the job goes on.
-                        result.Failed++;
-                        _logger.LogWarning(ex, "Glossary re-check failed for key {KeyId}; stored violations kept", key.ItemId);
-                    }
-                }
-
-                if (updates.Count > 0)
-                {
-                    try
-                    {
-                        await _keyRepository.SetGlossaryViolationsManyAsync(updates);
-                        result.Updated += updates.Count;
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Failed += updates.Count;
-                        _logger.LogWarning(ex, "Glossary re-check could not store violations for {KeyCount} keys after key {AfterKeyId}", updates.Count, after);
-                    }
-                }
+                var updates = ComputeUpdates(keys, matcher, defaultCulture, result);
+                if (updates.Count > 0) await StoreUpdatesAsync(updates, after, result);
 
                 after = keys[^1].ItemId;
                 if (keys.Count < PageSize) break;
@@ -182,6 +152,44 @@ namespace Eurolm.DomainService.Services
         /// Null (every key) when the whole project was asked for or any of the glossaries is global; otherwise
         /// the glossaries' tagged keys, keys in their modules, and keys with stored violations of them.
         /// </summary>
+        private List<(string KeyId, List<KeyGlossaryViolation> Violations)> ComputeUpdates(
+            List<BlocksLanguageKey> keys, GlossaryMatcher matcher, string defaultCulture, GlossaryRecheckResult result)
+        {
+            var now = DateTime.UtcNow;
+            var updates = new List<(string KeyId, List<KeyGlossaryViolation> Violations)>();
+            foreach (var key in keys)
+            {
+                result.Checked++;
+                try
+                {
+                    var computed = GlossaryTerminologyService.ComputeKeyViolations(key, matcher, defaultCulture, now);
+                    var merged = KeepDetectedAt(key.GlossaryViolations, computed);
+                    if (merged != null) updates.Add((key.ItemId, merged));
+                }
+                catch (Exception ex)
+                {
+                    // This key keeps its stored violations; the rest of the job goes on.
+                    result.Failed++;
+                    _logger.LogWarning(ex, "Glossary re-check failed for key {KeyId}; stored violations kept", key.ItemId);
+                }
+            }
+            return updates;
+        }
+
+        private async Task StoreUpdatesAsync(List<(string KeyId, List<KeyGlossaryViolation> Violations)> updates, string? after, GlossaryRecheckResult result)
+        {
+            try
+            {
+                await _keyRepository.SetGlossaryViolationsManyAsync(updates);
+                result.Updated += updates.Count;
+            }
+            catch (Exception ex)
+            {
+                result.Failed += updates.Count;
+                _logger.LogWarning(ex, "Glossary re-check could not store violations for {KeyCount} keys after key {AfterKeyId}", updates.Count, after);
+            }
+        }
+
         private async Task<GlossaryRecheckKeyScope?> ResolveScopeAsync(GlossaryRecheckJob? job, string? eventGlossaryId)
         {
             var ids = new HashSet<string>(StringComparer.Ordinal);

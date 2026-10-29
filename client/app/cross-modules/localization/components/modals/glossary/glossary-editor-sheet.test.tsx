@@ -574,6 +574,29 @@ describe("modals/glossary/glossary-editor-sheet", () => {
   });
 
   describe("picker-mode props", () => {
+    it.each([
+      [true, 0],
+      [false, 1],
+    ])(
+      "with isolateEvents=%s, a click and a key press in the sheet bubble out %i time(s)",
+      (isolateEvents, times) => {
+        const onClick = vi.fn();
+        const onKeyDown = vi.fn();
+        document.addEventListener("click", onClick);
+        document.addEventListener("keydown", onKeyDown);
+        try {
+          render(<GlossaryEditorSheet open onOpenChange={vi.fn()} isolateEvents={isolateEvents} />);
+          fireEvent.click(nameInput());
+          fireEvent.keyDown(nameInput(), { key: "a" });
+          expect(onClick).toHaveBeenCalledTimes(times);
+          expect(onKeyDown).toHaveBeenCalledTimes(times);
+        } finally {
+          document.removeEventListener("click", onClick);
+          document.removeEventListener("keydown", onKeyDown);
+        }
+      },
+    );
+
     it("should pre-fill the name from initialName and call onSaved with the trimmed name", async () => {
       const onOpenChange = vi.fn();
       const onSaved = vi.fn();

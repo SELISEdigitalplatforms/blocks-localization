@@ -30,7 +30,7 @@ export const getGlossaryStatus = (glossary: Pick<IGlossary, "status">): Glossary
 export const getGlossaryNote = (glossary: Pick<IGlossary, "additionalNote">): string => {
   const raw = glossary.additionalNote ?? "";
   const prefix = GLOSSARY_META_PREFIX_PATTERN.exec(raw);
-  if (!prefix || prefix[1] !== "1") return prefix ? "" : raw;
+  if (prefix?.[1] !== "1") return prefix ? "" : raw;
   const parsed = parseGlossaryMeta(raw);
   return parsed.status === "corrupt" ? raw : (parsed.meta.note ?? "");
 };

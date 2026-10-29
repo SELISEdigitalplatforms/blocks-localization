@@ -259,8 +259,8 @@ describe("glossary-table (Phase 8)", () => {
       const user = userEvent.setup();
       setItems([term("g1", "Workspace", { context: "Where a team keeps its shared files" })]);
       renderWithProviders(<GlossaryTable />);
-      const definition = screen.getByText("Where a team keeps its shared files");
-      expect(definition.getAttribute("tabindex")).toBe("0");
+      const definition = screen.getByText("Where a team keeps its shared files").closest("button")!;
+      expect(definition).toBeTruthy();
       definition.focus();
       await user.keyboard("{Shift>}{Tab}{/Shift}{Tab}");
       expect((await screen.findAllByText("Where a team keeps its shared files")).length).toBeGreaterThan(1);

@@ -33,13 +33,35 @@ namespace Eurolm.DomainService.Services
                 .ToList();
             var groups = GroupByGlossary(eligible);
 
+            var ruleLines = CollectRuleLines(groups, target);
+            var meaningLines = CollectMeaningLines(groups);
+            var context = RenderWithinLimit(baseText, ruleLines, meaningLines);
+
+            var ruleIds = ruleLines.Select(r => r.GlossaryId).Distinct(StringComparer.Ordinal).ToList();
+            var groupById = groups.ToDictionary(g => g.Glossary.ItemId, StringComparer.Ordinal);
+
+            return new TerminologyPrompt
+            {
+                Context = context,
+                FinalLine = FinalLine(request),
+                RuleMatches = eligible.Where(m => ruleIds.Contains(m.Glossary.ItemId, StringComparer.Ordinal)).ToList(),
+                AppliedTerms = ruleIds.Select(id => ToAppliedTerm(id, groupById[id], target)).ToList()
+            };
+        }
+
+        private static List<(string GlossaryId, string Line)> CollectRuleLines(List<MatchedGlossaryGroup> groups, string? target)
+        {
             var ruleLines = new List<(string GlossaryId, string Line)>();
             foreach (var group in groups)
             {
                 foreach (var line in BuildRuleLines(group, target))
                     ruleLines.Add((group.Glossary.ItemId, line));
             }
+            return ruleLines;
+        }
 
+        private static List<string> CollectMeaningLines(List<MatchedGlossaryGroup> groups)
+        {
             var meaningLines = new List<string>();
             foreach (var group in groups)
             {
@@ -50,7 +72,12 @@ namespace Eurolm.DomainService.Services
                 var label = partOfSpeech.Length > 0 ? $"{term} ({partOfSpeech})" : term;
                 if (term.Length > 0 && definition.Length > 0) meaningLines.Add($"- {label}: {definition}");
             }
+            return meaningLines;
+        }
 
+        /// <summary>Drops meaning lines, then rule lines, from the end until the context fits; the lists keep what was rendered.</summary>
+        private static string RenderWithinLimit(string baseText, List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
+        {
             var context = Render(baseText, ruleLines, meaningLines);
             while (context.Length > MaxPromptCharacters)
             {
@@ -59,28 +86,19 @@ namespace Eurolm.DomainService.Services
                 else break;
                 context = Render(baseText, ruleLines, meaningLines);
             }
+            return context;
+        }
 
-            var ruleIds = ruleLines.Select(r => r.GlossaryId).Distinct(StringComparer.Ordinal).ToList();
-            var groupById = groups.ToDictionary(g => g.Glossary.ItemId, StringComparer.Ordinal);
-
-            return new TerminologyPrompt
+        private static AppliedTerm ToAppliedTerm(string id, MatchedGlossaryGroup group, string? target)
+        {
+            var terminology = group.Matches[0].Terminology;
+            var expected = terminology.ActiveTranslation(target);
+            return new AppliedTerm
             {
-                Context = context,
-                FinalLine = FinalLine(request),
-                RuleMatches = eligible.Where(m => ruleIds.Contains(m.Glossary.ItemId, StringComparer.Ordinal)).ToList(),
-                AppliedTerms = ruleIds.Select(id =>
-                {
-                    var group = groupById[id];
-                    var terminology = group.Matches[0].Terminology;
-                    var expected = terminology.ActiveTranslation(target);
-                    return new AppliedTerm
-                    {
-                        GlossaryId = id,
-                        Term = group.Glossary.Name ?? "",
-                        Rule = RuleName(terminology.Rule),
-                        Expected = expected == null ? null : JsText.Trim(expected)
-                    };
-                }).ToList()
+                GlossaryId = id,
+                Term = group.Glossary.Name ?? "",
+                Rule = RuleName(terminology.Rule),
+                Expected = expected == null ? null : JsText.Trim(expected)
             };
         }
 

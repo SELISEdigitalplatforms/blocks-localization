@@ -13,6 +13,7 @@ namespace Eurolm.DomainService.Services
             services.AddSingleton<IGlossaryTerminologyService, GlossaryTerminologyService>();
             services.AddSingleton<IGlossaryRecheckJobRepository, GlossaryRecheckJobRepository>();
             services.AddSingleton<IGlossaryRecheckService, GlossaryRecheckService>();
+            services.AddSingleton<IGlossaryChangeNotifier, GlossaryChangeNotifier>();
             return services;
         }
     }

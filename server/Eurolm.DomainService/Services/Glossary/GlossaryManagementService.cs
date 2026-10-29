@@ -256,28 +256,7 @@ namespace Eurolm.DomainService.Services
         {
             if (glossary.HasStructuredFields())
             {
-                if (repoGlossary.SchemaVersion < 2)
-                {
-                    // Resolve from what is stored (or, on create, from this request's own note).
-                    var effective = GlossaryTerminologyResolver.Resolve(existing ?? repoGlossary);
-                    repoGlossary.Rule = effective.Rule;
-                    repoGlossary.CaseSensitive = effective.CaseSensitive;
-                    repoGlossary.Variants = effective.Variants;
-                    repoGlossary.Translations = effective.Translations;
-                    repoGlossary.Status ??= effective.Status;
-                    repoGlossary.SchemaVersion = 2;
-                }
-
-                if (glossary.Rule != null && GlossaryWireValues.TryParseRule(glossary.Rule, out var rule))
-                    repoGlossary.Rule = rule;
-                if (glossary.CaseSensitive != null)
-                    repoGlossary.CaseSensitive = glossary.CaseSensitive;
-                if (glossary.Variants != null)
-                    repoGlossary.Variants = NormalizeVariants(glossary.Variants);
-                if (glossary.Translations != null)
-                    repoGlossary.Translations = NormalizeTranslations(glossary.Translations);
-                if (glossary.Status != null && GlossaryWireValues.TryParseStatus(glossary.Status, out var status))
-                    repoGlossary.Status = status;
+                MergeStructuredFields(glossary, repoGlossary, existing);
                 return;
             }
 
@@ -289,6 +268,32 @@ namespace Eurolm.DomainService.Services
             repoGlossary.CaseSensitive = parsed.Meta.CaseSensitive;
             repoGlossary.Variants = parsed.Meta.Variants.ToList();
             repoGlossary.Translations = GlossaryTerminologyResolver.ToTranslations(parsed.Meta);
+        }
+
+        private static void MergeStructuredFields(Glossary glossary, BlocksGlossary repoGlossary, BlocksGlossary? existing)
+        {
+            if (repoGlossary.SchemaVersion < 2)
+            {
+                // Resolve from what is stored (or, on create, from this request's own note).
+                var effective = GlossaryTerminologyResolver.Resolve(existing ?? repoGlossary);
+                repoGlossary.Rule = effective.Rule;
+                repoGlossary.CaseSensitive = effective.CaseSensitive;
+                repoGlossary.Variants = effective.Variants;
+                repoGlossary.Translations = effective.Translations;
+                repoGlossary.Status ??= effective.Status;
+                repoGlossary.SchemaVersion = 2;
+            }
+
+            if (glossary.Rule != null && GlossaryWireValues.TryParseRule(glossary.Rule, out var rule))
+                repoGlossary.Rule = rule;
+            if (glossary.CaseSensitive != null)
+                repoGlossary.CaseSensitive = glossary.CaseSensitive;
+            if (glossary.Variants != null)
+                repoGlossary.Variants = NormalizeVariants(glossary.Variants);
+            if (glossary.Translations != null)
+                repoGlossary.Translations = NormalizeTranslations(glossary.Translations);
+            if (glossary.Status != null && GlossaryWireValues.TryParseStatus(glossary.Status, out var status))
+                repoGlossary.Status = status;
         }
 
         /// <summary>

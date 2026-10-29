@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Repositories
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
         private const string KeyNameField = "KeyName";
+        private const string MatchStage = "$match";
 
         public const int DefaultKeyPageSize = 10;
         public const int MaxKeyPageSize = 1000;
@@ -192,7 +193,7 @@ namespace Eurolm.DomainService.Repositories
 
         public static PipelineDefinition<BsonDocument, BsonDocument> DuplicateKeyIdsPipeline(int limit) => new[]
         {
-            new BsonDocument("$match", new BsonDocument
+            new BsonDocument(MatchStage, new BsonDocument
             {
                 { "ModuleId", new BsonDocument("$type", "string") },
                 { KeyNameField, new BsonDocument("$type", "string") },
@@ -203,7 +204,7 @@ namespace Eurolm.DomainService.Repositories
                 { "count", new BsonDocument("$sum", 1) },
                 { "members", new BsonDocument("$push", new BsonDocument { { "id", "$_id" }, { "created", "$CreateDate" } }) },
             }),
-            new BsonDocument("$match", new BsonDocument("count", new BsonDocument("$gt", 1))),
+            new BsonDocument(MatchStage, new BsonDocument("count", new BsonDocument("$gt", 1))),
             new BsonDocument("$unwind", "$members"),
             new BsonDocument("$sort", new BsonDocument
             {
@@ -220,6 +221,18 @@ namespace Eurolm.DomainService.Repositories
             var filterBuilder = Builders<Key>.Filter;
             var matchFilters = new List<FilterDefinition<Key>>();
 
+            AddSearchTextFilters(query, filterBuilder, matchFilters);
+            AddResourceSearchFilters(query, filterBuilder, matchFilters);
+            AddModuleFilter(query, filterBuilder, matchFilters);
+            AddDateRangeFilters(query, filterBuilder, matchFilters);
+            AddMissingLanguagesFilter(query, filterBuilder, matchFilters);
+            AddGlossaryFilters(query, filterBuilder, matchFilters);
+
+            return matchFilters.Count > 0 ? filterBuilder.And(matchFilters) : filterBuilder.Empty;
+        }
+
+        private static void AddSearchTextFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (!string.IsNullOrWhiteSpace(query.KeySearchText))
             {
                 var keyNameFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i"));
@@ -233,35 +246,48 @@ namespace Eurolm.DomainService.Repositories
                 var searchKeyFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.SearchKey)}.*", "i"));
                 matchFilters.Add(searchKeyFilter);
             }
+        }
 
-            if (query.ResourceSearchFilters != null && query.ResourceSearchFilters.Length > 0)
+        private static void AddResourceSearchFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.ResourceSearchFilters == null || query.ResourceSearchFilters.Length == 0)
             {
-                foreach (var resourceFilter in query.ResourceSearchFilters)
-                {
-                    if (!string.IsNullOrWhiteSpace(resourceFilter.SearchText) && !string.IsNullOrWhiteSpace(resourceFilter.Culture))
-                    {
-                        var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
-                            Builders<Resource>.Filter.And(
-                                Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
-                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
-                            ));
-                        matchFilters.Add(cultureAndValueFilter);
-                    }
-                }
+                return;
             }
 
-            if (query.ModuleIds != null && query.ModuleIds.Length > 0)
+            foreach (var resourceFilter in query.ResourceSearchFilters)
             {
-                if (query.ModuleIds.Length == 1 && !string.IsNullOrWhiteSpace(query.ModuleIds[0]))
+                if (!string.IsNullOrWhiteSpace(resourceFilter.SearchText) && !string.IsNullOrWhiteSpace(resourceFilter.Culture))
                 {
-                    matchFilters.Add(filterBuilder.Eq(x => x.ModuleId, query.ModuleIds[0]));
-                }
-                else if (query.ModuleIds.Length > 1)
-                {
-                    matchFilters.Add(filterBuilder.In(x => x.ModuleId, query.ModuleIds));
+                    var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
+                        Builders<Resource>.Filter.And(
+                            Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
+                            Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
+                        ));
+                    matchFilters.Add(cultureAndValueFilter);
                 }
             }
+        }
 
+        private static void AddModuleFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.ModuleIds == null || query.ModuleIds.Length == 0)
+            {
+                return;
+            }
+
+            if (query.ModuleIds.Length == 1 && !string.IsNullOrWhiteSpace(query.ModuleIds[0]))
+            {
+                matchFilters.Add(filterBuilder.Eq(x => x.ModuleId, query.ModuleIds[0]));
+            }
+            else if (query.ModuleIds.Length > 1)
+            {
+                matchFilters.Add(filterBuilder.In(x => x.ModuleId, query.ModuleIds));
+            }
+        }
+
+        private static void AddDateRangeFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (query.CreateDateRange != null)
             {
                 List<FilterDefinition<Key>> dateFilters = setDateFilter(query, filterBuilder);
@@ -279,34 +305,42 @@ namespace Eurolm.DomainService.Repositories
                     matchFilters.Add(filterBuilder.And(dateFilters));
                 }
             }
+        }
 
-            if (query.MissingLanguages != null && query.MissingLanguages.Count > 0)
+        private static void AddMissingLanguagesFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.MissingLanguages == null || query.MissingLanguages.Count == 0)
             {
-                // A key is "missing" a language if that language's resource is absent OR has an empty/null value.
-                // Return keys that are missing at least one of the requested languages.
-                var perLanguageFilters = query.MissingLanguages.Select(lang =>
-                    filterBuilder.Or(
-                        // Resource exists for this language but value is empty/null
-                        filterBuilder.ElemMatch(x => x.Resources,
-                            Builders<Resource>.Filter.And(
-                                Builders<Resource>.Filter.Eq(r => r.Culture, lang),
-                                Builders<Resource>.Filter.Or(
-                                    Builders<Resource>.Filter.Eq(r => r.Value, null),
-                                    Builders<Resource>.Filter.Eq(r => r.Value, "")
-                                )
-                            )
-                        ),
-                        // No resource exists at all for this language
-                        filterBuilder.Not(
-                            filterBuilder.ElemMatch(x => x.Resources,
-                                Builders<Resource>.Filter.Eq(r => r.Culture, lang)
-                            )
-                        )
-                    )
-                );
-                matchFilters.Add(filterBuilder.Or(perLanguageFilters));
+                return;
             }
 
+            // A key is "missing" a language if that language's resource is absent OR has an empty/null value.
+            // Return keys that are missing at least one of the requested languages.
+            var perLanguageFilters = query.MissingLanguages.Select(lang =>
+                filterBuilder.Or(
+                    // Resource exists for this language but value is empty/null
+                    filterBuilder.ElemMatch(x => x.Resources,
+                        Builders<Resource>.Filter.And(
+                            Builders<Resource>.Filter.Eq(r => r.Culture, lang),
+                            Builders<Resource>.Filter.Or(
+                                Builders<Resource>.Filter.Eq(r => r.Value, null),
+                                Builders<Resource>.Filter.Eq(r => r.Value, "")
+                            )
+                        )
+                    ),
+                    // No resource exists at all for this language
+                    filterBuilder.Not(
+                        filterBuilder.ElemMatch(x => x.Resources,
+                            Builders<Resource>.Filter.Eq(r => r.Culture, lang)
+                        )
+                    )
+                )
+            );
+            matchFilters.Add(filterBuilder.Or(perLanguageFilters));
+        }
+
+        private static void AddGlossaryFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (!string.IsNullOrWhiteSpace(query.GlossaryId))
             {
                 matchFilters.Add(filterBuilder.AnyEq(x => x.GlossaryIds, query.GlossaryId));
@@ -318,8 +352,6 @@ namespace Eurolm.DomainService.Repositories
                 var hasViolations = filterBuilder.Exists("GlossaryViolations.0", true);
                 matchFilters.Add(query.HasGlossaryViolations.Value ? hasViolations : filterBuilder.Not(hasViolations));
             }
-
-            return matchFilters.Count > 0 ? filterBuilder.And(matchFilters) : filterBuilder.Empty;
         }
 
         private static List<FilterDefinition<Key>> setDateFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder)
@@ -613,12 +645,12 @@ namespace Eurolm.DomainService.Repositories
             var violationFilter = new BsonDocument("GlossaryViolations.GlossaryId", glossaryId);
             var pipeline = new[]
             {
-                new BsonDocument("$match", new BsonDocument("$or", new BsonArray { tagFilter, violationFilter })),
+                new BsonDocument(MatchStage, new BsonDocument("$or", new BsonArray { tagFilter, violationFilter })),
                 new BsonDocument("$facet", new BsonDocument
                 {
-                    { "keyCount", new BsonArray { new BsonDocument("$match", tagFilter), new BsonDocument("$count", "n") } },
-                    { "moduleIds", new BsonArray { new BsonDocument("$match", tagFilter), new BsonDocument("$group", new BsonDocument("_id", "$ModuleId")) } },
-                    { "violationKeyCount", new BsonArray { new BsonDocument("$match", violationFilter), new BsonDocument("$count", "n") } }
+                    { "keyCount", new BsonArray { new BsonDocument(MatchStage, tagFilter), new BsonDocument("$count", "n") } },
+                    { "moduleIds", new BsonArray { new BsonDocument(MatchStage, tagFilter), new BsonDocument("$group", new BsonDocument("_id", "$ModuleId")) } },
+                    { "violationKeyCount", new BsonArray { new BsonDocument(MatchStage, violationFilter), new BsonDocument("$count", "n") } }
                 })
             };
             var rawCollection = dataBase.GetCollection<BsonDocument>(_collectionName);

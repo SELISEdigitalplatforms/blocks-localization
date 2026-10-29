@@ -9,8 +9,8 @@ export const TERM_SUGGESTION_DEFINITION_MAX = 300;
 /** As the Phase 3 prompt sanitized it: no quotes, backticks, line breaks or `⟦⟧`; ≤ 300 chars. */
 export const sanitizeDefinitionForPrompt = (definition: string | undefined): string =>
   (definition ?? "")
-    .replace(/["'`⟦⟧]/g, "")
-    .replace(/\s+/g, " ")
+    .replaceAll(/["'`⟦⟧]/g, "")
+    .replaceAll(/\s+/g, " ")
     .trim()
     .slice(0, TERM_SUGGESTION_DEFINITION_MAX)
     .trim();

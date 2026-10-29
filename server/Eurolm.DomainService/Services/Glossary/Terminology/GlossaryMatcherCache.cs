@@ -27,7 +27,7 @@ namespace Eurolm.DomainService.Services
         {
             var key = tenantId ?? "";
             var now = _now();
-            var entry = _entries.GetOrAdd(key, _ => NewEntry(key, now));
+            var entry = _entries.GetOrAdd(key, k => NewEntry(k, now));
             if (now - entry.BuiltAt >= Ttl)
             {
                 // Expired: replace it (only if nobody already did) and use whichever entry won.

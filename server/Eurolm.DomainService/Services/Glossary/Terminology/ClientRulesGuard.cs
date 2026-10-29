@@ -34,55 +34,52 @@ namespace Eurolm.DomainService.Services
             if (count > 0 && lines[count - 1].Length == 0) count--;
 
             // 1. The last heading line, preceded by an empty line.
-            var heading = -1;
-            for (var i = count - 1; i >= 0; i--)
-            {
-                if (lines[i] == TerminologyPromptBuilder.RulesHeading)
-                {
-                    heading = i;
-                    break;
-                }
-            }
+            var heading = Array.LastIndexOf(lines, TerminologyPromptBuilder.RulesHeading, count - 1, count);
             if (heading < 1 || lines[heading - 1].Length != 0) return false;
 
             // 2. One or more rule lines.
             var index = heading + 1;
-            var start = index;
-            while (index < count && MatchesAny(lines[index], RuleLineTemplates)) index++;
-            if (index == start) return false;
+            if (!SkipMatchingLines(lines, count, ref index, line => MatchesAny(line, RuleLineTemplates))) return false;
 
             // 3. Optional meaning section: the heading, then one or more "- <term>: <definition>" lines.
-            if (index < count && lines[index] == TerminologyPromptBuilder.MeaningHeading)
-            {
-                index++;
-                start = index;
-                while (index < count && IsMeaningLine(lines[index])) index++;
-                if (index == start) return false;
-            }
+            if (!SkipMeaningSection(lines, count, ref index)) return false;
 
             // 4. Optional correction section (the client's retry).
-            if (index < count && lines[index] == TerminologyPromptBuilder.CorrectionHeading)
-            {
-                index++;
-                start = index;
-                while (index < count && MatchesAny(lines[index], CorrectionLineTemplates)) index++;
-                if (index == start) return false;
-                if (index >= count || lines[index] != TerminologyPromptBuilder.CorrectionFooter) return false;
-                index++;
-            }
+            if (!SkipCorrectionSection(lines, count, ref index)) return false;
 
             // 5. Nothing else may follow.
             return index == count;
         }
 
-        private static bool MatchesAny(string line, string[][] templates)
+        /// <summary>Advances past consecutive lines that match; false when none does.</summary>
+        private static bool SkipMatchingLines(string[] lines, int count, ref int index, Func<string, bool> matches)
         {
-            foreach (var template in templates)
-            {
-                if (MatchesTemplate(line, template)) return true;
-            }
-            return false;
+            var start = index;
+            while (index < count && matches(lines[index])) index++;
+            return index != start;
         }
+
+        private static bool SkipMeaningSection(string[] lines, int count, ref int index)
+        {
+            if (index >= count || lines[index] != TerminologyPromptBuilder.MeaningHeading) return true;
+
+            index++;
+            return SkipMatchingLines(lines, count, ref index, IsMeaningLine);
+        }
+
+        private static bool SkipCorrectionSection(string[] lines, int count, ref int index)
+        {
+            if (index >= count || lines[index] != TerminologyPromptBuilder.CorrectionHeading) return true;
+
+            index++;
+            if (!SkipMatchingLines(lines, count, ref index, line => MatchesAny(line, CorrectionLineTemplates))) return false;
+            if (index >= count || lines[index] != TerminologyPromptBuilder.CorrectionFooter) return false;
+            index++;
+            return true;
+        }
+
+        private static bool MatchesAny(string line, string[][] templates) =>
+            templates.Any(template => MatchesTemplate(line, template));
 
         /// <summary>
         /// The literals in order, with one or more characters other than <c>"</c> between consecutive literals.

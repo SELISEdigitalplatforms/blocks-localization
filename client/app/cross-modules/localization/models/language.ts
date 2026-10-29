@@ -448,7 +448,7 @@ export interface ITranslationSuggestionResponse {
   content: string;
   appliedTerms?: IAppliedTerm[];
   glossaryViolations?: IGlossaryViolationDto[];
-  errors: null | unknown;
+  errors: unknown;
   isSuccess: boolean;
 }
 

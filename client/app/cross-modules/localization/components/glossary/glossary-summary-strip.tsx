@@ -17,7 +17,7 @@ const formatCount = (count: number | undefined) =>
 const GlossarySummaryStrip = ({ status, onStatusChange }: Readonly<GlossarySummaryStripProps>) => {
   const counts = useGetGlossarySummaryCounts();
   return (
-    <div role="group" aria-label="Glossary summary" className="flex flex-wrap items-center gap-1">
+    <fieldset aria-label="Glossary summary" className="flex min-w-0 flex-wrap items-center gap-1">
       <Button
         type="button"
         variant="ghost"
@@ -45,7 +45,7 @@ const GlossarySummaryStrip = ({ status, onStatusChange }: Readonly<GlossarySumma
           </Button>
         </span>
       ))}
-    </div>
+    </fieldset>
   );
 };
 

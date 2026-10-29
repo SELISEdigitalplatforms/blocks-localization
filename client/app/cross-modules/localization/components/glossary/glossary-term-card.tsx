@@ -128,12 +128,16 @@ const GlossaryTermCard = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <p
-                  tabIndex={0}
-                  className="line-clamp-2 rounded-sm text-sm text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <button
+                  type="button"
+                  className="block w-full rounded-sm text-left text-sm text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onKeyDown={(event) => {
+                    // Only shows the tooltip: Enter and Space must not click it, which would close it.
+                    if (event.key === "Enter" || event.key === " ") event.preventDefault();
+                  }}
                 >
-                  {definition}
-                </p>
+                  <span className="line-clamp-2">{definition}</span>
+                </button>
               </TooltipTrigger>
               <TooltipContent
                 side="top"

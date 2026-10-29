@@ -1014,7 +1014,7 @@ export const useFetchLatestGlossary = () => {
   const queryClient = useQueryClient();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return (itemId: string) =>
-    queryClient.fetchQuery({
+    queryClient.query({
       queryKey: localizationQueryKeys.glossaries.detail(tenantId, itemId),
       queryFn: () => languageManagerService.getGlossaryById({ itemId }),
       staleTime: 0,

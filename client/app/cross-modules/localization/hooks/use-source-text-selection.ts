@@ -6,7 +6,7 @@ import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits"
  * Undefined when empty or too long (C5).
  */
 export const toGlossaryNameFromSelection = (text: string | undefined): string | undefined => {
-  const name = (text ?? "").replace(/\s+/g, " ").trim();
+  const name = (text ?? "").replaceAll(/\s+/g, " ").trim();
   return name && name.length <= GLOSSARY_LIMITS.name ? name : undefined;
 };
 

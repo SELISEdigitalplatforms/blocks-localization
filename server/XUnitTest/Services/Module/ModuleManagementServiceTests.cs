@@ -359,7 +359,7 @@ namespace XUnitTest
         {
             var recheck = new Mock<IGlossaryRecheckService>();
             var service = new ModuleManagementService(_validatorMock.Object, _moduleRepositoryMock.Object, _loggerMock.Object,
-                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, null, recheck.Object);
+                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, new GlossaryChangeNotifier(null, recheck.Object));
             var request = new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string> { "g-new", "g-kept" } };
             _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1"))
                 .ReturnsAsync(new List<Glossary>
@@ -384,7 +384,7 @@ namespace XUnitTest
         {
             var recheck = new Mock<IGlossaryRecheckService>();
             var service = new ModuleManagementService(_validatorMock.Object, _moduleRepositoryMock.Object, _loggerMock.Object,
-                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, null, recheck.Object);
+                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, new GlossaryChangeNotifier(null, recheck.Object));
             _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1")).ReturnsAsync(new List<Glossary>());
 
             await service.TagGlossaryAsync(new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string>() });

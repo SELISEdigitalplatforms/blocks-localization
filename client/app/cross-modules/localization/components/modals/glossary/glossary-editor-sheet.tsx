@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FC, KeyboardEvent, ReactNode, SyntheticEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { z } from "zod";
@@ -121,7 +121,13 @@ const VERSION_ERROR_PROPERTY = "Version";
 const isNotFoundError = (error: unknown) =>
   typeof error === "object" && error !== null && (error as { status?: unknown }).status === 404;
 
-export { GLOSSARY_LIMITS };
+export { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
+
+const replaceAt = (items: string[], index: number, value: string) =>
+  items.map((item, itemIndex) => (itemIndex === index ? value : item));
+
+const removeAt = (items: string[], index: number) =>
+  items.filter((_, itemIndex) => itemIndex !== index);
 
 /** Select value for "no part of speech"; Radix Select items can't have an empty value. */
 const NO_PART_OF_SPEECH = "none";
@@ -1352,11 +1358,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                                 value={example}
                                 maxLength={GLOSSARY_LIMITS.usageExample}
                                 onChange={(event) =>
-                                  field.onChange(
-                                    field.value.map((item, itemIndex) =>
-                                      itemIndex === index ? event.target.value : item,
-                                    ),
-                                  )
+                                  field.onChange(replaceAt(field.value, index, event.target.value))
                                 }
                                 placeholder="e.g. Open your workspace to see recent files."
                                 disabled={isReadOnly}
@@ -1367,11 +1369,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                                 size="icon"
                                 className="h-9 w-9 shrink-0"
                                 aria-label={`Remove usage example ${index + 1}`}
-                                onClick={() =>
-                                  field.onChange(
-                                    field.value.filter((_, itemIndex) => itemIndex !== index),
-                                  )
-                                }
+                                onClick={() => field.onChange(removeAt(field.value, index))}
                                 disabled={isReadOnly}
                               >
                                 <X className="h-4 w-4" aria-hidden="true" />
@@ -1661,7 +1659,11 @@ interface GlossaryEditorSheetProps {
   onSelectExisting?: (glossary: IGlossary) => void;
   /** Lets a caller without `trigger` (the glossary picker) place focus after closing. */
   onCloseAutoFocus?: (event: Event) => void;
+  /** Keeps the sheet's click and key events from bubbling to the caller's React ancestors. */
+  isolateEvents?: boolean;
 }
+
+const stopPropagation = (event: SyntheticEvent) => event.stopPropagation();
 
 /**
  * Holds the term the form edits for one open of the sheet. "Reload latest" swaps in the
@@ -1703,6 +1705,7 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   onSaved,
   onSelectExisting,
   onCloseAutoFocus,
+  isolateEvents,
 }) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
@@ -1711,6 +1714,8 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
       hideClose
       className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
       onCloseAutoFocus={onCloseAutoFocus}
+      onClick={isolateEvents ? stopPropagation : undefined}
+      onKeyDown={isolateEvents ? stopPropagation : undefined}
     >
       {open && (
         <GlossaryEditorBody
