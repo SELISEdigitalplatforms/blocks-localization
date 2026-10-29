@@ -23,7 +23,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetAllModuleGlossaries: vi.fn(),
   useSearchGlossaries: vi.fn(),
   useTagGlossary: vi.fn(),
-  useGetLanguages: () => ({ data: [] }),
+  useGetLanguages: vi.fn(() => ({ data: [] })),
   useResolveGlossariesByIds: () => ({ glossaries: [], failedIds: [] }),
 }));
 
@@ -133,6 +133,9 @@ describe("modals/auto-translate", () => {
     vi.mocked(hooks.useTranslateAll).mockReturnValue({
       isPending: false,
       mutateAsync: translateAllAsync,
+    } as never);
+    vi.mocked(hooks.useGetLanguages).mockReturnValue({
+      data: [{ itemId: "l1", languageName: "English", languageCode: "en-US", isDefault: true }],
     } as never);
   });
 

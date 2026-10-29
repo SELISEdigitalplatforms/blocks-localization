@@ -31,8 +31,10 @@ import ViewDetails from "@blocks-localization/components/view-details/view-detai
 import {
   useGetBlocksLanguageKeyById,
   useGetLanguageKeysTimeline,
+  useGetLanguages,
   useTranslateKey,
 } from "@blocks-localization/hooks/use-language-manager";
+import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteLanguageKey from "@blocks-localization/components/modals/delete-language-key/delete-language-key";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import Timeline from "../timeline/timeline";
@@ -67,6 +69,8 @@ const KeyDetails = () => {
   // Hooks for translation
   const { isPending: isTranslating, mutateAsync: translateKeyAsync } = useTranslateKey();
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
+  const { data: languageListData } = useGetLanguages();
+  const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
 
   // Pagination/filter state
   const [filter, setFilter] = useState({ page: 0, pageSize: 10 });
@@ -163,13 +167,13 @@ const KeyDetails = () => {
 
   // Handle auto-translate
   const handleTranslate = async () => {
-    if (!projectKey || !keyDetails) return;
+    if (!projectKey || !keyDetails || !defaultLanguageCode) return;
 
     const payload = {
       keyId: keyDetails.itemId,
       projectKey: projectKey,
       messageCoRelationId: shortGuidGenerator(8),
-      defaultLanguage: "en-US",
+      defaultLanguage: defaultLanguageCode,
     };
 
     try {

@@ -27,6 +27,7 @@ vi.mock("@blocks-localization/components/modals/gpt-prompt/gpt-prompt", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetBlocksLanguageKeyById: vi.fn(),
   useGetLanguageKeysTimeline: vi.fn(),
+  useGetLanguages: vi.fn(),
   useTranslateKey: vi.fn(),
 }));
 
@@ -35,6 +36,9 @@ const h = vi.mocked(hooks);
 describe("language-module/key-details", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    h.useGetLanguages.mockReturnValue({
+      data: [{ itemId: "l1", languageName: "German", languageCode: "de-DE", isDefault: true }],
+    } as never);
     params = { keyId: "k1" };
     h.useGetLanguageKeysTimeline.mockReturnValue({
       data: { totalCount: 0, timelines: [] },

@@ -8,7 +8,8 @@ import {
   DialogTrigger,
 } from "@/components/ui-kits/dialog/dialog";
 import { Label } from "@/components/ui-kits/label/label";
-import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
+import { useGetLanguages, useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
+import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import { toast } from "@/hooks/use-toast";
 
 interface AutoTranslateProps {
@@ -17,6 +18,8 @@ interface AutoTranslateProps {
 
 const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   const { isPending, mutateAsync } = useTranslateAll();
+  const { data: languageListData } = useGetLanguages();
+  const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
 
   const formatErrorMessage = (errors: unknown): string => {
     if (errors === null || errors === undefined) return "Unknown error";
@@ -32,9 +35,11 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   };
 
   const handleTranslate = async () => {
+    if (!defaultLanguageCode) return;
+
     const payload = {
       messageCoRelationId: "",
-      defaultLanguage: "en-US",
+      defaultLanguage: defaultLanguageCode,
     };
 
     try {
@@ -78,7 +83,11 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
           </Button>
         </DialogTrigger>
         <DialogTrigger asChild>
-          <Button disabled={isPending} className="min-w-[80px]" onClick={handleTranslate}>
+          <Button
+            disabled={isPending || !defaultLanguageCode}
+            className="min-w-[80px]"
+            onClick={handleTranslate}
+          >
             Yes
           </Button>
         </DialogTrigger>
