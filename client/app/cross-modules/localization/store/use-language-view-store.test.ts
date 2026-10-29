@@ -264,7 +264,11 @@ describe("localization/store/use-language-view-store", () => {
       // The store is created with skipHydration: true and the cookieStorage
       // adapter short-circuits the automatic rehydration by returning null.
       // We assert this directly by invoking the adapter's getItem.
-      const persistOptions = (useLanguageViewStore as unknown as { persist?: { getOptions?: () => { storage?: unknown } } }).persist?.getOptions?.();
+      const persistOptions = (
+        useLanguageViewStore as unknown as {
+          persist?: { getOptions?: () => { storage?: unknown } };
+        }
+      ).persist?.getOptions?.();
       const storage = persistOptions?.storage;
       expect(storage).toBeDefined();
       expect(typeof storage.getItem).toBe("function");
@@ -303,7 +307,11 @@ describe("localization/store/use-language-view-store", () => {
       removeSpy.mockClear();
       // Direct invocation requires reaching into the persist internals;
       // we use a helper that just verifies the spy contract:
-      const storage = (useLanguageViewStore as unknown as { persist?: { getOptions?: () => { storage?: unknown } } }).persist?.getOptions?.()?.storage;
+      const storage = (
+        useLanguageViewStore as unknown as {
+          persist?: { getOptions?: () => { storage?: unknown } };
+        }
+      ).persist?.getOptions?.()?.storage;
       if (storage && typeof storage.removeItem === "function") {
         storage.removeItem();
         expect(removeSpy).toHaveBeenCalledWith(COOKIE_NAME);

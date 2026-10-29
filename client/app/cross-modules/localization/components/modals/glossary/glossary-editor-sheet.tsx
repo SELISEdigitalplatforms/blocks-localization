@@ -254,8 +254,13 @@ const getInitialScope = (glossary?: IGlossary): GlossaryScope => {
   return "modules";
 };
 
-const getInitialValues = (glossary: IGlossary | undefined, meta: GlossaryMeta, note: string) => ({
-  name: glossary?.name ?? "",
+const getInitialValues = (
+  glossary: IGlossary | undefined,
+  meta: GlossaryMeta,
+  note: string,
+  initialName = "",
+) => ({
+  name: glossary?.name ?? initialName,
   language: glossary?.language ?? "",
   type: glossary?.type ?? "",
   rule: meta.rule,
@@ -445,9 +450,18 @@ const FieldError = ({ message }: Readonly<{ message?: string }>) =>
 interface GlossaryEditorFormProps {
   glossary?: IGlossary;
   onClose: () => void;
+  initialName?: string;
+  onSaved?: (savedName: string) => void;
+  onSelectExisting?: (glossary: IGlossary) => void;
 }
 
-const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) => {
+const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
+  glossary,
+  onClose,
+  initialName,
+  onSaved,
+  onSelectExisting,
+}) => {
   const isEditMode = !!glossary;
   const navigate = useNavigate();
   const scoped = useScopedPath();
@@ -469,7 +483,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   );
 
   const form = useForm<GlossaryEditorValues>({
-    defaultValues: getInitialValues(glossary, parsed.meta, parsed.meta.note ?? ""),
+    defaultValues: getInitialValues(glossary, parsed.meta, parsed.meta.note ?? "", initialName),
     resolver: zodResolver(schema),
   });
   const { control, formState } = form;
@@ -501,6 +515,16 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
   const openDuplicateGlossary = (itemId: string) => {
     onClose();
     navigate(scoped(`services/glossary/${itemId}`));
+  };
+
+  // Picker mode: navigating away would discard the tagging dialog, so select it instead.
+  const resolveDuplicateGlossary = (duplicate: IGlossary) => {
+    if (!onSelectExisting) {
+      openDuplicateGlossary(duplicate.itemId);
+      return;
+    }
+    onSelectExisting(duplicate);
+    onClose();
   };
 
   const legacyModuleCount =
@@ -572,6 +596,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
             ? "Glossary item updated successfully."
             : "Glossary item added successfully.",
         });
+        onSaved?.(payload.name);
         onClose();
       } else if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
         res.validationErrors.forEach((error) => {
@@ -763,9 +788,9 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({ glossary, onClose }) 
                                 <button
                                   type="button"
                                   className="font-medium underline underline-offset-4 hover:no-underline"
-                                  onClick={() => openDuplicateGlossary(duplicateGlossary.itemId)}
+                                  onClick={() => resolveDuplicateGlossary(duplicateGlossary)}
                                 >
-                                  Open it
+                                  {onSelectExisting ? "Select it" : "Open it"}
                                 </button>
                               </span>
                             </FormDescription>
@@ -1253,6 +1278,14 @@ interface GlossaryEditorSheetProps {
   glossary?: IGlossary;
   /** Optional trigger: when given, focus returns to it after the sheet closes. */
   trigger?: ReactNode;
+  /** Pre-fills Name when creating (ignored with `glossary`). */
+  initialName?: string;
+  /** Called after a successful save, before the sheet closes, with the trimmed name sent. */
+  onSaved?: (savedName: string) => void;
+  /** When given, the duplicate-name warning offers "Select it" (calls this and closes). */
+  onSelectExisting?: (glossary: IGlossary) => void;
+  /** Lets a caller without `trigger` (the glossary picker) place focus after closing. */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -1264,11 +1297,28 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   onOpenChange,
   glossary,
   trigger,
+  initialName,
+  onSaved,
+  onSelectExisting,
+  onCloseAutoFocus,
 }) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-    <SheetContent side="right" hideClose className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
-      {open && <GlossaryEditorForm glossary={glossary} onClose={() => onOpenChange(false)} />}
+    <SheetContent
+      side="right"
+      hideClose
+      className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
+      {open && (
+        <GlossaryEditorForm
+          glossary={glossary}
+          onClose={() => onOpenChange(false)}
+          initialName={initialName}
+          onSaved={onSaved}
+          onSelectExisting={onSelectExisting}
+        />
+      )}
     </SheetContent>
   </Sheet>
 );

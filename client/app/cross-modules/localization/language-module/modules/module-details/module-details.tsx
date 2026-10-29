@@ -33,9 +33,7 @@ const compareStrings = (a: string, b: string): number => {
   return 0;
 };
 
-const getDisplayNamePart = (
-  value: string | null | undefined,
-): string | null => {
+const getDisplayNamePart = (value: string | null | undefined): string | null => {
   if (typeof value === "string" && value.trim()) {
     return value.trim();
   }
@@ -43,7 +41,15 @@ const getDisplayNamePart = (
 };
 
 const getUserDisplayName = (
-  user: { firstName: string | null; lastName: string | null; email: string | null; userName: string | null } | null | undefined,
+  user:
+    | {
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        userName: string | null;
+      }
+    | null
+    | undefined,
 ): string => {
   if (!user) return "—";
 
@@ -61,10 +67,7 @@ type VisibleGlossaryColumns = {
   createDate: boolean;
 };
 
-function renderGlossaryTable(
-  items: IGlossary[],
-  visibleColumns: VisibleGlossaryColumns,
-) {
+function renderGlossaryTable(items: IGlossary[], visibleColumns: VisibleGlossaryColumns) {
   return (
     <div className="w-full overflow-x-auto">
       <Table className="text-sm">
@@ -95,9 +98,7 @@ function renderGlossaryTable(
                 </TableCell>
               )}
               {visibleColumns.type && (
-                <TableCell>
-                  {hasDisplayValue(glossary.type) ? glossary.type : "—"}
-                </TableCell>
+                <TableCell>{hasDisplayValue(glossary.type) ? glossary.type : "—"}</TableCell>
               )}
               {visibleColumns.context && (
                 <TableCell className="max-w-[200px] truncate">
@@ -267,10 +268,7 @@ export function ModuleDetails() {
 
   // Fetch users by IDs
   const { data: userMap } = useQuery({
-    queryKey: [
-      "module-detail-users",
-      [...uniqueUserIds].sort(compareStrings),
-    ],
+    queryKey: ["module-detail-users", [...uniqueUserIds].sort(compareStrings)],
     queryFn: async () => {
       return userLookupService.getUsersByIds(uniqueUserIds);
     },

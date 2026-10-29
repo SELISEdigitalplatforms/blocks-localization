@@ -8,13 +8,11 @@ import { renderWithProviders } from "@/test-utils/render";
 // Stub the toolbar so each case can hand the component an exact from/to pair. This
 // lives in its own file because the sibling tests exercise the real toolbar.
 vi.mock("@/components/filter-toolbar", () => ({
-  FilterToolbar: ({
-    onChange,
-  }: {
-    onChange: (key: string, value: unknown) => void;
-  }) => (
+  FilterToolbar: ({ onChange }: { onChange: (key: string, value: unknown) => void }) => (
     <div>
-      <button onClick={() => onChange("created", { from: new Date(2026, 0, 15) })}>from-only</button>
+      <button onClick={() => onChange("created", { from: new Date(2026, 0, 15) })}>
+        from-only
+      </button>
       <button
         onClick={() =>
           onChange("created", { from: new Date(2026, 0, 15), to: new Date(2026, 0, 20) })
@@ -90,9 +88,7 @@ describe("language-module/export-history-filters date range", () => {
 
     fireEvent.click(screen.getByText("cleared"));
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ startDate: "", endDate: "" }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ startDate: "", endDate: "" }));
   });
 
   it("formats month and day with a leading zero", () => {

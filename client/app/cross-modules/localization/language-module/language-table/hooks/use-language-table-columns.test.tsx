@@ -184,8 +184,7 @@ it("module badge text meets WCAG AA contrast for many module ids", () => {
     const style = getModuleBadgeStyle(`module-${index}-${index * 7919}`);
     const background = luminanceOf(parseHsl(String(style.backgroundColor)));
     const text = luminanceOf(parseHex(String(style.color)));
-    const ratio =
-      (Math.max(background, text) + 0.05) / (Math.min(background, text) + 0.05);
+    const ratio = (Math.max(background, text) + 0.05) / (Math.min(background, text) + 0.05);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
 });

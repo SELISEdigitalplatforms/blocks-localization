@@ -87,7 +87,10 @@ export class LanguageManagerService {
   };
 
   enforceUniqueness = (): Promise<IEnforceUniquenessResult> => {
-    return this.httpClient.post<IEnforceUniquenessResult>(LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS, {});
+    return this.httpClient.post<IEnforceUniquenessResult>(
+      LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS,
+      {},
+    );
   };
 
   fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {

@@ -37,10 +37,16 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   GlossaryUnavailableNote,
-  GlossaryViolationList,
   useGlossarySuggestionRows,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
 import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
+import {
+  LIVE_CHECK_DEBOUNCE_MS,
+  useApplicableGlossaryMatches,
+  useDebouncedValue,
+  useLoadedGlossaries,
+} from "@blocks-localization/hooks/use-live-glossary-check";
 import {
   useGetLanguageModules,
   useGetLanguages,
@@ -51,7 +57,7 @@ import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-mar
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 interface MutationResponse {
@@ -224,6 +230,35 @@ function AddNewLanguageKey() {
     control: form.control,
     name: "routes",
   });
+
+  // Per-row glossary checklists (Phase 4). Resources follow sortedLanguages.
+  const watchedResources = useWatch({ control: form.control, name: "resources" });
+  const watchedModuleId = useWatch({ control: form.control, name: "moduleId" });
+  const glossaries = useLoadedGlossaries(loadGlossaries);
+  const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
+  const debouncedSource = useDebouncedValue(
+    watchedResources?.[0]?.value ?? "",
+    LIVE_CHECK_DEBOUNCE_MS,
+  );
+  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+    sourceCulture: defaultLanguageCode,
+    moduleId: watchedModuleId || undefined,
+  });
+  const resourcePath = React.useCallback(
+    (culture: string) => {
+      const index = sortedLanguages?.findIndex((language) => language.languageCode === culture);
+      return `resources.${index ?? -1}.value` as const;
+    },
+    [sortedLanguages],
+  );
+  /** A live Fix is a user edit: the suggestion's list gives way to the live check. */
+  const editTranslation = React.useCallback(
+    (culture: string, value: string) => {
+      form.setValue(resourcePath(culture), value, { shouldDirty: true, shouldValidate: true });
+      clearViolations(culture);
+    },
+    [clearViolations, form, resourcePath],
+  );
 
   React.useEffect(() => {
     if (!sortedLanguages?.length) {
@@ -626,17 +661,20 @@ function AddNewLanguageKey() {
                               }}
                             />
                           </FormControl>
-                          <GlossaryViolationList
+                          <GlossaryTargetChecklist
                             className="mt-0"
-                            violations={glossaryRow.violations}
-                            matches={glossaryRow.matches}
-                            targetCulture={glossaryRow.targetCulture}
+                            row={glossaryRow}
+                            targetText={watchedResources?.[index + 1]?.value ?? ""}
+                            targetCulture={rowKey}
+                            languageName={sortedLanguages?.[index + 1]?.languageName}
+                            liveMatches={sourceMatches}
                             disabled={isLoading}
-                            onFix={(violation) => {
+                            onSuggestionFix={(violation) => {
                               const fixed = fix(rowKey, violation, form.getValues(valuePath) ?? "");
                               if (fixed !== null) form.setValue(valuePath, fixed);
                             }}
                             onRetry={() => void runAutoTranslate(index)}
+                            onLiveFix={(fixed) => editTranslation(rowKey, fixed)}
                           />
                         </div>
                       );

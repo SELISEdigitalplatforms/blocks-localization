@@ -86,4 +86,4 @@ if (typeof window !== "undefined") {
 - Extension Key Mode shows raw keys in the UI.
 - Value Mode shows translations again without a full page reload.
 - Cross-origin / iframe \`message\` events are ignored.
-`
+`;

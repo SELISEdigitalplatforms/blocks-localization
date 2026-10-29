@@ -94,6 +94,29 @@ describe("components/glossary/glossary-details", () => {
     expect(screen.getByText("No keys are tagged with this glossary.")).toBeTruthy();
   });
 
+  it("should label empty fields instead of leaving them blank", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: {
+        itemId: "g1",
+        name: "Customer Portal",
+        language: "",
+        type: "",
+        isGlobal: false,
+        context: "  ",
+        createDate: "not-a-date",
+        lastUpdateDate: "",
+        moduleIds: [],
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />);
+    // Language, Type, Created on and Last updated.
+    expect(screen.getAllByText("Not provided")).toHaveLength(4);
+    expect(screen.getByText("No modules tagged.")).toBeTruthy();
+    expect(screen.getByText("No definition provided.")).toBeTruthy();
+    expect(screen.getByText("No internal note.")).toBeTruthy();
+  });
+
   it("should render tagged keys and navigate on row click", () => {
     h.useGetGlossaryById.mockReturnValue({
       data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },
@@ -118,6 +141,30 @@ describe("components/glossary/glossary-details", () => {
       route: "/app/abc/services/glossary/g1",
     });
     fireEvent.click(screen.getByText("greeting"));
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
+  });
+
+  it("should open a tagged key with Enter on the focused row (H11)", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },
+      isLoading: false,
+    } as never);
+    h.useGetKeysByGlossaryId.mockReturnValue({
+      data: {
+        keys: [{ itemId: "k1", keyName: "greeting", moduleId: "m1", resources: [] }],
+        totalCount: 1,
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />, {
+      route: "/app/abc/services/glossary/g1",
+    });
+    const row = screen.getByText("greeting").closest("tr")!;
+    expect(row.getAttribute("tabindex")).toBe("0");
+    fireEvent.keyDown(screen.getByText("greeting"), { key: "Enter" });
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.keyDown(row, { key: "Enter" });
     expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
   });
 

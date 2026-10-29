@@ -20,10 +20,8 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
-import {
-  GlossaryUnavailableNote,
-  GlossaryViolationList,
-} from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryUnavailableNote } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -93,6 +91,7 @@ export const InlineKeyDetails = memo(
       (languageModule) => languageModule.itemId === keyDetails.moduleId,
     )?.moduleName;
     const {
+      applyLiveFix,
       autoTranslate,
       discardChanges,
       draftTranslations,
@@ -105,6 +104,7 @@ export const InlineKeyDetails = memo(
       saveChanges,
       setTranslation,
       sortedLanguages,
+      sourceMatches,
     } = useInlineKeyEditor(keyDetails, languageListData);
 
     return (
@@ -187,14 +187,21 @@ export const InlineKeyDetails = memo(
                     {glossaryRow.glossaryUnavailable && (
                       <GlossaryUnavailableNote className="mt-1" />
                     )}
-                    <GlossaryViolationList
-                      violations={glossaryRow.violations}
-                      matches={glossaryRow.matches}
-                      targetCulture={glossaryRow.targetCulture}
-                      disabled={isRowTranslating}
-                      onFix={(violation) => fixViolation(language.languageCode, violation)}
-                      onRetry={() => void autoTranslate(language.languageCode)}
-                    />
+                    {!language.isDefault && (
+                      <GlossaryTargetChecklist
+                        row={glossaryRow}
+                        targetText={draftTranslations[language.languageCode] ?? ""}
+                        targetCulture={language.languageCode}
+                        languageName={language.languageName}
+                        liveMatches={sourceMatches}
+                        disabled={isRowTranslating}
+                        onSuggestionFix={(violation) =>
+                          fixViolation(language.languageCode, violation)
+                        }
+                        onRetry={() => void autoTranslate(language.languageCode)}
+                        onLiveFix={(fixed) => applyLiveFix(language.languageCode, fixed)}
+                      />
+                    )}
                   </div>
                 );
               })}

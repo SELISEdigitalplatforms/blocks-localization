@@ -627,7 +627,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         );
         await translations.openEditTranslation(target.languageName);
         // C20: the label names the isDefault language.
-        await expect(dialog.getByText(`Default value (${source.languageName})`)).toBeVisible();
+        await expect(dialog.getByText(`${source.languageName} (default)`)).toBeVisible();
         await translations.clickAutoTranslateInDialog();
         // H6: the retry's non-empty content fills the field.
         await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
@@ -697,9 +697,15 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await page.waitForTimeout(2_000);
         // C5: never a third request.
         expect(ai.requests).toHaveLength(2);
-        // C11: editing the target clears the list; saving stays possible.
+        // SPEC4 C21: the first edit replaces the suggestion's list (with Retry) by the live
+        // check (no Retry); saving stays possible.
         await textarea.fill("Öffnen Sie Ihren Bereich");
-        await expect(translations.violationList(dialog)).toHaveCount(0);
+        const live = translations.violationItem(
+          dialog,
+          `Expected "Arbeitsbereich" for "${names.g1}"`,
+        );
+        await expect(live).toBeVisible();
+        await expect(live.getByRole("button", { name: "Retry" })).toHaveCount(0);
         await expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled();
         await translations.closeEditTranslation();
       });
@@ -820,14 +826,14 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await tagDialog.getByRole("combobox").click();
         await tagDialog.getByPlaceholder("Search glossary...").fill(names.gu);
         await tagDialog.getByRole("option", { name: names.gu }).click();
-        // The picker is multi-select and stays open over the footer; close it before Update.
+        // The picker is multi-select and stays open over the footer; close it before Save.
         // Escape closes only the picker's popover; the dialog stays open.
         const pickerSearch = tagDialog.getByPlaceholder("Search glossary...");
         await pickerSearch.press("Escape");
         await expect(pickerSearch).toBeHidden();
         await expect(tagDialog).toBeVisible();
         const payload = await translations.captureKeySave(() =>
-          tagDialog.getByRole("button", { name: "Update" }).click(),
+          tagDialog.getByRole("button", { name: "Save", exact: true }).click(),
         );
         expect(payload.glossaryIds).toEqual([ids.gu]);
         await expect(page.getByText("Glossary updated successfully", { exact: true })).toBeVisible({
@@ -876,6 +882,122 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect.poll(() => loads.completed(), { timeout: 15_000 }).toBeGreaterThan(before);
         await page.waitForTimeout(1_000);
         await expect(tagButton(names.g4)).toHaveCount(0);
+      });
+    } finally {
+      await test.step("Clean up fixtures", () => fixtures.cleanup());
+    }
+  });
+
+  test("Translator experience: highlights, Insert, live checks (SPEC4 steps 1-3, 7, 10)", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    const translations = new TranslationsPage(page);
+    const { api, fixtures, source, target } = await setUp(page);
+
+    try {
+      await test.step("Create fixtures", () => fixtures.create(source, target));
+      const { names, ids } = fixtures;
+      await trackFullGlossaryLoads(page, fixtures.isOwnGlossary);
+      const dialog = translations.editTranslationDialog;
+      const textarea = translations.editTranslationTextarea;
+
+      await translations.openKeyDetails(ids.ws);
+
+      await test.step("Step 1: highlight, popover, Insert, Escape returns focus (H1-H3, C12)", async () => {
+        await translations.openEditTranslation(target.languageName);
+        const term = translations.glossaryTerm(dialog, names.g1);
+        // H1: the match is a dotted-underlined button whose text is the source substring.
+        await expect(term).toHaveText(names.g1, { timeout: 15_000 });
+        await term.click();
+        const popover = translations.termPopover;
+        // H2: term, rule and the target value.
+        await expect(popover.getByText(names.g1, { exact: true })).toBeVisible();
+        await expect(popover.getByText("Translate", { exact: true })).toBeVisible();
+        await expect(popover.getByText("Arbeitsbereich", { exact: true })).toBeVisible();
+        // H3: Insert puts the value in the target and focuses it.
+        await textarea.fill("");
+        await term.click();
+        await popover.getByRole("button", { name: "Insert" }).click();
+        await expect(textarea).toHaveValue("Arbeitsbereich");
+        await expect(textarea).toBeFocused();
+        // C12: Escape closes only the popover and returns focus to the term.
+        await term.focus();
+        await page.keyboard.press("Enter");
+        await expect(popover).toBeVisible();
+        // The value is now in the target, so Insert gives way to "Already used".
+        await expect(popover.getByText("Already used")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(popover).toHaveCount(0);
+        await expect(term).toBeFocused();
+        await expect(dialog).toBeVisible();
+      });
+
+      await test.step("Step 2: Open term opens a new tab and keeps the text (H4)", async () => {
+        await textarea.fill("Ungespeicherter Text");
+        await translations.glossaryTerm(dialog, names.g1).click();
+        const [newPage] = await Promise.all([
+          page.context().waitForEvent("page"),
+          translations.termPopover.getByRole("button", { name: "Open term" }).click(),
+        ]);
+        await expect(newPage).toHaveURL(new RegExp(`/services/glossary/${ids.g1}$`));
+        await newPage.close();
+        await expect(textarea).toHaveValue("Ungespeicherter Text");
+      });
+
+      await test.step("Step 3: live warning while typing, Fix, Save enabled (H5, H6, C6)", async () => {
+        await textarea.fill("Öffnen Sie Ihren Werkbereich");
+        const forbidden = translations.violationItem(dialog, '"Werkbereich" is not allowed');
+        // H5: shown 150 ms after typing stops (budget 500 ms; 2 s for CI jitter).
+        await expect(forbidden).toBeVisible({ timeout: 2_000 });
+        await expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled();
+        await forbidden.getByRole("button", { name: "Fix" }).click();
+        await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
+        await expect(translations.violationList(dialog)).toHaveCount(0);
+        await translations.closeEditTranslation();
+      });
+
+      await test.step("Step 7: the term popover fits a 390 px screen (C11)", async () => {
+        const size = page.viewportSize();
+        await page.setViewportSize({ width: 390, height: 844 });
+        try {
+          await translations.openEditTranslation(target.languageName);
+          await translations.glossaryTerm(dialog, names.g1).click();
+          const box = await translations.termPopover.boundingBox();
+          expect(box).not.toBeNull();
+          expect(box!.x).toBeGreaterThanOrEqual(0);
+          expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+          await page.keyboard.press("Escape");
+          await translations.closeEditTranslation();
+        } finally {
+          if (size) await page.setViewportSize(size);
+        }
+      });
+
+      await test.step("Step 10: each inline row checks its own glossary terms (H12, H13)", async () => {
+        const languages = await api.languages();
+        const targets = languages.filter((language) => !language.isDefault);
+        await openTranslations(page);
+        await translations.openTranslationKeysTab();
+        await translations.expandKey(names.ws);
+        const checklist = translations.glossaryChecklist(page, target.languageName);
+        await expect(checklist).toBeVisible({ timeout: 15_000 });
+        // H12: the row lists the approved value; there is no shared Insert.
+        await expect(checklist.getByText("Arbeitsbereich", { exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: /^Insert/ })).toHaveCount(0);
+        // H13: typing the approved value marks the term followed in that row only.
+        await translations.inlineTranslation(target.languageName).fill("Arbeitsbereich");
+        await expect(checklist.getByText("All glossary terms followed")).toBeVisible();
+        const other = targets.find((language) => language.languageCode !== target.languageCode);
+        if (other) {
+          // A language without a value for the term says so (C3).
+          await expect(
+            translations
+              .glossaryChecklist(page, other.languageName)
+              .getByText(/No translation in the glossary/),
+          ).toBeVisible();
+        }
+        await page.getByRole("button", { name: "Discard" }).click();
       });
     } finally {
       await test.step("Clean up fixtures", () => fixtures.cleanup());

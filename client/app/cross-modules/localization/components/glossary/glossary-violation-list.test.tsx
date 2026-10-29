@@ -110,7 +110,9 @@ describe("GlossaryViolationList", () => {
     expect(list.getAttribute("aria-live")).toBe("polite");
     expect(screen.getByText('"Werkbereich" is not allowed').className).toContain("text-sm");
     expect(screen.getByText('Keep "SELISE" unchanged')).toBeTruthy();
-    expect(list.querySelectorAll("svg.text-warning-700")).toHaveLength(2);
+    expect(screen.getByText("2 glossary issues")).toBeTruthy();
+    expect(screen.getByText("You can still save.")).toBeTruthy();
+    expect(screen.getByText(/use “Arbeitsbereich”/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Fix" }));
     expect(onFix).toHaveBeenCalledWith(forbidden);

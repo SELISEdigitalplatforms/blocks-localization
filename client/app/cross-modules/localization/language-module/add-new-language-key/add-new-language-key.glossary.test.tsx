@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -80,8 +80,14 @@ const deferred = <T,>() => {
  * No violation list and no info line. The polite live region stays mounted while empty, so
  * this checks that every status region is empty instead of that none exists.
  */
-const expectNoStatusContent = () =>
-  expect(screen.queryAllByRole("status").filter((region) => region.textContent !== "")).toEqual([]);
+/** No row reports a glossary issue ("All glossary terms followed" is fine). */
+const expectNoGlossaryIssues = () =>
+  expect(
+    screen.queryAllByRole("status").filter((region) => /issue/.test(region.textContent ?? "")),
+  ).toEqual([]);
+
+const glossaryRegion = (language: string) =>
+  screen.findByRole("region", { name: `Glossary terms for ${language}` });
 
 describe("add-new-language-key — glossary-aware suggestions", () => {
   beforeEach(() => {
@@ -155,19 +161,19 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
       renderWithProviders(<AddNewLanguageKey />, { route });
       fillDefault("Open your Workspace");
       fireEvent.click(autoButtons()[0]);
-      await screen.findByText('"Werkbereich" is not allowed');
+      await screen.findByText(/"Werkbereich" is not allowed/);
       expect(suggestAsync).toHaveBeenCalledTimes(2);
       expect(translationFields()[0].value).toBe("Öffnen Sie Ihren Werkbereich");
-      expect(screen.getByText('Expected "Arbeitsbereich" for "Workspace"')).toBeTruthy();
+      expect(screen.getByText("Not used yet")).toBeTruthy();
 
       fireEvent.click(screen.getByRole("button", { name: "Fix" }));
       expect(translationFields()[0].value).toBe("Öffnen Sie Ihren Arbeitsbereich");
-      expectNoStatusContent();
+      expectNoGlossaryIssues();
 
       fireEvent.click(autoButtons()[0]);
-      await screen.findByText('"Werkbereich" is not allowed');
+      await screen.findByText(/"Werkbereich" is not allowed/);
       fireEvent.change(translationFields()[0], { target: { value: "Hallo" } });
-      expectNoStatusContent();
+      expectNoGlossaryIssues();
     });
 
     it("Retry runs the row's suggestion again", async () => {
@@ -183,7 +189,7 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
         expect(translationFields()[0].value).toBe("Öffnen Sie Ihren Arbeitsbereich"),
       );
       expect(suggestAsync).toHaveBeenCalledTimes(3);
-      expectNoStatusContent();
+      expectNoGlossaryIssues();
     });
 
     it("shows the info line and sends the legacy payload when the glossary fails (C6)", async () => {
@@ -224,6 +230,40 @@ describe("add-new-language-key — glossary-aware suggestions", () => {
       unmount();
       await act(async () => german.resolve({ content: "Hallo" }));
       expect(suggestAsync).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("per-language glossary checklist and live checks (Phase 4)", () => {
+    it("lists the typed default value's terms, module-scoped after choosing the module (H12)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace Portal");
+      const german = await glossaryRegion("German");
+      expect(within(german).getByText("Arbeitsbereich")).toBeTruthy();
+      expect(within(german).queryByText("Portal")).toBeNull();
+      fireEvent.click(screen.getByRole("combobox"));
+      fireEvent.click(screen.getByRole("option", { name: /UILM/ }));
+      await waitFor(() => expect(within(german).getAllByText("Portal").length).toBeGreaterThan(0));
+      expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
+    });
+
+    it("shows each row's own value, or that the glossary has none (H13)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace");
+      expect(within(await glossaryRegion("German")).getByText("Arbeitsbereich")).toBeTruthy();
+      expect(
+        within(await glossaryRegion("French")).getByText(/No translation in the glossary/),
+      ).toBeTruthy();
+    });
+
+    it("warns live under the target and Fix replaces the forbidden word (H5, H6)", async () => {
+      renderWithProviders(<AddNewLanguageKey />, { route });
+      fillDefault("Open your Workspace");
+      await glossaryRegion("German");
+      fireEvent.change(translationFields()[0], { target: { value: "Ihr Werkbereich" } });
+      expect(await screen.findByText(/"Werkbereich" is not allowed/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+      expect(translationFields()[0].value).toBe("Ihr Arbeitsbereich");
+      expectNoGlossaryIssues();
     });
   });
 });
