@@ -27,7 +27,7 @@ export class GlossaryPage {
     this.addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
     this.glossaryNameInput = page.getByRole("textbox", { name: "Name *" });
     this.definitionInput = page.getByRole("textbox", { name: "Definition" });
-    this.internalNoteInput = page.getByRole("textbox", { name: "Additional note" });
+    this.internalNoteInput = page.getByRole("textbox", { name: "Internal note" });
     this.editDialog = page.getByRole("dialog", { name: "Edit Glossary" });
     this.deleteDialog = page.getByRole("dialog", { name: "Delete Glossary Item" });
   }

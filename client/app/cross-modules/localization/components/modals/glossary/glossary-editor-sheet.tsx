@@ -1557,7 +1557,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                       </CollapsibleTrigger>
                       <span className="text-xs text-low-emphasis">Optional</span>
                     </div>
-                    <FieldInfo label="additional note">
+                    <FieldInfo label="internal note">
                       Notes for your team, such as where the term came from or who approved it.
                       Never sent to the AI.
                     </FieldInfo>
@@ -1570,7 +1570,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                         <FormItem>
                           <FormControl>
                             <Textarea
-                              aria-label="Additional note"
+                              aria-label="Internal note"
                               placeholder="Notes for your team"
                               className="resize-none"
                               rows={3}

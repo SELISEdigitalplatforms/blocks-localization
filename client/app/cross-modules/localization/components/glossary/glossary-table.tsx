@@ -10,6 +10,7 @@ import {
   Pencil,
   Settings2,
   Trash,
+  X,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -374,8 +375,8 @@ const buildGlossaryColumns = ({
     enableHiding: false,
     header: () => <SortHeader label="Name" sortBy="name" sort={sort} onSort={onSort} />,
     cell: ({ row }) => (
-      <div className="flex w-[150px] items-center">
-        <span>{row.original.name}</span>
+      <div className="min-w-[150px] max-w-[240px] break-words font-medium text-high-emphasis">
+        {row.original.name}
       </div>
     ),
   },
@@ -772,8 +773,8 @@ const GlossaryTable = () => {
           </CardTitle>
           <GlossarySummaryStrip status={statusFilter} onStatusChange={handleStatusChange} />
         </CardHeader>
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
-          <div className="w-full lg:w-[260px]">
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
+          <div className="col-span-2 sm:col-span-3 lg:w-[260px]">
             <FilterControls.SearchInput
               placeholder="Search glossary..."
               value={searchText}
@@ -854,11 +855,22 @@ const GlossaryTable = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_FILTER}>All</SelectItem>
+              <SelectItem value={ALL_FILTER}>All scopes</SelectItem>
               <SelectItem value="project">Whole project</SelectItem>
               <SelectItem value="modules">Specific modules</SelectItem>
             </SelectContent>
           </Select>
+          {(isFiltered || !!searchText) && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9 gap-1 text-medium-emphasis"
+              onClick={clearFilters}
+            >
+              Reset
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
           {!isMobile && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

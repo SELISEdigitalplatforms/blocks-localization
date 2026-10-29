@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";
-import { Archive, CheckCircle2, Globe, LoaderCircle, Tag, Trash, TriangleAlert } from "lucide-react";
+import { Archive, CheckCircle2, Globe, LoaderCircle, Tag, Trash, TriangleAlert, X } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Alert, AlertDescription } from "@/components/ui-kits/alert/alert";
 import { Input } from "@/components/ui-kits/input/input";
@@ -258,6 +258,18 @@ const GlossaryBulkActions = ({
           aria-label="Bulk actions"
           className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
         >
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0"
+            aria-label="Clear selection"
+            title="Clear selection"
+            disabled={isRunning}
+            onClick={onClearSelection}
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
           <span className="mr-2 text-sm font-medium text-high-emphasis" aria-live="polite">
             {progress
               ? `Updating ${progress.done} / ${progress.total}…`

@@ -167,7 +167,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(screen.getByRole("radio", { name: "Translate" }).getAttribute("aria-checked")).toBe(
       "true",
     );
-    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
       "legacy note",
     );
   });
@@ -217,7 +217,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       "Arbeitsbereich",
     );
     expect(screen.getByText("workspaces")).toBeTruthy();
-    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
       "From JSON",
     );
     expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
@@ -238,7 +238,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(
       screen.getByText("Stored terminology data could not be read. Saving will replace it."),
     ).toBeTruthy();
-    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(raw);
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(raw);
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     expect(lastPayload()).toMatchObject({ additionalNote: raw, rule: "translate" });
@@ -839,7 +839,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       expect(
         screen.getByRole("switch", { name: /Case-sensitive/ }).getAttribute("aria-checked"),
       ).toBe("true");
-      expect(screen.queryByLabelText("Additional note")).toBeNull();
+      expect(screen.queryByLabelText("Internal note")).toBeNull();
 
       save();
       await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalledTimes(2));

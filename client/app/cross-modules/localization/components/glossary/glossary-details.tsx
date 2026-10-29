@@ -39,7 +39,7 @@ import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import {
   AlertTriangle,
   Archive,
-  CircleAlert,
+  Info,
   LoaderCircle,
   MoreHorizontal,
   Pencil,
@@ -326,7 +326,7 @@ const TranslationsTable = ({
   return (
     <>
       {hasConflict && (
-        <div className="px-6 pb-4">
+        <div className="pb-4">
           <Alert variant="destructive">
             <TriangleAlert />
             <AlertDescription>
@@ -384,18 +384,18 @@ function renderTranslationsContent(
 ) {
   if (isUnsupported) {
     return (
-      <p className="px-6 pb-6 text-sm text-medium-emphasis">
+      <p className="text-sm text-medium-emphasis">
         This term was saved by a newer version and can&apos;t be shown here.
       </p>
     );
   }
   if (meta.rule === "keep") {
-    return <p className="px-6 pb-6 text-sm text-medium-emphasis">Kept as-is in all languages.</p>;
+    return <p className="text-sm text-medium-emphasis">Kept as-is in all languages.</p>;
   }
   const targets = getTargetLanguages(languages);
   if (targets.length === 0) {
     return (
-      <p className="px-6 pb-6 text-sm text-medium-emphasis">
+      <p className="text-sm text-medium-emphasis">
         The project has no languages to translate into.
       </p>
     );
@@ -403,7 +403,7 @@ function renderTranslationsContent(
   return (
     <>
       {meta.rule === "forbidden" && (
-        <p className="px-6 pb-4 text-sm text-medium-emphasis">Do not use this term.</p>
+        <p className="pb-4 text-sm text-medium-emphasis">Do not use this term.</p>
       )}
       <TranslationsTable
         glossary={glossary}
@@ -478,6 +478,8 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     data: taggedKeysData,
     isLoading: isTaggedKeysLoading,
     isError: isTaggedKeysError,
+    isRefetching: isTaggedKeysRefetching,
+    refetch: refetchTaggedKeys,
   } = useGetKeysByGlossaryId(itemId, keysPage, keysPageSize, {
     searchKey: keySearch,
     moduleIds: keyModuleId === ALL_MODULES ? [] : [keyModuleId],
@@ -515,7 +517,14 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   }
 
   if (!glossary) {
-    return <div className="mt-10 text-center text-medium-emphasis">Glossary item not found.</div>;
+    return (
+      <div className="mt-10 flex flex-col items-center gap-3 text-center">
+        <p className="text-medium-emphasis">Glossary item not found.</p>
+        <Button type="button" variant="outline" onClick={() => navigate(scoped("services/glossary"))}>
+          Back to glossary
+        </Button>
+      </div>
+    );
   }
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
@@ -571,7 +580,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   };
 
   const renderTaggedKeysToolbar = () => (
-    <div className="flex flex-col gap-2 px-6 pb-4 md:flex-row md:items-center">
+    <div className="flex flex-col gap-2 pb-4 md:flex-row md:items-center">
       <Input
         aria-label="Search keys"
         placeholder="Search keys"
@@ -618,7 +627,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const renderTaggedKeysContent = () => {
     if (isTaggedKeysLoading) {
       return (
-        <div className="flex flex-col gap-2 px-6 pb-6">
+        <div className="flex flex-col gap-2">
           {TAGGED_KEYS_SKELETON_ROW_KEYS.map((rowKey) => (
             <Skeleton key={rowKey} className="h-10 w-full rounded-sm" />
           ))}
@@ -627,12 +636,28 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     }
 
     if (isTaggedKeysError || !taggedKeysData) {
-      return <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>;
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-medium-emphasis">Failed to load tagged keys.</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void refetchTaggedKeys()}
+            disabled={isTaggedKeysRefetching}
+          >
+            {isTaggedKeysRefetching && (
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+            )}
+            Retry
+          </Button>
+        </div>
+      );
     }
 
     if (!taggedKeysData.keys?.length) {
       return (
-        <p className="px-6 pb-6 text-sm text-medium-emphasis">
+        <p className="text-sm text-medium-emphasis">
           {isKeyFiltered
             ? "No tagged keys match the search or module."
             : "No keys are tagged with this glossary."}
@@ -706,7 +731,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             </Table>
           </TooltipProvider>
         </div>
-        <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 border-t pt-3 md:flex-row md:items-center md:justify-between">
           <span className="text-sm text-medium-emphasis">
             {taggedKeysData.totalCount} key
             {taggedKeysData.totalCount === 1 ? "" : "s"} total
@@ -733,9 +758,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <PageBreadcrumb />
       </div>
 
-      <div className="mt-5 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{glossary.name}</h1>
-        <div className="flex gap-2">
+      <div className="mt-5 flex items-start justify-between gap-4">
+        <h1 className="min-w-0 break-words text-2xl font-semibold">{glossary.name}</h1>
+        <div className="flex shrink-0 gap-2">
           <GlossaryEditorSheet
             open={editModalOpen}
             onOpenChange={setEditModalOpen}
@@ -911,23 +936,25 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           </Card>
 
           <Card className="rounded-sm shadow-none">
-            <CardHeader>
-              <CardTitle className="text-xl">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex w-fit cursor-help items-center gap-1.5">
-                        Internal Note
-                        <CircleAlert className="h-4 w-4 text-medium-emphasis" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-80 text-sm font-normal">
-                      Not utilized for auto translation, only given for additional comments by the
-                      user
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
+            <CardHeader className="flex-row items-center gap-1.5">
+              <CardTitle className="text-xl">Internal Note</CardTitle>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="About internal note"
+                      className="inline-flex shrink-0 rounded-full text-low-emphasis transition-colors hover:text-medium-emphasis focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start" className="max-w-72 text-left text-xs font-normal">
+                    Notes for your team, such as where the term came from or who approved it. Never
+                    sent to the AI.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardHeader>
             <CardContent>
               {hasText(meta.note) ? (

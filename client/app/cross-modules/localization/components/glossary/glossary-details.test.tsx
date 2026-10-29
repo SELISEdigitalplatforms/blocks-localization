@@ -73,6 +73,8 @@ describe("components/glossary/glossary-details", () => {
     h.useGetGlossaryById.mockReturnValue({ data: undefined, isLoading: false } as never);
     renderWithProviders(<GlossaryDetails itemId="g1" />);
     expect(screen.getByText("Glossary item not found.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to glossary" }));
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary");
   });
 
   it("should render glossary details with tagged modules", () => {
@@ -245,15 +247,19 @@ describe("components/glossary/glossary-details", () => {
       data: { itemId: "g1", name: "Widget", createDate: "2026-01-01" },
       isLoading: false,
     } as never);
+    const refetch = vi.fn();
     h.useGetKeysByGlossaryId.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
+      refetch,
     } as never);
     renderWithProviders(<GlossaryDetails itemId="g1" />, {
       route: "/app/abc/services/glossary/g1",
     });
     expect(screen.getByText("Failed to load tagged keys.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
     // The rest of the page stays usable.
     expect(screen.getByRole("heading", { name: "Widget" })).toBeTruthy();
     expect(screen.getByText("Edit")).toBeTruthy();

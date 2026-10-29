@@ -190,6 +190,21 @@ describe("glossary-table (Phase 8)", () => {
       expect(lastFilters()).toMatchObject({ language: "de-DE", type: "Acronym", scope: "modules" });
       expect(mockGlossaries.mock.calls.at(-1)?.[0]).toBe(0);
     });
+
+    it("offers Reset only while a filter is active and clears every filter", async () => {
+      const user = userEvent.setup();
+      setItems([term("g1", "Workspace")]);
+      renderWithProviders(<GlossaryTable />);
+      expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
+
+      await user.click(screen.getByRole("combobox", { name: "Scope" }));
+      await user.click(screen.getByRole("option", { name: "Whole project" }));
+      await user.click(screen.getByRole("button", { name: "Reset" }));
+
+      expect(lastFilters()).toMatchObject({ scope: undefined });
+      expect(screen.getByRole("combobox", { name: "Scope" }).textContent).toBe("All scopes");
+      expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
+    });
   });
 
   describe("summary strip (H18)", () => {

@@ -87,6 +87,12 @@ describe("components/glossary/glossary-bulk-actions", () => {
     );
   });
 
+  it("clears the selection from the bar", () => {
+    const { onClearSelection } = renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(onClearSelection).toHaveBeenCalled();
+  });
+
   it("shows the progress and disables every action while running", () => {
     mockBulk({ progress: { done: 1, total: 2 }, isRunning: true });
     renderBar();
