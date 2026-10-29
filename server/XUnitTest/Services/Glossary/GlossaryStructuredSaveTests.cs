@@ -9,7 +9,6 @@ using GlossaryModel = Eurolm.DomainService.Services.Glossary;
 
 namespace XUnitTest.Services.Glossary
 {
-    /// <summary>SPEC6 Save merge semantics, Track A sync, GetByIds and Usage.</summary>
     public class GlossaryStructuredSaveTests
     {
         private const string Prefix = "@@glossary-meta:v1@@";

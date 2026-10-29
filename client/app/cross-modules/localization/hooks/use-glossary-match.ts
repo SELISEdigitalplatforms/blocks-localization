@@ -1,15 +1,3 @@
-/**
- * Glossary terms in a source text, found by the server (`POST /Glossary/Match`, Phase 7).
- *
- * - `useGlossaryMatch({ text, sourceCulture, keyId?, moduleId?, glossaryIds? })` →
- *   `{ matches, isLoading, isError, matchedText }`. One request per distinct
- *   (text, culture, key, module, ids), cached for 5 minutes (C11). Disabled for empty text,
- *   text over 5,000 characters (C4) or without a project. Errors give no matches and no toast
- *   (C2). Editable sources pass a debounced text (`useDebouncedValue(text, MATCH_DEBOUNCE_MS)`,
- *   C18). While a new text is matched the previous matches stay (no flicker); `matchedText`
- *   is the text they belong to, so callers hide stale highlights.
- * - `toGlossaryMatch(dto)` maps one response item to the Phase 4 `GlossaryMatch` shape.
- */
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";

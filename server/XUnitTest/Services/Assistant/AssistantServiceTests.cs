@@ -904,7 +904,6 @@ namespace XUnitTest
 
             var result = await service.SuggestTranslation(request);
 
-            // Flag off (not configured): today's path, with empty applied terms and violations.
             result.Content.Should().Be("Hola");
             result.AppliedTerms.Should().BeEmpty();
             result.GlossaryViolations.Should().BeEmpty();

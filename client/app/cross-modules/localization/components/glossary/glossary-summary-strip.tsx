@@ -14,7 +14,6 @@ const SUMMARY_ORDER: readonly GlossaryStatus[] = ["approved", "draft", "deprecat
 const formatCount = (count: number | undefined) =>
   typeof count === "number" ? count.toLocaleString() : "–";
 
-/** "128 terms · 112 approved · 9 draft · 7 deprecated"; each count is a Status filter (H18). */
 const GlossarySummaryStrip = ({ status, onStatusChange }: Readonly<GlossarySummaryStripProps>) => {
   const counts = useGetGlossarySummaryCounts();
   return (

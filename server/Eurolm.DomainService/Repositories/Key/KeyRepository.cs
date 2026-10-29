@@ -602,7 +602,6 @@ namespace Eurolm.DomainService.Repositories
             var tagged = Builders<BlocksLanguageKey>.Filter.AnyEq(k => k.GlossaryIds, glossaryId);
             var skip = (int)Math.Min((long)Math.Max(pageNumber, 0) * pageSize, int.MaxValue);
 
-            // Two queries: one page of tagged keys, and one $facet for the counts and module ids.
             var pageTask = collection.Find(tagged)
                 .Sort(Builders<BlocksLanguageKey>.Sort.Ascending(k => k.KeyName).Ascending(k => k.ItemId))
                 .Skip(skip)

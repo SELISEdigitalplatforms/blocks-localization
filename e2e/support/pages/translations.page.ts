@@ -21,14 +21,12 @@ interface ApiKey {
   resources?: { culture: string; value: string }[];
 }
 
-/** A term's translation for one language (Phase 6 structured field). */
 export interface ApiGlossaryTranslation {
   language: string;
   value: string;
   forbiddenValues: string[];
 }
 
-/** One `/Glossary/Match` hit as the server returns it. */
 export interface ApiGlossaryMatch {
   glossaryId: string;
   start: number;
@@ -163,7 +161,6 @@ export class LocalizationApi {
     return created!.itemId;
   }
 
-  /** The id of the glossary named exactly `name`, or undefined. */
   async findGlossaryId(name: string): Promise<string | undefined> {
     const params = new URLSearchParams({
       PageNumber: "0",
@@ -238,7 +235,6 @@ export class LocalizationApi {
   }
 }
 
-/** An applied term of a suggestion response (Phase 6). */
 export interface SuggestionAppliedTerm {
   glossaryId: string;
   term: string;
@@ -246,7 +242,6 @@ export interface SuggestionAppliedTerm {
   expected?: string;
 }
 
-/** A violation of a suggestion response (Phase 6). */
 export interface SuggestionViolation {
   glossaryId: string;
   term: string;
@@ -337,7 +332,6 @@ export async function trackGlossaryMatches(
   await page.route(isGlossaryMatchUrl, handler);
   return {
     requests,
-    /** The requests made for exactly this source text. */
     forText: (text: string) => requests.filter((request) => request.text === text),
     stop: () => page.unroute(isGlossaryMatchUrl, handler),
   };
@@ -1098,14 +1092,11 @@ export class TranslationsPage {
     await expect(dialog).toHaveCount(0);
   }
 
-  // --- Single-key suggestions (View Details, edit translation, inline editor) ---
-
   /** The "Edit translation" modal opened from a View Details language row. */
   get editTranslationDialog() {
     return this.page.getByRole("dialog", { name: "Edit translation" });
   }
 
-  /** Opens View Details for a key in the shared project. */
   async openKeyDetails(itemId: string) {
     await new KeyDetailsPage(this.page).navigateTo(itemId, e2eBaseUrl());
     // The cards render once the project languages are loaded.
@@ -1149,9 +1140,6 @@ export class TranslationsPage {
     return this.violationList(scope).getByRole("listitem").filter({ hasText: message });
   }
 
-  // --- Glossary terms in the source (SPEC4) ---
-
-  /** A highlighted term (Edit translation) or a "Glossary terms" chip (inline / new key). */
   /** The per-language glossary checklist under a target row (inline editor, new key). */
   glossaryChecklist(scope: Locator | Page, languageName: string) {
     return scope.getByRole("region", { name: `Glossary terms for ${languageName}` });
@@ -1163,7 +1151,6 @@ export class TranslationsPage {
     });
   }
 
-  /** The open term popover. */
   get termPopover() {
     // Named by the popover itself, so it also matches the "Add it in the glossary" state.
     return this.page.getByRole("dialog", { name: /^Glossary term / });
@@ -1194,9 +1181,6 @@ export class TranslationsPage {
     return (await requestPromise).postDataJSON() as Record<string, unknown>;
   }
 
-  // --- Glossary issues (SPEC7) ---
-
-  /** The Translations table's "Glossary issues" filter checkbox. */
   get glossaryIssuesCheckbox() {
     return this.page.getByRole("checkbox", { name: "Glossary issues" });
   }

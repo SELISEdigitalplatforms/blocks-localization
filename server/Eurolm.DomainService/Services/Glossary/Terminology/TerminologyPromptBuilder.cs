@@ -106,7 +106,6 @@ namespace Eurolm.DomainService.Services
             return builder.ToString();
         }
 
-        /// <summary>Today's final prompt line (AssistantService.GenerateSuggestTranslationContext).</summary>
         public static string FinalLine(SuggestLanguageRequest request) =>
             $"Translate the following from {request.CurrentLanguage} to {request.DestinationLanguage}: '{request.SourceText}'";
 
@@ -153,7 +152,6 @@ namespace Eurolm.DomainService.Services
             return text[..index];
         }
 
-        /// <summary>Quote, backtick, CR, LF, NEL, U+2028, U+2029 and the rule-marker brackets ⟦ ⟧.</summary>
         private static bool IsStrippedFromPrompt(char c) =>
             (int)c is 0x22 or 0x60 or 0x0D or 0x0A or 0x85 or 0x2028 or 0x2029 or 0x27E6 or 0x27E7;
 

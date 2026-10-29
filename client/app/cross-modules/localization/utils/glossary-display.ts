@@ -1,10 +1,3 @@
-/**
- * Display adapters over the API's structured glossary fields (Phase 7). The server resolves
- * `rule`, `variants`, `translations`, … for every term, also before migration, so displays
- * read those instead of parsing `additionalNote`. Only the note and the read-only state
- * still look at `additionalNote`, because a Track A save can leave v1 JSON there until the
- * tenant is migrated (A6).
- */
 import {
   GLOSSARY_META_PREFIX_PATTERN,
   GLOSSARY_RULES,

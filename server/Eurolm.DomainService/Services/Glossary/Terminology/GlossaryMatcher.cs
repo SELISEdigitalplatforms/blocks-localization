@@ -65,7 +65,6 @@ namespace Eurolm.DomainService.Services
             _insensitive = insensitive;
         }
 
-        /// <summary>Number of distinct alternatives (name or variant texts) indexed.</summary>
         public int AlternativeCount => _sensitive.PatternCount + _insensitive.PatternCount;
 
         public static GlossaryMatcher Build(IEnumerable<(BlocksGlossary Glossary, EffectiveTerminology Terminology)> glossaries)
@@ -143,8 +142,6 @@ namespace Eurolm.DomainService.Services
 
         private readonly record struct Candidate(Entry Entry, int Start, int Length, GlossaryScope Scope);
 
-        // ---- scope and overlaps ----
-
         private static GlossaryScope? ScopeOf(BlocksGlossary glossary, MatchOptions options, HashSet<string>? keyIds)
         {
             if (keyIds != null && glossary.ItemId != null && keyIds.Contains(glossary.ItemId)) return GlossaryScope.Key;
@@ -186,8 +183,6 @@ namespace Eurolm.DomainService.Services
             kept.Sort((a, b) => a.Start.CompareTo(b.Start));
             return kept;
         }
-
-        // ---- text helpers (shared with the validator) ----
 
         private static readonly string[] NoSpaceLanguages = { "zh", "ja", "th", "lo", "km", "my" };
 
@@ -329,8 +324,6 @@ namespace Eurolm.DomainService.Services
                 if (seen.Add(text)) yield return text;
             }
         }
-
-        // ---- Aho–Corasick ----
 
         private sealed class AutomatonBuilder
         {

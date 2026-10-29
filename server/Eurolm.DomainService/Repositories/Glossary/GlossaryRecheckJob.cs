@@ -14,9 +14,7 @@ namespace Eurolm.DomainService.Repositories
         [BsonId]
         public string Id { get; set; } = MarkerId;
         public DateTime QueuedAt { get; set; }
-        /// <summary>True when any request asked for the whole project.</summary>
         public bool WholeProject { get; set; }
-        /// <summary>The glossaries the queued requests asked for.</summary>
         public List<string> GlossaryIds { get; set; } = new();
     }
 }

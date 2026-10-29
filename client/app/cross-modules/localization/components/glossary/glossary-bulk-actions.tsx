@@ -220,10 +220,6 @@ const SetProjectDialog = ({
   </DialogContent>
 );
 
-/**
- * The bulk bar shown while rows are selected, its confirmations, and the failure report that
- * stays above the table after a run (H19, C8).
- */
 const GlossaryBulkActions = ({
   selected,
   onClearSelection,

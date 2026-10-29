@@ -16,7 +16,6 @@ export type GlossaryViolationKind = "missing-translation" | "missing-keep" | "fo
 
 export interface GlossaryViolation {
   glossaryId: string;
-  /** The glossary name. */
   term: string;
   kind: GlossaryViolationKind;
   /** missing-translation: the approved value; missing-keep: the source surface to keep. */
@@ -133,7 +132,6 @@ export const findInTarget = (
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
-/** Every occurrence of `value` in the output, in order. */
 type FindValue = (value: string, caseInsensitive: boolean) => Occurrence[];
 
 type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
@@ -303,7 +301,6 @@ export const applyFix = (
   );
 };
 
-/** The message shown under the field for a violation. */
 export const formatViolationMessage = (violation: GlossaryViolation): string => {
   switch (violation.kind) {
     case "missing-translation":

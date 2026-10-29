@@ -115,7 +115,6 @@ interface GlossaryTermPopoverProps {
 
 export const DRAFT_TERM_NOTICE = "Draft: not sent to the AI";
 
-/** Term, rule (and Draft status), target value and definition, with Insert and Open term. */
 const GlossaryTermPopover = ({
   match,
   targetLanguage,
@@ -184,7 +183,6 @@ const GlossaryTermPopover = ({
               {match.definition}
             </p>
           )}
-          {/* The first usage example only; the term's page lists them all (Phase 8 H22). */}
           {firstExample && (
             <p className="line-clamp-2 text-xs italic text-medium-emphasis">
               e.g. &ldquo;{firstExample}&rdquo;

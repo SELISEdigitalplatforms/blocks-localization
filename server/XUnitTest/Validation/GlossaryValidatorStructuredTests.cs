@@ -6,7 +6,6 @@ using Xunit;
 
 namespace XUnitTest
 {
-    /// <summary>SPEC6 validator additions: structured fields (C17) and length limits only on change (C24).</summary>
     public class GlossaryValidatorStructuredTests
     {
         private readonly Mock<IGlossaryRepository> _repository = new();

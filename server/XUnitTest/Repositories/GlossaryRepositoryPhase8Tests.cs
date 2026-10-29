@@ -11,7 +11,6 @@ using XUnitTest.Shared;
 
 namespace XUnitTest.Repositories
 {
-    /// <summary>SPEC8 Part B repository additions: Gets parameters (H16, H17, C18, C19), ix_status (H26), bulk tagging (H30).</summary>
     public class GlossaryRepositoryPhase8Tests
     {
         private readonly Mock<IDbContextProvider> _dbContextProvider = new();

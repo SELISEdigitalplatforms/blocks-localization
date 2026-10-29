@@ -147,7 +147,6 @@ describe("GlossaryPicker", () => {
     await user.click(screen.getByRole("combobox"));
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onChangeSpy).toHaveBeenLastCalledWith(["g2"]);
-    // Backspace in the empty search keeps the chips.
     await user.keyboard("{Backspace}");
     expect(screen.getByRole("button", { name: "Remove SELISE" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remove SELISE" }));
@@ -239,7 +238,6 @@ describe("GlossaryPicker", () => {
         searchText: "Onboardng",
       });
       expect(screen.getByRole("button", { name: "Remove Onboardng" })).toBeTruthy();
-      // The tagging dialog stays open.
       expect(screen.getByText("Tag Glossary")).toBeTruthy();
     });
 

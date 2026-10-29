@@ -15,7 +15,6 @@ using KeyModel = Eurolm.DomainService.Services.Key;
 
 namespace XUnitTest.Services.Key
 {
-    /// <summary>SPEC6 key violations: the worker replaces one culture's entries (H9); Key/Save recomputes them with the flag on (H16) and keeps them otherwise (C27).</summary>
     public class KeyManagementServiceGlossaryViolationTests
     {
         private readonly Mock<IKeyRepository> _keyRepository = new();

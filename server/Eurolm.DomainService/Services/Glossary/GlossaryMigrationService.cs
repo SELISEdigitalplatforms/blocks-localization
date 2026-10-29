@@ -4,11 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Eurolm.DomainService.Services
 {
-    /// <summary>
-    /// Per-tenant, idempotent migration of the Track A terminology (v1 JSON in AdditionalNote, rule marker in
-    /// Context) into the structured fields (DATA CONTRACTS › Migration). Run with dryRun=false only after the
-    /// Phase 7 frontend is deployed: the Track A UI reads terminology only from additionalNote.
-    /// </summary>
     public class GlossaryMigrationService : IGlossaryMigrationService
     {
         public const int BatchSize = 200;

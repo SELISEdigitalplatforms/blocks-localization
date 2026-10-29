@@ -142,7 +142,6 @@ interface TermIssueProps {
   violation: GlossaryViolation;
   matches: GlossaryMatch[];
   culture: string;
-  /** A Draft term's live warning (A2). */
   draft: boolean;
   disabled: boolean;
   onFix: (violation: GlossaryViolation) => void;
@@ -188,7 +187,6 @@ interface ChecklistTermProps {
   culture: string;
   /** This term's violations; shown only once the row has text. */
   violations: GlossaryViolation[];
-  /** The matches Fix reads (the suggestion's applied terms, or the live matches). */
   matches: GlossaryMatch[];
   hasText: boolean;
   disabled: boolean;
@@ -291,8 +289,6 @@ export const GlossaryTargetChecklist = ({
   const matches = fromSuggestion ? row.matches : liveMatches;
   const culture = fromSuggestion ? row.targetCulture : targetCulture;
   const violations = fromSuggestion ? row.violations : live.violations;
-  // After a suggestion: only the terms the server applied or reported (none with its glossary
-  // enforcement off, C1). The source's matches still give the surface and guidance.
   const suggestionIds = new Set([
     ...row.matches.map((match) => match.glossary.itemId),
     ...row.violations.map((violation) => violation.glossaryId),

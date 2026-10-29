@@ -444,7 +444,6 @@ export interface IMatchGlossaryResponse {
   matches: IGlossaryMatchDto[];
 }
 
-/** `GetTranslationSuggestion`: arrays are empty when the server's glossary enforcement is off. */
 export interface ITranslationSuggestionResponse {
   content: string;
   appliedTerms?: IAppliedTerm[];

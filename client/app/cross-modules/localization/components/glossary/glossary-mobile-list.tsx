@@ -38,7 +38,6 @@ interface GlossaryMobileListProps {
   onDelete: (glossary: IGlossary) => void;
 }
 
-/** The glossary list below the `md` breakpoint: one card per term, same data and actions (H15). */
 const GlossaryMobileList = ({
   glossaries,
   languages,

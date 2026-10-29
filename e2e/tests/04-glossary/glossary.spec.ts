@@ -441,7 +441,6 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(variantName);
         await glossary.expectAddSuccess(variantName);
-        // H13: the chip entered with Enter is saved in `variants`.
         expect(payload.variants).toEqual([`${variantName}s`]);
         expect(payload.caseSensitive).toBe(false);
       });
@@ -455,14 +454,12 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(caseName);
         await glossary.expectAddSuccess(caseName);
-        // H14: the switch is saved as `caseSensitive`.
         expect(payload).toMatchObject({ rule: "keep", caseSensitive: true });
       });
 
       await test.step("Details pages show the variant chips and the badge (H13, H14)", async () => {
         await glossary.searchGlossaries(variantName);
         await glossary.openGlossaryDetail(variantName);
-        // H13: the details page lists the variants as chips.
         await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
         await expect(page.getByText(`${variantName}s`, { exact: true })).toBeVisible();
         await expect(page.getByText("Case-sensitive", { exact: true })).toHaveCount(0);
@@ -470,7 +467,6 @@ test.describe("Glossary", () => {
 
         await glossary.searchGlossaries(caseName);
         await glossary.openGlossaryDetail(caseName);
-        // H14: the "Case-sensitive" badge is shown when set; no variants row without variants.
         await expect(page.getByText("Case-sensitive", { exact: true })).toBeVisible();
         await expect(page.getByText("Variants:", { exact: true })).toHaveCount(0);
         await glossary.goBackToList();
@@ -695,7 +691,6 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
         expect(page.url()).toBe(listUrl);
         await page.keyboard.press("Escape");
-        // H11: Enter on the focused row opens the details page.
         await page.getByRole("row").filter({ hasText: names.term }).focus();
         await page.keyboard.press("Enter");
         await expect(page.getByRole("heading", { name: names.term })).toBeVisible({

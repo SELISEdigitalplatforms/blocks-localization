@@ -9,10 +9,6 @@ using GlossaryModel = Eurolm.DomainService.Services.Glossary;
 
 namespace XUnitTest.Services.Glossary
 {
-    /// <summary>
-    /// SPEC8 partOfSpeech / usageExamples: validation (C16), merge-on-omit and clearing (C17), and the automatic
-    /// re-check trigger after save, delete and migrate (H28).
-    /// </summary>
     public class GlossaryDescriptiveFieldsTests
     {
         private readonly Mock<IGlossaryRepository> _repository = new();

@@ -11,14 +11,6 @@ import {
 } from "../../support/pages/translations.page";
 import { openGlossary, openTranslations } from "../../support/localization-helpers";
 
-/**
- * SPEC7 (Phase 7): the console on the backend terminology model. Covers the §10 steps that run
- * against the real API with request interception: structured saves, Status, Draft highlights,
- * GetByIds, server suggestions, Usage, the "Glossary issues" filter and the glossary table
- * filters. Highlighting, suggestion requests and the inline debounce are in
- * tests/02-translations/translations.spec.ts ("glossary-aware suggestions").
- */
-
 const META_PREFIX = "@@glossary-meta:v1@@";
 /** Radix toasts are `role="status"` list items; an open one means a toast is showing. */
 const OPEN_TOAST = 'li[role="status"][data-state="open"]';
@@ -197,7 +189,6 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
           additionalNote: "",
         });
 
-        // The Status select saves its value.
         await glossary.openEditFromList(name);
         await glossary.setStatus("Draft");
         const edited = await glossary.saveAndCapturePayload();
@@ -344,7 +335,6 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
         expect(url.searchParams.get("SearchText")).toBe(fixtures.tag);
         await glossary.expectGlossaryRowVisible(names.g5);
         await expect(page.getByRole("row").filter({ hasText: names.g1 })).toHaveCount(0);
-        // C12: the Status badge is shown in the table.
         await expect(
           page.getByRole("row").filter({ hasText: names.g5 }).getByText("Draft", { exact: true }),
         ).toBeVisible();

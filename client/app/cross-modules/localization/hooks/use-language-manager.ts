@@ -1136,7 +1136,6 @@ const glossaryUsageQuery = (tenantId: string, glossaryId: string, enabled: boole
   retry: false,
 });
 
-/** The number of keys tagged with the glossary, from `Glossary/Usage` (one request, H10). */
 export const useGetGlossaryUsageCount = (glossaryId: string, enabled = true) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({

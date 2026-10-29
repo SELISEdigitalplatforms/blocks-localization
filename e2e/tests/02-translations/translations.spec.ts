@@ -28,8 +28,6 @@ import { readLocalizationProject } from "../../support/localization-project";
 import fs from "fs";
 import path from "path";
 
-// --- Glossary-aware single-key suggestions (#354; server pipeline since SPEC7) ---
-
 const CUSTOM_PROMPT = "Formal tone.";
 
 /** Radix toasts are `role="status"` list items; an open one means a toast is showing. */
@@ -640,7 +638,6 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
 
       await test.step("H6, C11: one /Match per distinct text; reopening reuses it", async () => {
         await translations.openEditTranslation(target.languageName);
-        // H6: the server's span is highlighted.
         await expect(translations.glossaryTerm(dialog, names.g1)).toHaveText(names.g1, {
           timeout: 15_000,
         });
@@ -662,7 +659,6 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
       await test.step("H4, C14: exactly one request with the key's own context, tags, module and codes", async () => {
         ai.script({ content: "Öffnen Sie Ihren Arbeitsbereich", appliedTerms: [appliedG1] });
         await translations.openEditTranslation(target.languageName);
-        // The label names the isDefault language.
         await expect(dialog.getByText(`${source.languageName} (default)`)).toBeVisible();
         await translations.clickAutoTranslateInDialog();
         await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
@@ -708,7 +704,6 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
           dialog,
           `Expected "Arbeitsbereich" for "${names.g1}"`,
         );
-        // H5: the response's violations, with the Phase 3 messages.
         await expect(forbidden).toBeVisible();
         await expect(missing).toBeVisible();
         expect(ai.requests).toHaveLength(1);
@@ -806,7 +801,6 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         });
         const body = (await response.json()) as Record<string, unknown>;
         expect(typeof body.content).toBe("string");
-        // Empty when the server's GlossaryEnforcement flag is off (C1).
         expect(Array.isArray(body.appliedTerms)).toBe(true);
         expect(Array.isArray(body.glossaryViolations)).toBe(true);
         await translations.closeEditTranslation();
@@ -958,11 +952,9 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect(term).toHaveText(names.g1, { timeout: 15_000 });
         await term.click();
         const popover = translations.termPopover;
-        // H2: term, rule and the target value.
         await expect(popover.getByText(names.g1, { exact: true })).toBeVisible();
         await expect(popover.getByText("Translate", { exact: true })).toBeVisible();
         await expect(popover.getByText("Arbeitsbereich", { exact: true })).toBeVisible();
-        // H3: Insert puts the value in the target and focuses it.
         await textarea.fill("");
         await term.click();
         await popover.getByRole("button", { name: "Insert" }).click();

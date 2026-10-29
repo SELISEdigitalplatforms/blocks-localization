@@ -19,11 +19,6 @@ import {
 } from "../../support/localization-helpers";
 
 /**
- * SPEC4 evidence for the PR: screenshots (1440×900 and 390×844, light and dark), axe checks of
- * the Edit translation modal and the glossary picker, and (since SPEC7, where the server matches)
- * the `/Glossary/Match` request count and latency per editor open (SPEC7 §5). Opt-in, like
- * glossary-visual.spec.ts:
- *
  *   E2E_VISUAL=1 npx playwright test tests/04-glossary/glossary-spec4-evidence.spec.ts
  *
  * Results are attached to the HTML report (`npm run report`).
@@ -356,7 +351,6 @@ test.describe("Glossary — SPEC4 evidence", () => {
         // End-to-end: request start to the last response byte.
         durations.push(response.request().timing().responseEnd);
         await page.waitForTimeout(500);
-        // C14: one /Match request per editor open.
         expect(matches.forText(fixtures.source).length - before).toBe(1);
         await translations.closeEditTranslation();
       }

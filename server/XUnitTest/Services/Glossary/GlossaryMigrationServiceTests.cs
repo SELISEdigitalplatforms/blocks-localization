@@ -7,7 +7,6 @@ using Xunit;
 
 namespace XUnitTest.Services.Glossary
 {
-    /// <summary>SPEC6 Migration (H15, C9–C12, C23, C28).</summary>
     public class GlossaryMigrationServiceTests
     {
         private const string Prefix = "@@glossary-meta:v1@@";
@@ -149,7 +148,6 @@ namespace XUnitTest.Services.Glossary
         [Fact]
         public async Task Dry_run_writes_nothing_but_reports_the_same()
         {
-            // Example 7.
             _stored.AddRange(new[] { TrackA("id1", "workspace"), TrackA("id2", "Workspace") });
             _keyRepository.Setup(k => k.RemoveStaleGlossaryIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), true, It.IsAny<int>())).ReturnsAsync(4L);
 

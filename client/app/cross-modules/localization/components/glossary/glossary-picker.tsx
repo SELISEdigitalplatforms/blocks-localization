@@ -139,17 +139,12 @@ const SelectedChip = ({
 interface GlossaryPickerProps {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
-  /** Offers "Create "<query>"" when the search finds nothing. */
   allowCreate?: boolean;
   disabled?: boolean;
   /** Glossaries the caller already has (seed, resolved tags): names without a request. */
   knownGlossaries?: IGlossary[];
 }
 
-/**
- * Search-and-select for tagging glossaries to a module or a key. Selected chips always
- * render: names come from known glossaries or the search, otherwise from `Glossary/Get`.
- */
 const GlossaryPicker = ({
   selectedIds,
   onChange,
@@ -161,7 +156,6 @@ const GlossaryPicker = ({
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createName, setCreateName] = useState("");
-  // Glossaries picked in this session (search results, created or duplicate terms).
   const [picked, setPicked] = useState<Record<string, IGlossary>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   // The create lookup resolves after the sheet closed: it must add to the current selection.
@@ -224,7 +218,6 @@ const GlossaryPicker = ({
     setSheetOpen(true);
   };
 
-  /** Finds the new term by name (C19): the selection stays unchanged when it isn't found. */
   const selectCreated = async (savedName: string) => {
     try {
       const page = await languageManagerService.fetchGlossaries({

@@ -53,7 +53,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
 
   const { data: allGlossariesData } = useGetGlossaries(0, 100);
-  // Server matcher over every glossary; shown whether or not the key has tags (H9).
   const { data: suggestedGlossariesData } = useGetSuggestedGlossaries(keyDetails.itemId, true);
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
@@ -93,7 +92,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     );
   }, [suggestedGlossariesData, addedGlossaryIds, keyDetails.glossaryIds]);
 
-  // One list: Tagged, Module, Global, Suggested; a term shows once, under its first source (H12).
   const shownSuggestions = glossarySuggestions.slice(0, MAX_SHOWN_SUGGESTIONS);
   const hiddenSuggestionCount = glossarySuggestions.length - shownSuggestions.length;
   const termCards = mergeSourcedGlossaries({

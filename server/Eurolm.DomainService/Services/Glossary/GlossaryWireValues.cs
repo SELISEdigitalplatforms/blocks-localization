@@ -30,7 +30,6 @@ namespace Eurolm.DomainService.Services
             }
         }
 
-        /// <summary>The allowed <c>partOfSpeech</c> values (stored lower case).</summary>
         public static readonly IReadOnlyList<string> PartsOfSpeech = new[] { "noun", "verb", "adjective", "adverb", "phrase", "other" };
 
         /// <summary>The stored form of a part of speech: lower case, or null for "" (clears it). False when not allowed.</summary>

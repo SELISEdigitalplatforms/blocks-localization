@@ -93,7 +93,6 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const ALL_FILTER = "all";
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
-/** Per-browser column visibility (H1); read and written inside try/catch (C2). */
 export const GLOSSARY_COLUMNS_STORAGE_KEY = "glossary-table-columns";
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = { createDate: false };
 
@@ -143,7 +142,6 @@ interface GlossarySort {
 /** Today's order; sent as no parameters, so the server keeps its default (C18). */
 const DEFAULT_SORT: GlossarySort = { sortBy: "createDate", descending: true };
 
-/** Column id → `SortBy`; the column ids equal the sort values. */
 const SORTABLE_COLUMNS: Record<string, GlossarySortBy | undefined> = {
   name: "name",
   createDate: "createDate",
@@ -189,7 +187,6 @@ const SortHeader = ({
   );
 };
 
-/** Full text on hover and on keyboard focus (§8.8). */
 const TruncatedText = ({ text, className }: Readonly<{ text: string; className: string }>) => {
   if (text === "-") return <span>-</span>;
   return (
@@ -209,7 +206,6 @@ const TruncatedText = ({ text, className }: Readonly<{ text: string; className: 
   );
 };
 
-// Rule and translations come from the API fields; an unsupported note still shows "—" (C16).
 function renderRuleCell(row: { original: IGlossary }) {
   return isUnsupportedGlossaryNote(row.original) ? (
     <span>—</span>
@@ -231,7 +227,6 @@ function renderTranslationsCell(
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
 
-/** The project language's name; the raw code when languages haven't loaded or it isn't one (C1). */
 export const getGlossaryLanguageName = (
   code: string | undefined,
   languages: ILanguageConfig[] | undefined,
@@ -874,7 +869,6 @@ const GlossaryTable = () => {
         )}
       </Card>
 
-      {/* Edit Sheet */}
       <GlossaryEditorSheet
         open={editModalOpen && !!editGlossary}
         glossary={editGlossary}

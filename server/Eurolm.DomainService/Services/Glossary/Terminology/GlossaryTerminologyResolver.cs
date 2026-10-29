@@ -2,7 +2,6 @@ using Eurolm.DomainService.Repositories;
 
 namespace Eurolm.DomainService.Services
 {
-    /// <summary>Resolves the effective terminology of a stored glossary (DATA CONTRACTS › Effective terminology).</summary>
     public static class GlossaryTerminologyResolver
     {
         public static EffectiveTerminology Resolve(BlocksGlossary glossary)

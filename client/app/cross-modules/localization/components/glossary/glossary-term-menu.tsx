@@ -60,11 +60,9 @@ interface GlossaryTermMenuProps {
   onInsert: (value: string) => void;
   /** Called on close without inserting, so focus goes back to the field (Escape). */
   onReturnFocus: () => void;
-  /** The target field the menu is anchored to. */
   children: ReactElement;
 }
 
-/** Alt+Shift+G menu of the source's glossary terms; Enter inserts at the caret (H11, C6). */
 const GlossaryTermMenu = ({
   open,
   onOpenChange,

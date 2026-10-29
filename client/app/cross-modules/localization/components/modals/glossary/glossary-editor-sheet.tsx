@@ -204,7 +204,6 @@ const firstForbiddenError = (
 
 /**
  * Validation only covers languages shown in the editor; other stored entries pass through.
- * Variants are only validated while they are editable (flag on); otherwise they are kept as stored.
  */
 const buildSchema = (targetCodes: string[]) =>
   z

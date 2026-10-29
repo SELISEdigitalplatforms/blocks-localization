@@ -66,7 +66,6 @@ interface GlossaryTermCardProps {
   disabled?: boolean;
 }
 
-/** A term as it applies to a key: name, rule, source, translations and definition (H12). */
 const GlossaryTermCard = ({
   glossary,
   source,

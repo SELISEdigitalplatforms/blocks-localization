@@ -59,7 +59,6 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   const hasKnownCount = !isCountError && typeof usageCount === "number";
   const isBusy = isPending || isDeprecating;
   const needsTyping = hasKnownCount && usageCount >= DELETE_CONFIRM_THRESHOLD;
-  // Case-sensitive, after trimming what was typed (H10).
   const isTypedNameValid = !needsTyping || confirmText.trim() === glossaryName;
   const canConfirm = hasKnownCount && !isCounting && !isRecounting && !isBusy && isTypedNameValid;
   const canDeprecate =

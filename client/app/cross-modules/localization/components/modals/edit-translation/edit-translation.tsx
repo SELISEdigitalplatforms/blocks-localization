@@ -90,8 +90,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       "",
   );
 
-  // Highlights and live checks: one `/Glossary/Match` for this static source (H6); plain text
-  // and no warnings while it loads or after a failure (C2).
   const { matches: sourceMatches } = useSourceGlossaryMatches({
     text: defaultLanguageText,
     sourceCulture: defaultLanguage?.languageCode ?? "",

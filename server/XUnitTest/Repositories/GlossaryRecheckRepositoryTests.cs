@@ -10,7 +10,6 @@ using XUnitTest.Shared;
 
 namespace XUnitTest.Repositories
 {
-    /// <summary>SPEC8 re-check storage: the per-tenant coalescing marker (C12) and the key paging / violations-only write (H29).</summary>
     public class GlossaryRecheckRepositoryTests
     {
         private static readonly DateTime Now = new(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);

@@ -51,7 +51,6 @@ const G1: IGlossary = {
 
 const matchGlossary = vi.mocked(languageManagerService.matchGlossary);
 
-/** The server's suggestion response for G1 (enforcement on). */
 const APPLIED_G1 = [
   { glossaryId: "g1", term: "Workspace", rule: "translate", expected: "Arbeitsbereich" },
 ];

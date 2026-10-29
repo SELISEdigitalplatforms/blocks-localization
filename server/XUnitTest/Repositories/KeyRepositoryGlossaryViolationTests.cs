@@ -12,7 +12,6 @@ using XUnitTest.Shared;
 
 namespace XUnitTest.Repositories
 {
-    /// <summary>SPEC6 key-side glossary data: stored violations, the "Glossary issues" filter, usage and stale references.</summary>
     public class KeyRepositoryGlossaryViolationTests
     {
         private readonly Mock<IDbContextProvider> _dbContextProvider = new();

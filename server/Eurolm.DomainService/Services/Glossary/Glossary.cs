@@ -56,7 +56,6 @@ namespace Eurolm.DomainService.Services
         [BsonIgnore]
         public List<string>? UsageExamples { get; set; }
 
-        /// <summary>True when the request carries any of the structured fields.</summary>
         public bool HasStructuredFields() =>
             Rule != null || CaseSensitive != null || Variants != null || Translations != null || Status != null;
 

@@ -1,13 +1,3 @@
-/**
- * Live glossary checks while the translator types (Phase 4, on `/Glossary/Match` since Phase 7).
- *
- * - `useSourceGlossaryMatches(options)`: the source's matches from `useGlossaryMatch` (Approved
- *   and Draft terms). Editable sources pass `debounce: true`, so `/Match` is requested only
- *   300 ms after the text stops changing (C18). `[]` while loading or after a failure (C2).
- * - `useLiveGlossaryCheck({ targetText, targetCulture, matches })`: `validateTranslation`
- *   150 ms after typing stops; `checkNow(text)` skips the debounce (after Fix). Draft terms are
- *   checked too and shown with the "Draft term:" prefix (A2).
- */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {

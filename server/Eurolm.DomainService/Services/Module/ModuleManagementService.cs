@@ -282,7 +282,6 @@ namespace Eurolm.DomainService.Services
                         .ToList();
                 }
 
-                // One round trip for every changed glossary (audit "TagGlossaryAsync – N+1").
                 if (removeFrom.Count > 0 || addTo.Count > 0)
                     await _glossaryRepository.UpdateModuleTagsAsync(request.ModuleId, addTo, removeFrom);
 

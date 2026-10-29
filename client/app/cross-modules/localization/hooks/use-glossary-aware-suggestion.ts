@@ -1,17 +1,3 @@
-/**
- * Glossary-aware single-key AI suggestions (Phase 7: the server matches, prompts, validates
- * and retries).
- *
- * - `useGlossaryAwareSuggestion()` → `{ suggest, cancel, isPending, pendingKeys }`.
- *   `suggest({ requestKey, ... })` sends exactly one `GetTranslationSuggestion` request for one
- *   target language (H4, C14) and resolves to an outcome:
- *     - `success`: `{ content, violations, appliedTerms, matches }`; `violations` are the
- *       server's `glossaryViolations`, `matches` the applied terms (Fix reads them, C20)
- *     - `empty` (no content) / `error` (the request threw): show the existing error toast
- *     - `stale`: superseded by a newer `suggest` with the same `requestKey`, cancelled, aborted
- *       through `signal`, or the component unmounted. Ignore it.
- *   With the server's glossary enforcement off both arrays are empty (C1).
- */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
@@ -32,7 +18,6 @@ export type TranslationSuggestionPayload = Parameters<
 export interface GlossarySuggestionInput {
   /** Identifies the row / target language; a newer request with the same key supersedes. */
   requestKey: string;
-  /** Source text in the default language. */
   sourceText: string;
   /** `getDefaultLanguage(languageListData)`: the source language, not the array's first item. */
   defaultLanguage?: Pick<ILanguageConfig, "languageName" | "languageCode">;
@@ -67,7 +52,6 @@ export interface GlossarySuggestionDeps {
   isCurrent?: () => boolean;
 }
 
-/** The one request of a suggestion (H4): the key's own context, tags and module. */
 export const buildSuggestionPayload = (
   input: GlossarySuggestionInput,
 ): TranslationSuggestionPayload => ({
@@ -122,7 +106,6 @@ export const appliedTermToMatch = (term: IAppliedTerm, targetCulture: string): G
   };
 };
 
-/** The suggestion request without React state (spec §6 Suggestion). */
 export const runGlossaryAwareSuggestion = async (
   input: GlossarySuggestionInput,
   { requestSuggestion, isCurrent = () => true }: GlossarySuggestionDeps,

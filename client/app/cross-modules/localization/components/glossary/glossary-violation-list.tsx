@@ -72,11 +72,6 @@ export const recheckViolations = (
   });
 };
 
-/**
- * `useGlossaryAwareSuggestion` plus per-row (per target language) violation state:
- * `request` stores the server's violations, `clearViolations` is for user edits (C11)
- * and `fix` applies a deterministic Fix (C20) and re-checks the server's violations.
- */
 export const useGlossarySuggestionRows = () => {
   const { suggest, cancel, isPending } = useGlossaryAwareSuggestion();
   const [rows, setRows] = useState<Record<string, GlossaryRowState>>({});
@@ -141,7 +136,6 @@ export const useGlossarySuggestionRows = () => {
   return { request, cancel, isPending, getRow, clearViolations, fix };
 };
 
-/** The message under the field; Draft terms (live check only) are marked as advisory (A2). */
 export const formatGlossaryIssue = (violation: GlossaryViolation, matches: GlossaryMatch[]) =>
   isDraftViolation(violation, matches)
     ? `${DRAFT_TERM_PREFIX} ${formatViolationMessage(violation)}`
@@ -154,7 +148,6 @@ interface GlossaryViolationListProps {
   violations: GlossaryViolation[];
   matches: GlossaryMatch[];
   targetCulture: string;
-  /** Disables Fix and Retry while the row's suggestion is running. */
   disabled?: boolean;
   onFix: (violation: GlossaryViolation) => void;
   /** Without it (live warnings) a violation with no deterministic Fix has no button. */
@@ -243,7 +236,6 @@ export const GlossaryViolationList = ({
 };
 
 interface GlossaryTargetChecksProps {
-  /** The row's suggestion state (`useGlossarySuggestionRows().getRow`). */
   row: GlossaryRowState;
   targetText: string;
   targetCulture: string;
@@ -253,7 +245,6 @@ interface GlossaryTargetChecksProps {
   /** Fix of a suggestion violation (re-validated against the suggestion's matches). */
   onSuggestionFix: (violation: GlossaryViolation) => void;
   onRetry: () => void;
-  /** Writes a live Fix result into the field. */
   onLiveFix: (fixed: string) => void;
   className?: string;
 }
@@ -265,7 +256,6 @@ export const formatAppliedTerm = (term: IAppliedTerm): string => {
   return term.expected ? `${term.term} → ${term.expected}` : term.term;
 };
 
-/** Which glossary terms the AI applied to the suggestion; hidden when there are none (H25). */
 export const GlossaryAppliedTerms = ({ terms }: Readonly<{ terms: IAppliedTerm[] }>) =>
   terms.length > 0 ? (
     <p className="text-xs text-medium-emphasis">

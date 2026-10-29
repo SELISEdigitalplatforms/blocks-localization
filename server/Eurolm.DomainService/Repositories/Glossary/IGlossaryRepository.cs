@@ -24,7 +24,6 @@ namespace Eurolm.DomainService.Repositories
         /// <summary>Replaces each glossary only when its stored Version still equals the expected one. Returns the modified count.</summary>
         Task<long> ReplaceManyAsync(IReadOnlyList<(BlocksGlossary Glossary, int ExpectedVersion)> glossaries);
 
-        /// <summary>Creates the unique <c>{NormalizedName: 1}</c> index named ux_normalizedname.</summary>
         Task CreateNormalizedNameUniqueIndexAsync();
         Task<List<Glossary>> GetGlobalAsync(string projectKey);
         Task<List<Glossary>> GetByModuleIdAsync(string projectKey, string moduleId);

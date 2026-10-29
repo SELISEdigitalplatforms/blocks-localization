@@ -150,10 +150,6 @@ namespace Api.Controllers
             return Ok(await _terminologyService.MatchAsync(request!));
         }
 
-        /// <summary>
-        /// Moves the tenant's Track A terminology into the structured fields. Idempotent; dryRun (the default)
-        /// writes nothing. Run with dryRun=false only after the Phase 7 frontend is deployed.
-        /// </summary>
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::glossary::migrate")]
         public async Task<IActionResult> Migrate([FromQuery] bool dryRun = true)

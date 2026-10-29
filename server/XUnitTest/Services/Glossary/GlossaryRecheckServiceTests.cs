@@ -10,7 +10,6 @@ using Xunit;
 
 namespace XUnitTest.Services.Glossary
 {
-    /// <summary>SPEC8 re-check job: queueing and coalescing (H28, C12, C13) and the worker run (H29, C14).</summary>
     public class GlossaryRecheckServiceTests
     {
         private readonly Mock<IGlossaryRecheckJobRepository> _jobs = new();

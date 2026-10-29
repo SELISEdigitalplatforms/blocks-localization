@@ -166,7 +166,6 @@ describe("appliedTermToMatch (Fix is rule-aware, C20)", () => {
   });
 });
 
-/** H13: the full glossary load (`Glossary/Gets?PageSize=500`) is gone from every code path. */
 describe("no full glossary load (H13)", () => {
   const sourceRoot = join(process.cwd(), "app");
   const sourceFiles = (dir: string): string[] =>

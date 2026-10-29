@@ -231,7 +231,6 @@ export class GlossaryPage {
     await this.editorSheet.getByRole("button", { name: "Save" }).click();
   }
 
-  /** Saves and returns the body of the Glossary/Save request. */
   async saveAndCapturePayload(): Promise<Record<string, unknown>> {
     const requestPromise = this.page.waitForRequest(
       (request) => request.method() === "POST" && /\/Glossary\/Save/.test(request.url()),
@@ -409,7 +408,6 @@ export class GlossaryPage {
     await expect(this.deleteDialog).toBeVisible();
   }
 
-  /** The open "Delete Glossary Item" dialog. */
   get deleteGlossaryDialog() {
     return this.deleteDialog;
   }
@@ -429,9 +427,6 @@ export class GlossaryPage {
     await expect(this.deleteDialog.getByText(text)).toBeVisible({ timeout: 15_000 });
   }
 
-  // --- Rule / Status (SPEC7) ---
-
-  /** The editor's Status select (Draft / Approved / Deprecated). */
   get statusSelect() {
     return this.editorSheet.getByRole("combobox", { name: "Status" });
   }

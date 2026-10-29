@@ -162,7 +162,6 @@ const ForbiddenList = ({ values }: Readonly<{ values: string[] }>) =>
     <EmptyCell />
   );
 
-/** The stored translations with one culture's value replaced (empty entries dropped). */
 const withTranslation = (
   translations: IGlossaryTranslation[],
   code: string,
@@ -416,7 +415,6 @@ function renderTranslationsContent(
   );
 }
 
-/** "Issue" with the key's stored violations for this term as the tooltip (H21). */
 const TaggedKeyIssue = ({ glossaryKey, glossaryId }: Readonly<{ glossaryKey: IBlocksLanguageKey; glossaryId: string }>) => {
   const violations = (glossaryKey.glossaryViolations ?? []).filter(
     (violation) => violation.glossaryId === glossaryId,
@@ -524,7 +522,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const targetLanguages = getTargetLanguages(languageListData);
   const selectedTarget =
     targetLanguages.find((language) => language.languageCode === targetCode) ?? targetLanguages[0];
-  // Rule, translations and variants come from the API fields; the note from getGlossaryNote (A5).
   const meta = toGlossaryMeta(glossary);
   const isUnsupported = isUnsupportedGlossaryNote(glossary);
   const status = getGlossaryStatus(glossary);

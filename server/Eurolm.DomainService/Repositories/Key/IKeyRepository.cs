@@ -26,7 +26,6 @@ namespace Eurolm.DomainService.Repositories
         /// </summary>
         Task<long> RemoveGlossaryIdFromKeysAsync(string glossaryId);
 
-        /// <summary>Replaces the key's stored glossary violations (all cultures).</summary>
         Task SetGlossaryViolationsAsync(string keyId, List<KeyGlossaryViolation> violations);
 
         /// <summary>

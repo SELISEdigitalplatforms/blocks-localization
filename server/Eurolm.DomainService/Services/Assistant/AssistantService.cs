@@ -38,12 +38,6 @@ namespace Eurolm.DomainService.Services
             _matcherCache = matcherCache;
         }
 
-        /// <summary>
-        /// With <c>GlossaryEnforcement:Enabled</c> on, builds the prompt from the Approved glossary terms that
-        /// match the source, checks the output and makes one correction attempt. With the flag off, for
-        /// requests that already carry the Phase 3 client's rules (A8), or when the matcher can't be built,
-        /// it is today's path exactly, with empty applied terms and violations.
-        /// </summary>
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
         {
             if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null

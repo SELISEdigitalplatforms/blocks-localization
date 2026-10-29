@@ -19,9 +19,7 @@ namespace Eurolm.DomainService.Services
         /// <summary>"key" | "module" | "global" | "other".</summary>
         public string Scope { get; set; } = "";
         public string Definition { get; set; } = "";
-        /// <summary>Null when not set.</summary>
         public string? PartOfSpeech { get; set; }
-        /// <summary>Null when not set.</summary>
         public List<string>? UsageExamples { get; set; }
         /// <summary>Only the values active under the term's rule (A10).</summary>
         public List<GlossaryTranslationDto> Translations { get; set; } = new();

@@ -4,7 +4,6 @@ using System.Text.Json;
 
 namespace XUnitTest.Terminology
 {
-    /// <summary>Builders shared by the terminology tests.</summary>
     internal static class TerminologyTestData
     {
         /// <summary>A string from code points (literal escapes are avoided in these sources).</summary>

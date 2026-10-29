@@ -19,8 +19,6 @@ namespace Eurolm.DomainService.Services
         /// <summary>Culture code: translate terms without a translation for it; structured (migrated) documents only.</summary>
         public string? MissingTranslation { get; set; }
 
-        // Phase 8. Absent (or unrecognized Scope / SortBy values) keeps the earlier behaviour.
-
         /// <summary>Culture code; the glossary's own Language equals it.</summary>
         public string? Language { get; set; }
 
