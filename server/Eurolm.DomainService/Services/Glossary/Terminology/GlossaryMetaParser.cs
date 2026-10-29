@@ -13,8 +13,11 @@ namespace Eurolm.DomainService.Services
     {
         public const string Prefix = "@@glossary-meta:v1@@";
 
+        /// <summary>The anchored pattern is linear and settles within the prefix, so this bound is never reached in practice.</summary>
+        private static readonly TimeSpan PrefixMatchTimeout = TimeSpan.FromSeconds(1);
+
         // [0-9], not \d: JavaScript's \d is ASCII-only, .NET's matches every Unicode digit.
-        private static readonly Regex PrefixPattern = new(@"^@@glossary-meta:v([0-9]+)@@", RegexOptions.CultureInvariant);
+        private static readonly Regex PrefixPattern = new(@"^@@glossary-meta:v([0-9]+)@@", RegexOptions.CultureInvariant, PrefixMatchTimeout);
 
         public static ParsedGlossaryMeta Parse(string? additionalNote)
         {
