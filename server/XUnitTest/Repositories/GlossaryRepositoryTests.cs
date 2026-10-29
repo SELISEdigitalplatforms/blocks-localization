@@ -15,7 +15,6 @@ namespace XUnitTest.Repositories
     {
         private readonly Mock<IDbContextProvider> _dbContextProvider = new();
         private readonly Mock<IMongoDatabase> _database = new();
-        private readonly Mock<IMongoCollection<Glossary>> _glossaryCollection = new();
         private readonly Mock<IMongoCollection<BlocksGlossary>> _blocksGlossaryCollection = new();
         private readonly GlossaryRepository _repo;
 
@@ -23,7 +22,6 @@ namespace XUnitTest.Repositories
         {
             TestBlocksContext.Set("glossary-tenant");
             _dbContextProvider.Setup(x => x.GetDatabase(It.IsAny<string>())).Returns(_database.Object);
-            _database.Setup(x => x.GetCollection<Glossary>(It.IsAny<string>(), null)).Returns(_glossaryCollection.Object);
             _database.Setup(x => x.GetCollection<BlocksGlossary>(It.IsAny<string>(), null)).Returns(_blocksGlossaryCollection.Object);
 
             _repo = new GlossaryRepository(_dbContextProvider.Object);
@@ -32,13 +30,13 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetAllAsync_WithNoFilters_ReturnsItemsAndCount()
         {
-            var items = new List<Glossary>
+            var items = new List<BlocksGlossary>
             {
-                new Glossary { ItemId = "g1", Name = "API" },
-                new Glossary { ItemId = "g2", Name = "SDK" }
+                new BlocksGlossary { ItemId = "g1", Name = "API" },
+                new BlocksGlossary { ItemId = "g2", Name = "SDK" }
             };
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, items);
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 2);
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, items);
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 2);
 
             var result = await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10 });
 
@@ -50,9 +48,9 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetAllAsync_WithAllFilters_AppliesFiltersAndReturns()
         {
-            var items = new List<Glossary> { new Glossary { ItemId = "g1", Name = "API", IsGlobal = true } };
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, items);
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 1);
+            var items = new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API", IsGlobal = true } };
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, items);
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 1);
 
             var request = new GetGlossariesRequest
             {
@@ -71,7 +69,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByIdAsync_WhenFound_ReturnsGlossary()
         {
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, new List<Glossary> { new Glossary { ItemId = "g1", Name = "API" } });
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API" } });
 
             var result = await _repo.GetByIdAsync("g1");
 
@@ -82,7 +80,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
         {
-            MockCursorHelper.SetupFindAsyncEmpty(_glossaryCollection);
+            MockCursorHelper.SetupFindAsyncEmpty(_blocksGlossaryCollection);
 
             var result = await _repo.GetByIdAsync("missing");
 
@@ -98,16 +96,16 @@ namespace XUnitTest.Repositories
         private static BsonDocument RenderUpdate<T>(UpdateDefinition<T> update) =>
             update.Render(new RenderArgs<T>(BsonSerializer.SerializerRegistry.GetSerializer<T>(), BsonSerializer.SerializerRegistry)).AsBsonDocument;
 
-        private (Func<FilterDefinition<Glossary>?> Filter, Func<FindOptions<Glossary, Glossary>?> Options) CaptureFind(List<Glossary> items)
+        private (Func<FilterDefinition<BlocksGlossary>?> Filter, Func<FindOptions<BlocksGlossary, BlocksGlossary>?> Options) CaptureFind(List<BlocksGlossary> items)
         {
-            FilterDefinition<Glossary>? filter = null;
-            FindOptions<Glossary, Glossary>? options = null;
+            FilterDefinition<BlocksGlossary>? filter = null;
+            FindOptions<BlocksGlossary, BlocksGlossary>? options = null;
             var cursor = MockCursorHelper.CreateCursor(items);
-            _glossaryCollection.Setup(x => x.FindAsync(
-                    It.IsAny<FilterDefinition<Glossary>>(),
-                    It.IsAny<FindOptions<Glossary, Glossary>>(),
+            _blocksGlossaryCollection.Setup(x => x.FindAsync(
+                    It.IsAny<FilterDefinition<BlocksGlossary>>(),
+                    It.IsAny<FindOptions<BlocksGlossary, BlocksGlossary>>(),
                     It.IsAny<CancellationToken>()))
-                .Callback<FilterDefinition<Glossary>, FindOptions<Glossary, Glossary>, CancellationToken>((f, o, _) => { filter = f; options = o; })
+                .Callback<FilterDefinition<BlocksGlossary>, FindOptions<BlocksGlossary, BlocksGlossary>, CancellationToken>((f, o, _) => { filter = f; options = o; })
                 .ReturnsAsync(cursor.Object);
             return (() => filter, () => options);
         }
@@ -117,12 +115,12 @@ namespace XUnitTest.Repositories
         [InlineData(".*", @"\.\*")]
         public async Task GetAllAsync_SearchText_IsEscapedAndCaseInsensitive(string searchText, string escaped)
         {
-            var (filter, _) = CaptureFind(new List<Glossary>());
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>());
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 0);
 
             await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = searchText });
 
-            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            var regex = RenderFilter(filter()!)["$or"][0]["Name"].AsBsonRegularExpression;
             regex.Pattern.Should().Be($".*{escaped}.*");
             regex.Options.Should().Be("i");
         }
@@ -130,12 +128,12 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetAllAsync_SearchText_MatchesLiterally()
         {
-            var (filter, _) = CaptureFind(new List<Glossary>());
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>());
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 0);
 
             await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = "C++ (beta)" });
 
-            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            var regex = RenderFilter(filter()!)["$or"][0]["Name"].AsBsonRegularExpression;
             var dotnet = new System.Text.RegularExpressions.Regex(regex.Pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             dotnet.IsMatch("my c++ (BETA) term").Should().BeTrue();
             dotnet.IsMatch("c (beta)").Should().BeFalse();
@@ -147,19 +145,19 @@ namespace XUnitTest.Repositories
         [InlineData("   ")]
         public async Task GetAllAsync_EmptySearchText_AppliesNoNameFilter(string? searchText)
         {
-            var (filter, _) = CaptureFind(new List<Glossary>());
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>());
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 0);
 
             await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = searchText });
 
-            RenderFilter(filter()!).Contains("Name").Should().BeFalse();
+            RenderFilter(filter()!).ToJson().Should().NotContain("Name");
         }
 
         [Fact]
         public async Task GetAllAsync_SortsByCreateDateThenItemIdDescending()
         {
-            var (_, options) = CaptureFind(new List<Glossary>());
-            MockCursorHelper.SetupCountDocuments(_glossaryCollection, 0);
+            var (_, options) = CaptureFind(new List<BlocksGlossary>());
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 0);
 
             await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 1, PageSize = 2 });
 
@@ -171,11 +169,12 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByNameInsensitiveAsync_QueriesCaseInsensitiveRegexForNfcAndNfd()
         {
-            var (filter, _) = CaptureFind(new List<Glossary>());
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>());
 
             await _repo.GetByNameInsensitiveAsync("  Café ");
 
-            var regex = RenderFilter(filter()!)["Name"].AsBsonRegularExpression;
+            // Legacy documents (no NormalizedName) are matched by the Phase 5 regex.
+            var regex = RenderFilter(filter()!)["$or"][1]["Name"].AsBsonRegularExpression;
             regex.Options.Should().Be("i");
             regex.Pattern.Should().StartWith(@"^\s*(?:").And.EndWith(@")\s*$");
             regex.Pattern.Should().Contain("Caf\u00e9").And.Contain("Cafe\u0301");
@@ -184,11 +183,11 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByNameInsensitiveAsync_ConfirmsCandidatesInMemory()
         {
-            CaptureFind(new List<Glossary>
+            CaptureFind(new List<BlocksGlossary>
             {
-                new Glossary { ItemId = "nfd", Name = "Cafe\u0301" },
-                new Glossary { ItemId = "upper", Name = " CAFÉ " },
-                new Glossary { ItemId = "other", Name = "Cafe" }
+                new BlocksGlossary { ItemId = "nfd", Name = "Cafe\u0301" },
+                new BlocksGlossary { ItemId = "upper", Name = " CAFÉ " },
+                new BlocksGlossary { ItemId = "other", Name = "Cafe" }
             });
 
             var result = await _repo.GetByNameInsensitiveAsync("café");
@@ -237,8 +236,8 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByIdsAsync_WithIds_ReturnsMatches()
         {
-            var items = new List<Glossary> { new Glossary { ItemId = "g1", Name = "API" }, new Glossary { ItemId = "g2", Name = "SDK" } };
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, items);
+            var items = new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API" }, new BlocksGlossary { ItemId = "g2", Name = "SDK" } };
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, items);
 
             var result = await _repo.GetByIdsAsync(new List<string> { "g1", "g2" });
 
@@ -370,8 +369,8 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetGlobalAsync_UsesProjectKeyAndReturnsGlobals()
         {
-            var items = new List<Glossary> { new Glossary { ItemId = "g1", Name = "API", IsGlobal = true } };
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, items);
+            var items = new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API", IsGlobal = true } };
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, items);
 
             var result = await _repo.GetGlobalAsync("proj-x");
 
@@ -382,8 +381,8 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetByModuleIdAsync_UsesProjectKeyAndReturnsMatches()
         {
-            var items = new List<Glossary> { new Glossary { ItemId = "g1", Name = "API", ModuleIds = new List<string> { "mod-1" } } };
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, items);
+            var items = new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API", ModuleIds = new List<string> { "mod-1" } } };
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, items);
 
             var result = await _repo.GetByModuleIdAsync("proj-x", "mod-1");
 
@@ -404,5 +403,178 @@ namespace XUnitTest.Repositories
                 It.IsAny<FilterDefinition<BlocksGlossary>>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        #region Phase 6
+
+        private async Task<BsonDocument> RenderGetsFilter(GetGlossariesRequest request)
+        {
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>());
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 0);
+            await _repo.GetAllAsync(request);
+            return RenderFilter(filter()!);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_LegacyTrackADocument_ResolvesStructuredFieldsAndKeepsRawText()
+        {
+            var note = "@@glossary-meta:v1@@{\"rule\":\"translate\",\"variants\":[\"workspaces\"],\"translations\":{\"de-DE\":\"Arbeitsbereich\"},\"forbidden\":{\"de-DE\":[\"Werkbereich\"]},\"note\":\"n\"}";
+            var context = "A shared space ⟦rule: de-DE→Arbeitsbereich⟧";
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary>
+            {
+                new BlocksGlossary { ItemId = "g1", Name = "Workspace", Context = context, AdditionalNote = note }
+            });
+
+            var result = await _repo.GetByIdAsync("g1");
+
+            result.Rule.Should().Be("translate");
+            result.Variants.Should().Equal("workspaces");
+            result.Translations.Should().ContainSingle(t => t.Language == "de-DE" && t.Value == "Arbeitsbereich" && t.ForbiddenValues.SequenceEqual(new[] { "Werkbereich" }));
+            result.Status.Should().Be("approved");
+            result.SchemaVersion.Should().Be(0);
+            // context and additionalNote are returned exactly as stored until migration.
+            result.Context.Should().Be(context);
+            result.AdditionalNote.Should().Be(note);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_StructuredDocument_ReturnsStoredFieldsIncludingInactiveValues()
+        {
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary>
+            {
+                new BlocksGlossary
+                {
+                    ItemId = "g7", Name = "SELISE", SchemaVersion = 2, Rule = GlossaryRule.Keep, Status = GlossaryStatus.Draft,
+                    Translations = new List<GlossaryTranslation> { new() { Language = "de-DE", Value = "Selise GmbH" } }
+                }
+            });
+            MockCursorHelper.SetupCountDocuments(_blocksGlossaryCollection, 1);
+
+            var result = await _repo.GetAllAsync(new GetGlossariesRequest { PageSize = 10 });
+
+            var item = result.Items.Single();
+            item.Rule.Should().Be("keep");
+            item.Status.Should().Be("draft");
+            item.SchemaVersion.Should().Be(2);
+            item.Translations.Should().ContainSingle(t => t.Value == "Selise GmbH");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_SearchText_MatchesNameVariantsAndTranslationValues()
+        {
+            var rendered = await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, SearchText = "Arbeits" });
+
+            var or = rendered["$or"].AsBsonArray.Select(c => c.AsBsonDocument.Names.Single()).ToList();
+            or.Should().Equal("Name", "Variants", "Translations.Value");
+            rendered["$or"][2]["Translations.Value"].AsBsonRegularExpression.Options.Should().Be("i");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_StatusApproved_IncludesDocumentsWithoutStatus()
+        {
+            var rendered = (await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, Status = "approved" })).ToJson();
+
+            rendered.Should().Contain("\"Status\" : \"Approved\"").And.Contain("\"Status\" : null");
+        }
+
+        [Theory]
+        [InlineData("draft", "Draft")]
+        [InlineData("deprecated", "Deprecated")]
+        public async Task GetAllAsync_StatusDraftOrDeprecated_MatchesStoredValueOnly(string status, string stored)
+        {
+            var rendered = await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, Status = status });
+
+            rendered.ToJson().Should().Be(new BsonDocument("Status", stored).ToJson());
+        }
+
+        [Fact]
+        public async Task GetAllAsync_RuleFilter_AppliesToStructuredDocumentsOnly()
+        {
+            var rendered = (await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, Rule = "keep" })).ToJson();
+
+            rendered.Should().Contain("\"SchemaVersion\" : { \"$gte\" : 2 }").And.Contain("\"Rule\" : \"Keep\"");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_MissingTranslation_StructuredTranslateTermsWithoutAValue()
+        {
+            var rendered = (await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, MissingTranslation = "de-DE" })).ToJson();
+
+            rendered.Should().Contain("\"SchemaVersion\" : { \"$gte\" : 2 }");
+            rendered.Should().Contain("$not").And.Contain("\"Language\" : \"de-DE\"");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_WithoutNewParameters_KeepsTheDefaultFilter()
+        {
+            var rendered = await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10 });
+
+            rendered.ElementCount.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task GetByNameInsensitiveAsync_UsesNormalizedNameEqualityWhenStored()
+        {
+            var (filter, _) = CaptureFind(new List<BlocksGlossary>
+            {
+                new BlocksGlossary { ItemId = "n1", Name = "Workspace", NormalizedName = "workspace" },
+                new BlocksGlossary { ItemId = "n2", Name = "Workspace", NormalizedName = "other" }
+            });
+
+            var result = await _repo.GetByNameInsensitiveAsync(" WORKSPACE ");
+
+            RenderFilter(filter()!)["$or"][0].ToJson().Should().Be(new BsonDocument("NormalizedName", "workspace").ToJson());
+            result.Select(g => g.ItemId).Should().Equal("n1");
+        }
+
+        [Fact]
+        public async Task GetStoredByIdsAsync_DeduplicatesAndRunsOneQuery()
+        {
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1" } });
+
+            var result = await _repo.GetStoredByIdsAsync(new[] { "g1", "g1", "" });
+
+            result.Should().HaveCount(1);
+            _blocksGlossaryCollection.Verify(x => x.FindAsync(
+                It.IsAny<FilterDefinition<BlocksGlossary>>(), It.IsAny<FindOptions<BlocksGlossary, BlocksGlossary>>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ReplaceManyAsync_FiltersOnTheReadVersionAndNeverUpserts()
+        {
+            IEnumerable<WriteModel<BlocksGlossary>>? models = null;
+            _blocksGlossaryCollection.Setup(x => x.BulkWriteAsync(It.IsAny<IEnumerable<WriteModel<BlocksGlossary>>>(), It.IsAny<BulkWriteOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<IEnumerable<WriteModel<BlocksGlossary>>, BulkWriteOptions, CancellationToken>((m, _, _) => models = m.ToList())
+                .ReturnsAsync(new BulkWriteResult<BlocksGlossary>.Acknowledged(2, 2, 0, 0, 2, new List<WriteModel<BlocksGlossary>>(), new List<BulkWriteUpsert>()));
+
+            var modified = await _repo.ReplaceManyAsync(new List<(BlocksGlossary, int)>
+            {
+                (new BlocksGlossary { ItemId = "a" }, 3),
+                (new BlocksGlossary { ItemId = "b" }, 0)
+            });
+
+            modified.Should().Be(2);
+            var replaces = models!.Cast<ReplaceOneModel<BlocksGlossary>>().ToList();
+            replaces.Should().OnlyContain(m => !m.IsUpsert);
+            RenderFilter(replaces[0].Filter).ToJson().Should().Be(BsonDocument.Parse("{ _id: 'a', Version: 3 }").ToJson());
+            RenderFilter(replaces[1].Filter).ToJson().Should().Contain("$exists");
+        }
+
+        [Fact]
+        public async Task CreateNormalizedNameUniqueIndexAsync_CreatesUniqueNamedIndex()
+        {
+            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>();
+            CreateIndexModel<BlocksGlossary>? created = null;
+            indexes.Setup(x => x.CreateOneAsync(It.IsAny<CreateIndexModel<BlocksGlossary>>(), It.IsAny<CreateOneIndexOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<CreateIndexModel<BlocksGlossary>, CreateOneIndexOptions, CancellationToken>((m, _, _) => created = m)
+                .ReturnsAsync("ux_normalizedname");
+            _blocksGlossaryCollection.Setup(x => x.Indexes).Returns(indexes.Object);
+
+            await _repo.CreateNormalizedNameUniqueIndexAsync();
+
+            created!.Options.Name.Should().Be("ux_normalizedname");
+            created.Options.Unique.Should().BeTrue();
+        }
+
+        #endregion
     }
 }

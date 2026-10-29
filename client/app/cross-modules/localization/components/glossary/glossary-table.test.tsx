@@ -17,6 +17,11 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
+  useGetGlossarySummaryCounts: vi.fn(() => ({})),
+}));
+vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
+  default: ({ selected }: { selected: { name: string }[] }) =>
+    selected.length > 0 ? <div>bulk-{selected.map((g) => g.name).join(",")}</div> : null,
 }));
 vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
   default: ({
@@ -180,14 +185,15 @@ describe("components/glossary/glossary-table", () => {
     expect(mockGlossaries).toHaveBeenCalled();
   });
 
-  it("should open the New Glossary dialog", () => {
+  it("should open the New term sheet (H3)", () => {
     mockGlossaries.mockReturnValue({
       data: { items: [], totalCount: 0 },
       isLoading: false,
     } as never);
     renderWithProviders(<GlossaryTable />);
     expect(screen.queryByText("editor-open")).toBeNull();
-    fireEvent.click(screen.getByText("New Glossary"));
+    expect(screen.getByRole("heading", { level: 1, name: "Glossary" })).toBeTruthy();
+    fireEvent.click(screen.getByText("New term"));
     expect(screen.getByText("editor-open")).toBeTruthy();
   });
 

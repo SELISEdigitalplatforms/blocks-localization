@@ -203,7 +203,9 @@ describe("add-new-language-key (extra coverage)", () => {
       sourceText: "Hello",
       destinationLanguage: "English",
       currentLanguage: "German",
+      currentLanguageCode: "de-DE",
       temperature: 0.1,
+      glossaryIds: [],
       moduleId: "m1",
       destinationLanguageCode: "en-US",
     });

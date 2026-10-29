@@ -76,10 +76,12 @@ namespace XUnitTest.Repositories
             _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
             var registry = BsonSerializer.SerializerRegistry;
             var args = new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry);
-            filter!.Render(args).ToJson().Should().Be(BsonDocument.Parse("{ GlossaryIds: 'g1' }").ToJson());
+            filter!.Render(args).ToJson().Should().Be(BsonDocument.Parse(
+                "{ $or: [ { GlossaryIds: 'g1' }, { GlossaryViolations: { $elemMatch: { GlossaryId: 'g1' } } } ] }").ToJson());
             var rendered = update!.Render(args).AsBsonDocument;
             rendered.Names.Should().BeEquivalentTo(new[] { "$pull", "$set" });
-            rendered["$pull"].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse("{ GlossaryIds: 'g1' }").ToJson());
+            rendered["$pull"].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse(
+                "{ GlossaryIds: 'g1', GlossaryViolations: { GlossaryId: 'g1' } }").ToJson());
             rendered["$set"].AsBsonDocument.Names.Should().Equal("LastUpdateDate");
         }
 

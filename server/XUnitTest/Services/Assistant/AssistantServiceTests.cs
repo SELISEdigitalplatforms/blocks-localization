@@ -904,7 +904,10 @@ namespace XUnitTest
 
             var result = await service.SuggestTranslation(request);
 
-            result.Should().Be("Hola");
+            // Flag off (not configured): today's path, with empty applied terms and violations.
+            result.Content.Should().Be("Hola");
+            result.AppliedTerms.Should().BeEmpty();
+            result.GlossaryViolations.Should().BeEmpty();
             glossaryMock.Verify(g => g.GetGlobalAsync(It.IsAny<string>()), Times.Once);
             capturedRequest.Should().NotBeNull();
             capturedRequest!.RequestUri.Should().Be(new Uri(azureEndpoint));

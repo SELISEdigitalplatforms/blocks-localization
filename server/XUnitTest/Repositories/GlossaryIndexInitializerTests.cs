@@ -30,7 +30,7 @@ namespace XUnitTest.Repositories
             indexes.Verify(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BlocksGlossary>>>(), It.IsAny<CancellationToken>()), times);
 
         [Fact]
-        public void Indexes_cover_IsGlobal_and_ModuleIds_by_name()
+        public void Indexes_cover_IsGlobal_ModuleIds_and_Status_by_name()
         {
             var registry = BsonSerializer.SerializerRegistry;
             var args = new RenderArgs<BlocksGlossary>(registry.GetSerializer<BlocksGlossary>(), registry);
@@ -42,7 +42,8 @@ namespace XUnitTest.Repositories
             rendered.Should().BeEquivalentTo(new[]
             {
                 ("ix_isglobal", BsonDocument.Parse("{ IsGlobal: 1 }").ToJson()),
-                ("ix_moduleids", BsonDocument.Parse("{ ModuleIds: 1 }").ToJson())
+                ("ix_moduleids", BsonDocument.Parse("{ ModuleIds: 1 }").ToJson()),
+                ("ix_status", BsonDocument.Parse("{ Status: 1 }").ToJson())
             });
         }
 

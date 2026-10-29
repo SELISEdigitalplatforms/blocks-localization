@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui-kits/dialog/
 import { toast } from "@/hooks/use-toast";
 import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
-import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import GlossaryPicker, { CREATED_NOT_FOUND_MESSAGE, pickCreatedGlossary } from "./glossary-picker";
@@ -45,17 +44,17 @@ const glossary = (overrides: Partial<IGlossary>): IGlossary => ({
 const WORKSPACE = glossary({
   itemId: "g1",
   name: "Workspace",
-  additionalNote:
-    GLOSSARY_META_PREFIX +
-    JSON.stringify({
-      rule: "translate",
-      translations: { "de-DE": "Arbeitsbereich", "fr-FR": "Espace", "es-ES": "Espacio" },
-    }),
+  rule: "translate",
+  translations: [
+    { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+    { language: "fr-FR", value: "Espace", forbiddenValues: [] },
+    { language: "es-ES", value: "Espacio", forbiddenValues: [] },
+  ],
 });
 const SELISE = glossary({
   itemId: "g2",
   name: "SELISE",
-  additionalNote: GLOSSARY_META_PREFIX + JSON.stringify({ rule: "keep" }),
+  rule: "keep",
 });
 const FUTURE = glossary({
   itemId: "g3",

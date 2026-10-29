@@ -6,7 +6,7 @@
  */
 import { FocusEvent, SyntheticEvent, useCallback, useRef, useState } from "react";
 
-import { isNoSpaceCulture } from "@blocks-localization/utils/glossary-matcher";
+import { isNoSpaceCulture } from "@blocks-localization/utils/glossary-text";
 
 interface SelectionRange {
   start: number;

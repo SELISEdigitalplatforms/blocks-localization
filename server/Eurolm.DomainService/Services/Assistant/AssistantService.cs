@@ -19,12 +19,14 @@ namespace Eurolm.DomainService.Services
         private readonly HttpClient _httpClient;
         private readonly ILocalizationSecret _localizationSecret;
         private readonly IGlossaryRepository _glossaryRepository;
+        private readonly IGlossaryMatcherCache? _matcherCache;
         public AssistantService(
             ILogger<AssistantService> logger,
             IConfiguration configuration,
             HttpClient httpClient,
             ILocalizationSecret localizationSecret,
-            IGlossaryRepository glossaryRepository
+            IGlossaryRepository glossaryRepository,
+            IGlossaryMatcherCache? matcherCache = null
         )
         {
             _localizationSecret = localizationSecret;
@@ -33,10 +35,67 @@ namespace Eurolm.DomainService.Services
             _chatGptTemperature = _configuration["ChatGptTemperature"];
             _httpClient = httpClient;
             _glossaryRepository = glossaryRepository;
+            _matcherCache = matcherCache;
         }
 
+        /// <summary>
+        /// With <c>GlossaryEnforcement:Enabled</c> on, builds the prompt from the Approved glossary terms that
+        /// match the source, checks the output and makes one correction attempt. With the flag off, for
+        /// requests that already carry the Phase 3 client's rules (A8), or when the matcher can't be built,
+        /// it is today's path exactly, with empty applied terms and violations.
+        /// </summary>
+        public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
+        {
+            if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null
+                || ClientRulesGuard.IsClientRuled(query.ElementDetailContext))
+            {
+                return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
+            }
 
-        public async Task<string> SuggestTranslation(SuggestLanguageRequest query)
+            TerminologyPrompt prompt;
+            try
+            {
+                var matcher = await _matcherCache.GetAsync(BlocksContext.GetContext()?.TenantId ?? "");
+                var matches = matcher.Match(query.SourceText ?? "", new MatchOptions
+                {
+                    SourceCulture = query.CurrentLanguageCode,
+                    KeyGlossaryIds = query.GlossaryIds,
+                    ModuleId = query.ModuleId,
+                    Mode = GlossaryScopeMode.Applicable
+                });
+                prompt = TerminologyPromptBuilder.Build(query, matches);
+            }
+            catch (Exception ex)
+            {
+                // Degrade to today's prompt; the log carries no source text or glossary content.
+                _logger.LogWarning(ex, "SuggestTranslation: glossary matching failed, using the legacy prompt path");
+                return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
+            }
+
+            var first = await CompleteAsync(prompt.Prompt, query);
+            if (first == null)
+                return new SuggestionResult { AppliedTerms = prompt.AppliedTerms };
+
+            var violations = TranslationValidator.Validate(first, query.DestinationLanguageCode, prompt.RuleMatches);
+            if (violations.Count == 0)
+                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms };
+
+            // One correction attempt at most; if it fails or comes back empty, keep the first answer.
+            var corrected = await CompleteAsync(TerminologyPromptBuilder.BuildCorrection(prompt, violations), query);
+            _logger.LogInformation("SuggestTranslation: correction attempt made for {ViolationCount} glossary violations, succeeded: {Succeeded}",
+                violations.Count, corrected != null);
+            if (corrected == null)
+                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms, GlossaryViolations = violations };
+
+            return new SuggestionResult
+            {
+                Content = corrected,
+                AppliedTerms = prompt.AppliedTerms,
+                GlossaryViolations = TranslationValidator.Validate(corrected, query.DestinationLanguageCode, prompt.RuleMatches)
+            };
+        }
+
+        private async Task<string?> SuggestLegacyAsync(SuggestLanguageRequest query)
         {
             var projectKey =  BlocksContext.GetContext()?.TenantId ?? "";
 
@@ -67,6 +126,15 @@ namespace Eurolm.DomainService.Services
 
             var context = GenerateSuggestTranslationContext(query, glossaryContext);
 
+            return await CompleteAsync(context, query);
+        }
+
+        /// <summary>
+        /// One logical AI attempt: the completion with today's empty-result retries (up to 3, 5 s apart),
+        /// formatted. Returns null when every try came back empty or formatting left nothing.
+        /// </summary>
+        private async Task<string?> CompleteAsync(string context, SuggestLanguageRequest query)
+        {
             var aiCompletionRequest = new AiCompletionRequest(context, query.Temperature);
 
             var aiText = await AiCompletion(aiCompletionRequest);
@@ -90,7 +158,8 @@ namespace Eurolm.DomainService.Services
             var output = FormatAiTextForSuggestTranslation(aiText, query.SourceText);
             if (string.IsNullOrWhiteSpace(output))
             {
-                _logger.LogWarning("SuggestTranslation: formatting produced empty output for AI text '{AiText}'", aiText);
+                // The AI text stays out of the log: logs carry counts and ids only, never translations.
+                _logger.LogWarning("SuggestTranslation: formatting produced empty output for an AI text of {AiTextLength} characters", aiText.Length);
                 return null;
             }
 
@@ -174,7 +243,7 @@ namespace Eurolm.DomainService.Services
             return text;
         }
 
-        public async Task<string> AiCompletion(AiCompletionRequest request)
+        public virtual async Task<string> AiCompletion(AiCompletionRequest request)
         {
             try
             {

@@ -9,6 +9,8 @@ import { LanguageTable } from "./language-table";
 
 const setQueryParams = vi.fn();
 
+let glossaryIssuesFilter = false;
+
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
       moduleIds: [],
       missingLanguages: [],
       resourceSearch: "",
+      glossaryIssues: glossaryIssuesFilter,
     },
     setQueryParams,
   }),
@@ -176,6 +179,20 @@ describe("language-table All view", () => {
 
     expect(h.useGetBlocksLanguageKey.mock.lastCall?.[11]).toBe(false);
     expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].enabled).toBe(true);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(false);
+  });
+
+  it("passes the Glossary issues filter to the chunked query (H11)", () => {
+    glossaryIssuesFilter = true;
+    setAllView(0);
+    try {
+      renderWithProviders(<LanguageTable />);
+      expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(
+        true,
+      );
+    } finally {
+      glossaryIssuesFilter = false;
+    }
   });
 
   it("renders only a window of the loaded rows", async () => {

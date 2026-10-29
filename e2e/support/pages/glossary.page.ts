@@ -19,8 +19,8 @@ export class GlossaryPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.heading = page.getByRole("heading", { name: "Glossary Management" });
-    this.newGlossaryButton = page.getByRole("button", { name: "New Glossary" });
+    this.heading = page.getByRole("heading", { name: "Glossary", exact: true });
+    this.newGlossaryButton = page.getByRole("button", { name: "New term" });
     this.glossaryDescription = page.getByText("Glossaries help keep");
     this.noGlossariesMessage = page.getByText("No glossaries yet");
     this.firstGlossaryRow = page.getByRole("row").nth(1);
@@ -244,12 +244,16 @@ export class GlossaryPage {
    * Creates a glossary whose stored `additionalNote` is exactly `additionalNote`, as another
    * client (extension, CLI) or an older UI would have written it. The term is created through
    * the UI, and its Glossary/Save request body is rewritten in flight, so the app's own
-   * authenticated request stores the fixture.
+   * authenticated request stores the fixture. The structured fields (SPEC7) are dropped, as an
+   * older client never sends them, so the server reads a v1 note as a Track A save (Phase 6 H17).
    */
   async createGlossaryWithStoredNote(name: string, additionalNote: string) {
     const pattern = /\/Glossary\/Save/;
     await this.page.route(pattern, async (route) => {
       const body = route.request().postDataJSON() as Record<string, unknown>;
+      for (const field of ["rule", "caseSensitive", "variants", "translations", "status"]) {
+        delete body[field];
+      }
       await route.continue({
         postData: JSON.stringify({ ...body, context: "", additionalNote }),
       });
@@ -405,6 +409,11 @@ export class GlossaryPage {
     await expect(this.deleteDialog).toBeVisible();
   }
 
+  /** The open "Delete Glossary Item" dialog. */
+  get deleteGlossaryDialog() {
+    return this.deleteDialog;
+  }
+
   async confirmDeleteGlossary() {
     await this.deleteDialog.getByRole("button", { name: "Delete" }).click();
   }
@@ -418,6 +427,30 @@ export class GlossaryPage {
 
   async expectDeleteUsage(text: string | RegExp) {
     await expect(this.deleteDialog.getByText(text)).toBeVisible({ timeout: 15_000 });
+  }
+
+  // --- Rule / Status (SPEC7) ---
+
+  /** The editor's Status select (Draft / Approved / Deprecated). */
+  get statusSelect() {
+    return this.editorSheet.getByRole("combobox", { name: "Status" });
+  }
+
+  async setStatus(status: "Draft" | "Approved" | "Deprecated") {
+    await this.statusSelect.click();
+    await this.page.getByRole("option", { name: status, exact: true }).click();
+    await expect(this.statusSelect).toHaveText(status);
+  }
+
+  /** The glossary table toolbar's Rule or Status filter select. */
+  tableFilter(name: "Rule" | "Status") {
+    return this.page.getByRole("combobox", { name });
+  }
+
+  async setTableFilter(name: "Rule" | "Status", option: string) {
+    await this.tableFilter(name).click();
+    await this.page.getByRole("option", { name: option, exact: true }).click();
+    await expect(this.tableFilter(name)).toHaveText(option);
   }
 
   async expectDuplicateNameWarning(existingName: string) {

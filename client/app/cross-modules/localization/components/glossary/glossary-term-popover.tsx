@@ -5,9 +5,10 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 import { Button } from "@/components/ui-kits/button/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
+import GlossaryStatusBadge from "@blocks-localization/components/glossary/glossary-status-badge";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
 import { findInTarget } from "@blocks-localization/utils/glossary-validation";
 
 export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languageName">;
@@ -112,7 +113,9 @@ interface GlossaryTermPopoverProps {
   children: ReactElement;
 }
 
-/** Term, rule, target value and definition, with Insert and Open term. */
+export const DRAFT_TERM_NOTICE = "Draft: not sent to the AI";
+
+/** Term, rule (and Draft status), target value and definition, with Insert and Open term. */
 const GlossaryTermPopover = ({
   match,
   targetLanguage,
@@ -126,6 +129,7 @@ const GlossaryTermPopover = ({
   const code = targetLanguage?.languageCode ?? "";
   const languageName = targetLanguage?.languageName || code;
   const term = getGlossaryTermValue(match.meta, match.surface, code);
+  const firstExample = match.glossary.usageExamples?.find((example) => example.trim())?.trim();
   // Keep terms are already right in the source wording, so there is nothing to insert.
   const insertValue = term.kind === "translate" ? term.value : null;
   const alreadyUsed =
@@ -166,12 +170,24 @@ const GlossaryTermPopover = ({
             <p className="min-w-0 break-words text-sm font-semibold text-high-emphasis">
               {match.glossary.name}
             </p>
-            <GlossaryRuleBadge rule={match.meta.rule} className="shrink-0" />
+            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+              {match.status === "draft" && <GlossaryStatusBadge status="draft" />}
+              <GlossaryRuleBadge rule={match.meta.rule} className="shrink-0" />
+            </div>
           </div>
+          {match.status === "draft" && (
+            <p className="text-xs text-medium-emphasis">{DRAFT_TERM_NOTICE}</p>
+          )}
           <TermValue term={term} language={languageName} />
           {match.definition && (
             <p className="line-clamp-4 border-t border-border pt-3 text-sm text-medium-emphasis">
               {match.definition}
+            </p>
+          )}
+          {/* The first usage example only; the term's page lists them all (Phase 8 H22). */}
+          {firstExample && (
+            <p className="line-clamp-2 text-xs italic text-medium-emphasis">
+              e.g. &ldquo;{firstExample}&rdquo;
             </p>
           )}
         </div>

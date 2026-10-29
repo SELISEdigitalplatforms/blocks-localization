@@ -960,6 +960,48 @@ describe("LanguageManagerService", () => {
     });
   });
 
+  describe("fetchGlossaries (Phase 8 filters and sort)", () => {
+    it("should send Language, Type, Scope, SortBy and SortDescending when set (H16, H17)", async () => {
+      vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
+      await service.fetchGlossaries({
+        pageNumber: 0,
+        pageSize: 20,
+        language: "de-DE",
+        type: "Acronym",
+        scope: "modules",
+        sortBy: "name",
+        sortDescending: false,
+      });
+      const url = vi.mocked(http.get).mock.calls[0][0] as string;
+      expect(url).toContain("Language=de-DE");
+      expect(url).toContain("Type=Acronym");
+      expect(url).toContain("Scope=modules");
+      expect(url).toContain("SortBy=name");
+      expect(url).toContain("SortDescending=false");
+    });
+
+    it("should send none of them when absent (C18)", async () => {
+      vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
+      await service.fetchGlossaries({ pageNumber: 0, pageSize: 20 });
+      const url = vi.mocked(http.get).mock.calls[0][0] as string;
+      expect(url).not.toMatch(/Language=|Type=|Scope=|SortBy=|SortDescending=/);
+    });
+  });
+
+  describe("recheckGlossary", () => {
+    it("should POST to Recheck with the item id", async () => {
+      vi.mocked(http.post).mockResolvedValue({ queued: true });
+      await expect(service.recheckGlossary({ itemId: "g 1" })).resolves.toEqual({ queued: true });
+      expect(vi.mocked(http.post).mock.calls[0][0]).toMatch(/\/Glossary\/Recheck\?itemId=g%201$/);
+    });
+
+    it("should POST without itemId for the whole project", async () => {
+      vi.mocked(http.post).mockResolvedValue({ queued: false });
+      await service.recheckGlossary();
+      expect(vi.mocked(http.post).mock.calls[0][0]).toMatch(/\/Glossary\/Recheck$/);
+    });
+  });
+
   // ─── saveGlossary ────────────────────────────────────────────────────────
   describe("saveGlossary", () => {
     it("should POST to SAVE endpoint", async () => {

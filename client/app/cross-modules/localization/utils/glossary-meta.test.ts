@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
-import {
-  createDefaultGlossaryMeta,
-  normalizeGlossaryMeta,
-  parseGlossaryMeta,
-  serializeGlossaryMeta,
-} from "./glossary-meta";
+import { createDefaultGlossaryMeta, parseGlossaryMeta } from "./glossary-meta";
 
 const PREFIX = "@@glossary-meta:v1@@";
 
@@ -86,96 +80,18 @@ describe("utils/glossary-meta", () => {
     });
   });
 
-  describe("serializeGlossaryMeta", () => {
-    it("should produce the exact string of Example 2", () => {
-      const meta: GlossaryMeta = {
-        rule: "translate",
-        caseSensitive: false,
-        variants: [],
-        translations: { "fr-FR": "Espace de travail", "de-DE": "Arbeitsbereich" },
-        forbidden: { "de-DE": ["Werkbereich"] },
-      };
-      expect(serializeGlossaryMeta(meta)).toBe(
-        `${PREFIX}{"rule":"translate","translations":{"de-DE":"Arbeitsbereich","fr-FR":"Espace de travail"},"forbidden":{"de-DE":["Werkbereich"]}}`,
-      );
-    });
-
-    it("should always include the rule and omit defaults", () => {
-      expect(serializeGlossaryMeta(createDefaultGlossaryMeta())).toBe(
-        `${PREFIX}{"rule":"translate"}`,
-      );
-      expect(serializeGlossaryMeta({ ...createDefaultGlossaryMeta(), note: "  " })).toBe(
-        `${PREFIX}{"rule":"translate"}`,
-      );
-    });
-
-    it("should use a deterministic key order and trim values", () => {
-      const serialized = serializeGlossaryMeta({
-        note: " n ",
-        forbidden: { "fr-FR": [" b "], "de-DE": ["a"] },
-        translations: { "fr-FR": " y ", "de-DE": "", "da-DK": "x" },
-        variants: [" v "],
-        caseSensitive: true,
-        rule: "forbidden",
-      });
-      expect(serialized).toBe(
-        `${PREFIX}{"rule":"forbidden","caseSensitive":true,"variants":["v"],"translations":{"da-DK":"x","fr-FR":"y"},"forbidden":{"de-DE":["a"],"fr-FR":["b"]},"note":"n"}`,
-      );
-    });
-
-    it("should keep characters that the marker strips", () => {
-      const serialized = serializeGlossaryMeta({
-        ...createDefaultGlossaryMeta(),
-        translations: { "de-DE": 'A;B→"C"⟦x⟧' },
-      });
-      expect(parseGlossaryMeta(serialized).meta.translations["de-DE"]).toBe('A;B→"C"⟦x⟧');
-    });
-  });
-
-  describe("round trip", () => {
-    const fixtures: GlossaryMeta[] = [
-      createDefaultGlossaryMeta(),
-      { ...createDefaultGlossaryMeta(), rule: "keep", caseSensitive: true, note: "Brand" },
-      {
-        rule: "translate",
-        caseSensitive: false,
-        variants: ["workspaces", "Workspace's"],
-        translations: { "de-DE": "Arbeitsbereich", "it-IT": "Area di lavoro" },
-        forbidden: { "de-DE": ["Werkbereich", "Arbeitsraum"] },
-        note: 'multi\nline "note"',
-      },
-      {
-        rule: "forbidden",
-        caseSensitive: false,
-        variants: [],
-        translations: {},
-        forbidden: { "fr-FR": ["mauvais"] },
-      },
-    ];
-
-    it.each(fixtures.map((meta, index) => [index, meta] as const))(
-      "should parse what it serializes (fixture %i)",
-      (_, meta) => {
-        const serialized = serializeGlossaryMeta(meta);
-        const parsed = parseGlossaryMeta(serialized);
-        expect(parsed.status).toBe("structured");
-        expect(parsed.meta).toEqual(normalizeGlossaryMeta(meta));
-        // Byte-identical when saved again unchanged (H5).
-        expect(serializeGlossaryMeta(parsed.meta)).toBe(serialized);
-      },
-    );
-  });
-
   it("should parse 50 terms in at most 2 ms (performance budget)", () => {
     const languages = Array.from({ length: 10 }, (_, i) => `l${i}-XX`);
-    const note = serializeGlossaryMeta({
-      rule: "translate",
-      caseSensitive: true,
-      variants: ["a", "b", "c"],
-      translations: Object.fromEntries(languages.map((code) => [code, `value for ${code}`])),
-      forbidden: Object.fromEntries(languages.map((code) => [code, ["x", "y"]])),
-      note: "note",
-    });
+    const note =
+      PREFIX +
+      JSON.stringify({
+        rule: "translate",
+        caseSensitive: true,
+        variants: ["a", "b", "c"],
+        translations: Object.fromEntries(languages.map((code) => [code, `value for ${code}`])),
+        forbidden: Object.fromEntries(languages.map((code) => [code, ["x", "y"]])),
+        note: "note",
+      });
     // Warm up, then take the best of several runs to avoid CI noise.
     for (let i = 0; i < 200; i++) parseGlossaryMeta(note);
     const runs = Array.from({ length: 5 }, () => {

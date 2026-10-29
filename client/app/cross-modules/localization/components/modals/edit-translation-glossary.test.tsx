@@ -15,6 +15,10 @@ vi.mock("@seliseblocks/genesis-os", () => ({
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+vi.mock("@blocks-localization/hooks/use-glossary-match", () => ({
+  MATCH_DEBOUNCE_MS: 300,
+  useGlossaryMatch: () => ({ matches: [], isLoading: false, isError: false }),
+}));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useGetTranslationSuggestion: vi.fn(),

@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 namespace Eurolm.DomainService.Repositories
 {
     /// <summary>
-    /// Creates the indexes the glossary IsGlobal / ModuleIds filters rely on, once per tenant per process.
+    /// Creates the indexes the glossary IsGlobal / ModuleIds / Status filters rely on, once per tenant per process.
     /// Creation runs in the background and never fails the request; a failure is logged and the tenant's
     /// entry is dropped so the next call retries. The BlocksLanguageKeys GlossaryIds index is owned by
     /// <see cref="KeyIndexInitializer"/> (ix_keys_glossaryids), which glossary requests also start: a second
@@ -18,7 +18,8 @@ namespace Eurolm.DomainService.Repositories
         public static IReadOnlyList<CreateIndexModel<BlocksGlossary>> Indexes { get; } = new[]
         {
             Model("ix_isglobal", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.IsGlobal)),
-            Model("ix_moduleids", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.ModuleIds))
+            Model("ix_moduleids", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.ModuleIds)),
+            Model("ix_status", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.Status))
         };
 
         /// <summary>

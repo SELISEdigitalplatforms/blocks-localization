@@ -41,6 +41,7 @@ describe("localization/constants/query-keys", () => {
         JSON.stringify([{ culture: "en", searchText: "hi" }]),
         JSON.stringify(["de", "fr"]),
         false,
+        false,
       ]);
     });
 
@@ -48,6 +49,15 @@ describe("localization/constants/query-keys", () => {
       const on = localizationQueryKeys.languageKeys.infinite("t", {
         ...filters,
         onlyDuplicates: true,
+      });
+      expect(on.at(-2)).toBe(true);
+      expect(on).not.toEqual(localizationQueryKeys.languageKeys.infinite("t", filters));
+    });
+
+    it("should keep the glossary issues filter in the key", () => {
+      const on = localizationQueryKeys.languageKeys.infinite("t", {
+        ...filters,
+        hasGlossaryViolations: true,
       });
       expect(on.at(-1)).toBe(true);
       expect(on).not.toEqual(localizationQueryKeys.languageKeys.infinite("t", filters));
@@ -222,17 +232,29 @@ describe("localization/constants/query-keys", () => {
         "g1",
         0,
         25,
+        "",
+        "[]",
       ]);
+    });
+    it("should include the Tagged Keys search and module filter (H4)", () => {
+      expect(
+        localizationQueryKeys.languageKeys.byGlossary("t1", "g1", 0, 25, {
+          searchKey: "e2e.ws",
+          moduleIds: ["m1"],
+        }),
+      ).toEqual(["get-blocksLanguageKeys", "by-glossary", "t1", "g1", 0, 25, "e2e.ws", '["m1"]']);
     });
   });
 
-  describe("languageKeys.glossaryUsage", () => {
-    it("should embed tenantId and glossaryId", () => {
-      expect(localizationQueryKeys.languageKeys.glossaryUsage("t1", "g1")).toEqual([
-        "get-glossary-usage-count",
-        "t1",
-        "g1",
-      ]);
+  describe("languageKeys.list hasGlossaryViolations", () => {
+    const listKey = (hasGlossaryViolations?: boolean) =>
+      localizationQueryKeys.languageKeys.list(
+        "t1", 0, 25, "", [], false, "", false, "", "", "", "", [], [], false, hasGlossaryViolations,
+      );
+    it("should default to false and differ when the filter is on", () => {
+      expect(listKey().at(-1)).toBe(false);
+      expect(listKey(true).at(-1)).toBe(true);
+      expect(listKey(true)).not.toEqual(listKey());
     });
   });
 
@@ -297,14 +319,46 @@ describe("localization/constants/query-keys", () => {
         0,
         25,
         "search",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
       ]);
     });
-    it("should build an all-terms key under the 'all' prefix", () => {
-      const key = localizationQueryKeys.glossaries.allTerms("t1");
-      expect(key).toEqual(["get-glossaries", "all-terms", "t1"]);
+    it("should include the Rule, Status and MissingTranslation filters in the list key", () => {
+      expect(
+        localizationQueryKeys.glossaries.list("t1", 0, 25, "", {
+          rule: "keep",
+          status: "draft",
+          missingTranslation: "de-DE",
+        }),
+      ).toEqual(["get-glossaries", "t1", 0, 25, "", "keep", "draft", "de-DE", "", "", "", "", ""]);
+    });
+    it("should include the Language, Type, Scope and sort parameters in the list key (H16, H17)", () => {
+      expect(
+        localizationQueryKeys.glossaries.list("t1", 0, 25, "", {
+          language: "de-DE",
+          type: "Acronym",
+          scope: "modules",
+          sortBy: "name",
+          sortDescending: false,
+        }),
+      ).toEqual(["get-glossaries", "t1", 0, 25, "", "", "", "", "de-DE", "Acronym", "modules", "name", false]);
+    });
+    it.each([
+      ["usage", localizationQueryKeys.glossaries.usage("t1", "g1")],
+      ["byIds", localizationQueryKeys.glossaries.byIds("t1", ["a", "b"])],
+      ["match", localizationQueryKeys.glossaries.match("t1", "en-US", "k1", "m1", "text")],
+      ["summaryCount", localizationQueryKeys.glossaries.summaryCount("t1", "draft")],
+    ])("should build the %s key under the 'all' prefix so glossary writes refresh it", (_, key) => {
       expect(key.slice(0, localizationQueryKeys.glossaries.all.length)).toEqual(
         localizationQueryKeys.glossaries.all,
       );
+      expect(key).toContain("t1");
     });
     it("should build a global key", () => {
       expect(localizationQueryKeys.glossaries.global("t1")).toEqual([

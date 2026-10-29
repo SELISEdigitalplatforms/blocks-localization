@@ -38,6 +38,9 @@ namespace XUnitTest
             AssertRegistration<IConsumer<UilmImportEvent>, UilmImportEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<UilmExportEvent>, UilmExportEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IConsumer<RecheckGlossaryViolationsEvent>, RecheckGlossaryViolationsEventConsumer>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IGlossaryRecheckService, GlossaryRecheckService>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IGlossaryRecheckJobRepository, GlossaryRecheckJobRepository>(services, ServiceLifetime.Singleton);
 
             AssertRegistration<XlsxOutputGeneratorService, XlsxOutputGeneratorService>(services, ServiceLifetime.Singleton);
             AssertRegistration<JsonOutputGeneratorService, JsonOutputGeneratorService>(services, ServiceLifetime.Singleton);

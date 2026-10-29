@@ -6,6 +6,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { CopyableTableValue } from "@/components/copyable-table-value/copyable-table-value";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
+import { GlossaryIssueBadge } from "../components/glossary-issue-badge";
 import type {
   IBlocksLanguageKey,
   ILanguageConfig,
@@ -299,7 +300,15 @@ export const useLanguageTableColumns = ({
             />
           </div>
         ),
-        cell: ({ row }) => <KeyNameCell keyName={row.getValue("keyName")} />,
+        cell: ({ row }) => (
+          <div className="flex min-w-0 flex-col gap-1">
+            <KeyNameCell keyName={row.getValue("keyName")} />
+            <GlossaryIssueBadge
+              violations={row.original.glossaryViolations}
+              className="ml-2 sm:ml-0"
+            />
+          </div>
+        ),
       },
       {
         accessorKey: "moduleId",

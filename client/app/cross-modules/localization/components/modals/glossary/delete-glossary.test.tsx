@@ -17,8 +17,9 @@ vi.mock("@/hooks/use-toast", () => ({
   showErrorToast: vi.fn(),
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
-  useGetGlossaryUsageCount: vi.fn(),
+  useGetGlossaryUsage: vi.fn(),
   useDeleteGlossaryWithCascade: vi.fn(),
+  useSaveGlossary: vi.fn(),
 }));
 
 const h = vi.mocked(hooks);
@@ -29,14 +30,23 @@ const withDialog = (node: React.ReactNode) => (
   </Dialog>
 );
 
-const mockUsage = (state: Partial<ReturnType<typeof hooks.useGetGlossaryUsageCount>>) => {
-  h.useGetGlossaryUsageCount.mockReturnValue({
-    data: undefined,
+const saveAsync = vi.fn();
+
+/** `data` is the key count; `moduleIds` the Usage response's modules. */
+const mockUsage = (
+  state: { data?: number; isLoading?: boolean; isFetching?: boolean; isError?: boolean },
+  moduleIds: string[] = [],
+) => {
+  h.useGetGlossaryUsage.mockReturnValue({
     isLoading: false,
     isFetching: false,
     isError: false,
     refetch: refetchUsage,
     ...state,
+    data:
+      typeof state.data === "number"
+        ? { keyCount: state.data, keys: [], moduleIds, violationKeyCount: 0 }
+        : undefined,
   } as never);
 };
 
@@ -55,12 +65,13 @@ describe("modals/glossary/delete-glossary", () => {
     vi.clearAllMocks();
     mockUsage({ data: 3 });
     mockCascade();
+    h.useSaveGlossary.mockReturnValue({ isPending: false, mutateAsync: saveAsync } as never);
   });
 
   it("should count usage for the glossary", () => {
     renderDialog();
-    expect(h.useGetGlossaryUsageCount).toHaveBeenCalledWith("g1");
-    expect(screen.getByText("Used by 3 keys")).toBeTruthy();
+    expect(h.useGetGlossaryUsage).toHaveBeenCalledWith("g1");
+    expect(screen.getByText("Used by 3 keys.")).toBeTruthy();
     expect(screen.getByText("Deleting removes it from those keys.")).toBeTruthy();
   });
 
@@ -154,5 +165,84 @@ describe("modals/glossary/delete-glossary", () => {
         expect.objectContaining({ description: "Failed to delete glossary item" }),
       ),
     );
+  });
+
+  describe("Phase 8", () => {
+    const glossary = {
+      itemId: "g1",
+      name: "Widget",
+      createDate: "2026-01-01",
+      lastUpdateDate: "2026-01-01",
+      version: 4,
+      rule: "translate" as const,
+      status: "approved" as const,
+      isGlobal: false,
+      moduleIds: ["m1"],
+      translations: [],
+    };
+
+    const renderWithTerm = (onClose = vi.fn()) =>
+      render(
+        withDialog(
+          <DeleteGlossary itemId="g1" glossaryName="Widget" glossary={glossary} onClose={onClose} />,
+        ),
+      );
+
+    it("says how many keys in how many modules use the term (H23)", () => {
+      mockUsage({ data: 3 }, ["m1", "m2"]);
+      renderDialog();
+      expect(screen.getByText("Used by 3 keys in 2 modules.")).toBeTruthy();
+    });
+
+    it("requires the exact name from 50 keys before Delete is enabled (H10)", () => {
+      mockUsage({ data: 120 });
+      renderDialog();
+      const confirm = screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement;
+      expect(confirm.disabled).toBe(true);
+      const input = screen.getByLabelText('Type "Widget" to confirm');
+      fireEvent.change(input, { target: { value: "widget" } });
+      expect(confirm.disabled).toBe(true);
+      fireEvent.change(input, { target: { value: " Widget " } });
+      expect(confirm.disabled).toBe(false);
+    });
+
+    it("does not ask for the name below 50 keys", () => {
+      mockUsage({ data: 49 });
+      renderDialog();
+      expect(screen.queryByLabelText('Type "Widget" to confirm')).toBeNull();
+      expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+
+    it("offers Deprecate instead for a used term and saves it as deprecated (H24)", async () => {
+      saveAsync.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+      mockUsage({ data: 3 });
+      renderWithTerm(onClose);
+      fireEvent.click(screen.getByRole("button", { name: "Deprecate instead" }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(saveAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          itemId: "g1",
+          name: "Widget",
+          moduleIds: ["m1"],
+          version: 4,
+          status: "deprecated",
+        }),
+      );
+      expect(cascadeAsync).not.toHaveBeenCalled();
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Term deprecated. It no longer reaches the AI or highlights.",
+        }),
+      );
+    });
+
+    it("does not offer Deprecate instead for an unused term", () => {
+      mockUsage({ data: 0 });
+      renderWithTerm();
+      expect(screen.queryByRole("button", { name: "Deprecate instead" })).toBeNull();
+    });
   });
 });

@@ -1,18 +1,17 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
-import * as glossaryHooks from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
 import ViewDetails from "./view-details";
 
 const saveKey = vi.fn();
-const loadGlossaries = vi.fn();
 const editTranslationProps = vi.fn();
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
@@ -23,10 +22,6 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetSuggestedGlossaries: vi.fn(),
   useGetGlobalGlossaries: vi.fn(),
   useGetModuleGlossaries: vi.fn(),
-}));
-vi.mock("@blocks-localization/hooks/use-glossary-aware-suggestion", () => ({
-  useGetAllGlossaries: vi.fn(),
-  useLoadAllGlossaries: vi.fn(),
 }));
 vi.mock("../modals/edit-route/edit-route", () => ({ default: () => null }));
 vi.mock("../modals/edit-translation/edit-translation", () => ({
@@ -40,7 +35,6 @@ vi.mock("../modals/edit-key-glossary/edit-key-glossary", () => ({
 }));
 
 const h = vi.mocked(hooks);
-const g = vi.mocked(glossaryHooks);
 
 const term = (itemId: string, name: string, extra: Partial<IGlossary> = {}): IGlossary => ({
   itemId,
@@ -50,14 +44,13 @@ const term = (itemId: string, name: string, extra: Partial<IGlossary> = {}): IGl
   ...extra,
 });
 
-const terms = [
-  term("g-tagged", "Workspace"),
-  term("g-global", "Settings", { isGlobal: true }),
-  term("g-module", "Portal", { moduleIds: ["m1"] }),
+/** What the server's matcher suggests for the key (untagged, other modules, not Deprecated). */
+const suggested = [
   term("g-other", "Customer Portal", { moduleIds: ["m2"] }),
   term("g-other2", "Dashboard"),
-  term("g-absent", "Invoice"),
 ];
+const suggest = (items: IGlossary[]) =>
+  h.useGetSuggestedGlossaries.mockReturnValue({ data: { suggestedGlossaries: items } } as never);
 
 const keyDetails = {
   itemId: "k1",
@@ -89,13 +82,9 @@ const setDefaults = () => {
   h.useGetGlossaries.mockReturnValue({
     data: { items: [{ itemId: "g-tagged", name: "Workspace" }] },
   } as never);
-  h.useGetSuggestedGlossaries.mockReturnValue({
-    data: { suggestedGlossaries: [{ itemId: "sg1", name: "SuggestedTerm" }] },
-  } as never);
+  suggest(suggested);
   h.useGetGlobalGlossaries.mockReturnValue({ data: { items: [] } } as never);
   h.useGetModuleGlossaries.mockReturnValue({ data: { items: [] } } as never);
-  g.useGetAllGlossaries.mockReturnValue({ data: terms } as never);
-  g.useLoadAllGlossaries.mockReturnValue(loadGlossaries);
   saveKey.mockResolvedValue({ success: true });
 };
 
@@ -120,20 +109,20 @@ describe("view-details — glossary suggestions", () => {
   });
 
   describe("glossary-aware", () => {
-    it("suggests untagged, non-global terms of other modules although the key has tags (H10)", () => {
+    it("shows the server's suggestions although the key has tags (H9)", () => {
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-      expect(g.useGetAllGlossaries).toHaveBeenCalledWith();
-      // Suggestions come from the matcher: no GetSuggestedGlossaries request.
-      expect(h.useGetSuggestedGlossaries).not.toHaveBeenCalled();
-      expect(screen.queryByText("SuggestedTerm")).toBeNull();
+      expect(h.useGetSuggestedGlossaries).toHaveBeenCalledWith("k1", true);
       expect(screen.queryByTitle("Tag to key")).toBeNull();
 
-      expect(screen.getByText("Suggested glossaries")).toBeTruthy();
+      expect(screen.getAllByText("Suggested")).toHaveLength(2);
       expect(screen.getByRole("button", { name: "Tag Customer Portal to key" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Tag Dashboard to key" })).toBeTruthy();
-      for (const name of ["Workspace", "Settings", "Portal", "Invoice"]) {
-        expect(screen.queryByRole("button", { name: `Tag ${name} to key` })).toBeNull();
-      }
+    });
+
+    it("hides a suggestion the key is already tagged with", () => {
+      suggest([...suggested, term("g-tagged", "Workspace")]);
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      expect(screen.queryByRole("button", { name: "Tag Workspace to key" })).toBeNull();
     });
 
     it("Add saves the full key with context, routes and resources unchanged (H11)", async () => {
@@ -147,7 +136,7 @@ describe("view-details — glossary suggestions", () => {
       let finish!: (value: unknown) => void;
       saveKey.mockReturnValue(new Promise((resolve) => (finish = resolve)));
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-      const addAll = screen.getByRole("button", { name: "Add all" }) as HTMLButtonElement;
+      const addAll = screen.getByRole("button", { name: "Add all suggested" }) as HTMLButtonElement;
       fireEvent.click(addAll);
       await waitFor(() => expect(addAll.disabled).toBe(true));
       expect(
@@ -156,7 +145,9 @@ describe("view-details — glossary suggestions", () => {
       ).toBe(true);
       finish({ success: true });
       // Every candidate is now tagged, so the section goes away (M1) instead of re-enabling.
-      await waitFor(() => expect(screen.queryByRole("button", { name: "Add all" })).toBeNull());
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Add all suggested" })).toBeNull(),
+      );
       expect(saveKey).toHaveBeenCalledTimes(1);
       expect(saveKey.mock.calls[0][0]).toStrictEqual(
         expectedSave(["g-tagged", "g-other", "g-other2"]),
@@ -186,7 +177,7 @@ describe("view-details — glossary suggestions", () => {
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
       fireEvent.click(screen.getByRole("button", { name: "Tag Customer Portal to key" }));
       await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
-      const addAll = screen.getByRole("button", { name: "Add all" }) as HTMLButtonElement;
+      const addAll = screen.getByRole("button", { name: "Add all suggested" }) as HTMLButtonElement;
       await waitFor(() => expect(addAll.disabled).toBe(false));
       fireEvent.click(addAll);
       await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(2));
@@ -229,36 +220,56 @@ describe("view-details — glossary suggestions", () => {
     });
 
     it("shows at most 10 suggestions plus a +N more text", () => {
-      const many = Array.from({ length: 12 }, (_, i) => term(`x${i}`, `Term${i}`));
-      g.useGetAllGlossaries.mockReturnValue({ data: many } as never);
-      renderWithProviders(
-        <ViewDetails
-          keyDetails={
-            {
-              ...(keyDetails as object),
-              resources: [
-                { culture: "en-US", value: many.map((glossary) => glossary.name).join(" ") },
-              ],
-            } as never
-          }
-        />,
-      );
-      expect(screen.getAllByRole("button", { name: /^Tag Term\d+ to key$/ })).toHaveLength(10);
-      expect(screen.getByText("+2 more")).toBeTruthy();
-    });
-
-    it("hides the section when the default text is empty or nothing matches", () => {
-      renderWithProviders(
-        <ViewDetails keyDetails={{ ...(keyDetails as object), resources: [] } as never} />,
-      );
-      expect(screen.queryByText("Suggested glossaries")).toBeNull();
-    });
-
-    it("passes the shared glossary loader to Edit translation", () => {
+      suggest(Array.from({ length: 12 }, (_, i) => term(`x${i}`, `Term${i}`)));
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-      expect(editTranslationProps).toHaveBeenCalledWith(
-        expect.objectContaining({ loadGlossaries }),
-      );
+      expect(screen.getAllByRole("button", { name: /^Tag Term\d+ to key$/ })).toHaveLength(10);
+      expect(screen.getByText("+2 more suggested")).toBeTruthy();
+    });
+
+    it("hides the section when the server suggests nothing", () => {
+      suggest([]);
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      expect(screen.queryByText("Suggested")).toBeNull();
+    });
+
+    it("passes no glossary loader to Edit translation (it asks /Glossary/Match itself)", () => {
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      expect(editTranslationProps).toHaveBeenCalled();
+      expect(editTranslationProps.mock.calls[0][0]).not.toHaveProperty("loadGlossaries");
+    });
+  });
+
+  describe("term cards (Phase 8 H12, C20)", () => {
+    it("shows one merged list in Tagged, Module, Global, Suggested order, each term once", () => {
+      h.useGetModuleGlossaries.mockReturnValue({
+        data: { items: [term("g-mod", "Billing"), term("g-tagged", "Workspace")] },
+      } as never);
+      h.useGetGlobalGlossaries.mockReturnValue({
+        data: { items: [term("g-glob", "SELISE"), term("g-mod", "Billing")] },
+      } as never);
+      suggest([term("g-other", "Customer Portal")]);
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      const list = screen.getByRole("list", { name: "Glossary terms for this key" });
+      const cards = within(list).getAllByRole("listitem");
+      expect(cards.map((card) => within(card).getByRole("link").textContent)).toEqual([
+        "Workspace",
+        "Billing",
+        "SELISE",
+        "Customer Portal",
+      ]);
+      expect(
+        cards.map(
+          (card) => within(card).getAllByText(/^(Tagged|Module|Global|Suggested)$/)[0].textContent,
+        ),
+      ).toEqual(["Tagged", "Module", "Global", "Suggested"]);
+      expect(screen.getByText("These terms are applied when translating this key.")).toBeTruthy();
+    });
+
+    it("removes a tagged term with the full key payload unchanged otherwise (C20)", async () => {
+      renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+      fireEvent.click(screen.getByRole("button", { name: "Remove Workspace from key" }));
+      await waitFor(() => expect(saveKey).toHaveBeenCalledTimes(1));
+      expect(saveKey.mock.calls[0][0]).toStrictEqual(expectedSave([]));
     });
   });
 });

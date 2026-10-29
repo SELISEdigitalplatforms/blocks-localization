@@ -1,15 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createQueryWrapper } from "@/test-utils/query-wrapper";
+import { MATCH_DEBOUNCE_MS } from "@blocks-localization/hooks/use-glossary-match";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
-import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher, GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { IGlossary, IGlossaryMatchDto } from "@blocks-localization/models/language";
+import { languageManagerService } from "@blocks-localization/services/language-manager.service";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { applyFix } from "@blocks-localization/utils/glossary-validation";
 import {
+  isDraftViolation,
   LIVE_CHECK_DEBOUNCE_MS,
-  useApplicableGlossaryMatches,
   useLiveGlossaryCheck,
-  useLoadedGlossaries,
+  useSourceGlossaryMatches,
 } from "./use-live-glossary-check";
 
 const G1: IGlossary = {
@@ -26,62 +30,77 @@ const G1: IGlossary = {
       forbidden: { "de-DE": ["Werkbereich"] },
     }),
 };
-const G_MODULE: IGlossary = {
-  itemId: "g5",
-  name: "Portal",
-  moduleIds: ["M2"],
-  createDate: "",
-  lastUpdateDate: "",
-};
 
-const matchesFor = (text: string): GlossaryMatch[] =>
-  buildGlossaryMatcher([G1, G_MODULE]).match(text, {
-    scopeMode: "applicable",
-    sourceCulture: "en-US",
-  });
+const matchesFor = (text: string, glossaries: IGlossary[] = [G1]): GlossaryMatch[] =>
+  findGlossaryMatches(glossaries, text);
 
-describe("useLoadedGlossaries", () => {
-  it("resolves the loader once and is undefined until then", async () => {
-    const loader = vi.fn().mockResolvedValue([G1]);
-    const { result } = renderHook(() => useLoadedGlossaries(loader));
-    expect(result.current).toBeUndefined();
-    await waitFor(() => expect(result.current).toEqual([G1]));
-    expect(loader).toHaveBeenCalledTimes(1);
-  });
+const project = vi.hoisted(() => ({ tenantId: "tenant-1" }));
 
-  it("stays undefined without a loader or after a failure (C2)", async () => {
-    const loader = vi.fn().mockRejectedValue(new Error("down"));
-    const { result } = renderHook(() => useLoadedGlossaries(loader));
-    await waitFor(() => expect(loader).toHaveBeenCalled());
-    await act(async () => {});
-    expect(result.current).toBeUndefined();
-    expect(renderHook(() => useLoadedGlossaries(undefined)).result.current).toBeUndefined();
-  });
+vi.mock("@seliseblocks/genesis-os", () => ({
+  useProjectStore: () => ({ selectedProject: { tenantId: project.tenantId } }),
+}));
+vi.mock("@blocks-localization/services/language-manager.service", () => ({
+  languageManagerService: { matchGlossary: vi.fn() },
+}));
+
+const matchGlossary = vi.mocked(languageManagerService.matchGlossary);
+
+const dto = (overrides: Partial<IGlossaryMatchDto> = {}): IGlossaryMatchDto => ({
+  glossaryId: "g1",
+  start: 10,
+  length: 9,
+  surface: "Workspace",
+  term: "Workspace",
+  rule: "translate",
+  status: "approved",
+  caseSensitive: false,
+  scope: "global",
+  definition: "",
+  translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] }],
+  ...overrides,
 });
 
-describe("useApplicableGlossaryMatches", () => {
-  it("matches in applicable scope and is empty while the glossary is missing", () => {
-    const { result, rerender } = renderHook(
-      ({ glossaries }: { glossaries?: IGlossary[] }) =>
-        useApplicableGlossaryMatches(glossaries, "Open the Workspace Portal", {
-          sourceCulture: "en-US",
-        }),
-      { initialProps: { glossaries: undefined as IGlossary[] | undefined } },
+describe("useSourceGlossaryMatches", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    matchGlossary.mockReset();
+    matchGlossary.mockResolvedValue({ matches: [dto()] });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("matches a static source at once", async () => {
+    const { result } = renderHook(
+      () => useSourceGlossaryMatches({ text: "Open your Workspace", sourceCulture: "en-US" }),
+      { wrapper: createQueryWrapper().wrapper },
     );
-    expect(result.current).toEqual([]);
-    rerender({ glossaries: [G1, G_MODULE] });
-    // "Portal" belongs to another module, so it doesn't apply here.
-    expect(result.current.map((match) => match.surface)).toEqual(["Workspace"]);
+    await waitFor(() => expect(result.current.matches).toHaveLength(1));
+    expect(result.current.isCurrent).toBe(true);
+    expect(matchGlossary).toHaveBeenCalledTimes(1);
   });
 
-  it("applies module scope", () => {
-    const { result } = renderHook(() =>
-      useApplicableGlossaryMatches([G1, G_MODULE], "Portal", {
-        sourceCulture: "en-US",
-        moduleId: "M2",
-      }),
+  it("sends /Match only 300 ms after an editable source stops changing (C18)", async () => {
+    const { result, rerender } = renderHook(
+      ({ text }) => useSourceGlossaryMatches({ text, sourceCulture: "en-US", debounce: true }),
+      { wrapper: createQueryWrapper().wrapper, initialProps: { text: "" } },
     );
-    expect(result.current.map((match) => match.glossary.itemId)).toEqual(["g5"]);
+    for (const text of ["O", "Op", "Open", "Open your", "Open your Workspace"]) {
+      rerender({ text });
+      act(() => {
+        vi.advanceTimersByTime(MATCH_DEBOUNCE_MS - 50);
+      });
+    }
+    expect(matchGlossary).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+    await waitFor(() => expect(result.current.matches).toHaveLength(1));
+    expect(matchGlossary).toHaveBeenCalledTimes(1);
+    expect(matchGlossary.mock.calls[0][0]).toMatchObject({ text: "Open your Workspace" });
+    expect(result.current.isCurrent).toBe(true);
+
+    // Typing again: the previous matches stay but no longer belong to the text.
+    rerender({ text: "Open your Workspace now" });
+    expect(result.current.isCurrent).toBe(false);
   });
 });
 
@@ -147,6 +166,23 @@ describe("useLiveGlossaryCheck", () => {
     expect(result.current.violations).toEqual([]);
   });
 
+  it("checks Draft terms too and marks their violations as Draft (A2)", () => {
+    const draftMatches = matchesFor("Open your Workspace", [{ ...G1, status: "draft" }]);
+    const { result } = renderHook(() =>
+      useLiveGlossaryCheck({
+        targetText: "Öffnen Sie Ihren Werkbereich",
+        targetCulture: "de-DE",
+        matches: draftMatches,
+      }),
+    );
+    act(() => {
+      vi.advanceTimersByTime(LIVE_CHECK_DEBOUNCE_MS);
+    });
+    expect(result.current.violations).toHaveLength(2);
+    expect(result.current.violations.every((v) => isDraftViolation(v, draftMatches))).toBe(true);
+    expect(isDraftViolation(result.current.violations[0], matches)).toBe(false);
+  });
+
   it("stays within the 5 ms budget per run on a 2,000-term glossary (C14)", () => {
     const glossaries: IGlossary[] = Array.from({ length: 2000 }, (_, index) => ({
       itemId: `t${index}`,
@@ -161,8 +197,7 @@ describe("useLiveGlossaryCheck", () => {
     const source = Array.from({ length: 50 }, (_, index) => `Term${index * 7}`)
       .join(" ")
       .slice(0, 500);
-    const matcher = buildGlossaryMatcher(glossaries);
-    const live = matcher.match(source, { scopeMode: "applicable", sourceCulture: "en-US" });
+    const live = findGlossaryMatches(glossaries, source);
     const { result, rerender } = renderHook(
       ({ targetText }) =>
         useLiveGlossaryCheck({ targetText, targetCulture: "de-DE", matches: live }),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { distinctGlossaryMatches, HighlightedSourceText } from "./highlighted-source-text";
 
 vi.mock("@seliseblocks/genesis-os", () => ({
@@ -26,11 +26,7 @@ const G1 = term("g1", "Workspace", {
 const G2 = term("g2", "SELISE", { rule: "keep" });
 const G3 = term("g3", "Portal", { rule: "forbidden" });
 
-const matches = (text: string) =>
-  buildGlossaryMatcher([G1, G2, G3]).match(text, {
-    scopeMode: "applicable",
-    sourceCulture: "en-US",
-  });
+const matches = (text: string) => findGlossaryMatches([G1, G2, G3], text);
 
 const SOURCE = "Open your Workspace and SELISE portal";
 

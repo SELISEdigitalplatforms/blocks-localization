@@ -1,15 +1,6 @@
-import {
-  GlossaryMatch,
-  isNoSpaceCulture,
-  isWordStart,
-} from "@blocks-localization/utils/glossary-matcher";
-import {
-  groupMatchesByGlossary,
-  MatchedGlossaryGroup,
-  sanitizePromptText,
-} from "@blocks-localization/utils/translation-prompt";
-
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+import { isNoSpaceCulture, isWordStart } from "@blocks-localization/utils/glossary-text";
 
 /**
  * Whether the glossary says anything for this language: Keep and Forbidden always do; a
@@ -33,6 +24,28 @@ export interface GlossaryViolation {
   /** forbidden-used: the text as it appears in the output. */
   found?: string;
 }
+
+interface MatchedGlossaryGroup {
+  matches: GlossaryMatch[];
+  /** Distinct matched source surfaces, in first-occurrence order. */
+  surfaces: string[];
+}
+
+/** Matches grouped per glossary in first-occurrence order. */
+const groupMatchesByGlossary = (matches: GlossaryMatch[]): MatchedGlossaryGroup[] => {
+  const groups = new Map<string, MatchedGlossaryGroup>();
+  for (const match of [...matches].sort((a, b) => a.start - b.start)) {
+    const id = match.glossary.itemId;
+    let group = groups.get(id);
+    if (!group) {
+      group = { matches: [], surfaces: [] };
+      groups.set(id, group);
+    }
+    group.matches.push(match);
+    if (!group.surfaces.includes(match.surface)) group.surfaces.push(match.surface);
+  }
+  return [...groups.values()];
+};
 
 interface Occurrence {
   start: number;
@@ -300,22 +313,4 @@ export const formatViolationMessage = (violation: GlossaryViolation): string => 
     default:
       return `"${violation.found ?? violation.term}" is not allowed`;
   }
-};
-
-/** The correction appended to the prompt for the single retry. */
-export const buildCorrectionPrompt = (prompt: string, violations: GlossaryViolation[]): string => {
-  const lines = violations.map((violation) => {
-    const term = sanitizePromptText(violation.term);
-    switch (violation.kind) {
-      case "missing-translation":
-        return `- Use "${sanitizePromptText(violation.expected)}" for "${term}".`;
-      case "missing-keep":
-        return `- Keep "${sanitizePromptText(violation.expected) || term}" exactly as written.`;
-      default:
-        return `- Do not use "${sanitizePromptText(violation.found)}".`;
-    }
-  });
-  return `${prompt}CORRECTION: Your previous answer broke these rules:\n${lines
-    .map((line) => `${line}\n`)
-    .join("")}Return only the corrected translation.\n`;
 };

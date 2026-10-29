@@ -115,7 +115,9 @@ describe("components/language-table-toolbar filters", () => {
   });
 
   it("returns every filter to its default on reset", () => {
-    renderToolbar("?moduleIds=m1&pageNumber=3&createStartDate=2026-01-15T00:00:00.000Z");
+    renderToolbar(
+      "?moduleIds=m1&pageNumber=3&createStartDate=2026-01-15T00:00:00.000Z&glossaryIssues=true",
+    );
 
     fireEvent.click(screen.getByText("do-reset"));
 
@@ -123,6 +125,29 @@ describe("components/language-table-toolbar filters", () => {
       moduleIds: [],
       pageNumber: 0,
       createStartDate: "",
+      glossaryIssues: false,
     });
+  });
+
+  it("toggles the Glossary issues filter and returns to the first page (H11)", () => {
+    renderToolbar("?pageNumber=4");
+
+    const checkbox = screen.getByRole("checkbox", { name: "Glossary issues" });
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(checkbox);
+    expect(params()).toMatchObject({ glossaryIssues: true, pageNumber: 0 });
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(screen.getByText("Glossary issues"));
+    expect(params()).toMatchObject({ glossaryIssues: false, pageNumber: 0 });
+  });
+
+  it("reads the Glossary issues filter from the URL", () => {
+    renderToolbar("?glossaryIssues=true");
+
+    expect(
+      screen.getByRole("checkbox", { name: "Glossary issues" }).getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });

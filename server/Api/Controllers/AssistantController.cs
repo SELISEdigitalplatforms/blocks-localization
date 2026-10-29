@@ -24,9 +24,12 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<IActionResult> GetTranslationSuggestion([FromBody] SuggestLanguageRequest request)
         {
             var response = await _assistantService.SuggestTranslation(request);
+            // content stays a string; appliedTerms and glossaryViolations are siblings (empty with the flag off).
             return StatusCode((int)HttpStatusCode.OK, new
             {
-                Content = response
+                Content = response?.Content,
+                AppliedTerms = response?.AppliedTerms ?? new List<AppliedTerm>(),
+                GlossaryViolations = response?.GlossaryViolations ?? new List<GlossaryViolationDto>()
             });
         }
     }

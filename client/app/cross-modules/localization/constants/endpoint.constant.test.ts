@@ -135,8 +135,8 @@ describe("localization/constants/endpoint.constant", () => {
 
   // ─── GLOSSARY_ENDPOINTS ─────────────────────────────────────────────────
   describe("GLOSSARY_ENDPOINTS", () => {
-    it("should expose exactly 5 glossary endpoints", () => {
-      expect(Object.keys(GLOSSARY_ENDPOINTS)).toHaveLength(5);
+    it("should expose exactly 8 glossary endpoints", () => {
+      expect(Object.keys(GLOSSARY_ENDPOINTS)).toHaveLength(9);
     });
 
     it.each([
@@ -145,6 +145,10 @@ describe("localization/constants/endpoint.constant", () => {
       ["SAVE", `${UILM_BASE}/Glossary/Save`],
       ["DELETE", `${UILM_BASE}/Glossary/Delete`],
       ["GET_SUGGESTED_GLOSSARIES", `${UILM_BASE}/Glossary/GetSuggestedGlossaries`],
+      ["GET_BY_IDS", `${UILM_BASE}/Glossary/GetByIds`],
+      ["USAGE", `${UILM_BASE}/Glossary/Usage`],
+      ["MATCH", `${UILM_BASE}/Glossary/Match`],
+      ["RECHECK", `${UILM_BASE}/Glossary/Recheck`],
     ] as const)("should expose %s = %s", (key, value) => {
       expect((GLOSSARY_ENDPOINTS as Record<string, string>)[key]).toBe(value);
     });

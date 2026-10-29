@@ -26,7 +26,10 @@ import {
 import { useDebouncedValue } from "@blocks-localization/hooks/use-live-glossary-check";
 import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import {
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
 
 export const PICKER_SEARCH_DEBOUNCE_MS = 300;
 const NO_RESULTS: IGlossary[] = [];
@@ -62,8 +65,8 @@ const GlossaryResultRow = ({
   languages: ILanguageConfig[] | undefined;
   selected: boolean;
 }>) => {
-  const parsed = parseGlossaryMeta(glossary.additionalNote ?? "");
-  const unsupported = parsed.status === "unsupported-version";
+  const meta = toGlossaryMeta(glossary);
+  const unsupported = isUnsupportedGlossaryNote(glossary);
   return (
     <div className="flex min-w-0 flex-1 items-start gap-2">
       <div className="min-w-0 flex-1 space-y-1">
@@ -72,12 +75,12 @@ const GlossaryResultRow = ({
           {unsupported ? (
             <span className="text-xs text-medium-emphasis">—</span>
           ) : (
-            <GlossaryRuleBadge rule={parsed.meta.rule} />
+            <GlossaryRuleBadge rule={meta.rule} />
           )}
         </div>
         {!unsupported && (
           <div className="text-xs">
-            <GlossaryTranslationChips meta={parsed.meta} languages={languages} max={3} />
+            <GlossaryTranslationChips meta={meta} languages={languages} max={3} />
           </div>
         )}
       </div>

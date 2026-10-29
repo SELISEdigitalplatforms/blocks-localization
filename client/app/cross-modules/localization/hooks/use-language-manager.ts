@@ -2,9 +2,11 @@ import { useProjectStore } from "@seliseblocks/genesis-os";
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
+  GLOSSARY_STATUSES,
   IBlocksLanguageKeyResponse,
   IDeleteModuleRequest,
   IGlossary,
+  IGlossaryFilters,
   ILanguageConfig,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
@@ -48,6 +50,7 @@ export const useGetBlocksLanguageKey = (
   missingLanguages?: string[],
   enabled = true,
   onlyDuplicates = false,
+  hasGlossaryViolations = false,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const queryClient = useQueryClient();
@@ -68,6 +71,7 @@ export const useGetBlocksLanguageKey = (
       resourceSearchFilters ?? [],
       missingLanguages ?? [],
       onlyDuplicates,
+      hasGlossaryViolations,
     ),
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       languageManagerService.fetchBlocksLanguageKey(
@@ -84,6 +88,7 @@ export const useGetBlocksLanguageKey = (
           resourceSearchFilters: resourceSearchFilters,
           missingLanguages: missingLanguages,
           ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
+          ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
         },
         { signal },
       ),
@@ -126,6 +131,8 @@ export interface LanguageKeysInfiniteOptions {
   missingLanguages?: string[];
   enabled?: boolean;
   onlyDuplicates?: boolean;
+  /** Only keys with stored glossary violations ("Glossary issues"). */
+  hasGlossaryViolations?: boolean;
 }
 
 /**
@@ -147,6 +154,7 @@ export const useGetBlocksLanguageKeysInfinite = ({
   missingLanguages,
   enabled = true,
   onlyDuplicates = false,
+  hasGlossaryViolations = false,
 }: LanguageKeysInfiniteOptions) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const queryClient = useQueryClient();
@@ -162,6 +170,7 @@ export const useGetBlocksLanguageKeysInfinite = ({
     resourceSearchFilters: resourceSearchFilters ?? [],
     missingLanguages: missingLanguages ?? [],
     onlyDuplicates,
+    hasGlossaryViolations,
   });
 
   // null is the first chunk; after it, a keyset cursor, or a page number under the duplicates filter.
@@ -188,6 +197,7 @@ export const useGetBlocksLanguageKeysInfinite = ({
           resourceSearchFilters,
           missingLanguages,
           ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
+          ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
           cursor: typeof pageParam === "string" ? pageParam : undefined,
           includeTotalCount: pageParam === null,
         },
@@ -777,7 +787,12 @@ export const useGetTimelineByOperationId = (
 
 // Glossary hooks
 
-export const useGetGlossaries = (pageNumber: number, pageSize: number, searchText?: string) => {
+export const useGetGlossaries = (
+  pageNumber: number,
+  pageSize: number,
+  searchText?: string,
+  filters: Omit<IGlossaryFilters, "missingTranslation"> = {},
+) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.glossaries.list(
@@ -785,15 +800,57 @@ export const useGetGlossaries = (pageNumber: number, pageSize: number, searchTex
       pageNumber,
       pageSize,
       searchText ?? "",
+      filters,
     ),
     queryFn: () =>
       languageManagerService.fetchGlossaries({
         pageNumber,
         pageSize,
         searchText,
+        ...(filters.rule && { rule: filters.rule }),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.language && { language: filters.language }),
+        ...(filters.type && { type: filters.type }),
+        ...(filters.scope && { scope: filters.scope }),
+        ...(filters.sortBy && { sortBy: filters.sortBy }),
+        ...(filters.sortDescending !== undefined && { sortDescending: filters.sortDescending }),
       }),
     staleTime: 0,
     refetchOnMount: true,
+  });
+};
+
+/** Summary strip counts: cached 30 s, refreshed by every glossary write (under `all`). */
+export const GLOSSARY_SUMMARY_STALE_TIME = 30_000;
+
+export interface GlossarySummaryCounts {
+  total?: number;
+  approved?: number;
+  draft?: number;
+  deprecated?: number;
+}
+
+/** One `Gets?PageSize=1` per count (total + each status); a failed count stays undefined. */
+export const useGetGlossarySummaryCounts = () => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  const buckets = ["total", ...GLOSSARY_STATUSES] as const;
+  return useQueries({
+    queries: buckets.map((bucket) => ({
+      queryKey: localizationQueryKeys.glossaries.summaryCount(tenantId, bucket),
+      queryFn: async () =>
+        (
+          await languageManagerService.fetchGlossaries({
+            pageNumber: 0,
+            pageSize: 1,
+            ...(bucket !== "total" && { status: bucket }),
+          })
+        ).totalCount ?? 0,
+      enabled: !!tenantId,
+      staleTime: GLOSSARY_SUMMARY_STALE_TIME,
+      retry: false,
+    })),
+    combine: (results): GlossarySummaryCounts =>
+      Object.fromEntries(buckets.map((bucket, index) => [bucket, results[index]?.data])),
   });
 };
 
@@ -904,6 +961,9 @@ export const useGetAllModuleGlossaries = (moduleId: string) => {
   });
 };
 
+/** The server's cap; View Details shows the first few and "+N more". */
+export const SUGGESTED_GLOSSARIES_MAX = 20;
+
 export const useGetSuggestedGlossaries = (itemId: string, enabled: boolean) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -911,7 +971,7 @@ export const useGetSuggestedGlossaries = (itemId: string, enabled: boolean) => {
     queryFn: () =>
       languageManagerService.getSuggestedGlossaries({
         itemId,
-        maxResults: 5,
+        maxResults: SUGGESTED_GLOSSARIES_MAX,
       }),
     enabled: enabled && !!itemId && !!tenantId,
     staleTime: 0,
@@ -961,54 +1021,76 @@ export const useFetchLatestGlossary = () => {
     });
 };
 
-const combineSuccessfulGlossaries = (
-  results: { status: string; data?: IGlossary }[],
-): IGlossary[] =>
-  results.flatMap((result) => (result.status === "success" && result.data ? [result.data] : []));
+/** `Glossary/GetByIds` accepts at most this many ids per call. */
+export const GLOSSARY_BY_IDS_MAX = 100;
 
-export const useGetGlossariesByIds = (itemIds: string[], enabled: boolean) => {
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  return useQueries({
-    queries: itemIds.map((itemId) => ({
-      queryKey: localizationQueryKeys.glossaries.detail(tenantId, itemId),
-      queryFn: () => languageManagerService.getGlossaryById({ itemId }),
-      enabled: enabled && !!itemId && !!tenantId,
-      staleTime: 0,
-      retry: false,
-    })),
-    combine: combineSuccessfulGlossaries,
-  });
+const chunkIds = (itemIds: string[]): string[][] => {
+  const unique = [...new Set(itemIds.filter(Boolean))];
+  const chunks: string[][] = [];
+  for (let index = 0; index < unique.length; index += GLOSSARY_BY_IDS_MAX) {
+    chunks.push(unique.slice(index, index + GLOSSARY_BY_IDS_MAX));
+  }
+  return chunks;
 };
 
 export interface GlossaryByIdResolution {
   glossaries: IGlossary[];
-  /** Ids whose `Glossary/Get` failed (404, permission, network). */
+  /** Ids the server did not return (deleted, other tenant) or whose chunk failed. */
   failedIds: string[];
 }
 
+const byIdsQueries = (tenantId: string, itemIds: string[], enabled: boolean) =>
+  chunkIds(itemIds).map((ids) => ({
+    queryKey: localizationQueryKeys.glossaries.byIds(tenantId, ids),
+    queryFn: async () => (await languageManagerService.getGlossariesByIds({ itemIds: ids })).items,
+    enabled: enabled && !!tenantId,
+    staleTime: 0,
+    retry: false,
+  }));
+
+/**
+ * Resolves glossaries in request order. Settled chunks only: an id still loading is neither
+ * resolved nor failed.
+ */
 const combineGlossaryResolution = (
-  results: { status: string; data?: IGlossary }[],
+  results: { status: string; data?: IGlossary[] }[],
   itemIds: string[],
-): GlossaryByIdResolution => ({
-  glossaries: combineSuccessfulGlossaries(results),
-  failedIds: itemIds.filter(
-    (_, index) =>
-      results[index]?.status === "error" ||
-      (results[index]?.status === "success" && !results[index]?.data),
-  ),
-});
+): GlossaryByIdResolution => {
+  const byId = new Map<string, IGlossary>();
+  const settledIds = new Set<string>();
+  const chunks = chunkIds(itemIds);
+  results.forEach((result, index) => {
+    if (result.status === "pending") return;
+    chunks[index]?.forEach((id) => settledIds.add(id));
+    result.data?.forEach((glossary) => byId.set(glossary.itemId, glossary));
+  });
+  const ids = [...new Set(itemIds.filter(Boolean))];
+  return {
+    glossaries: ids.flatMap((id) => {
+      const glossary = byId.get(id);
+      return glossary ? [glossary] : [];
+    }),
+    failedIds: ids.filter((id) => settledIds.has(id) && !byId.has(id)),
+  };
+};
+
+/**
+ * The glossaries with these ids, via `GET Glossary/GetByIds` in chunks of at most 100 (H8).
+ * Ids the server leaves out (deleted) are skipped without an error (C7).
+ */
+export const useGetGlossariesByIds = (itemIds: string[], enabled: boolean) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQueries({
+    queries: byIdsQueries(tenantId, itemIds, enabled),
+    combine: (results) => combineGlossaryResolution(results, itemIds).glossaries,
+  });
+};
 
 /** `useGetGlossariesByIds` plus the ids that failed to resolve (same queries and cache). */
 export const useResolveGlossariesByIds = (itemIds: string[], enabled: boolean) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQueries({
-    queries: itemIds.map((itemId) => ({
-      queryKey: localizationQueryKeys.glossaries.detail(tenantId, itemId),
-      queryFn: () => languageManagerService.getGlossaryById({ itemId }),
-      enabled: enabled && !!itemId && !!tenantId,
-      staleTime: 0,
-      retry: false,
-    })),
+    queries: byIdsQueries(tenantId, itemIds, enabled),
     combine: (results) => combineGlossaryResolution(results, itemIds),
   });
 };
@@ -1017,6 +1099,7 @@ export const useGetKeysByGlossaryId = (
   glossaryId: string,
   pageNumber: number,
   pageSize: number,
+  filters: { searchKey?: string; moduleIds?: string[] } = {},
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -1025,13 +1108,14 @@ export const useGetKeysByGlossaryId = (
       glossaryId,
       pageNumber,
       pageSize,
+      filters,
     ),
     queryFn: () =>
       languageManagerService.fetchBlocksLanguageKey({
         pageNumber,
         pageSize,
-        searchKey: "",
-        moduleIds: [],
+        searchKey: filters.searchKey ?? "",
+        moduleIds: filters.moduleIds ?? [],
         isPartiallyTranslated: false,
         sortProperty: "KeyName",
         isDescending: false,
@@ -1043,29 +1127,46 @@ export const useGetKeysByGlossaryId = (
   });
 };
 
-const fetchKeysTaggedWithGlossary = (glossaryId: string, pageSize: number) =>
-  languageManagerService.fetchBlocksLanguageKey({
-    pageNumber: 0,
-    pageSize,
-    searchKey: "",
-    moduleIds: [],
-    isPartiallyTranslated: false,
-    sortProperty: "KeyName",
-    isDescending: false,
-    glossaryId,
-  });
+const glossaryUsageQuery = (tenantId: string, glossaryId: string, enabled: boolean) => ({
+  queryKey: localizationQueryKeys.glossaries.usage(tenantId, glossaryId),
+  queryFn: () => languageManagerService.getGlossaryUsage({ itemId: glossaryId, pageSize: 1 }),
+  enabled: enabled && !!glossaryId && !!tenantId,
+  staleTime: 0,
+  refetchOnMount: true as const,
+  retry: false,
+});
 
+/** The number of keys tagged with the glossary, from `Glossary/Usage` (one request, H10). */
 export const useGetGlossaryUsageCount = (glossaryId: string, enabled = true) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
-    queryKey: localizationQueryKeys.languageKeys.glossaryUsage(tenantId, glossaryId),
-    queryFn: async () => (await fetchKeysTaggedWithGlossary(glossaryId, 1)).totalCount ?? 0,
-    enabled: enabled && !!glossaryId && !!tenantId,
-    staleTime: 0,
-    refetchOnMount: true,
-    retry: false,
+    ...glossaryUsageQuery(tenantId, glossaryId, enabled),
+    select: (usage) => usage?.keyCount ?? 0,
   });
 };
+
+/** The same `Usage?pageSize=1` request, with its `moduleIds` ("used by N keys in M modules"). */
+export const useGetGlossaryUsage = (glossaryId: string, enabled = true) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery(glossaryUsageQuery(tenantId, glossaryId, enabled));
+};
+
+/** `Glossary/Recheck`: queues a background re-check of stored key violations. */
+export const useRecheckGlossary = () =>
+  useMutation({
+    mutationKey: ["glossary", "recheck"],
+    mutationFn: languageManagerService.recheckGlossary,
+  });
+
+/** Every glossary cache a term write can change (the delete cascade's six prefixes). */
+export const GLOSSARY_CACHE_PREFIXES = [
+  localizationQueryKeys.glossaries.all,
+  localizationQueryKeys.glossaries.globalPrefix,
+  localizationQueryKeys.glossaries.modulePrefix,
+  localizationQueryKeys.glossaries.searchPrefix,
+  localizationQueryKeys.glossaries.detailPrefix,
+  localizationQueryKeys.glossaries.suggestedPrefix,
+] as const;
 
 export type GlossaryCascadeResult =
   { status: "deleted" } | { status: "delete-failed"; errors: unknown };
@@ -1089,14 +1190,7 @@ export const useDeleteGlossaryWithCascade = () => {
   };
 
   const invalidateGlossaries = () => {
-    [
-      localizationQueryKeys.glossaries.all,
-      localizationQueryKeys.glossaries.globalPrefix,
-      localizationQueryKeys.glossaries.modulePrefix,
-      localizationQueryKeys.glossaries.searchPrefix,
-      localizationQueryKeys.glossaries.detailPrefix,
-      localizationQueryKeys.glossaries.suggestedPrefix,
-    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+    GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   };
 
   return useMutation({

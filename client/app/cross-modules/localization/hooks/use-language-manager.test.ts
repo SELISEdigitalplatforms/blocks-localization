@@ -47,6 +47,9 @@ vi.mock("@blocks-localization/services/language-manager.service", () => ({
     deleteGlossary: vi.fn(),
     getSuggestedGlossaries: vi.fn(),
     getGlossaryById: vi.fn(),
+    getGlossariesByIds: vi.fn(),
+    getGlossaryUsage: vi.fn(),
+    recheckGlossary: vi.fn(),
     getWebhook: vi.fn(),
     saveWebhook: vi.fn(),
   },
@@ -502,6 +505,166 @@ describe("localization/hooks/use-language-manager", () => {
     svc.fetchGlossaries.mockResolvedValue({ items: [], totalCount: 0 } as never);
     const { result } = renderQ(() => hooks.useGetGlossaries(0, 25, "term"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+      pageNumber: 0,
+      pageSize: 25,
+      searchText: "term",
+    });
+  });
+
+  it("useGetGlossaries should send the Rule and Status filters and key the cache by them (H12)", async () => {
+    svc.fetchGlossaries.mockResolvedValue({ items: [], totalCount: 0 } as never);
+    const { wrapper, queryClient } = createQueryWrapper();
+    const { result } = renderHook(
+      () => hooks.useGetGlossaries(0, 25, "", { rule: "keep", status: "draft" }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+      pageNumber: 0,
+      pageSize: 25,
+      searchText: "",
+      rule: "keep",
+      status: "draft",
+    });
+    expect(
+      queryClient.getQueryData(
+        localizationQueryKeys.glossaries.list("tenant-1", 0, 25, "", {
+          rule: "keep",
+          status: "draft",
+        }),
+      ),
+    ).toBeDefined();
+  });
+
+  it("useGetGlossaries should pass the Phase 8 filters and sort to the service and key", async () => {
+    svc.fetchGlossaries.mockResolvedValue({ items: [], totalCount: 0 } as never);
+    const filters = {
+      language: "de-DE",
+      type: "Acronym",
+      scope: "modules" as const,
+      sortBy: "name" as const,
+      sortDescending: false,
+    };
+    const { wrapper, queryClient } = createQueryWrapper();
+    const { result } = renderHook(() => hooks.useGetGlossaries(0, 25, "", filters), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+      pageNumber: 0,
+      pageSize: 25,
+      searchText: "",
+      ...filters,
+    });
+    expect(
+      queryClient.getQueryData(
+        localizationQueryKeys.glossaries.list("tenant-1", 0, 25, "", filters),
+      ),
+    ).toBeDefined();
+  });
+
+  it("useGetGlossarySummaryCounts should request total and each status with PageSize 1 (H18)", async () => {
+    svc.fetchGlossaries.mockImplementation(async (request) => ({
+      items: [],
+      totalCount:
+        ({ approved: 112, draft: 9, deprecated: 7 } as Record<string, number | undefined>)[
+          request.status ?? ""
+        ] ?? 128,
+    }));
+    const { result } = renderQ(() => hooks.useGetGlossarySummaryCounts());
+    await waitFor(() => expect(result.current.deprecated).toBe(7));
+    expect(result.current).toEqual({ total: 128, approved: 112, draft: 9, deprecated: 7 });
+    expect(svc.fetchGlossaries).toHaveBeenCalledTimes(4);
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith({ pageNumber: 0, pageSize: 1 });
+    expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+      pageNumber: 0,
+      pageSize: 1,
+      status: "draft",
+    });
+  });
+
+  it("useGetKeysByGlossaryId should send the Tagged Keys search and module filter (H4)", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetKeysByGlossaryId("g1", 0, 10, { searchKey: "e2e.ws", moduleIds: ["m1"] }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        glossaryId: "g1",
+        searchKey: "e2e.ws",
+        moduleIds: ["m1"],
+        pageNumber: 0,
+      }),
+    );
+  });
+
+  it("useGetGlossaryUsage should return the module ids from the same Usage request", async () => {
+    svc.getGlossaryUsage.mockResolvedValue({
+      keyCount: 3,
+      keys: [],
+      moduleIds: ["m1", "m2"],
+      violationKeyCount: 0,
+    } as never);
+    const { result } = renderQ(() => hooks.useGetGlossaryUsage("g1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.moduleIds).toEqual(["m1", "m2"]);
+    expect(svc.getGlossaryUsage).toHaveBeenCalledWith({ itemId: "g1", pageSize: 1 });
+  });
+
+  it("useRecheckGlossary should call the Recheck service", async () => {
+    svc.recheckGlossary.mockResolvedValue({ queued: true });
+    const { result } = renderQ(() => hooks.useRecheckGlossary());
+    await expect(result.current.mutateAsync({ itemId: "g1" })).resolves.toEqual({ queued: true });
+    expect(svc.recheckGlossary).toHaveBeenCalledWith({ itemId: "g1" }, expect.anything());
+  });
+
+  describe("useGetGlossariesByIds / useResolveGlossariesByIds", () => {
+    const glossary = (itemId: string) => ({
+      itemId,
+      name: itemId,
+      createDate: "",
+      lastUpdateDate: "",
+    });
+
+    it("should fetch all ids with one GetByIds request, in request order (H8)", async () => {
+      svc.getGlossariesByIds.mockResolvedValue({ items: [glossary("c"), glossary("a")] } as never);
+      const { result } = renderQ(() => hooks.useGetGlossariesByIds(["a", "b", "c"], true));
+      await waitFor(() => expect(result.current).toHaveLength(2));
+      expect(svc.getGlossariesByIds).toHaveBeenCalledTimes(1);
+      expect(svc.getGlossariesByIds).toHaveBeenCalledWith({ itemIds: ["a", "b", "c"] });
+      expect(result.current.map((item) => item.itemId)).toEqual(["a", "c"]);
+    });
+
+    it("should split more than 100 ids into chunks of at most 100 (H8)", async () => {
+      const ids = Array.from({ length: 250 }, (_, index) => `g${index}`);
+      svc.getGlossariesByIds.mockImplementation((({ itemIds }: { itemIds: string[] }) =>
+        Promise.resolve({ items: itemIds.map(glossary) })) as never);
+      const { result } = renderQ(() => hooks.useGetGlossariesByIds(ids, true));
+      await waitFor(() => expect(result.current).toHaveLength(250));
+      expect(svc.getGlossariesByIds.mock.calls.map(([request]) => request.itemIds.length)).toEqual([
+        100, 100, 50,
+      ]);
+    });
+
+    it("should leave out omitted (deleted) ids without an error and report them (C7)", async () => {
+      svc.getGlossariesByIds.mockResolvedValue({ items: [glossary("a")] } as never);
+      const { result } = renderQ(() => hooks.useResolveGlossariesByIds(["a", "gone"], true));
+      await waitFor(() => expect(result.current.glossaries).toHaveLength(1));
+      expect(result.current.failedIds).toEqual(["gone"]);
+    });
+
+    it("should report every id of a failed chunk as failed", async () => {
+      svc.getGlossariesByIds.mockRejectedValue(new Error("down"));
+      const { result } = renderQ(() => hooks.useResolveGlossariesByIds(["a", "b"], true));
+      await waitFor(() => expect(result.current.failedIds).toEqual(["a", "b"]));
+      expect(result.current.glossaries).toEqual([]);
+    });
+
+    it("should send nothing when disabled or without ids", () => {
+      renderQ(() => hooks.useGetGlossariesByIds(["a"], false));
+      renderQ(() => hooks.useGetGlossariesByIds([], true));
+      expect(svc.getGlossariesByIds).not.toHaveBeenCalled();
+    });
   });
 
   it("useGetGlobalGlossaries should fetch global glossaries", async () => {
@@ -592,14 +755,26 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2);
   });
 
-  it("useGetGlossaryUsageCount should read totalCount from a 1-item page", async () => {
-    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [{}] } as never);
+  it("useGetGlossaryUsageCount should read keyCount from one Usage request (H10)", async () => {
+    svc.getGlossaryUsage.mockResolvedValue({
+      keyCount: 7,
+      keys: [],
+      moduleIds: [],
+      violationKeyCount: 0,
+    } as never);
     const { result } = renderQ(() => hooks.useGetGlossaryUsageCount("g1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(7);
-    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
-      expect.objectContaining({ pageNumber: 0, pageSize: 1, glossaryId: "g1", moduleIds: [] }),
-    );
+    expect(svc.getGlossaryUsage).toHaveBeenCalledTimes(1);
+    expect(svc.getGlossaryUsage).toHaveBeenCalledWith({ itemId: "g1", pageSize: 1 });
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("useGetGlossaryUsageCount should surface a Usage failure without retrying (C8)", async () => {
+    svc.getGlossaryUsage.mockRejectedValue(new Error("down"));
+    const { result } = renderQ(() => hooks.useGetGlossaryUsageCount("g1"));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(svc.getGlossaryUsage).toHaveBeenCalledTimes(1);
   });
 
   it("useGetGlossaryUsageCount should be disabled without a tenant", () => {

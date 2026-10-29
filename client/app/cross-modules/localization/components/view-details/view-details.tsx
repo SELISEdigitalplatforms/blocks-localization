@@ -2,9 +2,8 @@ import { Button } from "@/components/ui-kits/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import { Dialog, DialogTrigger } from "@/components/ui-kits/dialog/dialog";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
-import { Badge } from "@/components/ui-kits/badge/badge";
 import { checkValidDate, formatFullDate, parseDateString } from "@/lib/utils";
-import { BookOpen, Pencil, Plus, RouteIcon } from "lucide-react";
+import { BookOpen, Pencil, RouteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   useGetLanguageModules,
@@ -13,20 +12,19 @@ import {
   useGetGlossariesByIds,
   useGetGlobalGlossaries,
   useGetModuleGlossaries,
+  useGetSuggestedGlossaries,
   useSaveBlocksLanguageKey,
 } from "../../hooks/use-language-manager";
-import {
-  useGetAllGlossaries,
-  useLoadAllGlossaries,
-} from "../../hooks/use-glossary-aware-suggestion";
-import { IBlocksLanguageKey, IGlossary } from "../../models/language";
-import { buildGlossaryMatcher } from "../../utils/glossary-matcher";
-import { getDefaultLanguage } from "../../utils/glossary-rule-marker";
+import { IBlocksLanguageKey } from "../../models/language";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
+import GlossaryTermCard, {
+  mergeSourcedGlossaries,
+} from "@blocks-localization/components/glossary/glossary-term-card";
+import { TooltipProvider } from "@/components/ui-kits/tooltip/tooltip";
 
 const MAX_SHOWN_SUGGESTIONS = 10;
 
@@ -55,9 +53,8 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const hasGlossaryIds = (keyDetails.glossaryIds?.length ?? 0) > 0;
 
   const { data: allGlossariesData } = useGetGlossaries(0, 100);
-  // The full glossary, loaded once: View Details suggestions and Edit translation.
-  const { data: allTerms } = useGetAllGlossaries();
-  const loadGlossaries = useLoadAllGlossaries();
+  // Server matcher over every glossary; shown whether or not the key has tags (H9).
+  const { data: suggestedGlossariesData } = useGetSuggestedGlossaries(keyDetails.itemId, true);
   const { data: globalGlossariesData } = useGetGlobalGlossaries();
   const { data: moduleGlossariesData } = useGetModuleGlossaries(keyDetails.moduleId ?? "");
 
@@ -86,57 +83,58 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     missingGlossaryIds,
   ]);
 
-  const contextGlossaries = useMemo(() => {
-    const taggedIds = new Set(keyDetails.glossaryIds ?? []);
-    const seen = new Set<string>();
-    const result: ((typeof resolvedGlossaries)[number] & {
-      source: "global" | "module";
-    })[] = [];
-    for (const g of globalGlossariesData?.items ?? []) {
-      if (!taggedIds.has(g.itemId) && !seen.has(g.itemId)) {
-        seen.add(g.itemId);
-        result.push({ ...g, source: "global" });
-      }
-    }
-    for (const g of moduleGlossariesData?.items ?? []) {
-      if (!taggedIds.has(g.itemId) && !seen.has(g.itemId)) {
-        seen.add(g.itemId);
-        result.push({ ...g, source: "module" });
-      }
-    }
-    return result;
-  }, [globalGlossariesData, moduleGlossariesData, keyDetails.glossaryIds]);
-
-  // Untagged, non-global terms of other modules found in the default-language text (H10).
+  // Untagged, non-global terms of other modules found in the default-language text: the server
+  // excludes tagged, global, module-linked and Deprecated terms; tags added here are hidden.
   const glossarySuggestions = useMemo(() => {
-    if (!allTerms?.length) return [];
-    const defaultLanguage = getDefaultLanguage(languageListData);
-    const source = keyDetails.resources?.find(
-      (resource) => resource.culture === defaultLanguage?.languageCode,
-    )?.value;
-    if (!defaultLanguage || !source?.trim()) return [];
-    const matches = buildGlossaryMatcher(allTerms).match(source, {
-      scopeMode: "all",
-      sourceCulture: defaultLanguage.languageCode,
-      keyGlossaryIds: keyDetails.glossaryIds,
-      moduleId: keyDetails.moduleId,
-    });
-    const seen = new Set<string>(addedGlossaryIds);
-    const result: IGlossary[] = [];
-    for (const match of matches) {
-      if (match.scope !== "other" || seen.has(match.glossary.itemId)) continue;
-      seen.add(match.glossary.itemId);
-      result.push(match.glossary);
+    const added = new Set(addedGlossaryIds);
+    return (suggestedGlossariesData?.suggestedGlossaries ?? []).filter(
+      (glossary) =>
+        !added.has(glossary.itemId) && !keyDetails.glossaryIds?.includes(glossary.itemId),
+    );
+  }, [suggestedGlossariesData, addedGlossaryIds, keyDetails.glossaryIds]);
+
+  // One list: Tagged, Module, Global, Suggested; a term shows once, under its first source (H12).
+  const shownSuggestions = glossarySuggestions.slice(0, MAX_SHOWN_SUGGESTIONS);
+  const hiddenSuggestionCount = glossarySuggestions.length - shownSuggestions.length;
+  const termCards = mergeSourcedGlossaries({
+    tagged: resolvedGlossaries,
+    module: moduleGlossariesData?.items,
+    global: globalGlossariesData?.items,
+    suggested: shownSuggestions,
+  });
+  const suggestedCount = termCards.filter((card) => card.source === "suggested").length;
+
+  // Saves the full key without the glossary; context, routes and resources stay as they are (C20).
+  const untagGlossary = async (glossaryId: string) => {
+    setIsTagging(true);
+    try {
+      const res = await saveKey({
+        itemId: keyDetails.itemId,
+        keyName: keyDetails.keyName,
+        moduleId: keyDetails.moduleId,
+        resources: keyDetails.resources ?? [],
+        routes: keyDetails.routes ?? [],
+        context: keyDetails.context,
+        glossaryIds: [...new Set([...(keyDetails.glossaryIds ?? []), ...addedGlossaryIds])].filter(
+          (id) => id !== glossaryId,
+        ),
+        isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
+      });
+      if (res?.success) {
+        setAddedGlossaryIds((ids) => ids.filter((id) => id !== glossaryId));
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: formatErrorMessage(res?.errorMessage),
+        });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
+    } finally {
+      setIsTagging(false);
     }
-    return result;
-  }, [
-    allTerms,
-    languageListData,
-    keyDetails.resources,
-    keyDetails.glossaryIds,
-    keyDetails.moduleId,
-    addedGlossaryIds,
-  ]);
+  };
 
   // Saves the full current key with the glossaries added, keeping context and routes (H11).
   const tagGlossaries = async (glossaryIds: string[]) => {
@@ -205,7 +203,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   destinationLanguageCode={languageListData[0].languageCode}
                   languageListData={languageListData}
                   onClose={() => setEditTranslationLangCode(null)}
-                  loadGlossaries={loadGlossaries}
                 />
               </Dialog>
             </div>
@@ -246,7 +243,6 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       destinationLanguageCode={language.languageCode}
                       languageListData={languageListData}
                       onClose={() => setEditTranslationLangCode(null)}
-                      loadGlossaries={loadGlossaries}
                     />
                   </Dialog>
                 </div>
@@ -368,101 +364,58 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
             </div>
           </CardHeader>
           <CardContent>
-            {hasGlossaryIds ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {resolvedGlossaries.map((glossary) => (
-                    <Badge key={glossary.itemId} variant="secondary">
-                      {glossary.name}
-                    </Badge>
-                  ))}
-                </div>
-                {contextGlossaries.length > 0 && (
-                  <div className="space-y-2 border-t pt-3">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Global &amp; module glossaries
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {contextGlossaries.map((glossary) => (
-                        <Badge
-                          key={glossary.itemId}
-                          variant="outline"
-                          title={
-                            glossary.source === "global" ? "Global glossary" : "Module glossary"
-                          }
-                        >
-                          {glossary.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
+            <TooltipProvider delayDuration={200}>
+              {termCards.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No glossary added.</p>
-                {contextGlossaries.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Global & module glossaries
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {contextGlossaries.map((glossary) => (
-                        <Badge
-                          key={glossary.itemId}
-                          variant="outline"
-                          title={
-                            glossary.source === "global" ? "Global glossary" : "Module glossary"
-                          }
-                        >
-                          {glossary.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {glossarySuggestions.length > 0 && (
-              <div className="mt-3 space-y-2 border-t pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-muted-foreground">Suggested glossaries</p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2"
-                    disabled={isTagging}
-                    onClick={() => void tagGlossaries(glossarySuggestions.map((g) => g.itemId))}
-                  >
-                    Add all
-                  </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {glossarySuggestions.slice(0, MAX_SHOWN_SUGGESTIONS).map((glossary) => (
-                    <Badge key={glossary.itemId} variant="outline" className="gap-1">
-                      {glossary.name}
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    These terms are applied when translating this key.
+                  </p>
+                  {suggestedCount > 0 && (
+                    <div className="flex items-center justify-end">
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-5 w-5 p-0"
-                        aria-label={`Tag ${glossary.name} to key`}
+                        className="h-7 px-2"
                         disabled={isTagging}
-                        onClick={() => void tagGlossaries([glossary.itemId])}
+                        onClick={() =>
+                          void tagGlossaries(glossarySuggestions.map((g) => g.itemId))
+                        }
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        Add all suggested
                       </Button>
-                    </Badge>
-                  ))}
-                  {glossarySuggestions.length > MAX_SHOWN_SUGGESTIONS && (
+                    </div>
+                  )}
+                  <ul className="space-y-2" aria-label="Glossary terms for this key">
+                    {termCards.map(({ glossary, source }) => (
+                      <li key={glossary.itemId}>
+                        <GlossaryTermCard
+                          glossary={glossary}
+                          source={source}
+                          languages={languageListData}
+                          disabled={isTagging}
+                          onRemove={
+                            source === "tagged" ? () => void untagGlossary(glossary.itemId) : undefined
+                          }
+                          onAdd={
+                            source === "suggested"
+                              ? () => void tagGlossaries([glossary.itemId])
+                              : undefined
+                          }
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                  {hiddenSuggestionCount > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      +{glossarySuggestions.length - MAX_SHOWN_SUGGESTIONS} more
+                      +{hiddenSuggestionCount} more suggested
                     </span>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+            </TooltipProvider>
           </CardContent>
         </Card>
       </div>

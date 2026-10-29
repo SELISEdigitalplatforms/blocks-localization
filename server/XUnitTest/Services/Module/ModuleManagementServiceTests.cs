@@ -294,10 +294,12 @@ namespace XUnitTest
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            // g-old untagged, g-new tagged, each through a targeted update (H9).
-            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-old", "mod-1"), Times.Once);
-            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync("g-new", "mod-1"), Times.Once);
-            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-new", It.IsAny<string>()), Times.Never);
+            // g-old untagged, g-new tagged, in one bulk write of targeted updates (SPEC8 H30).
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync("mod-1",
+                It.Is<IReadOnlyCollection<string>>(add => add.SequenceEqual(new[] { "g-new" })),
+                It.Is<IReadOnlyCollection<string>>(remove => remove.SequenceEqual(new[] { "g-old" }))), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _glossaryRepositoryMock.Verify(r => r.ReplaceAsync(It.IsAny<BlocksGlossary>(), It.IsAny<int?>()), Times.Never);
             _glossaryRepositoryMock.Verify(r => r.InsertAsync(It.IsAny<BlocksGlossary>()), Times.Never);
         }
@@ -314,8 +316,7 @@ namespace XUnitTest
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync(It.IsAny<string>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
         }
 
         [Fact]
@@ -329,7 +330,9 @@ namespace XUnitTest
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            _glossaryRepositoryMock.Verify(r => r.AddModuleAsync("g1", "mod-1"), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync("mod-1",
+                It.Is<IReadOnlyCollection<string>>(add => add.SequenceEqual(new[] { "g1" })),
+                It.Is<IReadOnlyCollection<string>>(remove => remove.Count == 0)), Times.Once);
         }
 
         [Fact]
@@ -345,8 +348,48 @@ namespace XUnitTest
             var result = await _service.TagGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            _glossaryRepositoryMock.Verify(r => r.RemoveModuleAsync("g-old", "mod-1"), Times.Once);
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync("mod-1",
+                It.Is<IReadOnlyCollection<string>>(add => add.Count == 0),
+                It.Is<IReadOnlyCollection<string>>(remove => remove.SequenceEqual(new[] { "g-old" }))), Times.Once);
             _glossaryRepositoryMock.Verify(r => r.GetByIdsAsync(It.IsAny<List<string>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TagGlossaryAsync_TriggersOneRecheckForTheChangedGlossaries()
+        {
+            var recheck = new Mock<IGlossaryRecheckService>();
+            var service = new ModuleManagementService(_validatorMock.Object, _moduleRepositoryMock.Object, _loggerMock.Object,
+                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, null, recheck.Object);
+            var request = new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string> { "g-new", "g-kept" } };
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1"))
+                .ReturnsAsync(new List<Glossary>
+                {
+                    new Glossary { ItemId = "g-old", Name = "Old", ModuleIds = new List<string> { "mod-1" } },
+                    new Glossary { ItemId = "g-kept", Name = "Kept", ModuleIds = new List<string> { "mod-1" } }
+                });
+            _glossaryRepositoryMock.Setup(r => r.GetByIdsAsync(request.GlossaryIds))
+                .ReturnsAsync(new List<Glossary>
+                {
+                    new Glossary { ItemId = "g-new", Name = "New" },
+                    new Glossary { ItemId = "g-kept", Name = "Kept", ModuleIds = new List<string> { "mod-1" } }
+                });
+
+            await service.TagGlossaryAsync(request);
+
+            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "g-old", "g-new" }))), Times.Once);
+        }
+
+        [Fact]
+        public async Task TagGlossaryAsync_WithNoChange_TriggersNoRecheck()
+        {
+            var recheck = new Mock<IGlossaryRecheckService>();
+            var service = new ModuleManagementService(_validatorMock.Object, _moduleRepositoryMock.Object, _loggerMock.Object,
+                _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, null, recheck.Object);
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", "mod-1")).ReturnsAsync(new List<Glossary>());
+
+            await service.TagGlossaryAsync(new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = new List<string>() });
+
+            recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
         }
 
         [Fact]

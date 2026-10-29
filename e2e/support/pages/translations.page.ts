@@ -21,6 +21,26 @@ interface ApiKey {
   resources?: { culture: string; value: string }[];
 }
 
+/** A term's translation for one language (Phase 6 structured field). */
+export interface ApiGlossaryTranslation {
+  language: string;
+  value: string;
+  forbiddenValues: string[];
+}
+
+/** One `/Glossary/Match` hit as the server returns it. */
+export interface ApiGlossaryMatch {
+  glossaryId: string;
+  start: number;
+  length: number;
+  surface: string;
+  term: string;
+  rule: "translate" | "keep" | "forbidden";
+  status: "draft" | "approved" | "deprecated";
+  scope: string;
+  translations: ApiGlossaryTranslation[];
+}
+
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
@@ -97,17 +117,33 @@ export class LocalizationApi {
     );
   }
 
-  /** Saves a glossary with an exact stored `additionalNote` and an empty definition. */
+  /**
+   * Saves a glossary: with the Phase 6 structured fields (`rule`, `status`, `translations`, ...),
+   * or with an exact stored `additionalNote` as an older client would have written it.
+   */
   async createGlossary(glossary: {
     name: string;
-    additionalNote: string;
     isGlobal: boolean;
+    additionalNote?: string;
+    context?: string;
     moduleIds?: string[];
+    rule?: "translate" | "keep" | "forbidden";
+    status?: "draft" | "approved" | "deprecated";
+    caseSensitive?: boolean;
+    variants?: string[];
+    translations?: ApiGlossaryTranslation[];
   }): Promise<string> {
     await this.json(
       await this.page.request.post(`${this.base}/Glossary/Save`, {
         headers: this.headers,
-        data: { context: "", language: "", type: "", moduleIds: [], ...glossary },
+        data: {
+          context: "",
+          additionalNote: "",
+          language: "",
+          type: "",
+          moduleIds: [],
+          ...glossary,
+        },
       }),
       `create glossary ${glossary.name}`,
     );
@@ -202,15 +238,43 @@ export class LocalizationApi {
   }
 }
 
-/** A scripted reply for one GetTranslationSuggestion call: AI content, or an HTTP error. */
-export type SuggestionReply = { content: string } | { status: number };
+/** An applied term of a suggestion response (Phase 6). */
+export interface SuggestionAppliedTerm {
+  glossaryId: string;
+  term: string;
+  rule: "translate" | "keep" | "forbidden";
+  expected?: string;
+}
+
+/** A violation of a suggestion response (Phase 6). */
+export interface SuggestionViolation {
+  glossaryId: string;
+  term: string;
+  kind: "missing-translation" | "missing-keep" | "forbidden-used";
+  expected?: string;
+  found?: string;
+}
+
+/**
+ * A scripted reply for one GetTranslationSuggestion call: the server's content with its applied
+ * terms and violations (empty when left out, as with the server flag off), or an HTTP error.
+ */
+export type SuggestionReply =
+  | {
+      content: string;
+      appliedTerms?: SuggestionAppliedTerm[];
+      glossaryViolations?: SuggestionViolation[];
+    }
+  | { status: number };
 
 export const isTranslationSuggestionUrl = (url: URL) =>
   url.pathname.endsWith("/Assistant/GetTranslationSuggestion");
 
-/** The real full-glossary page request: Glossary/Gets?PageNumber=n&PageSize=500. */
+/** The removed Track A full-glossary load: Glossary/Gets?…&PageSize=500 (SPEC7 H13). */
 export const isFullGlossaryPageUrl = (url: URL) =>
   url.pathname.endsWith("/Glossary/Gets") && url.searchParams.get("PageSize") === "500";
+
+export const isGlossaryMatchUrl = (url: URL) => url.pathname.endsWith("/Glossary/Match");
 
 /**
  * Intercepts Assistant/GetTranslationSuggestion: each call takes the next scripted reply and
@@ -224,7 +288,15 @@ export async function mockTranslationSuggestions(page: Page) {
     requests.push(route.request().postDataJSON() as Record<string, unknown>);
     const reply = replies.shift() ?? { status: 500 };
     if ("content" in reply) {
-      await route.fulfill({ json: { content: reply.content, errors: null, isSuccess: true } });
+      await route.fulfill({
+        json: {
+          content: reply.content,
+          appliedTerms: reply.appliedTerms ?? [],
+          glossaryViolations: reply.glossaryViolations ?? [],
+          errors: null,
+          isSuccess: true,
+        },
+      });
     } else {
       await route.fulfill({ status: reply.status, json: { errors: "scripted failure" } });
     }
@@ -242,35 +314,46 @@ export async function mockTranslationSuggestions(page: Page) {
 }
 
 /**
- * Counts the full-glossary page requests and, when `keep` is given, trims each real response to
- * this run's fixture terms. The shared project can hold other terms; trimming keeps the expected
- * prompts exact without touching them. The request itself still reaches the server.
+ * Records every `/Glossary/Match` request body (the request still reaches the server). With
+ * `keep`, each real response is trimmed to this run's fixture terms, so other terms of the shared
+ * project don't change what is highlighted.
  */
-export async function trackFullGlossaryLoads(
+export async function trackGlossaryMatches(
   page: Page,
-  keep?: (glossary: { name?: string }) => boolean,
+  keep?: (match: ApiGlossaryMatch) => boolean,
 ) {
-  const urls: string[] = [];
-  const state = { completed: 0 };
+  const requests: { text: string; language: string; keyId?: string; moduleId?: string }[] = [];
   const handler = async (route: Route) => {
-    urls.push(route.request().url());
+    requests.push(route.request().postDataJSON() as (typeof requests)[number]);
     if (!keep) return route.fallback();
     const response = await route.fetch();
-    const body = (await response.json()) as { items?: { name?: string }[]; totalCount?: number };
-    const items = (body.items ?? []).filter(keep);
+    if (!response.ok()) return route.fulfill({ response });
+    const body = (await response.json()) as { matches?: ApiGlossaryMatch[] };
     await route.fulfill({
       status: response.status(),
-      json: { ...body, items, totalCount: items.length },
+      json: { ...body, matches: (body.matches ?? []).filter(keep) },
     });
-    state.completed++;
   };
-  await page.route(isFullGlossaryPageUrl, handler);
+  await page.route(isGlossaryMatchUrl, handler);
   return {
-    urls,
-    /** Trimmed responses delivered so far (only counted when `keep` is given). */
-    completed: () => state.completed,
-    stop: () => page.unroute(isFullGlossaryPageUrl, handler),
+    requests,
+    /** The requests made for exactly this source text. */
+    forText: (text: string) => requests.filter((request) => request.text === text),
+    stop: () => page.unroute(isGlossaryMatchUrl, handler),
   };
+}
+
+/**
+ * Records every request of the removed Track A full-glossary load (SPEC7 H13: there must be none).
+ * Registered as a listener, so it never changes the response.
+ */
+export function guardFullGlossaryLoads(page: Page) {
+  const urls: string[] = [];
+  const onRequest = (request: Request) => {
+    if (isFullGlossaryPageUrl(new URL(request.url()))) urls.push(request.url());
+  };
+  page.on("request", onRequest);
+  return { urls, stop: () => page.off("request", onRequest) };
 }
 
 export class TranslationsPage {
@@ -1056,8 +1139,7 @@ export class TranslationsPage {
 
   /**
    * The glossary violation list under a target field: a polite live region (status role,
-   * an <output> element) that holds the list. The "Glossary unavailable" note is also a
-   * status region but has no list.
+   * an <output> element) that holds the list.
    */
   violationList(scope: Locator) {
     return scope.getByRole("status").filter({ has: this.page.getByRole("list") });
@@ -1110,6 +1192,29 @@ export class TranslationsPage {
     );
     await action();
     return (await requestPromise).postDataJSON() as Record<string, unknown>;
+  }
+
+  // --- Glossary issues (SPEC7) ---
+
+  /** The Translations table's "Glossary issues" filter checkbox. */
+  get glossaryIssuesCheckbox() {
+    return this.page.getByRole("checkbox", { name: "Glossary issues" });
+  }
+
+  /** The "N glossary issue(s)" badge on a key's row. */
+  glossaryIssueBadge(keyName: string) {
+    return this.page
+      .getByRole("row")
+      .filter({ hasText: keyName })
+      .getByTestId("glossary-issue-badge");
+  }
+
+  /** Focuses a row's issue badge and returns its open tooltip. */
+  async openGlossaryIssueTooltip(keyName: string) {
+    await this.glossaryIssueBadge(keyName).focus();
+    const tooltip = this.page.getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    return tooltip;
   }
 
   // --- New key routes ---

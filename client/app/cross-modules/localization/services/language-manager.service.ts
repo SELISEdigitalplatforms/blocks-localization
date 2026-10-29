@@ -14,7 +14,18 @@ import {
   IBlocksLanguageKeyResponse,
   IGetExportHistory,
   IGlossary,
+  IGetGlossariesByIdsResponse,
   IGetGlossariesResponse,
+  IGlossaryFilters,
+  IGlossaryTranslation,
+  IGlossaryUsageResponse,
+  IMatchGlossaryRequest,
+  IMatchGlossaryResponse,
+  ITranslationSuggestionResponse,
+  GlossaryRuleDto,
+  GlossaryStatus,
+  GlossaryPartOfSpeech,
+  IRecheckGlossaryResponse,
   IGetSuggestedGlossariesResponse,
   IGetLocalizationTimelineResponse,
   IGetTimelineByOperationIdResponse,
@@ -57,6 +68,8 @@ export class LanguageManagerService {
       glossaryId?: string;
       missingLanguages?: string[];
       onlyDuplicates?: boolean;
+      /** Only keys with stored glossary violations; sent only when true. */
+      hasGlossaryViolations?: boolean;
       /** Keyset token from a previous `nextCursor`; when set the server ignores `pageNumber`. */
       cursor?: string;
       includeTotalCount?: boolean;
@@ -65,6 +78,9 @@ export class LanguageManagerService {
   ): Promise<IBlocksLanguageKeyResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
+    if (!payload.hasGlossaryViolations) {
+      delete payload.hasGlossaryViolations;
+    }
     if (!request.createDateRange) {
       delete payload.createDateRange;
     } else if (payload.createDateRange?.startDate === "") {
@@ -273,22 +289,15 @@ export class LanguageManagerService {
     sourceText: string;
     destinationLanguage: string;
     currentLanguage: string;
+    /** The source culture; the server matches glossary terms in this language. */
+    currentLanguageCode?: string;
     temperature: number;
-    /** Replaces the server's default instruction; the server appends its glossary lines and the source text. */
+    /** The key's own context (custom prompt); the server adds the terminology rules. */
     elementDetailContext?: string;
     glossaryIds?: string[];
     moduleId?: string;
     destinationLanguageCode?: string;
-    /**
-     * True when `elementDetailContext` carries this client's terminology rules, so the Phase 6
-     * server skips its own rules and retry for this request. Ignored by servers without it.
-     */
-    clientGlossaryRules?: boolean;
-  }): Promise<{
-    content: string;
-    errors: null | unknown;
-    isSuccess: boolean;
-  }> => {
+  }): Promise<ITranslationSuggestionResponse> => {
     const url = LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION;
     return this.httpClient.post(url, payload);
   };
@@ -429,7 +438,7 @@ export class LanguageManagerService {
     searchText?: string;
     isGlobal?: boolean;
     moduleId?: string;
-  }): Promise<IGetGlossariesResponse> => {
+  } & IGlossaryFilters): Promise<IGetGlossariesResponse> => {
     const params = new URLSearchParams({
       PageNumber: String(request.pageNumber),
       PageSize: String(request.pageSize),
@@ -448,6 +457,38 @@ export class LanguageManagerService {
       params.append("ModuleId", request.moduleId);
     }
 
+    if (request.rule) {
+      params.append("Rule", request.rule);
+    }
+
+    if (request.status) {
+      params.append("Status", request.status);
+    }
+
+    if (request.missingTranslation) {
+      params.append("MissingTranslation", request.missingTranslation);
+    }
+
+    if (request.language) {
+      params.append("Language", request.language);
+    }
+
+    if (request.type) {
+      params.append("Type", request.type);
+    }
+
+    if (request.scope) {
+      params.append("Scope", request.scope);
+    }
+
+    if (request.sortBy) {
+      params.append("SortBy", request.sortBy);
+    }
+
+    if (request.sortDescending !== undefined) {
+      params.append("SortDescending", String(request.sortDescending));
+    }
+
     return this.httpClient.get(`${GLOSSARY_ENDPOINTS.GETS}?${params.toString()}`);
   };
 
@@ -462,6 +503,15 @@ export class LanguageManagerService {
     moduleIds?: string[];
     /** The version the edit started from; a newer stored version fails with a `Version` error. */
     version?: number;
+    /** Structured terminology; omitted (undefined) fields keep their stored values. */
+    rule?: GlossaryRuleDto;
+    caseSensitive?: boolean;
+    variants?: string[];
+    translations?: IGlossaryTranslation[];
+    status?: GlossaryStatus;
+    /** "" clears; omitted or null keeps the stored value. */
+    partOfSpeech?: GlossaryPartOfSpeech | "" | null;
+    usageExamples?: string[];
   }): Promise<{
     success: boolean;
     errorMessage: string;
@@ -499,6 +549,41 @@ export class LanguageManagerService {
 
   getGlossaryById = (request: { itemId: string }): Promise<IGlossary> => {
     return this.httpClient.get(`${GLOSSARY_ENDPOINTS.GET}?itemId=${request.itemId}`);
+  };
+
+  /** At most `GLOSSARY_BY_IDS_MAX` ids per call; unknown ids are left out of `items`. */
+  getGlossariesByIds = (request: { itemIds: string[] }): Promise<IGetGlossariesByIdsResponse> => {
+    const params = new URLSearchParams();
+    request.itemIds.forEach((itemId) => params.append("itemIds", itemId));
+    return this.httpClient.get(`${GLOSSARY_ENDPOINTS.GET_BY_IDS}?${params.toString()}`);
+  };
+
+  getGlossaryUsage = (request: {
+    itemId: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }): Promise<IGlossaryUsageResponse> => {
+    const params = new URLSearchParams({
+      itemId: request.itemId,
+      pageNumber: String(request.pageNumber ?? 0),
+      pageSize: String(request.pageSize ?? 1),
+    });
+    return this.httpClient.get(`${GLOSSARY_ENDPOINTS.USAGE}?${params.toString()}`);
+  };
+
+  matchGlossary = (
+    payload: IMatchGlossaryRequest,
+    options?: { signal?: AbortSignal },
+  ): Promise<IMatchGlossaryResponse> => {
+    return this.httpClient.post(GLOSSARY_ENDPOINTS.MATCH, payload, undefined, {
+      signal: options?.signal,
+    });
+  };
+
+  /** Queues a background violation re-check for one term's keys, or every key without `itemId`. */
+  recheckGlossary = (request: { itemId?: string } = {}): Promise<IRecheckGlossaryResponse> => {
+    const query = request.itemId ? `?itemId=${encodeURIComponent(request.itemId)}` : "";
+    return this.httpClient.post(`${GLOSSARY_ENDPOINTS.RECHECK}${query}`, {});
   };
 
   getWebhook = (): Promise<IWebhookConfig | null> => {
