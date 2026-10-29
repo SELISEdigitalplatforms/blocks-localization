@@ -6,12 +6,6 @@ import { openGlossary, openModules } from "../../support/localization-helpers";
 
 const META_PREFIX = "@@glossary-meta:v1@@";
 
-const parseMeta = (additionalNote: unknown) => {
-  const text = String(additionalNote);
-  expect(text.startsWith(META_PREFIX)).toBe(true);
-  return JSON.parse(text.slice(META_PREFIX.length));
-};
-
 test.describe("Glossary", () => {
   test("Glossary — full flow", async ({ page }) => {
     test.setTimeout(180_000);
@@ -19,7 +13,7 @@ test.describe("Glossary", () => {
 
     const glossary = new GlossaryPage(page);
 
-    await test.step("Glossary Management page loads", async () => {
+    await test.step("Glossary page loads", async () => {
       await glossary.expectPageLoaded();
     });
 
@@ -62,27 +56,29 @@ test.describe("Glossary", () => {
       await glossary.fillInternalNote("This is Additional Notes");
     });
 
-    await test.step("Add glossary and verify the saved terminology data (H3, H11)", async () => {
+    await test.step("Add glossary and verify the saved structured fields (SPEC7 H1, H2)", async () => {
       const payload = await glossary.saveAndCapturePayload();
       await glossary.expectAddSuccess(glossaryName);
 
-      const meta = parseMeta(payload.additionalNote);
-      expect(meta.rule).toBe("translate");
+      // SPEC7: real fields; no JSON in additionalNote and no marker in context.
+      expect(payload.rule).toBe("translate");
+      expect(payload.status).toBe("approved");
+      expect(payload.caseSensitive).toBe(false);
       // No variants were entered, so the new term stores none.
-      expect(meta.variants ?? []).toEqual([]);
-      expect(meta.note).toBe("This is Additional Notes");
+      expect(payload.variants ?? []).toEqual([]);
+      expect(payload.additionalNote).toBe("This is Additional Notes");
+      expect(String(payload.additionalNote)).not.toContain("@@glossary-meta");
+      expect(payload.context).toBe("This is a Testing context.");
       expect(payload.isGlobal).toBe(false);
       expect((payload.moduleIds as string[]).length).toBe(1);
 
       if (translationCodes.length > 0) {
         const [code] = translationCodes;
-        expect(meta.translations).toEqual({ [code]: "Arbeitsbereich" });
-        expect(meta.forbidden).toEqual({ [code]: ["Werkbereich"] });
-        expect(payload.context).toBe(
-          `This is a Testing context. ⟦rule: ${code}→Arbeitsbereich; avoid ${code}: Werkbereich⟧`,
-        );
+        expect(payload.translations).toEqual([
+          { language: code, value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] },
+        ]);
       } else {
-        expect(payload.context).toBe("This is a Testing context.");
+        expect(payload.translations ?? []).toEqual([]);
       }
     });
 
@@ -199,7 +195,7 @@ test.describe("Glossary", () => {
       expect(second.context).toBe(first.context);
     });
 
-    await test.step("Keep hides translations and writes the keep marker (H10, H11)", async () => {
+    await test.step("Keep hides translations and saves the structured rule (H10, H11)", async () => {
       await glossary.clickEditButton();
       await glossary.setRule("Keep");
       await expect(glossary.editorSheet.getByRole("heading", { name: "Translations" })).toHaveCount(
@@ -208,9 +204,9 @@ test.describe("Glossary", () => {
       await glossary.setScope("Whole project");
       const payload = await glossary.saveAndCapturePayload();
       await glossary.expectEditSuccess(glossaryName);
-      expect(String(payload.context).endsWith("⟦rule: keep as-is in all languages⟧")).toBe(true);
+      expect(payload.context).toBe("This is a Testing context.");
       expect(payload).toMatchObject({ isGlobal: true, moduleIds: [] });
-      expect(parseMeta(payload.additionalNote).rule).toBe("keep");
+      expect(payload.rule).toBe("keep");
       await expect(page.getByText("Kept as-is in all languages.")).toBeVisible();
     });
 
@@ -239,11 +235,85 @@ test.describe("Glossary", () => {
       await expect(
         page.getByText("Glossary item deleted successfully.", { exact: true }),
       ).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByRole("heading", { name: "Glossary Management" })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "Glossary", exact: true })).toBeVisible({
         timeout: 15_000,
       });
       page.off("request", onRequest);
       expect(cascadeRequests).toEqual(["Glossary/Delete"]);
+    });
+  });
+
+  test("Glossary — server search escaping and version conflicts (SPEC5)", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openGlossary(page);
+    const glossary = new GlossaryPage(page);
+    await glossary.expectPageLoaded();
+
+    const stamp = Date.now();
+    const searchText = `C++ (beta) ${stamp}`;
+    const name = `E2E ${searchText}`;
+    const otherTabName = `${name} tab1`;
+
+    await test.step("Create a term whose name has regex characters", async () => {
+      await glossary.openNewGlossaryDialog();
+      await glossary.fillGlossaryName(name);
+      await glossary.clickSaveButton();
+      await glossary.expectAddSuccess(name);
+    });
+
+    await test.step("Search sends the raw text and finds the term (H1, H2)", async () => {
+      const searchRequest = page.waitForRequest(
+        (request) =>
+          /\/Glossary\/Gets/.test(request.url()) &&
+          new URL(request.url()).searchParams.get("SearchText") === searchText,
+      );
+      await glossary.searchGlossaries(searchText);
+      await searchRequest;
+      await glossary.expectGlossaryRowVisible(name);
+    });
+
+    await test.step("A stale save shows the conflict Alert; Reload latest shows the newer values (H11, C2)", async () => {
+      await glossary.openGlossaryDetail(name);
+      await glossary.clickEditButton();
+
+      // A second tab saves first, so the first tab's editor is now stale.
+      const otherPage = await page.context().newPage();
+      try {
+        await openGlossary(otherPage);
+        const other = new GlossaryPage(otherPage);
+        await other.expectPageLoaded();
+        await other.searchGlossaries(searchText);
+        await other.openGlossaryDetail(name);
+        await other.clickEditButton();
+        await other.fillEditName(otherTabName);
+        await other.clickUpdateButton();
+        await other.expectEditSuccess(otherTabName);
+      } finally {
+        await otherPage.close();
+      }
+
+      const saveResponse = page.waitForResponse((response) =>
+        /\/Glossary\/Save/.test(response.url()),
+      );
+      await glossary.fillEditName(`${name} tab2`);
+      await glossary.clickUpdateButton();
+      // Still HTTP 200, with the Version error in validationErrors.
+      const response = await saveResponse;
+      expect(response.status()).toBe(200);
+      expect((await response.json()).validationErrors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ propertyName: "Version" })]),
+      );
+      await glossary.expectVersionConflict();
+
+      await glossary.reloadLatest();
+      await glossary.expectEditName(otherTabName);
+      await glossary.clickUpdateButton();
+      await glossary.expectEditSuccess(otherTabName);
+    });
+
+    await test.step("Clean up", async () => {
+      await glossary.goBackToList();
+      await glossary.deleteGlossaryFromList(otherTabName);
     });
   });
 
@@ -275,7 +345,7 @@ test.describe("Glossary", () => {
 
       await test.step("Saving twice without edits sends the same data (H5)", async () => {
         const first = await glossary.saveAndCapturePayload();
-        expect(parseMeta(first.additionalNote)).toEqual({ rule: "translate", note: "legacy note" });
+        expect(first).toMatchObject({ rule: "translate", additionalNote: "legacy note" });
         await expect(
           page.getByText("Glossary item updated successfully.", { exact: true }),
         ).toBeVisible({ timeout: 20_000 });
@@ -285,7 +355,7 @@ test.describe("Glossary", () => {
         expect(second.additionalNote).toBe(first.additionalNote);
       });
 
-      await test.step("Corrupt data warns, keeps the raw text and saves fresh JSON (C1)", async () => {
+      await test.step("Corrupt data warns and keeps the raw text as a plain note (C1)", async () => {
         await glossary.openEditFromList(corruptName);
         await expect(
           glossary.editorSheet.getByText(
@@ -294,7 +364,7 @@ test.describe("Glossary", () => {
         ).toBeVisible();
         await glossary.expectInternalNote(corruptNote);
         const payload = await glossary.saveAndCapturePayload();
-        expect(parseMeta(payload.additionalNote)).toEqual({ rule: "translate", note: corruptNote });
+        expect(payload).toMatchObject({ rule: "translate", additionalNote: corruptNote });
       });
     } finally {
       await test.step("Clean up fixtures", async () => {
@@ -371,10 +441,8 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(variantName);
         await glossary.expectAddSuccess(variantName);
-        const meta = parseMeta(payload.additionalNote);
-        // H13: the chip entered with Enter is saved in `variants`.
-        expect(meta.variants).toEqual([`${variantName}s`]);
-        expect(meta.caseSensitive ?? false).toBe(false);
+        expect(payload.variants).toEqual([`${variantName}s`]);
+        expect(payload.caseSensitive).toBe(false);
       });
 
       await test.step("Case-sensitive on is saved (H14)", async () => {
@@ -386,15 +454,12 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(caseName);
         await glossary.expectAddSuccess(caseName);
-        const meta = parseMeta(payload.additionalNote);
-        // H14: the switch is saved as `caseSensitive`.
-        expect(meta).toMatchObject({ rule: "keep", caseSensitive: true });
+        expect(payload).toMatchObject({ rule: "keep", caseSensitive: true });
       });
 
       await test.step("Details pages show the variant chips and the badge (H13, H14)", async () => {
         await glossary.searchGlossaries(variantName);
         await glossary.openGlossaryDetail(variantName);
-        // H13: the details page lists the variants as chips.
         await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
         await expect(page.getByText(`${variantName}s`, { exact: true })).toBeVisible();
         await expect(page.getByText("Case-sensitive", { exact: true })).toHaveCount(0);
@@ -402,7 +467,6 @@ test.describe("Glossary", () => {
 
         await glossary.searchGlossaries(caseName);
         await glossary.openGlossaryDetail(caseName);
-        // H14: the "Case-sensitive" badge is shown when set; no variants row without variants.
         await expect(page.getByText("Case-sensitive", { exact: true })).toBeVisible();
         await expect(page.getByText("Variants:", { exact: true })).toHaveCount(0);
         await glossary.goBackToList();
@@ -459,13 +523,13 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         ids.module = await api.createModule(names.module);
         ids.term = await api.createGlossary({
           name: names.term,
-          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "translate" })}`,
+          rule: "translate",
           isGlobal: false,
           moduleIds: [ids.module],
         });
         ids.second = await api.createGlossary({
           name: names.second,
-          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "keep" })}`,
+          rule: "keep",
           isGlobal: true,
         });
         ids.key = await api.createKey({
@@ -627,7 +691,6 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
         expect(page.url()).toBe(listUrl);
         await page.keyboard.press("Escape");
-        // H11: Enter on the focused row opens the details page.
         await page.getByRole("row").filter({ hasText: names.term }).focus();
         await page.keyboard.press("Enter");
         await expect(page.getByRole("heading", { name: names.term })).toBeVisible({
@@ -641,7 +704,8 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
       });
 
       await test.step("Step 6: unknown tagged glossary and search error (C7, C9)", async () => {
-        // Force the key's tags to resolve through Glossary/Get, and make one of them fail.
+        // Force the key's tags to resolve through Glossary/GetByIds, and leave one of them out
+        // of its response, as the server does for a deleted glossary (SPEC7 C7).
         const emptyLists = (route: import("@playwright/test").Route) => {
           const url = new URL(route.request().url());
           if (url.searchParams.get("ModuleId") || url.searchParams.get("IsGlobal")) {
@@ -652,12 +716,16 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           }
           return route.fulfill({ json: { items: [], totalCount: 0 } });
         };
-        const missing = (route: import("@playwright/test").Route) =>
-          new URL(route.request().url()).searchParams.get("itemId") === ids.term
-            ? route.fulfill({ status: 404, json: {} })
-            : route.continue();
+        const missing = async (route: import("@playwright/test").Route) => {
+          const response = await route.fetch();
+          const body = (await response.json()) as { items: { itemId: string }[] };
+          await route.fulfill({
+            response,
+            json: { items: body.items.filter((item) => item.itemId !== ids.term) },
+          });
+        };
         await page.route(/\/Glossary\/Gets/, emptyLists);
-        await page.route(/\/Glossary\/Get\?/, missing);
+        await page.route(/\/Glossary\/GetByIds/, missing);
         try {
           await translations.openKeyDetails(ids.key);
           await page.getByRole("button", { name: "Tag Glossary" }).click();
@@ -676,7 +744,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           await keyTagDialog.getByRole("button", { name: "Cancel" }).click();
         } finally {
           await page.unroute(/\/Glossary\/Gets/, emptyLists);
-          await page.unroute(/\/Glossary\/Get\?/, missing);
+          await page.unroute(/\/Glossary\/GetByIds/, missing);
         }
       });
 

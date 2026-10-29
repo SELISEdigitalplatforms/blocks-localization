@@ -8,6 +8,7 @@ import { IGlossary } from "@blocks-localization/models/language";
 import GlossaryEditorSheet from "./glossary-editor-sheet";
 
 const saveGlossaryAsync = vi.fn();
+const fetchLatestGlossary = vi.fn();
 const navigate = vi.fn();
 
 vi.mock("react-router", async (importOriginal) => ({
@@ -27,6 +28,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguages: vi.fn(),
   useGetLanguageModules: vi.fn(),
   useSearchGlossaries: vi.fn(),
+  useFetchLatestGlossary: vi.fn(),
 }));
 
 const PREFIX = "@@glossary-meta:v1@@";
@@ -64,7 +66,9 @@ const addChip = (input: HTMLElement, value: string) => {
 };
 
 const openForbidden = (code: string) => {
-  const row = screen.getByLabelText((label) => label.endsWith(`(${code})`)).closest("div")!;
+  const row = screen
+    .getByLabelText((label) => label.endsWith(`(${code})`))
+    .closest<HTMLElement>("div.grid")!;
   fireEvent.click(within(row).getByRole("button", { name: /Forbidden alternatives/ }));
 };
 
@@ -76,6 +80,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       isPending: false,
       mutateAsync: saveGlossaryAsync,
     } as never);
+    vi.mocked(hooks.useFetchLatestGlossary).mockReturnValue(fetchLatestGlossary);
     vi.mocked(hooks.useGetLanguages).mockReturnValue({
       data: [
         { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
@@ -115,11 +120,11 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(screen.queryByLabelText("English (en-US)")).toBeNull();
   });
 
-  it("should send the metadata and context of Example 2 (H3)", async () => {
+  it("should send the structured fields of Example 1, with no marker or JSON (H1, H2)", async () => {
     renderSheet();
     typeName("Workspace new");
     fireEvent.change(screen.getByLabelText("German (de-DE)"), {
-      target: { value: "Arbeitsbereich" },
+      target: { value: " Arbeitsbereich " },
     });
     fireEvent.change(screen.getByLabelText("French (fr-FR)"), {
       target: { value: "Espace de travail" },
@@ -127,19 +132,29 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     openForbidden("de-DE");
     addChip(screen.getByLabelText("Forbidden alternatives for German (de-DE)"), "Werkbereich");
     fireEvent.change(screen.getByPlaceholderText("What the term means"), {
-      target: { value: "A container for projects shared by a team." },
+      target: { value: "A container for projects shared by a team. " },
     });
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     expect(lastPayload()).toEqual({
       name: "Workspace new",
-      language: "",
+      // A new term starts in the project default language (Phase 8 H9).
+      language: "en-US",
       type: "",
-      context:
-        "A container for projects shared by a team. ⟦rule: de-DE→Arbeitsbereich; fr-FR→Espace de travail; avoid de-DE: Werkbereich⟧",
-      additionalNote: `${PREFIX}{"rule":"translate","translations":{"de-DE":"Arbeitsbereich","fr-FR":"Espace de travail"},"forbidden":{"de-DE":["Werkbereich"]}}`,
+      context: "A container for projects shared by a team.",
+      additionalNote: "",
       isGlobal: true,
       moduleIds: [],
+      rule: "translate",
+      caseSensitive: false,
+      variants: [],
+      translations: [
+        { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] },
+        { language: "fr-FR", value: "Espace de travail", forbiddenValues: [] },
+      ],
+      status: "approved",
+      partOfSpeech: "",
+      usageExamples: [],
     });
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ description: "Glossary item added successfully." }),
@@ -152,32 +167,81 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(screen.getByRole("radio", { name: "Translate" }).getAttribute("aria-checked")).toBe(
       "true",
     );
-    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
       "legacy note",
     );
   });
 
-  it("should save an unchanged structured term byte-identically and keep unknown cultures (H5, C3)", async () => {
-    const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"],"translations":{"de-DE":"Arbeitsbereich","it-IT":"Area di lavoro"},"forbidden":{"de-DE":["Werkbereich"]},"note":"n"}`;
-    renderSheet(makeGlossary({ additionalNote }));
+  it("should send back unknown cultures and inactive values unchanged (C6)", async () => {
+    renderSheet(
+      makeGlossary({
+        rule: "keep",
+        caseSensitive: true,
+        variants: ["workspaces"],
+        translations: [
+          { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] },
+          { language: "it-IT", value: "Area di lavoro", forbiddenValues: [] },
+        ],
+        additionalNote: "n",
+        version: 3,
+      }),
+    );
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload().additionalNote).toBe(additionalNote);
-    expect(lastPayload().itemId).toBe("g1");
+    expect(lastPayload()).toMatchObject({
+      itemId: "g1",
+      rule: "keep",
+      caseSensitive: true,
+      variants: ["workspaces"],
+      translations: [
+        { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] },
+        { language: "it-IT", value: "Area di lavoro", forbiddenValues: [] },
+      ],
+      additionalNote: "n",
+      version: 3,
+    });
   });
 
-  it("should warn about corrupt data, pre-fill the raw note and save fresh JSON (C1)", async () => {
+  it("should open a legacy term with the API fields and the note from its JSON (H3, Example 2)", async () => {
+    renderSheet(
+      makeGlossary({
+        schemaVersion: 0,
+        context: "A container. ⟦rule: de-DE→Arbeitsbereich⟧",
+        additionalNote: `${PREFIX}{"rule":"translate","translations":{"de-DE":"Alt"},"note":"From JSON"}`,
+        rule: "translate",
+        variants: ["workspaces"],
+        translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] }],
+      }),
+    );
+    expect((screen.getByLabelText("German (de-DE)") as HTMLInputElement).value).toBe(
+      "Arbeitsbereich",
+    );
+    expect(screen.getByText("workspaces")).toBeTruthy();
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
+      "From JSON",
+    );
+    expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
+      "A container.",
+    );
+    save();
+    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+    expect(lastPayload()).toMatchObject({
+      context: "A container.",
+      additionalNote: "From JSON",
+      translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] }],
+    });
+  });
+
+  it("should warn about corrupt data, pre-fill the raw note and save it as plain text (C1)", async () => {
     const raw = `${PREFIX}{broken`;
     renderSheet(makeGlossary({ additionalNote: raw }));
     expect(
       screen.getByText("Stored terminology data could not be read. Saving will replace it."),
     ).toBeTruthy();
-    expect((screen.getByLabelText("Additional note") as HTMLTextAreaElement).value).toBe(raw);
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(raw);
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    const saved: string = lastPayload().additionalNote;
-    expect(saved.startsWith(PREFIX)).toBe(true);
-    expect(JSON.parse(saved.slice(PREFIX.length))).toEqual({ rule: "translate", note: raw });
+    expect(lastPayload()).toMatchObject({ additionalNote: raw, rule: "translate" });
   });
 
   it("should disable editing for an unsupported version (C2)", () => {
@@ -189,7 +253,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect((nameInput().closest("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
   });
 
-  it("should hide translations for Keep and write the keep marker (H10)", async () => {
+  it("should hide translations for Keep and save the rule without a marker (H10)", async () => {
     renderSheet(makeGlossary({ name: "SELISE" }));
     fireEvent.click(screen.getByRole("radio", { name: "Keep" }));
     expect(screen.queryByRole("heading", { name: "Translations" })).toBeNull();
@@ -198,7 +262,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     });
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload().context).toBe("Company name. ⟦rule: keep as-is in all languages⟧");
+    expect(lastPayload()).toMatchObject({ context: "Company name.", rule: "keep" });
   });
 
   it("should show only forbidden alternatives for the Forbidden rule", async () => {
@@ -208,11 +272,60 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     addChip(screen.getByLabelText("Forbidden alternatives for German (de-DE)"), "Werkraum");
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload().context).toBe("⟦rule: do not use this term; avoid de-DE: Werkraum⟧");
+    expect(lastPayload()).toMatchObject({
+      context: "",
+      rule: "forbidden",
+      translations: [{ language: "de-DE", value: "", forbiddenValues: ["Werkraum"] }],
+    });
+  });
+
+  describe("status", () => {
+    const statusTrigger = () => screen.getByRole("combobox", { name: "Status" });
+
+    it("should show the Status select after Rule with its helper text, Approved on create (H2)", () => {
+      renderSheet();
+      expect(statusTrigger().textContent).toContain("Approved");
+      expect(screen.getByText("Only Approved terms are sent to the AI.")).toBeTruthy();
+      const keep = screen.getByRole("radio", { name: "Keep" });
+      expect(
+        keep.compareDocumentPosition(statusTrigger()) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        statusTrigger().compareDocumentPosition(
+          screen.getByRole("switch", { name: "Case-sensitive" }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("should load the stored status and save a changed one", async () => {
+      renderSheet(makeGlossary({ status: "draft" }));
+      expect(statusTrigger().textContent).toContain("Draft");
+      fireEvent.click(statusTrigger());
+      fireEvent.click(await screen.findByRole("option", { name: "Deprecated" }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().status).toBe("deprecated");
+    });
+
+    it("should open a legacy term without a status as Approved", async () => {
+      renderSheet(makeGlossary());
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().status).toBe("approved");
+    });
+  });
+
+  it("should show the server error and keep the sheet open without glossary::save (C13)", async () => {
+    saveGlossaryAsync.mockResolvedValue({ success: false, errorMessage: "Forbidden" });
+    const onOpenChange = vi.fn();
+    renderSheet(makeGlossary(), onOpenChange);
+    save();
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith({ errors: "Forbidden" }));
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   describe("variants and case-sensitive", () => {
-    const savedMeta = () => JSON.parse(lastPayload().additionalNote.slice(PREFIX.length));
+    const savedMeta = () => lastPayload();
 
     it("should add variants with Enter, comma or leaving the field as removable chips (H13)", async () => {
       renderSheet(makeGlossary());
@@ -250,8 +363,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     });
 
     it("should load stored values and save edits to them (H13, H14)", async () => {
-      const additionalNote = `${PREFIX}{"rule":"translate","caseSensitive":true,"variants":["workspaces"]}`;
-      renderSheet(makeGlossary({ additionalNote }));
+      renderSheet(makeGlossary({ caseSensitive: true, variants: ["workspaces"] }));
       const toggle = screen.getByRole("switch", { name: "Case-sensitive" });
       expect(toggle.getAttribute("aria-checked")).toBe("true");
       expect(screen.getByText("workspaces")).toBeTruthy();
@@ -322,35 +434,35 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(saveGlossaryAsync).not.toHaveBeenCalled();
   });
 
-  it("should block saving more than 20,000 characters of terminology data (C6)", async () => {
+  it("should not limit the size of the terminology data, which is no longer serialized", async () => {
     renderSheet(
       makeGlossary({
-        additionalNote: `${PREFIX}{"rule":"translate","translations":{"it-IT":"${"x".repeat(20000)}"}}`,
+        translations: [{ language: "it-IT", value: "x".repeat(20000), forbiddenValues: [] }],
       }),
     );
     save();
-    expect(await screen.findByText("Too much terminology data for one term")).toBeTruthy();
-    expect(saveGlossaryAsync).not.toHaveBeenCalled();
+    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+    expect(screen.queryByText("Too much terminology data for one term")).toBeNull();
   });
 
-  it("should strip marker characters from the context only (C8)", async () => {
+  it("should save translation values as typed, without a marker in the context (C8)", async () => {
     renderSheet(makeGlossary());
     fireEvent.change(screen.getByLabelText("German (de-DE)"), {
       target: { value: 'A;B→"C"' },
     });
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload().context).toBe("⟦rule: de-DE→A B C⟧");
-    expect(JSON.parse(lastPayload().additionalNote.slice(PREFIX.length)).translations).toEqual({
-      "de-DE": 'A;B→"C"',
-    });
+    expect(lastPayload().context).toBe("");
+    expect(lastPayload().translations).toEqual([
+      { language: "de-DE", value: 'A;B→"C"', forbiddenValues: [] },
+    ]);
   });
 
-  it("should load the definition without the marker and save exactly one marker (C9)", async () => {
+  it("should load the definition without the marker and save it without one (C9)", async () => {
     renderSheet(
       makeGlossary({
         context: "A container. ⟦rule: de-DE→Alt⟧",
-        additionalNote: `${PREFIX}{"rule":"translate","translations":{"de-DE":"Neu"}}`,
+        translations: [{ language: "de-DE", value: "Neu", forbiddenValues: [] }],
       }),
     );
     expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
@@ -358,7 +470,9 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     );
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload().context).toBe("A container. ⟦rule: de-DE→Neu⟧");
+    expect(lastPayload().context).toBe("A container.");
+    expect(lastPayload().context).not.toContain("⟦rule:");
+    expect(lastPayload().additionalNote).not.toContain("@@glossary-meta");
   });
 
   it("should save no marker when Translate has no data (C10)", async () => {
@@ -460,6 +574,29 @@ describe("modals/glossary/glossary-editor-sheet", () => {
   });
 
   describe("picker-mode props", () => {
+    it.each([
+      [true, 0],
+      [false, 1],
+    ])(
+      "with isolateEvents=%s, a click and a key press in the sheet bubble out %i time(s)",
+      (isolateEvents, times) => {
+        const onClick = vi.fn();
+        const onKeyDown = vi.fn();
+        document.addEventListener("click", onClick);
+        document.addEventListener("keydown", onKeyDown);
+        try {
+          render(<GlossaryEditorSheet open onOpenChange={vi.fn()} isolateEvents={isolateEvents} />);
+          fireEvent.click(nameInput());
+          fireEvent.keyDown(nameInput(), { key: "a" });
+          expect(onClick).toHaveBeenCalledTimes(times);
+          expect(onKeyDown).toHaveBeenCalledTimes(times);
+        } finally {
+          document.removeEventListener("click", onClick);
+          document.removeEventListener("keydown", onKeyDown);
+        }
+      },
+    );
+
     it("should pre-fill the name from initialName and call onSaved with the trimmed name", async () => {
       const onOpenChange = vi.fn();
       const onSaved = vi.fn();
@@ -608,6 +745,158 @@ describe("modals/glossary/glossary-editor-sheet", () => {
           expect.objectContaining({ name: "workspace" }),
         ),
       );
+    });
+  });
+
+  describe("version conflict (SPEC5)", () => {
+    const CONFLICT_TEXT =
+      "This term was changed by someone else. Reload the latest version and re-apply your changes.";
+    const versionError = {
+      propertyName: "Version",
+      errorMessage: "This glossary was changed by someone else. Reload and try again.",
+    };
+    const reloadButton = () => screen.getByRole("button", { name: "Reload latest" });
+
+    const renderConflict = async (
+      glossary = makeGlossary({ version: 4 }),
+      onOpenChange = vi.fn(),
+    ) => {
+      saveGlossaryAsync.mockResolvedValueOnce({ success: false, validationErrors: [versionError] });
+      renderSheet(glossary, onOpenChange);
+      typeName("Workspace edited");
+      save();
+      await screen.findByText(CONFLICT_TEXT);
+      return onOpenChange;
+    };
+
+    it("should send the version the sheet was opened with on edit", async () => {
+      renderSheet(makeGlossary({ version: 4 }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().version).toBe(4);
+    });
+
+    it("should send version 0 for a legacy term", async () => {
+      renderSheet(makeGlossary({ version: 0 }));
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().version).toBe(0);
+    });
+
+    it("should not send a version on create", async () => {
+      renderSheet();
+      typeName("Brand new");
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload()).not.toHaveProperty("version");
+    });
+
+    it("should show the Alert instead of a toast and keep the user's input", async () => {
+      const onOpenChange = await renderConflict();
+      expect(screen.getByRole("alert").textContent).toContain(CONFLICT_TEXT);
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+    });
+
+    it("should show the Alert for the Version error and a toast for each other error (C16)", async () => {
+      saveGlossaryAsync.mockResolvedValueOnce({
+        success: false,
+        validationErrors: [
+          versionError,
+          { propertyName: "Name", errorMessage: "Glossary name must be unique." },
+        ],
+      });
+      renderSheet(makeGlossary({ version: 4 }));
+      typeName("Workspace edited");
+      save();
+      expect(await screen.findByText(CONFLICT_TEXT)).toBeTruthy();
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "Glossary name must be unique." });
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+    });
+
+    it("should remount the form with the fresh term, re-reading its stored fields (H11, C5)", async () => {
+      await renderConflict(makeGlossary({ version: 4, additionalNote: "plain old note" }));
+      fetchLatestGlossary.mockResolvedValue(
+        makeGlossary({
+          name: "Workspace v5",
+          version: 5,
+          moduleIds: ["m1"],
+          isGlobal: false,
+          caseSensitive: true,
+          variants: ["workspaces"],
+          status: "draft",
+        }),
+      );
+
+      fireEvent.click(reloadButton());
+
+      await waitFor(() => expect(screen.queryByText(CONFLICT_TEXT)).toBeNull());
+      expect(fetchLatestGlossary).toHaveBeenCalledWith("g1");
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace v5");
+      expect(screen.getByText("workspaces")).toBeTruthy();
+      expect(
+        screen.getByRole("switch", { name: /Case-sensitive/ }).getAttribute("aria-checked"),
+      ).toBe("true");
+      expect(screen.queryByLabelText("Internal note")).toBeNull();
+
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalledTimes(2));
+      expect(lastPayload()).toMatchObject({
+        name: "Workspace v5",
+        version: 5,
+        moduleIds: ["m1"],
+        caseSensitive: true,
+        variants: ["workspaces"],
+        status: "draft",
+      });
+    });
+
+    it("should show a spinner and disable Reload latest while refetching", async () => {
+      await renderConflict();
+      fetchLatestGlossary.mockReturnValue(new Promise(() => {}));
+      fireEvent.click(reloadButton());
+      await waitFor(() => expect((reloadButton() as HTMLButtonElement).disabled).toBe(true));
+      expect(reloadButton().querySelector(".animate-spin")).toBeTruthy();
+      fireEvent.click(reloadButton());
+      expect(fetchLatestGlossary).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep the form and the Alert and toast when the refetch fails", async () => {
+      const onOpenChange = await renderConflict();
+      fetchLatestGlossary.mockRejectedValue(new Error("network"));
+      fireEvent.click(reloadButton());
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
+      );
+      expect(screen.getByText(CONFLICT_TEXT)).toBeTruthy();
+      expect((nameInput() as HTMLInputElement).value).toBe("Workspace edited");
+      expect((reloadButton() as HTMLButtonElement).disabled).toBe(false);
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("should close with a toast when the term was deleted meanwhile", async () => {
+      const onOpenChange = await renderConflict();
+      fetchLatestGlossary.mockRejectedValue(Object.assign(new Error("Not found"), { status: 404 }));
+      fireEvent.click(reloadButton());
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "This term no longer exists." });
+    });
+
+    it("should toast an ItemId error and keep the sheet open", async () => {
+      saveGlossaryAsync.mockResolvedValueOnce({
+        success: false,
+        validationErrors: [{ propertyName: "ItemId", errorMessage: "Glossary item not found" }],
+      });
+      const onOpenChange = vi.fn();
+      renderSheet(makeGlossary({ version: 4 }), onOpenChange);
+      save();
+      await waitFor(() =>
+        expect(showErrorToast).toHaveBeenCalledWith({ errors: "Glossary item not found" }),
+      );
+      expect(screen.queryByText(CONFLICT_TEXT)).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
     });
   });
 });

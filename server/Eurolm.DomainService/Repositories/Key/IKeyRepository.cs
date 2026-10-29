@@ -19,6 +19,33 @@ namespace Eurolm.DomainService.Repositories
         Task<bool> HasKeysInModuleAsync(string moduleId);
         Task MoveKeysAsync(IReadOnlyCollection<string> itemIds, string targetModuleId);
         Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds);
+
+        /// <summary>
+        /// Pulls the glossary id from GlossaryIds and the glossary's entries from GlossaryViolations of every key
+        /// in the tenant, in one update. Returns the modified count.
+        /// </summary>
+        Task<long> RemoveGlossaryIdFromKeysAsync(string glossaryId);
+
+        Task SetGlossaryViolationsAsync(string keyId, List<KeyGlossaryViolation> violations);
+
+        /// <summary>
+        /// One page of keys for the glossary re-check, ordered by ItemId after <paramref name="afterItemId"/>, with
+        /// only ItemId, ModuleId, GlossaryIds, Resources and GlossaryViolations loaded. A null scope selects every key.
+        /// </summary>
+        Task<List<BlocksLanguageKey>> GetKeysForGlossaryRecheckAsync(GlossaryRecheckKeyScope? scope, string? afterItemId, int pageSize);
+
+        /// <summary>Sets GlossaryViolations ($set, nothing else) of each key in one unordered bulk write. Returns the modified count.</summary>
+        Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)> updates);
+
+        /// <summary>Tagged key count, one page of tagged keys, their module ids and the count of keys with violations of the glossary.</summary>
+        Task<GlossaryKeyUsage> GetGlossaryKeyUsageAsync(string glossaryId, int pageNumber, int pageSize);
+
+        /// <summary>
+        /// Removes GlossaryIds entries that reference no existing glossary, in batches. Returns the number of
+        /// entries removed (or that would be removed, with <paramref name="dryRun"/>).
+        /// </summary>
+        Task<long> RemoveStaleGlossaryIdsAsync(IReadOnlyCollection<string> existingGlossaryIds, bool dryRun, int batchSize = 200);
+
         Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size);
         Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys);
         Task<T> GetUilmResourceKey<T>(Expression<Func<BlocksLanguageKey, bool>> expression);

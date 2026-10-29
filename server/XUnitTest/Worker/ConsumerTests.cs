@@ -43,6 +43,18 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task RecheckGlossaryViolationsEventConsumer_Consume_RunsTheRecheck()
+        {
+            var evt = new RecheckGlossaryViolationsEvent { ProjectKey = "p1", GlossaryId = "g1" };
+            var recheck = new Mock<IGlossaryRecheckService>();
+            recheck.Setup(x => x.RecheckAsync(evt)).ReturnsAsync(new GlossaryRecheckResult { Ran = true });
+
+            await new RecheckGlossaryViolationsEventConsumer(recheck.Object).Consume(evt);
+
+            recheck.Verify(x => x.RecheckAsync(evt), Times.Once);
+        }
+
+        [Fact]
         public async Task TranslateBlocksLanguageKeyEventConsumer_Consume_TranslatesAndPublishes()
         {
             var evt = new TranslateBlocksLanguageKeyEvent { MessageCoRelationId = "cor-2", KeyId = "k1", DefaultLanguage = "en" };

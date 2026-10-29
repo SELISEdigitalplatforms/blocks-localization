@@ -26,7 +26,9 @@ namespace BlocksTemplate.Api.Controllers
             var response = await _assistantService.SuggestTranslation(request);
             return StatusCode((int)HttpStatusCode.OK, new
             {
-                Content = response
+                Content = response?.Content,
+                AppliedTerms = response?.AppliedTerms ?? new List<AppliedTerm>(),
+                GlossaryViolations = response?.GlossaryViolations ?? new List<GlossaryViolationDto>()
             });
         }
     }

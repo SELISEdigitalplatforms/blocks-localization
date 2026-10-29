@@ -120,7 +120,6 @@ export class ModulesPage {
     await expect(this.page.getByRole("heading", { name: "Tag Glossary" })).toBeVisible();
   }
 
-  /** The Tag Glossary dialog and its shared glossary picker (SPEC4). */
   get tagGlossaryDialog() {
     return this.page.getByRole("dialog", { name: "Tag Glossary" });
   }

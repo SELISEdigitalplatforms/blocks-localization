@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { EllipsisVertical, Languages, Trash, Wand } from "lucide-react";
+import { memo, useRef, useState } from "react";
+import { EllipsisVertical, Languages, Plus, Trash, Wand } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DropdownMenu,
@@ -20,8 +20,9 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
-import { GlossaryUnavailableNote } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
+import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
+import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -106,6 +107,9 @@ export const InlineKeyDetails = memo(
       sortedLanguages,
       sourceMatches,
     } = useInlineKeyEditor(keyDetails, languageListData);
+    const sourceRef = useRef<HTMLTextAreaElement>(null);
+    const sourceSelection = useSourceTextSelection(sourceRef);
+    const [addTermName, setAddTermName] = useState<string | undefined>(undefined);
 
     return (
       <div className="space-y-5 px-4 py-5">
@@ -183,9 +187,24 @@ export const InlineKeyDetails = memo(
                         setTranslation(language.languageCode, event.target.value)
                       }
                       onClick={(event) => event.stopPropagation()}
+                      ref={language.isDefault ? sourceRef : undefined}
                     />
-                    {glossaryRow.glossaryUnavailable && (
-                      <GlossaryUnavailableNote className="mt-1" />
+                    {language.isDefault && sourceSelection && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-fit gap-1"
+                        // Keeps the text selected while clicking.
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setAddTermName(sourceSelection);
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                        Add to glossary
+                      </Button>
                     )}
                     {!language.isDefault && (
                       <GlossaryTargetChecklist
@@ -208,6 +227,16 @@ export const InlineKeyDetails = memo(
             </div>
           </TooltipProvider>
         </div>
+
+        {/* React events from the portalled sheet would bubble here; keep them away from the row. */}
+        <GlossaryEditorSheet
+          open={addTermName !== undefined}
+          onOpenChange={(open) => {
+            if (!open) setAddTermName(undefined);
+          }}
+          initialName={addTermName}
+          isolateEvents
+        />
 
         <div className="sticky left-4 flex w-[calc(100cqw-2rem)] flex-col-reverse gap-2 border-t border-blocks-primary-50 pt-4 dark:border-blocks-primary-100 sm:flex-row sm:items-center sm:justify-end">
           {hasEmptyChange && (

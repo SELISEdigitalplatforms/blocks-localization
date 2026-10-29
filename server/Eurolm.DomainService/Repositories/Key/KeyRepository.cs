@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Repositories
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
         private const string KeyNameField = "KeyName";
+        private const string MatchStage = "$match";
 
         public const int DefaultKeyPageSize = 10;
         public const int MaxKeyPageSize = 1000;
@@ -192,7 +193,7 @@ namespace Eurolm.DomainService.Repositories
 
         public static PipelineDefinition<BsonDocument, BsonDocument> DuplicateKeyIdsPipeline(int limit) => new[]
         {
-            new BsonDocument("$match", new BsonDocument
+            new BsonDocument(MatchStage, new BsonDocument
             {
                 { "ModuleId", new BsonDocument("$type", "string") },
                 { KeyNameField, new BsonDocument("$type", "string") },
@@ -203,7 +204,7 @@ namespace Eurolm.DomainService.Repositories
                 { "count", new BsonDocument("$sum", 1) },
                 { "members", new BsonDocument("$push", new BsonDocument { { "id", "$_id" }, { "created", "$CreateDate" } }) },
             }),
-            new BsonDocument("$match", new BsonDocument("count", new BsonDocument("$gt", 1))),
+            new BsonDocument(MatchStage, new BsonDocument("count", new BsonDocument("$gt", 1))),
             new BsonDocument("$unwind", "$members"),
             new BsonDocument("$sort", new BsonDocument
             {
@@ -220,6 +221,18 @@ namespace Eurolm.DomainService.Repositories
             var filterBuilder = Builders<Key>.Filter;
             var matchFilters = new List<FilterDefinition<Key>>();
 
+            AddSearchTextFilters(query, filterBuilder, matchFilters);
+            AddResourceSearchFilters(query, filterBuilder, matchFilters);
+            AddModuleFilter(query, filterBuilder, matchFilters);
+            AddDateRangeFilters(query, filterBuilder, matchFilters);
+            AddMissingLanguagesFilter(query, filterBuilder, matchFilters);
+            AddGlossaryFilters(query, filterBuilder, matchFilters);
+
+            return matchFilters.Count > 0 ? filterBuilder.And(matchFilters) : filterBuilder.Empty;
+        }
+
+        private static void AddSearchTextFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (!string.IsNullOrWhiteSpace(query.KeySearchText))
             {
                 var keyNameFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.KeySearchText)}.*", "i"));
@@ -233,35 +246,48 @@ namespace Eurolm.DomainService.Repositories
                 var searchKeyFilter = filterBuilder.Regex(KeyNameField, new BsonRegularExpression($".*{Regex.Escape(query.SearchKey)}.*", "i"));
                 matchFilters.Add(searchKeyFilter);
             }
+        }
 
-            if (query.ResourceSearchFilters != null && query.ResourceSearchFilters.Length > 0)
+        private static void AddResourceSearchFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.ResourceSearchFilters == null || query.ResourceSearchFilters.Length == 0)
             {
-                foreach (var resourceFilter in query.ResourceSearchFilters)
-                {
-                    if (!string.IsNullOrWhiteSpace(resourceFilter.SearchText) && !string.IsNullOrWhiteSpace(resourceFilter.Culture))
-                    {
-                        var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
-                            Builders<Resource>.Filter.And(
-                                Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
-                                Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
-                            ));
-                        matchFilters.Add(cultureAndValueFilter);
-                    }
-                }
+                return;
             }
 
-            if (query.ModuleIds != null && query.ModuleIds.Length > 0)
+            foreach (var resourceFilter in query.ResourceSearchFilters)
             {
-                if (query.ModuleIds.Length == 1 && !string.IsNullOrWhiteSpace(query.ModuleIds[0]))
+                if (!string.IsNullOrWhiteSpace(resourceFilter.SearchText) && !string.IsNullOrWhiteSpace(resourceFilter.Culture))
                 {
-                    matchFilters.Add(filterBuilder.Eq(x => x.ModuleId, query.ModuleIds[0]));
-                }
-                else if (query.ModuleIds.Length > 1)
-                {
-                    matchFilters.Add(filterBuilder.In(x => x.ModuleId, query.ModuleIds));
+                    var cultureAndValueFilter = filterBuilder.ElemMatch(x => x.Resources,
+                        Builders<Resource>.Filter.And(
+                            Builders<Resource>.Filter.Eq(r => r.Culture, resourceFilter.Culture),
+                            Builders<Resource>.Filter.Regex(r => r.Value, new BsonRegularExpression($".*{Regex.Escape(resourceFilter.SearchText)}.*", "i"))
+                        ));
+                    matchFilters.Add(cultureAndValueFilter);
                 }
             }
+        }
 
+        private static void AddModuleFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.ModuleIds == null || query.ModuleIds.Length == 0)
+            {
+                return;
+            }
+
+            if (query.ModuleIds.Length == 1 && !string.IsNullOrWhiteSpace(query.ModuleIds[0]))
+            {
+                matchFilters.Add(filterBuilder.Eq(x => x.ModuleId, query.ModuleIds[0]));
+            }
+            else if (query.ModuleIds.Length > 1)
+            {
+                matchFilters.Add(filterBuilder.In(x => x.ModuleId, query.ModuleIds));
+            }
+        }
+
+        private static void AddDateRangeFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (query.CreateDateRange != null)
             {
                 List<FilterDefinition<Key>> dateFilters = setDateFilter(query, filterBuilder);
@@ -279,40 +305,53 @@ namespace Eurolm.DomainService.Repositories
                     matchFilters.Add(filterBuilder.And(dateFilters));
                 }
             }
+        }
 
-            if (query.MissingLanguages != null && query.MissingLanguages.Count > 0)
+        private static void AddMissingLanguagesFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
+            if (query.MissingLanguages == null || query.MissingLanguages.Count == 0)
             {
-                // A key is "missing" a language if that language's resource is absent OR has an empty/null value.
-                // Return keys that are missing at least one of the requested languages.
-                var perLanguageFilters = query.MissingLanguages.Select(lang =>
-                    filterBuilder.Or(
-                        // Resource exists for this language but value is empty/null
-                        filterBuilder.ElemMatch(x => x.Resources,
-                            Builders<Resource>.Filter.And(
-                                Builders<Resource>.Filter.Eq(r => r.Culture, lang),
-                                Builders<Resource>.Filter.Or(
-                                    Builders<Resource>.Filter.Eq(r => r.Value, null),
-                                    Builders<Resource>.Filter.Eq(r => r.Value, "")
-                                )
-                            )
-                        ),
-                        // No resource exists at all for this language
-                        filterBuilder.Not(
-                            filterBuilder.ElemMatch(x => x.Resources,
-                                Builders<Resource>.Filter.Eq(r => r.Culture, lang)
-                            )
-                        )
-                    )
-                );
-                matchFilters.Add(filterBuilder.Or(perLanguageFilters));
+                return;
             }
 
+            // A key is "missing" a language if that language's resource is absent OR has an empty/null value.
+            // Return keys that are missing at least one of the requested languages.
+            var perLanguageFilters = query.MissingLanguages.Select(lang =>
+                filterBuilder.Or(
+                    // Resource exists for this language but value is empty/null
+                    filterBuilder.ElemMatch(x => x.Resources,
+                        Builders<Resource>.Filter.And(
+                            Builders<Resource>.Filter.Eq(r => r.Culture, lang),
+                            Builders<Resource>.Filter.Or(
+                                Builders<Resource>.Filter.Eq(r => r.Value, null),
+                                Builders<Resource>.Filter.Eq(r => r.Value, "")
+                            )
+                        )
+                    ),
+                    // No resource exists at all for this language
+                    filterBuilder.Not(
+                        filterBuilder.ElemMatch(x => x.Resources,
+                            Builders<Resource>.Filter.Eq(r => r.Culture, lang)
+                        )
+                    )
+                )
+            );
+            matchFilters.Add(filterBuilder.Or(perLanguageFilters));
+        }
+
+        private static void AddGlossaryFilters(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder, List<FilterDefinition<Key>> matchFilters)
+        {
             if (!string.IsNullOrWhiteSpace(query.GlossaryId))
             {
                 matchFilters.Add(filterBuilder.AnyEq(x => x.GlossaryIds, query.GlossaryId));
             }
 
-            return matchFilters.Count > 0 ? filterBuilder.And(matchFilters) : filterBuilder.Empty;
+            if (query.HasGlossaryViolations.HasValue)
+            {
+                // "GlossaryViolations.0" exists only when the array has at least one entry.
+                var hasViolations = filterBuilder.Exists("GlossaryViolations.0", true);
+                matchFilters.Add(query.HasGlossaryViolations.Value ? hasViolations : filterBuilder.Not(hasViolations));
+            }
         }
 
         private static List<FilterDefinition<Key>> setDateFilter(GetKeysRequest query, FilterDefinitionBuilder<Key> filterBuilder)
@@ -490,6 +529,180 @@ namespace Eurolm.DomainService.Repositories
             await collection.UpdateManyAsync(filter, update);
         }
 
+        public async Task<long> RemoveGlossaryIdFromKeysAsync(string glossaryId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(glossaryId);
+
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
+            _ = KeyIndexInitializer.EnsureStarted(tenantId, dataBase.GetCollection<Key>(_collectionName), _logger);
+
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            // A global or module term can leave violations on keys it isn't tagged on, so match those too.
+            var filter = Builders<BlocksLanguageKey>.Filter.Or(
+                Builders<BlocksLanguageKey>.Filter.AnyEq(k => k.GlossaryIds, glossaryId),
+                Builders<BlocksLanguageKey>.Filter.ElemMatch(k => k.GlossaryViolations, v => v.GlossaryId == glossaryId));
+            var update = Builders<BlocksLanguageKey>.Update
+                .Pull(k => k.GlossaryIds, glossaryId)
+                .PullFilter(k => k.GlossaryViolations, v => v.GlossaryId == glossaryId)
+                .Set(k => k.LastUpdateDate, DateTime.UtcNow);
+
+            var result = await collection.UpdateManyAsync(filter, update);
+            return result.ModifiedCount;
+        }
+
+        public async Task SetGlossaryViolationsAsync(string keyId, List<KeyGlossaryViolation> violations)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(keyId);
+            ArgumentNullException.ThrowIfNull(violations);
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var filter = Builders<BlocksLanguageKey>.Filter.Eq(k => k.ItemId, keyId);
+            var update = Builders<BlocksLanguageKey>.Update.Set(k => k.GlossaryViolations, violations);
+
+            await collection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task<List<BlocksLanguageKey>> GetKeysForGlossaryRecheckAsync(GlossaryRecheckKeyScope? scope, string? afterItemId, int pageSize)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var projection = Builders<BlocksLanguageKey>.Projection
+                .Include(k => k.ItemId)
+                .Include(k => k.ModuleId)
+                .Include(k => k.GlossaryIds)
+                .Include(k => k.Resources)
+                .Include(k => k.GlossaryViolations);
+
+            // Keyset paging on _id: stable while the job rewrites GlossaryViolations, unlike skip/limit.
+            return await collection.Find(BuildGlossaryRecheckFilter(scope, afterItemId))
+                .Sort(Builders<BlocksLanguageKey>.Sort.Ascending(k => k.ItemId))
+                .Limit(pageSize)
+                .Project<BlocksLanguageKey>(projection)
+                .ToListAsync();
+        }
+
+        public static FilterDefinition<BlocksLanguageKey> BuildGlossaryRecheckFilter(GlossaryRecheckKeyScope? scope, string? afterItemId)
+        {
+            var filterBuilder = Builders<BlocksLanguageKey>.Filter;
+            var filters = new List<FilterDefinition<BlocksLanguageKey>>();
+            if (!string.IsNullOrEmpty(afterItemId))
+                filters.Add(filterBuilder.Gt(k => k.ItemId, afterItemId));
+
+            if (scope != null)
+            {
+                var anyOf = new List<FilterDefinition<BlocksLanguageKey>>();
+                if (scope.GlossaryIds.Count > 0)
+                {
+                    anyOf.Add(filterBuilder.AnyIn(k => k.GlossaryIds, scope.GlossaryIds));
+                    anyOf.Add(filterBuilder.In("GlossaryViolations.GlossaryId", scope.GlossaryIds));
+                }
+                if (scope.ModuleIds.Count > 0)
+                    anyOf.Add(filterBuilder.In(k => k.ModuleId, scope.ModuleIds));
+                // An empty scope selects nothing (never every key).
+                filters.Add(anyOf.Count > 0 ? filterBuilder.Or(anyOf) : filterBuilder.In(k => k.ItemId, Array.Empty<string>()));
+            }
+
+            return filters.Count > 0 ? filterBuilder.And(filters) : filterBuilder.Empty;
+        }
+
+        public async Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)> updates)
+        {
+            ArgumentNullException.ThrowIfNull(updates);
+            if (updates.Count == 0) return 0;
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            // Only GlossaryViolations is set; resources and every other field stay as stored.
+            var models = updates.Select(u => (WriteModel<BlocksLanguageKey>)new UpdateOneModel<BlocksLanguageKey>(
+                    Builders<BlocksLanguageKey>.Filter.Eq(k => k.ItemId, u.KeyId),
+                    Builders<BlocksLanguageKey>.Update.Set(k => k.GlossaryViolations, u.Violations))
+                { IsUpsert = false })
+                .ToList();
+
+            var result = await collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false });
+            return result.ModifiedCount;
+        }
+
+        public async Task<GlossaryKeyUsage> GetGlossaryKeyUsageAsync(string glossaryId, int pageNumber, int pageSize)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(glossaryId);
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var tagged = Builders<BlocksLanguageKey>.Filter.AnyEq(k => k.GlossaryIds, glossaryId);
+            var skip = (int)Math.Min((long)Math.Max(pageNumber, 0) * pageSize, int.MaxValue);
+
+            var pageTask = collection.Find(tagged)
+                .Sort(Builders<BlocksLanguageKey>.Sort.Ascending(k => k.KeyName).Ascending(k => k.ItemId))
+                .Skip(skip)
+                .Limit(pageSize)
+                .Project(k => new GlossaryUsageKey { ItemId = k.ItemId, KeyName = k.KeyName, ModuleId = k.ModuleId })
+                .ToListAsync();
+
+            var tagFilter = new BsonDocument("GlossaryIds", glossaryId);
+            var violationFilter = new BsonDocument("GlossaryViolations.GlossaryId", glossaryId);
+            var pipeline = new[]
+            {
+                new BsonDocument(MatchStage, new BsonDocument("$or", new BsonArray { tagFilter, violationFilter })),
+                new BsonDocument("$facet", new BsonDocument
+                {
+                    { "keyCount", new BsonArray { new BsonDocument(MatchStage, tagFilter), new BsonDocument("$count", "n") } },
+                    { "moduleIds", new BsonArray { new BsonDocument(MatchStage, tagFilter), new BsonDocument("$group", new BsonDocument("_id", "$ModuleId")) } },
+                    { "violationKeyCount", new BsonArray { new BsonDocument(MatchStage, violationFilter), new BsonDocument("$count", "n") } }
+                })
+            };
+            var rawCollection = dataBase.GetCollection<BsonDocument>(_collectionName);
+            async Task<BsonDocument?> FacetAsync()
+            {
+                using var cursor = await rawCollection.AggregateAsync<BsonDocument>(pipeline);
+                return await cursor.FirstOrDefaultAsync();
+            }
+            var facetTask = FacetAsync();
+
+            await Task.WhenAll(pageTask, facetTask);
+
+            var facet = facetTask.Result ?? new BsonDocument();
+            static long Count(BsonDocument facet, string name) =>
+                facet.TryGetValue(name, out var value) && value.AsBsonArray.Count > 0
+                    ? value.AsBsonArray[0]["n"].ToInt64()
+                    : 0;
+
+            return new GlossaryKeyUsage
+            {
+                KeyCount = Count(facet, "keyCount"),
+                Keys = pageTask.Result,
+                ModuleIds = facet.TryGetValue("moduleIds", out var modules)
+                    ? modules.AsBsonArray.Select(m => m["_id"]).Where(id => id.IsString).Select(id => id.AsString).OrderBy(id => id, StringComparer.Ordinal).ToList()
+                    : new List<string>(),
+                ViolationKeyCount = Count(facet, "violationKeyCount")
+            };
+        }
+
+        public async Task<long> RemoveStaleGlossaryIdsAsync(IReadOnlyCollection<string> existingGlossaryIds, bool dryRun, int batchSize = 200)
+        {
+            ArgumentNullException.ThrowIfNull(existingGlossaryIds);
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            var stale = Builders<BlocksLanguageKey>.Filter.ElemMatch<string>("GlossaryIds", new BsonDocument("$nin", new BsonArray(existingGlossaryIds)));
+
+            var affected = await collection.Find(stale)
+                .Project(k => new BlocksLanguageKey { ItemId = k.ItemId, GlossaryIds = k.GlossaryIds })
+                .ToListAsync();
+            var existing = existingGlossaryIds as ISet<string> ?? new HashSet<string>(existingGlossaryIds, StringComparer.Ordinal);
+            long removed = affected.Sum(k => (long)(k.GlossaryIds?.Count(id => !existing.Contains(id)) ?? 0));
+            if (dryRun || affected.Count == 0) return removed;
+
+            var pull = Builders<BlocksLanguageKey>.Update.PullFilter<string>("GlossaryIds", new BsonDocument("$nin", new BsonArray(existingGlossaryIds)));
+            foreach (var chunk in affected.Select(k => k.ItemId).Chunk(batchSize))
+            {
+                await collection.UpdateManyAsync(Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, chunk), pull);
+            }
+            return removed;
+        }
+
         public async Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds)
         {
             ArgumentNullException.ThrowIfNull(itemIds);
@@ -523,6 +736,12 @@ namespace Eurolm.DomainService.Repositories
                     .Set(x => x.KeyName, uilmResourceKey.KeyName)
                     .Set(x => x.LastUpdateDate, uilmResourceKey.LastUpdateDate)
                     .Set(x => x.IsPartiallyTranslated, uilmResourceKey.IsPartiallyTranslated);
+                // Only the worker's glossary check sets violations; other callers pass keys without them,
+                // which must not wipe the stored ones.
+                if (uilmResourceKey.GlossaryViolations != null)
+                {
+                    update = update.Set(x => x.GlossaryViolations, uilmResourceKey.GlossaryViolations);
+                }
 
                 UpdateOneModel<BlocksLanguageKey> upsertOne = new UpdateOneModel<BlocksLanguageKey>(filter, update) { IsUpsert = true };
                 bulkOps.Add(upsertOne);

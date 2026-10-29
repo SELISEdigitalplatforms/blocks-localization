@@ -6,8 +6,11 @@ import { cn } from "@/lib/utils";
 import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { GlossaryRowState } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { distinctGlossaryMatches } from "@blocks-localization/components/glossary/highlighted-source-text";
-import { useLiveGlossaryCheck } from "@blocks-localization/hooks/use-live-glossary-check";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import {
+  DRAFT_TERM_PREFIX,
+  useLiveGlossaryCheck,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import {
   applyFix,
   canApplyFix,
@@ -41,7 +44,10 @@ const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
 };
 
 /** The short problem line under a term; the term row already shows the expected value. */
-const issueText = (violation: GlossaryViolation) => {
+const issueText = (violation: GlossaryViolation, draft: boolean) =>
+  draft ? `${DRAFT_TERM_PREFIX} ${problemText(violation)}` : problemText(violation);
+
+const problemText = (violation: GlossaryViolation) => {
   switch (violation.kind) {
     case "missing-translation":
       return "Not used yet";
@@ -136,17 +142,25 @@ interface TermIssueProps {
   violation: GlossaryViolation;
   matches: GlossaryMatch[];
   culture: string;
+  draft: boolean;
   disabled: boolean;
   onFix: (violation: GlossaryViolation) => void;
 }
 
-const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<TermIssueProps>) => {
+const TermIssue = ({
+  violation,
+  matches,
+  culture,
+  draft,
+  disabled,
+  onFix,
+}: Readonly<TermIssueProps>) => {
   const fixable = canApplyFix(violation, matches, culture);
   const replacement = getFixReplacement(violation, matches, culture);
   return (
     <div className="ml-6 mt-1 flex items-center gap-2">
       <p className="min-w-0 flex-1 break-words text-xs text-warning-700">
-        {issueText(violation)}
+        {issueText(violation, draft)}
         {fixable && replacement && ` · use "${replacement}"`}
       </p>
       {fixable && (
@@ -224,6 +238,7 @@ const ChecklistTerm = ({
             violation={violation}
             matches={matches}
             culture={culture}
+            draft={match.status === "draft"}
             disabled={disabled}
             onFix={onFix}
           />
@@ -274,7 +289,15 @@ export const GlossaryTargetChecklist = ({
   const matches = fromSuggestion ? row.matches : liveMatches;
   const culture = fromSuggestion ? row.targetCulture : targetCulture;
   const violations = fromSuggestion ? row.violations : live.violations;
-  const terms = distinctGlossaryMatches(matches);
+  const suggestionIds = new Set([
+    ...row.matches.map((match) => match.glossary.itemId),
+    ...row.violations.map((violation) => violation.glossaryId),
+  ]);
+  const terms = distinctGlossaryMatches(
+    fromSuggestion
+      ? liveMatches.filter((match) => suggestionIds.has(match.glossary.itemId))
+      : liveMatches,
+  );
   const hasText = !!targetText.trim();
   const issueCount = violations.length;
   const canRetry = fromSuggestion && violations.some((v) => !canApplyFix(v, matches, culture));

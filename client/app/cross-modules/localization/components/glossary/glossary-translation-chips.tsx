@@ -19,7 +19,6 @@ interface GlossaryTranslationChipsProps {
   max?: number;
 }
 
-/** One chip per non-default project language: the value on hover, or a "missing" warning. */
 const GlossaryTranslationChips = ({
   meta,
   languages,

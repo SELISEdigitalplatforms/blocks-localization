@@ -11,6 +11,7 @@ const navigate = vi.fn();
 const setQueryParams = vi.fn();
 const setSortQueryParams = vi.fn();
 let duplicatesFilter = false;
+let glossaryIssuesFilter = false;
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -39,6 +40,7 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
       missingLanguages: [],
       resourceSearch: "",
       duplicates: duplicatesFilter,
+      glossaryIssues: glossaryIssuesFilter,
     },
     setQueryParams,
   }),
@@ -142,6 +144,7 @@ describe("language-module/language-table", () => {
     vi.clearAllMocks();
     setBaseMocks();
     duplicatesFilter = false;
+    glossaryIssuesFilter = false;
   });
 
   it("should render skeleton rows while loading", () => {
@@ -230,11 +233,67 @@ describe("language-module/language-table", () => {
   it("should ask for duplicate rows only while the duplicates filter is on", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
     renderWithProviders(<LanguageTable />);
-    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(false);
+    // onlyDuplicates is the 13th argument.
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.[12]).toBe(false);
 
     duplicatesFilter = true;
     renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.[12]).toBe(true);
+  });
+
+  it("should ask for keys with glossary violations only while the Glossary issues filter is on (H11)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(false);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(false);
+
+    glossaryIssuesFilter = true;
+    renderWithProviders(<LanguageTable />);
     expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(true);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(true);
+  });
+
+  it("should show 'No keys with glossary issues' when the filter finds nothing (C9)", () => {
+    glossaryIssuesFilter = true;
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: { totalCount: 0, keys: [] },
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(screen.getByText("No keys with glossary issues")).toBeTruthy();
+    expect(screen.queryByText("No matching translation keys")).toBeNull();
+  });
+
+  it("should show the stored glossary issues on a row and none on a clean row (H11, C10)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: {
+        ...oneKey,
+        keys: [
+          {
+            ...oneKey.keys[0],
+            glossaryViolations: [
+              {
+                culture: "de-DE",
+                glossaryId: "g1",
+                term: "Workspace",
+                kind: "forbidden-used",
+                found: "Werkbereich",
+                detectedAt: "2026-10-28T00:00:00Z",
+              },
+            ],
+          },
+        ],
+      },
+    } as never);
+    const { unmount } = renderWithProviders(<LanguageTable />);
+    expect(screen.getByTestId("glossary-issue-badge").textContent).toBe("1 glossary issue");
+    unmount();
+
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(screen.getByText("greeting")).toBeTruthy();
+    expect(screen.queryByTestId("glossary-issue-badge")).toBeNull();
   });
 
   it.each([

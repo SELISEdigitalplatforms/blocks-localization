@@ -42,7 +42,7 @@ export class Sidebar {
 
   async goToGlossary() {
     await this.glossaryLink.click();
-    await expect(this.page.getByRole("heading", { name: "Glossary Management" })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: "Glossary", exact: true })).toBeVisible({ timeout: 15_000 });
   }
 
   async goToConfiguration() {

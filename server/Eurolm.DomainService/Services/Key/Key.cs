@@ -19,5 +19,7 @@ namespace Eurolm.DomainService.Services
         public DateTime CreateDate { get; set; }
         public string? Context { get; set; }
         public bool? ShouldPublish { get; set; }
+        /// <summary>Glossary rules the stored translations break, per culture (read-only for clients).</summary>
+        public List<Eurolm.DomainService.Repositories.KeyGlossaryViolation>? GlossaryViolations { get; set; }
     }
 }

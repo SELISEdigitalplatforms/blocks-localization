@@ -4,7 +4,6 @@ import { GlossaryPage } from "../../support/pages/glossary.page";
 import { openGlossary } from "../../support/localization-helpers";
 
 /**
- * Evidence for the glossary editor PR (screenshots, keyboard check, table timings).
  * Opt-in: these run only with E2E_VISUAL=1, so the regular suite is unaffected.
  *
  *   E2E_VISUAL=1 npx playwright test tests/04-glossary/glossary-visual.spec.ts
@@ -124,7 +123,7 @@ test.describe("Glossary — visual evidence", () => {
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
 
-    const trigger = page.getByRole("button", { name: "New Glossary" });
+    const trigger = page.getByRole("button", { name: "New term" });
     await trigger.focus();
     await page.keyboard.press("Enter");
     const sheet = glossary.editorSheet;

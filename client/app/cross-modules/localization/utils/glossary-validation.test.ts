@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher, GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import {
   applyFix,
-  buildCorrectionPrompt,
   canApplyFix,
   findInTarget,
   formatViolationMessage,
@@ -25,7 +25,7 @@ const glossary = (
 });
 
 const match = (list: IGlossary[], text: string, sourceCulture = "en-US"): GlossaryMatch[] =>
-  buildGlossaryMatcher(list).match(text, { sourceCulture, scopeMode: "applicable" });
+  findGlossaryMatches(list, text, { sourceCulture });
 
 const G1 = glossary({
   itemId: "g1",
@@ -330,7 +330,7 @@ describe("utils/glossary-validation applyFix", () => {
   });
 });
 
-describe("utils/glossary-validation messages and correction", () => {
+describe("utils/glossary-validation messages", () => {
   const violations: GlossaryViolation[] = [
     {
       glossaryId: "g1",
@@ -348,16 +348,5 @@ describe("utils/glossary-validation messages and correction", () => {
       'Keep "SELISE" unchanged',
       '"Werkbereich" is not allowed',
     ]);
-  });
-
-  it("appends the correction block to the prompt", () => {
-    expect(buildCorrectionPrompt("Base\n", violations)).toBe(
-      "Base\n" +
-        "CORRECTION: Your previous answer broke these rules:\n" +
-        '- Use "Arbeitsbereich" for "Workspace".\n' +
-        '- Keep "SELISE" exactly as written.\n' +
-        '- Do not use "Werkbereich".\n' +
-        "Return only the corrected translation.\n",
-    );
   });
 });

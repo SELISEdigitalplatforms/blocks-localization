@@ -15,8 +15,8 @@ namespace XUnitTest
         {
             _glossaryRepositoryMock = new Mock<IGlossaryRepository>();
             _glossaryRepositoryMock
-                .Setup(r => r.GetByNameAsync(It.IsAny<string>()))
-                .ReturnsAsync((Glossary)null);
+                .Setup(r => r.GetByNameInsensitiveAsync(It.IsAny<string>()))
+                .ReturnsAsync(new List<Glossary>());
             _validator = new GlossaryValidator(_glossaryRepositoryMock.Object);
         }
 
@@ -127,41 +127,86 @@ namespace XUnitTest
             result.IsValid.Should().BeTrue();
         }
 
+        private void SetupMatches(string name, params Glossary[] matches) =>
+            _glossaryRepositoryMock.Setup(r => r.GetByNameInsensitiveAsync(name)).ReturnsAsync(matches.ToList());
+
+        private static bool HasUniqueError(FluentValidation.Results.ValidationResult result) =>
+            result.Errors.Any(e => e.PropertyName == "Name" && e.ErrorMessage == "Glossary name must be unique.");
+
         [Fact]
         public async Task Validate_DuplicateName_ReturnsError()
         {
-            // Arrange
-            var glossary = new Glossary { Name = "API" };
-            var existing = new Glossary { ItemId = "existing-id", Name = "API" };
+            SetupMatches("API", new Glossary { ItemId = "existing-id", Name = "API" });
 
-            _glossaryRepositoryMock
-                .Setup(r => r.GetByNameAsync("API"))
-                .ReturnsAsync(existing);
+            var result = await _validator.ValidateAsync(new Glossary { Name = "API" });
 
-            // Act
-            var result = await _validator.ValidateAsync(glossary);
-
-            // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.PropertyName == "Name" && e.ErrorMessage == "Glossary name must be unique.");
+            HasUniqueError(result).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_CreateCaseDuplicate_ReturnsError()
+        {
+            SetupMatches("workspace", new Glossary { ItemId = "existing-id", Name = "Workspace" });
+
+            var result = await _validator.ValidateAsync(new Glossary { Name = "workspace" });
+
+            HasUniqueError(result).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_CreateNfcDuplicateOfNfdName_ReturnsError()
+        {
+            SetupMatches("Caf\u00e9", new Glossary { ItemId = "existing-id", Name = "Cafe\u0301" });
+
+            var result = await _validator.ValidateAsync(new Glossary { Name = "Caf\u00e9" });
+
+            HasUniqueError(result).Should().BeTrue();
         }
 
         [Fact]
         public async Task Validate_SameGlossaryUpdate_ReturnsSuccess()
         {
-            // Arrange
-            var glossary = new Glossary { ItemId = "existing-id", Name = "API" };
-            var existing = new Glossary { ItemId = "existing-id", Name = "API" };
+            SetupMatches("API", new Glossary { ItemId = "existing-id", Name = "API" });
 
-            _glossaryRepositoryMock
-                .Setup(r => r.GetByNameAsync("API"))
-                .ReturnsAsync(existing);
+            var result = await _validator.ValidateAsync(new Glossary { ItemId = "existing-id", Name = "API" });
 
-            // Act
-            var result = await _validator.ValidateAsync(glossary);
-
-            // Assert
             result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_LegacyCaseDuplicateSavedWithUnchangedName_ReturnsSuccess()
+        {
+            // "e2e dup" and "E2E DUP" both exist; editing "e2e dup" without renaming it must still save.
+            SetupMatches("e2e dup",
+                new Glossary { ItemId = "lower", Name = "e2e dup" },
+                new Glossary { ItemId = "upper", Name = "E2E DUP" });
+
+            var result = await _validator.ValidateAsync(new Glossary { ItemId = "lower", Name = "e2e dup" });
+
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_LegacyCaseDuplicateRecasedOnly_ReturnsSuccess()
+        {
+            SetupMatches("E2E Dup",
+                new Glossary { ItemId = "lower", Name = "e2e dup" },
+                new Glossary { ItemId = "upper", Name = "E2E DUP" });
+
+            var result = await _validator.ValidateAsync(new Glossary { ItemId = "lower", Name = "E2E Dup" });
+
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Validate_RenameIntoAnotherGlossarysName_ReturnsError()
+        {
+            SetupMatches("workspace", new Glossary { ItemId = "other-id", Name = "Workspace" });
+
+            var result = await _validator.ValidateAsync(new Glossary { ItemId = "my-id", Name = "workspace" });
+
+            HasUniqueError(result).Should().BeTrue();
         }
 
         [Fact]

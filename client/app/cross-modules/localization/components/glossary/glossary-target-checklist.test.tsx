@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { GlossaryRowState } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
+import { appliedTermToMatch } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { GlossaryTargetChecklist } from "./glossary-target-checklist";
 
 vi.mock("@seliseblocks/genesis-os", () => ({
@@ -28,16 +29,12 @@ const G1 = term("g1", "Workspace", {
 const G2 = term("g2", "SELISE", { rule: "keep" });
 const G3 = term("g3", "Portal", { rule: "forbidden" });
 
-const MATCHES = buildGlossaryMatcher([G1, G2, G3]).match("Open your Workspace and SELISE portal", {
-  scopeMode: "applicable",
-  sourceCulture: "en-US",
-});
+const MATCHES = findGlossaryMatches([G1, G2, G3], "Open your Workspace and SELISE portal");
 
 const IDLE_ROW: GlossaryRowState = {
   violations: [],
   matches: [],
   targetCulture: "",
-  glossaryUnavailable: false,
   fromSuggestion: false,
 };
 
@@ -95,12 +92,15 @@ describe("GlossaryTargetChecklist", () => {
   });
 
   it("never calls a term without a rule for the language followed", () => {
-    const portalOnly = buildGlossaryMatcher([
-      term("g4", "Customer Portal", {
-        rule: "translate",
-        translations: { "de-DE": "Kundenportal" },
-      }),
-    ]).match("Go to Customer Portal", { scopeMode: "applicable", sourceCulture: "en-US" });
+    const portalOnly = findGlossaryMatches(
+      [
+        term("g4", "Customer Portal", {
+          rule: "translate",
+          translations: { "de-DE": "Kundenportal" },
+        }),
+      ],
+      "Go to Customer Portal",
+    );
     render(
       <GlossaryTargetChecklist
         row={IDLE_ROW}
@@ -137,5 +137,99 @@ describe("GlossaryTargetChecklist", () => {
     );
     expect(screen.queryByRole("region")).toBeNull();
     expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("marks a Draft term's live issue (A2)", async () => {
+    render(
+      <GlossaryTargetChecklist
+        row={IDLE_ROW}
+        targetText="Ihr Werkbereich"
+        targetCulture="de-DE"
+        liveMatches={findGlossaryMatches([{ ...G1, status: "draft" }], "Open your Workspace")}
+        onSuggestionFix={vi.fn()}
+        onRetry={vi.fn()}
+        onLiveFix={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText('Draft term: "Werkbereich" is not allowed · use "Arbeitsbereich"'),
+    ).toBeTruthy();
+  });
+
+  describe("after a suggestion", () => {
+    const suggestionRow = (overrides: Partial<GlossaryRowState>): GlossaryRowState => ({
+      ...IDLE_ROW,
+      targetCulture: "de-DE",
+      fromSuggestion: true,
+      ...overrides,
+    });
+    const renderRow = (row: GlossaryRowState, onSuggestionFix = vi.fn(), onRetry = vi.fn()) =>
+      render(
+        <GlossaryTargetChecklist
+          row={row}
+          targetText="Ihr Werkbereich"
+          targetCulture="de-DE"
+          languageName="German"
+          liveMatches={MATCHES}
+          onSuggestionFix={onSuggestionFix}
+          onRetry={onRetry}
+          onLiveFix={vi.fn()}
+        />,
+      );
+    const forbiddenUsed = {
+      glossaryId: "g1",
+      term: "Workspace",
+      kind: "forbidden-used" as const,
+      found: "Werkbereich",
+    };
+
+    it("shows nothing when the server applied and reported nothing (C1)", () => {
+      renderRow(suggestionRow({}));
+      expect(screen.queryByRole("region")).toBeNull();
+    });
+
+    it("lists only the terms the server applied, with its violations and Fix (C20)", () => {
+      const onSuggestionFix = vi.fn();
+      renderRow(
+        suggestionRow({
+          violations: [forbiddenUsed],
+          matches: [
+            appliedTermToMatch(
+              {
+                glossaryId: "g1",
+                term: "Workspace",
+                rule: "translate",
+                expected: "Arbeitsbereich",
+              },
+              "de-DE",
+            ),
+          ],
+        }),
+        onSuggestionFix,
+      );
+      const region = screen.getByRole("region", { name: "Glossary terms for German" });
+      expect(within(region).getByText("Workspace")).toBeTruthy();
+      expect(within(region).queryByText("SELISE")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+      expect(onSuggestionFix).toHaveBeenCalledWith(forbiddenUsed);
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    });
+
+    it("offers Retry, not Fix, without a Translate expected value (C20)", () => {
+      const onRetry = vi.fn();
+      renderRow(
+        suggestionRow({
+          violations: [forbiddenUsed],
+          matches: [
+            appliedTermToMatch({ glossaryId: "g1", term: "Workspace", rule: "translate" }, "de-DE"),
+          ],
+        }),
+        vi.fn(),
+        onRetry,
+      );
+      expect(screen.queryByRole("button", { name: "Fix" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    });
   });
 });

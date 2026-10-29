@@ -105,6 +105,7 @@ namespace Eurolm.DomainService.Services
                 }
 
                 var repoKey = await MappedIntoRepoKeyAsync(key);
+                await RecomputeGlossaryViolationsAsync(repoKey);
                 await _keyRepository.SaveKeyAsync(repoKey);
                 if (key != null && key.ShouldPublish == true)
                 {
@@ -204,6 +205,7 @@ namespace Eurolm.DomainService.Services
                 var previousKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
 
                 var repoKey = await MappedIntoRepoKeyAsync(key);
+                await RecomputeGlossaryViolationsAsync(repoKey);
                 await _keyRepository.SaveKeyAsync(repoKey);
 
                 if (key.ShouldPublish == true)
@@ -255,6 +257,32 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        /// <summary>The terminology service, when this host registers one (tests and older hosts may not).</summary>
+        private IGlossaryTerminologyService? TerminologyService => _serviceProvider?.GetService<IGlossaryTerminologyService>();
+
+        /// <summary>
+        /// With glossary enforcement on, replaces the key's stored glossary violations with ones recomputed from
+        /// its saved translations (matcher and validator only, no AI). With it off, or if the check fails, the
+        /// stored violations are left as they are: no client sends them, so a save never clears them.
+        /// </summary>
+        private async Task RecomputeGlossaryViolationsAsync(BlocksLanguageKey repoKey)
+        {
+            var terminology = TerminologyService;
+            if (terminology?.IsEnforcementEnabled != true) return;
+
+            try
+            {
+                var violations = await terminology.ComputeKeyViolationsAsync(repoKey);
+                if (violations != null) repoKey.GlossaryViolations = violations;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not recompute glossary violations for key {ItemId}; stored violations kept", repoKey.ItemId);
+            }
+        }
+
+        // GlossaryViolations is deliberately not copied from the request: no client sends it, so the stored
+        // value survives a save (flag off) or is recomputed (flag on).
         private async Task<BlocksLanguageKey> MappedIntoRepoKeyAsync(Key key)
         {
             var repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
@@ -342,69 +370,37 @@ namespace Eurolm.DomainService.Services
             return key;
         }
 
+        public const int DefaultSuggestedGlossaries = 5;
+        public const int MaxSuggestedGlossaries = 20;
+
+        /// <summary>
+        /// Glossaries found in the key's default-language text (the whole-word matcher over every glossary of
+        /// the tenant) that are not tagged on the key, not global, not linked to its module and not Deprecated.
+        /// </summary>
         public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request)
         {
             var response = new GetSuggestedGlossariesResponse();
+
+            var terminology = TerminologyService;
+            if (terminology == null)
+            {
+                _logger.LogWarning("GetSuggestedGlossaries: no glossary terminology service is registered");
+                return response;
+            }
 
             var key = await _keyRepository.GetByIdAsync(request.ItemId);
             if (key?.Resources == null || key.Resources.Length == 0)
                 return response;
 
-            var resourceValues = key.Resources
-                .Where(r => !string.IsNullOrWhiteSpace(r.Value))
-                .Select(r => r.Value)
-                .ToList();
-
-            if (resourceValues.Count == 0)
+            var maxResults = request.MaxResults <= 0 ? DefaultSuggestedGlossaries : Math.Min(request.MaxResults, MaxSuggestedGlossaries);
+            var ids = await terminology.SuggestGlossaryIdsAsync(key, maxResults);
+            if (ids.Count == 0)
                 return response;
 
-            var glossariesRequest = new GetGlossariesRequest
-            {
-                PageNumber = 0,
-                PageSize = 100
-            };
-            var glossariesResult = await _glossaryRepository.GetAllAsync(glossariesRequest);
-
-            if (glossariesResult?.Items == null || glossariesResult.Items.Count == 0)
-                return response;
-
-            var matched = new List<Glossary>();
-
-            foreach (var glossary in glossariesResult.Items)
-            {
-                if (matched.Count >= request.MaxResults)
-                    break;
-
-                var isMatch = false;
-
-                foreach (var resourceValue in resourceValues)
-                {
-                    if (!string.IsNullOrWhiteSpace(glossary.Name) &&
-                        System.Text.RegularExpressions.Regex.IsMatch(
-                            resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Name),
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase,
-                            System.TimeSpan.FromSeconds(1)))
-                    {
-                        isMatch = true;
-                        break;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(glossary.Context) &&
-                        System.Text.RegularExpressions.Regex.IsMatch(
-                            resourceValue, System.Text.RegularExpressions.Regex.Escape(glossary.Context),
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase,
-                            System.TimeSpan.FromSeconds(1)))
-                    {
-                        isMatch = true;
-                        break;
-                    }
-                }
-
-                if (isMatch)
-                    matched.Add(glossary);
-            }
-
-            response.SuggestedGlossaries = matched;
+            var byId = (await _glossaryRepository.GetByIdsAsync(ids))
+                .Where(g => g.ItemId != null)
+                .ToDictionary(g => g.ItemId!, StringComparer.Ordinal);
+            response.SuggestedGlossaries = ids.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
             return response;
         }
 
@@ -754,7 +750,13 @@ namespace Eurolm.DomainService.Services
                 return;
             }
 
-            missingResource.Value = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
+            var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
+            missingResource.Value = suggestion?.Content;
+
+            if (TerminologyService?.IsEnforcementEnabled == true)
+            {
+                ReplaceCultureGlossaryViolations(resourceKey, missingResource.Culture, suggestion?.GlossaryViolations);
+            }
 
             var matchedResource = resources.FirstOrDefault(x => x.Culture == missingResource.Culture);
             if (matchedResource != null)
@@ -762,6 +764,20 @@ namespace Eurolm.DomainService.Services
                 resources.Remove(matchedResource);
             }
             resources.Add(missingResource);
+        }
+
+        /// <summary>
+        /// Replaces the key's stored violations for one culture with this translation's (an empty result removes
+        /// them); UpdateUilmResourceKeys persists the list with the key.
+        /// </summary>
+        public static void ReplaceCultureGlossaryViolations(BlocksLanguageKey resourceKey, string culture, List<GlossaryViolationDto>? violations)
+        {
+            var detectedAt = DateTime.UtcNow;
+            resourceKey.GlossaryViolations = (resourceKey.GlossaryViolations ?? new List<KeyGlossaryViolation>())
+                .Where(v => v.Culture != culture)
+                .Concat((violations ?? new List<GlossaryViolationDto>())
+                    .Select(v => GlossaryTerminologyService.ToKeyViolation(v, culture, detectedAt)))
+                .ToList();
         }
 
         public static SuggestLanguageRequest ConstructQuery(TranslateAllEvent request, BlocksLanguageKey resourceKey,
@@ -776,6 +792,7 @@ namespace Eurolm.DomainService.Services
                 CurrentLanguage = languageSetting?.FirstOrDefault(x => x.LanguageCode == request.DefaultLanguage).LanguageName,
                 GlossaryIds = resourceKey.GlossaryIds,
                 DestinationLanguageCode = missingResource.Culture,
+                CurrentLanguageCode = request.DefaultLanguage,
                 ModuleId = resourceKey.ModuleId
             };
         }

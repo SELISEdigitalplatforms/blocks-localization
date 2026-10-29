@@ -6,7 +6,9 @@ import { GlossaryPage } from "../../support/pages/glossary.page";
 import {
   LocalizationApi,
   TranslationsPage,
-  isFullGlossaryPageUrl,
+  isGlossaryMatchUrl,
+  trackGlossaryMatches,
+  type ApiGlossaryMatch,
   type ProjectLanguage,
 } from "../../support/pages/translations.page";
 import {
@@ -17,25 +19,18 @@ import {
 } from "../../support/localization-helpers";
 
 /**
- * SPEC4 evidence for the PR: screenshots (1440×900 and 390×844, light and dark), axe checks of
- * the Edit translation modal and the glossary picker, and the typing performance with a
- * 2,000-term glossary (C14). Opt-in, like glossary-visual.spec.ts:
- *
  *   E2E_VISUAL=1 npx playwright test tests/04-glossary/glossary-spec4-evidence.spec.ts
  *
  * Results are attached to the HTML report (`npm run report`).
  */
 test.skip(!process.env.E2E_VISUAL, "Set E2E_VISUAL=1 to capture SPEC4 evidence.");
 
-const META_PREFIX = "@@glossary-meta:v1@@";
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 390, height: 844 },
 ] as const;
 const THEMES = ["light", "dark"] as const;
 type Theme = (typeof THEMES)[number];
-
-const note = (meta: Record<string, unknown>) => `${META_PREFIX}${JSON.stringify(meta)}`;
 
 const setTheme = async (page: Page, theme: Theme) => {
   await page.emulateMedia({ colorScheme: theme });
@@ -77,22 +72,21 @@ class EvidenceFixtures {
     ids.translate = await api.createGlossary({
       name: names.translate,
       isGlobal: true,
-      additionalNote: note({
-        rule: "translate",
-        translations: { [t]: "Arbeitsbereich" },
-        forbidden: { [t]: ["Werkbereich"] },
-      }),
+      rule: "translate",
+      translations: [{ language: t, value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] }],
     });
     ids.keep = await api.createGlossary({
       name: names.keep,
       isGlobal: true,
-      additionalNote: note({ rule: "keep", caseSensitive: true }),
+      rule: "keep",
+      caseSensitive: true,
     });
     ids.forbidden = await api.createGlossary({
       name: names.forbidden,
       isGlobal: false,
       moduleIds: [ids.module],
-      additionalNote: note({ rule: "forbidden", forbidden: { [t]: ["Portalseite"] } }),
+      rule: "forbidden",
+      translations: [{ language: t, value: "", forbiddenValues: ["Portalseite"] }],
     });
     this.source = `Open your ${names.translate} and ${names.keep} ${names.forbidden}`;
     ids.key = await api.createKey({
@@ -104,8 +98,8 @@ class EvidenceFixtures {
     });
   }
 
-  readonly isOwn = (glossary: { name?: string }) =>
-    (glossary.name ?? "").toLowerCase().includes(this.tag);
+  /** Keeps only this run's terms in the `/Glossary/Match` responses. */
+  readonly isOwn = (match: ApiGlossaryMatch) => match.term.toLowerCase().includes(this.tag);
 
   async cleanup() {
     const { api, ids } = this;
@@ -126,41 +120,6 @@ async function setUp(page: Page) {
   return { api, fixtures, source: source!, target: target! };
 }
 
-/**
- * Keeps only this run's terms in the full-glossary load, so other terms of the shared project
- * don't change the screenshots; with `extra`, adds synthetic terms (the 2,000-term fixture).
- */
-async function routeFullGlossary(
-  page: Page,
-  keep: (glossary: { name?: string }) => boolean,
-  extra: Record<string, unknown>[] = [],
-) {
-  const handler = async (route: Route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { items?: { name?: string }[] };
-    // One page holds everything: the client stops once totalCount is reached.
-    const items = [...(body.items ?? []).filter(keep), ...extra];
-    await route.fulfill({ status: response.status(), json: { items, totalCount: items.length } });
-  };
-  await page.route(isFullGlossaryPageUrl, handler);
-  return () => page.unroute(isFullGlossaryPageUrl, handler);
-}
-
-const syntheticTerms = (count: number, targetCode: string) =>
-  Array.from({ length: count }, (_, index) => ({
-    itemId: `perf-${index}`,
-    name: `Perfterm${index}`,
-    isGlobal: true,
-    context: "",
-    createDate: "",
-    lastUpdateDate: "",
-    additionalNote: note({
-      rule: index % 10 === 0 ? "forbidden" : "translate",
-      translations: { [targetCode]: `Begriff${index}` },
-      forbidden: { [targetCode]: [`Verboten${index}`] },
-    }),
-  }));
-
 const percentile = (values: number[], p: number) => {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -178,7 +137,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
     try {
       await fixtures.create(source, target);
       const { names, ids } = fixtures;
-      await routeFullGlossary(page, fixtures.isOwn);
+      await trackGlossaryMatches(page, fixtures.isOwn);
       const dialog = translations.editTranslationDialog;
 
       for (const viewport of VIEWPORTS) {
@@ -245,12 +204,8 @@ test.describe("Glossary — SPEC4 evidence", () => {
             const items = [...body.items, { itemId: unknownId }];
             await route.fulfill({ json: { items, totalCount: items.length } });
           };
-          const unknownRoute = (route: Route) =>
-            new URL(route.request().url()).searchParams.get("itemId") === unknownId
-              ? route.fulfill({ status: 404, json: {} })
-              : route.fallback();
+          // Glossary/GetByIds leaves the unknown id out, so its chip shows "Unknown glossary".
           await page.route(/\/Glossary\/Gets/, seedRoute);
-          await page.route(/\/Glossary\/Get\?/, unknownRoute);
           try {
             await openModules(page);
             await setTheme(page, theme);
@@ -272,7 +227,6 @@ test.describe("Glossary — SPEC4 evidence", () => {
             await tagDialog.getByRole("button", { name: "Cancel" }).click();
           } finally {
             await page.unroute(/\/Glossary\/Gets/, seedRoute);
-            await page.unroute(/\/Glossary\/Get\?/, unknownRoute);
           }
 
           // Row focus rings.
@@ -329,7 +283,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
     try {
       await fixtures.create(source, target);
       const { names, ids } = fixtures;
-      await routeFullGlossary(page, fixtures.isOwn);
+      await trackGlossaryMatches(page, fixtures.isOwn);
       const dialog = translations.editTranslationDialog;
 
       await translations.openKeyDetails(ids.key);
@@ -363,88 +317,57 @@ test.describe("Glossary — SPEC4 evidence", () => {
     }
   });
 
-  test("typing performance with 2,000 terms (C14)", async ({ page, browser }, testInfo) => {
+  test("/Glossary/Match per editor open: request count and latency (SPEC7 §5, C14)", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(300_000);
     const translations = new TranslationsPage(page);
     const { fixtures, source, target } = await setUp(page);
+    const OPENS = 10;
 
     try {
       await fixtures.create(source, target);
       const { names, ids } = fixtures;
-      await routeFullGlossary(page, fixtures.isOwn, syntheticTerms(2000, target.languageCode));
+      const matches = await trackGlossaryMatches(page);
       const dialog = translations.editTranslationDialog;
+      const durations: number[] = [];
 
       await translations.openKeyDetails(ids.key);
-      await translations.openEditTranslation(target.languageName);
-      await expect(translations.glossaryTerm(dialog, names.translate)).toBeVisible({
-        timeout: 30_000,
-      });
-      const textarea = translations.editTranslationTextarea;
-      await textarea.fill("");
-      await textarea.focus();
-
-      // Input-to-paint per keystroke: input event → the frame after the next animation frame,
-      // plus Chrome's Event Timing entries (INP-style, ≥ 16 ms only) as a cross-check.
-      await page.evaluate(() => {
-        const w = window as unknown as { __latencies: number[]; __eventTimings: number[] };
-        w.__latencies = [];
-        w.__eventTimings = [];
-        document.addEventListener(
-          "input",
-          (event) => {
-            const start = event.timeStamp;
-            requestAnimationFrame(() =>
-              setTimeout(() => w.__latencies.push(performance.now() - start), 0),
-            );
-          },
-          true,
+      for (let open = 0; open < OPENS; open++) {
+        // Cold match cache: a reload empties the in-memory query cache.
+        await page.reload();
+        await expect(page.getByRole("button", { name: "Tag Glossary" })).toBeVisible({
+          timeout: 15_000,
+        });
+        const before = matches.forText(fixtures.source).length;
+        const responsePromise = page.waitForResponse((response) =>
+          isGlossaryMatchUrl(new URL(response.url())),
         );
-        new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) w.__eventTimings.push(entry.duration);
-        }).observe({
-          type: "event",
-          durationThreshold: 16,
-          buffered: false,
-        } as PerformanceObserverInit);
-      });
+        await translations.openEditTranslation(target.languageName);
+        const response = await responsePromise;
+        await expect(translations.glossaryTerm(dialog, names.translate)).toBeVisible({
+          timeout: 15_000,
+        });
+        // End-to-end: request start to the last response byte.
+        durations.push(response.request().timing().responseEnd);
+        await page.waitForTimeout(500);
+        expect(matches.forText(fixtures.source).length - before).toBe(1);
+        await translations.closeEditTranslation();
+      }
 
-      const tracePath = testInfo.outputPath("typing-trace.json");
-      await browser.startTracing(page, { path: tracePath, screenshots: true });
-      // 10 characters per second, ~6 s of typing, including a forbidden word mid-way.
-      await textarea.pressSequentially("Öffnen Sie Ihren Werkbereich und Begriff12 jetzt", {
-        delay: 100,
-      });
-      await page.waitForTimeout(500);
-      await browser.stopTracing();
-      await testInfo.attach("typing-trace.json (open in Chrome DevTools › Performance)", {
-        path: tracePath,
-        contentType: "application/json",
-      });
-
-      const { latencies, eventTimings } = await page.evaluate(() => {
-        const w = window as unknown as { __latencies: number[]; __eventTimings: number[] };
-        return { latencies: w.__latencies, eventTimings: w.__eventTimings };
-      });
       const summary = {
-        keystrokes: latencies.length,
-        inputToPaintP50: percentile(latencies, 50),
-        inputToPaintP95: percentile(latencies, 95),
-        inputToPaintMax: Math.max(...latencies),
-        eventTimingsOver16ms: eventTimings.length,
-        eventTimingMax: eventTimings.length ? Math.max(...eventTimings) : 0,
+        opens: OPENS,
+        matchP50: percentile(durations, 50),
+        matchP95: percentile(durations, 95),
+        matchMax: Math.max(...durations),
       };
-      await testInfo.attach("typing-performance.json", {
+      await testInfo.attach("match-latency.json", {
         body: JSON.stringify(summary, null, 2),
         contentType: "application/json",
       });
-      console.log("[SPEC4 C14]", summary);
-
-      await expect(
-        translations.violationItem(dialog, '"Werkbereich" is not allowed'),
-      ).toBeVisible();
-      expect(summary.keystrokes).toBeGreaterThan(40);
-      expect(summary.inputToPaintP95).toBeLessThanOrEqual(50);
-      await translations.closeEditTranslation();
+      console.log("[SPEC7 §5 /Glossary/Match]", summary);
+      // Budget: end-to-end p95 ≤ 300 ms on dev (A3). Soft: the numbers belong in the PR either way.
+      expect.soft(summary.matchP95).toBeLessThanOrEqual(300);
     } finally {
       await fixtures.cleanup();
     }

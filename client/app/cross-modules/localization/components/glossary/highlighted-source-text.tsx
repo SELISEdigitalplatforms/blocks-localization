@@ -5,7 +5,7 @@ import GlossaryTermPopover, {
   TermTargetLanguage,
 } from "@blocks-localization/components/glossary/glossary-term-popover";
 import { cn } from "@/lib/utils";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 
 const termLabel = (match: GlossaryMatch, missingFor?: string) => {
@@ -24,7 +24,7 @@ const INACTIVE_TERM_CLASS =
 
 interface HighlightedSourceTextProps {
   text: string;
-  /** `useApplicableGlossaryMatches` of `text`; empty while the glossary loads or failed (C2). */
+  /** `/Glossary/Match` matches of exactly `text`; empty while loading or after a failure (C2). */
   matches: GlossaryMatch[];
   targetLanguage?: TermTargetLanguage;
   /** The current target text, so Insert can say "Already used". */

@@ -12,16 +12,13 @@ namespace Api.Controllers
 
     public class GlossaryController : ControllerBase
     {
-        private readonly IGlossaryManagementService _glossaryManagementService;
-       
-        private readonly IKeyManagementService _keyManagementService;
+        private const string ItemIdField = "ItemId";
 
-        public GlossaryController(
-            IGlossaryManagementService glossaryManagementService,
-            IKeyManagementService keyManagementService)
+        private readonly IGlossaryManagementService _glossaryManagementService;
+
+        public GlossaryController(IGlossaryManagementService glossaryManagementService)
         {
             _glossaryManagementService = glossaryManagementService;
-            _keyManagementService = keyManagementService;
         }
 
         [HttpPost]
@@ -48,7 +45,7 @@ namespace Api.Controllers
                 return BadRequest(new BaseMutationResponse
                 {
                     IsSuccess = false,
-                    Errors = new Dictionary<string, string> { { "ItemId", "Invalid or missing ItemId" } }
+                    Errors = new Dictionary<string, string> { { ItemIdField, "Invalid or missing ItemId" } }
                 });
             var glossary = await _glossaryManagementService.GetGlossaryByIdAsync(itemId);
 
@@ -56,7 +53,7 @@ namespace Api.Controllers
                 return NotFound(new BaseMutationResponse
                 {
                     IsSuccess = false,
-                    Errors = new Dictionary<string, string> { { "ItemId", "Glossary not found" } }
+                    Errors = new Dictionary<string, string> { { ItemIdField, "Glossary not found" } }
                 });
 
             return Ok(glossary);
@@ -64,10 +61,53 @@ namespace Api.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<GetSuggestedGlossariesResponse> GetSuggestedGlossaries([FromQuery] GetSuggestedGlossariesRequest request)
+        public async Task<IActionResult> GetByIds([FromQuery] List<string>? itemIds)
         {
-            if (request == null) return new GetSuggestedGlossariesResponse();
-            return await _keyManagementService.GetSuggestedGlossariesAsync(request);
+            var ids = itemIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList() ?? new List<string>();
+            if (ids.Count == 0 || ids.Count > GlossaryManagementService.MaxGetByIdsCount)
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "ItemIds", $"Provide between 1 and {GlossaryManagementService.MaxGetByIdsCount} item ids." }
+                    }
+                });
+
+            var items = await _glossaryManagementService.GetGlossariesByIdsAsync(ids);
+            return Ok(new GetGlossariesByIdsResponse { Items = items });
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Usage([FromQuery] GlossaryUsageRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ItemId))
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string> { { ItemIdField, "Invalid or missing ItemId" } }
+                });
+
+            if (request.PageSize < 1 || request.PageSize > GlossaryManagementService.MaxUsagePageSize || request.PageNumber < 0)
+                return BadRequest(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "PageSize", $"PageSize must be between 1 and {GlossaryManagementService.MaxUsagePageSize}, and PageNumber 0 or more." }
+                    }
+                });
+
+            var usage = await _glossaryManagementService.GetGlossaryUsageAsync(request);
+            if (usage == null)
+                return NotFound(new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string> { { ItemIdField, "Glossary not found" } }
+                });
+
+            return Ok(usage);
         }
 
         [HttpDelete]
@@ -83,7 +123,7 @@ namespace Api.Controllers
                     IsSuccess = false,
                     Errors = new Dictionary<string, string>
                     {
-                        { "ItemId", "Invalid or missing ItemId" }
+                        { ItemIdField, "Invalid or missing ItemId" }
                     }
                 });
             }

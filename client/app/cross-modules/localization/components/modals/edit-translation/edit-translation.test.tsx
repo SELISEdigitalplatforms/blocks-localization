@@ -23,6 +23,10 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
     mutateAsync: autoTranslateAsync,
   })),
 }));
+vi.mock("@blocks-localization/hooks/use-glossary-match", () => ({
+  MATCH_DEBOUNCE_MS: 300,
+  useGlossaryMatch: () => ({ matches: [], isLoading: false, isError: false }),
+}));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),

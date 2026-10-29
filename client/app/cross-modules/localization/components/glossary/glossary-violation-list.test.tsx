@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import {
-  GlossaryUnavailableNote,
   GlossaryViolationList,
+  recheckViolations,
   useGlossarySuggestionRows,
 } from "./glossary-violation-list";
 
@@ -44,10 +44,7 @@ const G2: IGlossary = {
   additionalNote: GLOSSARY_META_PREFIX + JSON.stringify({ rule: "keep" }),
 };
 
-const matches = buildGlossaryMatcher([G1, G2]).match("Open your SELISE Workspace", {
-  scopeMode: "applicable",
-  sourceCulture: "en-US",
-});
+const matches = findGlossaryMatches([G1, G2], "Open your SELISE Workspace");
 
 const forbidden: GlossaryViolation = {
   glossaryId: "g1",
@@ -137,11 +134,20 @@ describe("GlossaryViolationList", () => {
     );
   });
 
-  it("shows the C6 info text", () => {
-    render(<GlossaryUnavailableNote />);
-    expect(
-      screen.getByText("Glossary unavailable; suggestion made without terminology rules."),
-    ).toBeTruthy();
+  it("marks a Draft term's live warning (A2)", () => {
+    const draftMatches = findGlossaryMatches(
+      [{ ...G1, status: "draft" }, G2],
+      "Open your SELISE Workspace",
+    );
+    render(
+      <GlossaryViolationList
+        violations={[forbidden]}
+        matches={draftMatches}
+        targetCulture="de-DE"
+        onFix={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Draft term: "Werkbereich" is not allowed')).toBeTruthy();
   });
 });
 
@@ -155,25 +161,34 @@ describe("useGlossarySuggestionRows", () => {
 
   const input = {
     requestKey: "de-DE",
-    legacyPayload: {
-      sourceText: "Open your Workspace",
-      destinationLanguage: "German",
-      currentLanguage: "English",
-      temperature: 0.1,
-    },
     sourceText: "Open your Workspace",
     defaultLanguage: { languageName: "English", languageCode: "en-US" },
     targetLanguage: { languageName: "German", languageCode: "de-DE" },
   };
 
-  it("keeps violations per row, clears them on edit and re-validates after Fix", async () => {
-    suggestAsync.mockResolvedValue({ content: "Öffnen Sie Ihren Werkbereich" });
-    const { result } = renderHook(() =>
-      useGlossarySuggestionRows({ loadGlossaries: async () => [G1] }),
-    );
+  const serverReply = {
+    content: "Öffnen Sie Ihren Werkbereich",
+    appliedTerms: [
+      { glossaryId: "g1", term: "Workspace", rule: "translate", expected: "Arbeitsbereich" },
+    ],
+    glossaryViolations: [
+      {
+        glossaryId: "g1",
+        term: "Workspace",
+        kind: "missing-translation",
+        expected: "Arbeitsbereich",
+      },
+      { glossaryId: "g1", term: "Workspace", kind: "forbidden-used", found: "Werkbereich" },
+    ],
+  };
+
+  it("keeps the server's violations per row, clears them on edit and re-checks after Fix", async () => {
+    suggestAsync.mockResolvedValue(serverReply);
+    const { result } = renderHook(() => useGlossarySuggestionRows());
     await act(async () => {
       await result.current.request(input);
     });
+    expect(suggestAsync).toHaveBeenCalledTimes(1);
     expect(result.current.getRow("de-DE").violations.map((v) => v.kind)).toEqual([
       "missing-translation",
       "forbidden-used",
@@ -196,15 +211,35 @@ describe("useGlossarySuggestionRows", () => {
     expect(result.current.getRow("de-DE").violations).toEqual([]);
   });
 
-  it("records a glossary load failure for the row (C6)", async () => {
-    suggestAsync.mockResolvedValue({ content: "Öffnen" });
-    const { result } = renderHook(() =>
-      useGlossarySuggestionRows({ loadGlossaries: () => Promise.reject(new Error("down")) }),
-    );
+  it("shows no violations when the server returns empty arrays (C1)", async () => {
+    suggestAsync.mockResolvedValue({ content: "Öffnen", appliedTerms: [], glossaryViolations: [] });
+    const { result } = renderHook(() => useGlossarySuggestionRows());
     await act(async () => {
       await result.current.request(input);
     });
-    expect(result.current.getRow("de-DE").glossaryUnavailable).toBe(true);
-    expect(suggestAsync).toHaveBeenCalledWith(input.legacyPayload);
+    expect(result.current.getRow("de-DE")).toMatchObject({
+      violations: [],
+      matches: [],
+      fromSuggestion: true,
+    });
+  });
+});
+
+describe("recheckViolations", () => {
+  const missing: GlossaryViolation = {
+    glossaryId: "g1",
+    term: "Workspace",
+    kind: "missing-translation",
+    expected: "Arbeitsbereich",
+  };
+
+  it("drops violations the text no longer has and keeps the rest", () => {
+    expect(recheckViolations("Ihr Arbeitsbereich", [missing, forbidden], "de-DE")).toEqual([]);
+    expect(recheckViolations("Ihr Werkbereich", [missing, forbidden], "de-DE")).toEqual([
+      missing,
+      forbidden,
+    ]);
+    expect(recheckViolations("Mein SELISE", [missingKeep], "de-DE")).toEqual([]);
+    expect(recheckViolations("Mein selise", [missingKeep], "de-DE")).toEqual([missingKeep]);
   });
 });

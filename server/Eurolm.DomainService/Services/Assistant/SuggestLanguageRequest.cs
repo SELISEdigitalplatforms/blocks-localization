@@ -15,5 +15,7 @@ namespace Eurolm.DomainService.Services
         public List<string>? GlossaryIds { get; set; }
         public string? ModuleId { get; set; }
         public string? DestinationLanguageCode { get; set; }
+        /// <summary>Source culture code; zh, ja, th, lo, km and my match glossary terms as substrings.</summary>
+        public string? CurrentLanguageCode { get; set; }
     }
 }

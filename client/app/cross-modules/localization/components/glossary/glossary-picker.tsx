@@ -26,7 +26,10 @@ import {
 import { useDebouncedValue } from "@blocks-localization/hooks/use-live-glossary-check";
 import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import {
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
 
 export const PICKER_SEARCH_DEBOUNCE_MS = 300;
 const NO_RESULTS: IGlossary[] = [];
@@ -62,8 +65,8 @@ const GlossaryResultRow = ({
   languages: ILanguageConfig[] | undefined;
   selected: boolean;
 }>) => {
-  const parsed = parseGlossaryMeta(glossary.additionalNote ?? "");
-  const unsupported = parsed.status === "unsupported-version";
+  const meta = toGlossaryMeta(glossary);
+  const unsupported = isUnsupportedGlossaryNote(glossary);
   return (
     <div className="flex min-w-0 flex-1 items-start gap-2">
       <div className="min-w-0 flex-1 space-y-1">
@@ -72,12 +75,12 @@ const GlossaryResultRow = ({
           {unsupported ? (
             <span className="text-xs text-medium-emphasis">—</span>
           ) : (
-            <GlossaryRuleBadge rule={parsed.meta.rule} />
+            <GlossaryRuleBadge rule={meta.rule} />
           )}
         </div>
         {!unsupported && (
           <div className="text-xs">
-            <GlossaryTranslationChips meta={parsed.meta} languages={languages} max={3} />
+            <GlossaryTranslationChips meta={meta} languages={languages} max={3} />
           </div>
         )}
       </div>
@@ -136,17 +139,12 @@ const SelectedChip = ({
 interface GlossaryPickerProps {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
-  /** Offers "Create "<query>"" when the search finds nothing. */
   allowCreate?: boolean;
   disabled?: boolean;
   /** Glossaries the caller already has (seed, resolved tags): names without a request. */
   knownGlossaries?: IGlossary[];
 }
 
-/**
- * Search-and-select for tagging glossaries to a module or a key. Selected chips always
- * render: names come from known glossaries or the search, otherwise from `Glossary/Get`.
- */
 const GlossaryPicker = ({
   selectedIds,
   onChange,
@@ -158,7 +156,6 @@ const GlossaryPicker = ({
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createName, setCreateName] = useState("");
-  // Glossaries picked in this session (search results, created or duplicate terms).
   const [picked, setPicked] = useState<Record<string, IGlossary>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   // The create lookup resolves after the sheet closed: it must add to the current selection.
@@ -221,7 +218,6 @@ const GlossaryPicker = ({
     setSheetOpen(true);
   };
 
-  /** Finds the new term by name (C19): the selection stays unchanged when it isn't found. */
   const selectCreated = async (savedName: string) => {
     try {
       const page = await languageManagerService.fetchGlossaries({

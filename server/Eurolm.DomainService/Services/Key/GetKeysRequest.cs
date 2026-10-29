@@ -18,6 +18,9 @@ namespace Eurolm.DomainService.Services
         public DateRange? LastUpdateDateRange { get; set; }
         public string? GlossaryId { get; set; }
 
+        /// <summary>true: only keys with at least one stored glossary violation; false: only keys without any.</summary>
+        public bool? HasGlossaryViolations { get; set; }
+
         /// <summary>
         /// Opaque keyset token from a previous response's NextCursor. When set, PageNumber is ignored
         /// and the next PageSize keys after the cursor position are returned.

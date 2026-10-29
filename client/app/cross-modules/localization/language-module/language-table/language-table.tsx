@@ -167,6 +167,7 @@ const hasActiveKeyFilters = (
     queryParams.lastUpdateStartDate ||
     queryParams.lastUpdateEndDate ||
     queryParams.duplicates ||
+    queryParams.glossaryIssues ||
     resourceSearchFilterCount > 0,
   );
 
@@ -284,11 +285,21 @@ const removeKeysFromSet = (keys: Set<string>, keyIds: Iterable<string>) => {
 
 function LanguageTableEmptyState({
   hasActiveFilters,
+  isGlossaryIssuesFilterOn,
   importProgress,
 }: Readonly<{
   hasActiveFilters: boolean;
+  isGlossaryIssuesFilterOn: boolean;
   importProgress: LanguageImportProgress | null;
 }>) {
+  if (isGlossaryIssuesFilterOn && !importProgress) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <p className="font-medium text-high-emphasis">No keys with glossary issues</p>
+      </div>
+    );
+  }
+
   if (hasActiveFilters && !importProgress) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
@@ -776,6 +787,7 @@ export function LanguageTable() {
     queryParams.search,
     queryParams.moduleIds,
     queryParams.missingLanguages,
+    queryParams.glossaryIssues,
     createDateRange,
     lastUpdateDateRange,
     resourceSearchFilters,
@@ -1383,6 +1395,7 @@ export function LanguageTable() {
                                     ) : (
                                       <LanguageTableEmptyState
                                         hasActiveFilters={hasActiveFilters}
+                                        isGlossaryIssuesFilterOn={queryParams.glossaryIssues}
                                         importProgress={importProgress}
                                       />
                                     )}

@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Services
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IKeyRepository _keyRepository;
         private readonly IKeyTimelineRepository _keyTimelineRepository;
+        private readonly IGlossaryChangeNotifier? _glossaryChangeNotifier;
 
         private const string ItemIdErrorKey = "ItemId";
         private const string TargetModuleIdErrorKey = "TargetModuleId";
@@ -26,7 +27,8 @@ namespace Eurolm.DomainService.Services
                                       //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
                                       IGlossaryRepository glossaryRepository,
                                       IKeyRepository keyRepository,
-                                      IKeyTimelineRepository keyTimelineRepository)
+                                      IKeyTimelineRepository keyTimelineRepository,
+                                      IGlossaryChangeNotifier? glossaryChangeNotifier = null)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
@@ -35,6 +37,7 @@ namespace Eurolm.DomainService.Services
             _glossaryRepository = glossaryRepository;
             _keyRepository = keyRepository;
             _keyTimelineRepository = keyTimelineRepository;
+            _glossaryChangeNotifier = glossaryChangeNotifier;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -261,28 +264,28 @@ namespace Eurolm.DomainService.Services
                 var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
                 var currentlyTagged = await _glossaryRepository.GetByModuleIdAsync(tenantId, request.ModuleId);
 
-                foreach (var glossary in currentlyTagged)
-                {
-                    if (!request.GlossaryIds.Contains(glossary.ItemId ?? ""))
-                    {
-                        glossary.ModuleIds?.Remove(request.ModuleId);
-                        await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
-                    }
-                }
+                var removeFrom = currentlyTagged
+                    .Where(g => !request.GlossaryIds.Contains(g.ItemId ?? ""))
+                    .Select(g => g.ItemId ?? "")
+                    .ToList();
 
+                var addTo = new List<string>();
                 if (request.GlossaryIds.Count > 0)
                 {
                     var targetGlossaries = await _glossaryRepository.GetByIdsAsync(request.GlossaryIds);
-                    foreach (var glossary in targetGlossaries)
-                    {
-                        glossary.ModuleIds ??= new List<string>();
-                        if (!glossary.ModuleIds.Contains(request.ModuleId))
-                        {
-                            glossary.ModuleIds.Add(request.ModuleId);
-                            await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
-                        }
-                    }
+                    addTo = targetGlossaries
+                        .Where(g => g.ModuleIds == null || !g.ModuleIds.Contains(request.ModuleId))
+                        .Select(g => g.ItemId ?? "")
+                        .ToList();
                 }
+
+                if (removeFrom.Count > 0 || addTo.Count > 0)
+                    await _glossaryRepository.UpdateModuleTagsAsync(request.ModuleId, addTo, removeFrom);
+
+                // Module scope feeds the matcher's key > module > global precedence.
+                // Re-check the keys of every glossary whose module scope changed (coalesced, flag on only).
+                var changed = removeFrom.Concat(addTo).Where(id => id.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+                if (_glossaryChangeNotifier != null) await _glossaryChangeNotifier.NotifyAsync(tenantId, changed);
 
                 return new BaseMutationResponse { IsSuccess = true };
             }
@@ -316,20 +319,5 @@ namespace Eurolm.DomainService.Services
 
             return repoModule;
         }
-
-        private static BlocksGlossary MapToBlocksGlossary(Glossary glossary, string tenantId) => new BlocksGlossary
-        {
-            ItemId = glossary.ItemId ?? "",
-            Name = glossary.Name,
-            Language = glossary.Language ?? "",
-            Type = glossary.Type ?? "",
-            Context = glossary.Context ?? "",
-            AdditionalNote = glossary.AdditionalNote ?? "",
-            IsGlobal = glossary.IsGlobal,
-            ModuleIds = glossary.ModuleIds,
-            CreateDate = glossary.CreateDate,
-            LastUpdateDate = DateTime.UtcNow,
-            TenantId = tenantId
-        };
     }
 }

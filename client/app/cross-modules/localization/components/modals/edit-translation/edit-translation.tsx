@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Label } from "@/components/ui-kits/label/label";
 import {
   DialogClose,
@@ -10,30 +10,28 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
-import { BookOpen, LoaderCircle, Wand } from "lucide-react";
-import {
-  IBlocksLanguageKey,
-  IGlossary,
-  ILanguageConfig,
-} from "@blocks-localization/models/language";
+import { BookOpen, LoaderCircle, Plus, Wand } from "lucide-react";
+import { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import {
   GlossaryTargetChecks,
-  GlossaryUnavailableNote,
   useGlossarySuggestionRows,
 } from "@blocks-localization/components/glossary/glossary-violation-list";
 import {
   distinctGlossaryMatches,
   HighlightedSourceText,
 } from "@blocks-localization/components/glossary/highlighted-source-text";
-import {
-  useApplicableGlossaryMatches,
-  useLoadedGlossaries,
-} from "@blocks-localization/hooks/use-live-glossary-check";
+import { useSourceGlossaryMatches } from "@blocks-localization/hooks/use-live-glossary-check";
 import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
 import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
+import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
+import GlossaryTermMenu, {
+  GLOSSARY_TERM_MENU_HINT,
+  isGlossaryTermMenuShortcut,
+} from "@blocks-localization/components/glossary/glossary-term-menu";
+import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 
@@ -53,8 +51,6 @@ interface EditTranslationProps {
   destinationLanguageCode: string;
   languageListData: ILanguageConfig[];
   onClose: (value?: boolean) => void;
-  /** The project's full glossary (View Details' shared loader): suggestions, highlights, checks. */
-  loadGlossaries?: () => Promise<IGlossary[]>;
 }
 
 const EditTranslation: React.FC<EditTranslationProps> = ({
@@ -63,7 +59,6 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   destinationLanguageCode,
   languageListData,
   onClose,
-  loadGlossaries,
 }) => {
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const {
@@ -72,7 +67,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     getRow,
     clearViolations,
     fix,
-  } = useGlossarySuggestionRows({ loadGlossaries });
+  } = useGlossarySuggestionRows();
   // Not languageListData[0]: the cached list is only default-first if a caller sorted it (A10).
   const defaultLanguage = getDefaultLanguage(languageListData);
   const destinationLanguage = languageListData.find(
@@ -84,17 +79,23 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   const isAutoTranslateLoading = isSuggestionPending(destinationLanguageCode);
   const glossaryRow = getRow(destinationLanguageCode);
 
+  const sourceRef = useRef<HTMLDivElement>(null);
+  const targetRef = useRef<HTMLTextAreaElement | null>(null);
+  const [termMenuOpen, setTermMenuOpen] = useState(false);
+  const [addTermName, setAddTermName] = useState<string | undefined>(undefined);
+  const sourceSelection = useSourceTextSelection(sourceRef);
+
   const [translation, setTranslation] = useState(
     keyDetails.resources?.find((resource) => resource.culture === destinationLanguageCode)?.value ||
       "",
   );
 
-  // Highlights and live checks: plain text and no warnings until the glossary loads (C2).
-  const glossaries = useLoadedGlossaries(loadGlossaries);
-  const sourceMatches = useApplicableGlossaryMatches(glossaries, defaultLanguageText, {
+  const { matches: sourceMatches } = useSourceGlossaryMatches({
+    text: defaultLanguageText,
     sourceCulture: defaultLanguage?.languageCode ?? "",
-    keyGlossaryIds: keyDetails.glossaryIds,
+    keyId: keyDetails.itemId,
     moduleId: keyDetails.moduleId,
+    glossaryIds: keyDetails.glossaryIds,
   });
   /** A user edit (typing or Insert): the suggestion's list gives way to the live check. */
   const editTranslation = useCallback(
@@ -109,19 +110,11 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     getValue: () => translation,
     setValue: (_culture, value) => editTranslation(value),
   });
+  const targetBinding = bindTarget(destinationLanguageCode);
 
   async function runAutoTranslate() {
     const outcome = await request({
       requestKey: destinationLanguageCode,
-      legacyPayload: {
-        sourceText: defaultLanguageText,
-        destinationLanguage: destinationLanguage?.languageName || "English",
-        currentLanguage: defaultLanguage?.languageName || "English",
-        temperature: 0.1,
-        glossaryIds: keyDetails.glossaryIds,
-        moduleId: keyDetails.moduleId,
-        destinationLanguageCode: destinationLanguageCode,
-      },
       sourceText: defaultLanguageText,
       defaultLanguage,
       targetLanguage: {
@@ -246,7 +239,10 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               </p>
             )}
           </div>
-          <DialogDescription className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 px-3 py-2.5 text-left text-sm leading-7 text-high-emphasis">
+          <DialogDescription
+            ref={sourceRef}
+            className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 px-3 py-2.5 text-left text-sm leading-7 text-high-emphasis"
+          >
             <HighlightedSourceText
               text={defaultLanguageText}
               matches={highlightMatches}
@@ -258,6 +254,20 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               onInsert={destinationLanguage?.isDefault ? undefined : insert}
             />
           </DialogDescription>
+          {sourceSelection && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-fit gap-1"
+              // Keeps the text selected while clicking.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setAddTermName(sourceSelection)}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              Add to glossary
+            </Button>
+          )}
         </section>
 
         <div className="grid gap-2">
@@ -286,15 +296,41 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               </span>
             </Button>
           </div>
-          {glossaryRow.glossaryUnavailable && <GlossaryUnavailableNote />}
-          <Textarea
-            id="destinationLanguageText"
-            className="border-default min-h-[116px] border shadow-none"
-            placeholder="Enter translation"
-            value={translation}
-            {...bindTarget(destinationLanguageCode)}
-            onChange={(e) => editTranslation(e.target.value)}
-          />
+          <GlossaryTermMenu
+            open={termMenuOpen}
+            onOpenChange={setTermMenuOpen}
+            matches={highlightMatches}
+            targetLanguage={{
+              languageCode: destinationLanguageCode,
+              languageName: destinationLanguage?.languageName ?? "",
+            }}
+            onInsert={insert}
+            onReturnFocus={() => targetRef.current?.focus()}
+          >
+            <Textarea
+              id="destinationLanguageText"
+              className="border-default min-h-[116px] border shadow-none"
+              placeholder="Enter translation"
+              value={translation}
+              {...targetBinding}
+              ref={(element) => {
+                targetRef.current = element;
+                targetBinding.ref(element);
+              }}
+              aria-describedby={destinationLanguage?.isDefault ? undefined : "glossary-term-menu-hint"}
+              onKeyDown={(event) => {
+                if (destinationLanguage?.isDefault || !isGlossaryTermMenuShortcut(event)) return;
+                event.preventDefault();
+                setTermMenuOpen(true);
+              }}
+              onChange={(e) => editTranslation(e.target.value)}
+            />
+          </GlossaryTermMenu>
+          {!destinationLanguage?.isDefault && (
+            <p id="glossary-term-menu-hint" className="text-xs text-low-emphasis">
+              {GLOSSARY_TERM_MENU_HINT}
+            </p>
+          )}
           <GlossaryTargetChecks
             className="mt-0"
             row={glossaryRow}
@@ -311,6 +347,13 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           />
         </div>
       </div>
+      <GlossaryEditorSheet
+        open={addTermName !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setAddTermName(undefined);
+        }}
+        initialName={addTermName}
+      />
       <DialogFooter className="gap-2 sm:gap-2">
         <DialogClose asChild>
           <Button variant="outline" size="default">
