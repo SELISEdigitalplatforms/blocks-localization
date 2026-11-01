@@ -1,4 +1,5 @@
 import { afterEach, vi } from "vitest";
+import "./i18n";
 import { cleanup } from "@testing-library/react";
 
 // @seliseblocks/genesis-os is externalized by Vitest, so its bundled runtime-env fallback
