@@ -27,7 +27,14 @@ interface GlossaryStatusBadgeProps {
 const GlossaryStatusBadge = ({ status, className }: Readonly<GlossaryStatusBadgeProps>) => {
   const { label, variant, Icon } = STATUS_DISPLAY[status];
   return (
-    <Badge variant={variant} className={cn("w-fit gap-1", className)}>
+    <Badge
+      variant={variant}
+      className={cn(
+        "w-fit gap-1 whitespace-nowrap",
+        status === "approved" && "dark:bg-success/15 dark:text-success",
+        className,
+      )}
+    >
       <Icon className="h-3 w-3" aria-hidden="true" />
       {label}
     </Badge>

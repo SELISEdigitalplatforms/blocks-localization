@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import {
   Tooltip,
@@ -11,6 +11,9 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { getTargetLanguages } from "@blocks-localization/utils/glossary-rule-marker";
 
 export const MAX_TRANSLATION_CHIPS = 4;
+
+const MISSING_CHIP_CLASS =
+  "gap-1 whitespace-nowrap border-dashed border-warning-400 bg-transparent font-medium text-warning-700";
 
 interface GlossaryTranslationChipsProps {
   meta: GlossaryMeta;
@@ -44,7 +47,7 @@ const GlossaryTranslationChips = ({
             return (
               <Tooltip key={languageCode}>
                 <TooltipTrigger asChild>
-                  <Badge variant="warning" className="gap-1 whitespace-nowrap" tabIndex={0}>
+                  <Badge variant="outline" className={MISSING_CHIP_CLASS} tabIndex={0}>
                     <TriangleAlert className="h-3 w-3" aria-hidden="true" />
                     {languageCode}
                     <span className="sr-only"> missing</span>
@@ -58,7 +61,7 @@ const GlossaryTranslationChips = ({
           }
           if (!value) {
             return (
-              <Badge key={languageCode} variant="warning" className="gap-1 whitespace-nowrap">
+              <Badge key={languageCode} variant="outline" className={MISSING_CHIP_CLASS}>
                 <TriangleAlert className="h-3 w-3" aria-hidden="true" />
                 {languageCode} missing
               </Badge>
@@ -67,7 +70,12 @@ const GlossaryTranslationChips = ({
           return (
             <Tooltip key={languageCode}>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="whitespace-nowrap" tabIndex={0}>
+                <Badge
+                  variant="outline"
+                  className="gap-1 whitespace-nowrap font-medium"
+                  tabIndex={0}
+                >
+                  <Check className="h-3 w-3 text-success" aria-hidden="true" />
                   {languageCode}
                 </Badge>
               </TooltipTrigger>

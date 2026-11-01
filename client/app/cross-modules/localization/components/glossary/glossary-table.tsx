@@ -158,7 +158,7 @@ const defaultDescending = (sortBy: GlossarySortBy) => sortBy !== "name";
 
 const HeaderLabel = ({ children }: Readonly<{ children: string }>) => (
   <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">{children}</span>
+    <span className="whitespace-nowrap font-bold text-medium-emphasis">{children}</span>
   </div>
 );
 
@@ -194,7 +194,7 @@ const SortHeader = ({
 };
 
 const TruncatedText = ({ text, className }: Readonly<{ text: string; className: string }>) => {
-  if (text === "-") return <span>-</span>;
+  if (text === "-") return <span className="text-low-emphasis">-</span>;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -218,7 +218,7 @@ const TruncatedText = ({ text, className }: Readonly<{ text: string; className: 
 
 function renderRuleCell(row: { original: IGlossary }) {
   return isUnsupportedGlossaryNote(row.original) ? (
-    <span>—</span>
+    <span className="text-low-emphasis">—</span>
   ) : (
     <GlossaryRuleBadge rule={toGlossaryMeta(row.original).rule} />
   );
@@ -228,12 +228,18 @@ function renderTranslationsCell(
   row: { original: IGlossary },
   languages: ILanguageConfig[] | undefined,
 ) {
-  return isUnsupportedGlossaryNote(row.original) ? (
-    <span>—</span>
-  ) : (
-    <GlossaryTranslationChips meta={toGlossaryMeta(row.original)} languages={languages} />
+  return (
+    <div className={TRANSLATIONS_CELL_CLASS}>
+      {isUnsupportedGlossaryNote(row.original) ? (
+        <span className="text-low-emphasis">—</span>
+      ) : (
+        <GlossaryTranslationChips meta={toGlossaryMeta(row.original)} languages={languages} />
+      )}
+    </div>
   );
 }
+
+const TRANSLATIONS_CELL_CLASS = "min-w-[232px] max-w-[320px] text-low-emphasis";
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
 
@@ -300,7 +306,11 @@ const GlossaryActionsCell = ({
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <Button variant="ghost" className="h-8 w-8 p-0" aria-label={`Actions for ${glossary.name}`}>
+      <Button
+        variant="ghost"
+        className="ml-auto flex h-8 w-8 p-0"
+        aria-label={`Actions for ${glossary.name}`}
+      >
         <EllipsisVertical width={20} height={20} />
       </Button>
     </DropdownMenuTrigger>
@@ -403,7 +413,11 @@ const buildGlossaryColumns = ({
   {
     accessorKey: "language",
     header: () => <HeaderLabel>Language</HeaderLabel>,
-    cell: ({ row }) => <span>{getGlossaryLanguageName(row.original.language, languages)}</span>,
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">
+        {getGlossaryLanguageName(row.original.language, languages)}
+      </span>
+    ),
   },
   {
     accessorKey: "type",
@@ -428,19 +442,27 @@ const buildGlossaryColumns = ({
   {
     accessorKey: "createDate",
     header: () => <SortHeader label="Created" sortBy="createDate" sort={sort} onSort={onSort} />,
-    cell: ({ row }) => <span>{formatDate(row.original.createDate)}</span>,
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">{formatDate(row.original.createDate)}</span>
+    ),
   },
   {
     accessorKey: "lastUpdateDate",
     header: () => (
       <SortHeader label="Last updated" sortBy="lastUpdateDate" sort={sort} onSort={onSort} />
     ),
-    cell: ({ row }) => <span>{formatDate(row.original.lastUpdateDate)}</span>,
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">{formatDate(row.original.lastUpdateDate)}</span>
+    ),
   },
   {
     id: "actions",
     enableHiding: false,
-    header: () => <HeaderLabel>Actions</HeaderLabel>,
+    header: () => (
+      <div className="flex justify-end">
+        <HeaderLabel>Actions</HeaderLabel>
+      </div>
+    ),
     cell: ({ row }) => (
       <GlossaryActionsCell glossary={row.original} onEdit={onEdit} onDelete={onDelete} />
     ),
@@ -449,6 +471,9 @@ const buildGlossaryColumns = ({
 
 const BADGE_SKELETON_CLASS = "h-[26px] rounded";
 const TEXT_SKELETON_CLASS = "h-5 rounded";
+
+const createSkeletonKeys = (count: number, prefix: string) =>
+  Array.from({ length: count }, (_, position) => `${prefix}-${position}`);
 
 function renderSkeletonCell(columnId: string, chipCount: number) {
   switch (columnId) {
@@ -465,13 +490,17 @@ function renderSkeletonCell(columnId: string, chipCount: number) {
     case "status":
       return <Skeleton className={`${BADGE_SKELETON_CLASS} w-[92px]`} />;
     case "translations":
-      return chipCount === 0 ? (
-        <Skeleton className={`${TEXT_SKELETON_CLASS} w-3`} />
-      ) : (
-        <div className="flex flex-wrap items-center gap-1">
-          {Array.from({ length: chipCount }).map((_, index) => (
-            <Skeleton key={index} className={`${BADGE_SKELETON_CLASS} w-12`} />
-          ))}
+      return (
+        <div className={TRANSLATIONS_CELL_CLASS}>
+          {chipCount === 0 ? (
+            <Skeleton className={`${TEXT_SKELETON_CLASS} w-3`} />
+          ) : (
+            <div className="flex flex-wrap items-center gap-1">
+              {createSkeletonKeys(chipCount, "translation-chip-skeleton").map((chipKey) => (
+                <Skeleton key={chipKey} className={`${BADGE_SKELETON_CLASS} w-16`} />
+              ))}
+            </div>
+          )}
         </div>
       );
     case "language":
@@ -484,7 +513,7 @@ function renderSkeletonCell(columnId: string, chipCount: number) {
     case "lastUpdateDate":
       return <Skeleton className={`${TEXT_SKELETON_CLASS} w-20`} />;
     case "actions":
-      return <Skeleton className="h-8 w-8 rounded-md" />;
+      return <Skeleton className="ml-auto h-8 w-8 rounded-md" />;
     default:
       return <Skeleton className={`${TEXT_SKELETON_CLASS} w-full`} />;
   }
@@ -499,8 +528,8 @@ function renderSkeletonRows(
     ? Math.min(getTargetLanguages(languages).length, MAX_TRANSLATION_CHIPS)
     : 2;
 
-  return Array.from({ length: rowCount }).map((_, rowIndex) => (
-    <TableRow key={rowIndex}>
+  return createSkeletonKeys(rowCount, "glossary-row-skeleton").map((rowKey) => (
+    <TableRow key={rowKey}>
       {columnIds.map((columnId) => (
         <TableCell key={columnId}>{renderSkeletonCell(columnId, chipCount)}</TableCell>
       ))}
@@ -839,108 +868,110 @@ const GlossaryTable = () => {
           </CardTitle>
           <GlossarySummaryStrip status={statusFilter} onStatusChange={handleStatusChange} />
         </CardHeader>
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
-          <div className="col-span-2 sm:col-span-3 lg:w-[260px]">
-            <FilterControls.SearchInput
-              placeholder="Search glossary..."
-              value={searchText}
-              onChange={handleSearchChange}
-              className="h-9 w-full"
-              disabled={isUnfilteredEmpty}
-            />
-          </div>
-          <Select
-            value={ruleFilter ?? ALL_FILTER}
-            onValueChange={selectFilter<GlossaryRuleDto>(setRuleFilter)}
-          >
-            <SelectTrigger aria-label="Rule" className="h-9 w-full lg:w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER}>All rules</SelectItem>
-              {GLOSSARY_RULES.map((rule) => (
-                <SelectItem key={rule} value={rule}>
-                  {GLOSSARY_RULE_LABELS[rule]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={statusFilter ?? ALL_FILTER}
-            onValueChange={selectFilter<GlossaryStatus>(setStatusFilter)}
-          >
-            <SelectTrigger aria-label="Status" className="h-9 w-full lg:w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER}>All statuses</SelectItem>
-              {GLOSSARY_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {GLOSSARY_STATUS_LABELS[status]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={languageFilter ?? ALL_FILTER}
-            onValueChange={selectFilter<string>(setLanguageFilter)}
-          >
-            <SelectTrigger aria-label="Language" className="h-9 w-full lg:w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER}>All languages</SelectItem>
-              {languageListData?.map((language) => (
-                <SelectItem key={language.languageCode} value={language.languageCode}>
-                  {language.languageName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={typeFilter ?? ALL_FILTER}
-            onValueChange={selectFilter<string>(setTypeFilter)}
-          >
-            <SelectTrigger aria-label="Type" className="h-9 w-full lg:w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER}>All types</SelectItem>
-              {GLOSSARY_TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={scopeFilter ?? ALL_FILTER}
-            onValueChange={selectFilter<GlossaryScopeFilter>(setScopeFilter)}
-          >
-            <SelectTrigger aria-label="Scope" className="h-9 w-full lg:w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER}>All scopes</SelectItem>
-              <SelectItem value="project">Whole project</SelectItem>
-              <SelectItem value="modules">Specific modules</SelectItem>
-            </SelectContent>
-          </Select>
-          {(isFiltered || !!searchText) && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-9 gap-1 text-medium-emphasis"
-              onClick={clearFilters}
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start">
+          <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
+            <div className="col-span-2 sm:col-span-3 lg:w-[260px]">
+              <FilterControls.SearchInput
+                placeholder="Search glossary..."
+                value={searchText}
+                onChange={handleSearchChange}
+                className="h-9 w-full"
+                disabled={isUnfilteredEmpty}
+              />
+            </div>
+            <Select
+              value={ruleFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryRuleDto>(setRuleFilter)}
             >
-              Reset
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          )}
+              <SelectTrigger aria-label="Rule" className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>All rules</SelectItem>
+                {GLOSSARY_RULES.map((rule) => (
+                  <SelectItem key={rule} value={rule}>
+                    {GLOSSARY_RULE_LABELS[rule]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryStatus>(setStatusFilter)}
+            >
+              <SelectTrigger aria-label="Status" className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>All statuses</SelectItem>
+                {GLOSSARY_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {GLOSSARY_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={languageFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<string>(setLanguageFilter)}
+            >
+              <SelectTrigger aria-label="Language" className="h-9 w-full lg:w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>All languages</SelectItem>
+                {languageListData?.map((language) => (
+                  <SelectItem key={language.languageCode} value={language.languageCode}>
+                    {language.languageName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={typeFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<string>(setTypeFilter)}
+            >
+              <SelectTrigger aria-label="Type" className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>All types</SelectItem>
+                {GLOSSARY_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={scopeFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryScopeFilter>(setScopeFilter)}
+            >
+              <SelectTrigger aria-label="Scope" className="h-9 w-full lg:w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>All scopes</SelectItem>
+                <SelectItem value="project">Whole project</SelectItem>
+                <SelectItem value="modules">Specific modules</SelectItem>
+              </SelectContent>
+            </Select>
+            {(isFiltered || !!searchText) && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 gap-1 text-medium-emphasis"
+                onClick={clearFilters}
+              >
+                Reset
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
           {!isMobile && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-9 lg:ml-auto">
+                <Button variant="outline" className="h-9 self-end lg:shrink-0 lg:self-start">
                   <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
                   Columns
                 </Button>
