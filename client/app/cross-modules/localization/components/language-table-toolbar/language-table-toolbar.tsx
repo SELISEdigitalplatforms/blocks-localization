@@ -1,4 +1,5 @@
 import React from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import {
   FilterChangeHandler,
   FilterToolbar,
@@ -52,6 +53,7 @@ export function LanguageTableToolbar({
   languagesData: Array<{ languageCode: string; languageName: string }>;
   disabled?: boolean;
 }) {
+  const { t } = useT("localization.language-table");
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
     search: string;
@@ -103,7 +105,7 @@ export function LanguageTableToolbar({
           {
             key: "moduleIds",
             type: "MultiSelect",
-            label: "Modules",
+            label: t("LANGUAGE_TABLE_TOOLBAR.MODULES"),
             props: {
               options: languageModulesData?.map((module) => ({
                 label: module.moduleName,
@@ -114,7 +116,7 @@ export function LanguageTableToolbar({
           {
             key: "missingLanguages",
             type: "MultiSelect",
-            label: "Missing Translations",
+            label: t("LANGUAGE_TABLE_TOOLBAR.MISSING_TRANSLATIONS"),
             props: {
               options: languagesData?.map((lang) => ({
                 label: lang.languageName,
@@ -125,7 +127,7 @@ export function LanguageTableToolbar({
           {
             key: "createDate",
             type: "DateRange",
-            label: "Create Date",
+            label: t("LANGUAGE_TABLE_TOOLBAR.CREATE_DATE"),
             props: {
               disableFutureDates: true,
             },
@@ -133,7 +135,7 @@ export function LanguageTableToolbar({
           {
             key: "lastUpdateDate",
             type: "DateRange",
-            label: "Last Update Date",
+            label: t("LANGUAGE_TABLE_TOOLBAR.LAST_UPDATE_DATE"),
             props: {
               disableFutureDates: true,
             },

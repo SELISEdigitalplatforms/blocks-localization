@@ -33,6 +33,7 @@ import type {
   ILanguageConfig,
   ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 
 interface BulkEditKeysDialogProps {
   keys: IBlocksLanguageKey[];
@@ -95,13 +96,15 @@ export const buildBulkEditPayload = (
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
-  return "The selected keys could not be updated. Review the values and try again.";
+  return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.UPDATE_FAILED");
 };
 
 const getGlossaryAssignmentTitle = (source: "key" | "module" | "pending"): string => {
-  if (source === "pending") return "Will be assigned when saved";
-  if (source === "module") return "Assigned through this key's module";
-  return "Assigned directly to this key";
+  if (source === "pending")
+    return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_PENDING");
+  if (source === "module")
+    return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_MODULE");
+  return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_KEY");
 };
 
 interface KeyGlossaryAssignmentsProps {
@@ -121,6 +124,7 @@ function KeyGlossaryAssignments({
   onModuleGlossariesResolved,
   pendingGlossaries,
 }: Readonly<KeyGlossaryAssignmentsProps>) {
+  const { t } = useT("localization.language-table");
   const { data: moduleGlossariesData, isLoading: isLoadingModuleGlossaries } =
     useGetModuleGlossaries(moduleId);
 
@@ -165,7 +169,9 @@ function KeyGlossaryAssignments({
   if (assignments.length === 0) {
     return (
       <span className="text-sm text-low-emphasis">
-        {isLoading ? "Loading glossaries..." : "No glossary assigned"}
+        {isLoading
+          ? t("BULK_EDIT_KEYS_DIALOG.LOADING_GLOSSARIES")
+          : t("BULK_EDIT_KEYS_DIALOG.NO_GLOSSARY_ASSIGNED")}
       </span>
     );
   }
@@ -182,7 +188,11 @@ function KeyGlossaryAssignments({
           {glossary.name}
         </Badge>
       ))}
-      {isLoading && <span className="text-xs text-low-emphasis">Loading glossaries...</span>}
+      {isLoading && (
+        <span className="text-xs text-low-emphasis">
+          {t("BULK_EDIT_KEYS_DIALOG.LOADING_GLOSSARIES")}
+        </span>
+      )}
     </>
   );
 }
@@ -193,6 +203,7 @@ export function BulkEditKeysDialog({
   onCancel,
   onSaved,
 }: Readonly<BulkEditKeysDialogProps>) {
+  const { t } = useT("localization.language-table");
   const [translationValue, setTranslationValue] = useState("");
   const [searchText, setSearchText] = useState("");
   const [isGlossaryPickerOpen, setIsGlossaryPickerOpen] = useState(false);
@@ -218,11 +229,7 @@ export function BulkEditKeysDialog({
   );
   const trimmedTranslation = translationValue.trim();
   const overwriteCount = keys.length * languages.length;
-  const valueLabel = overwriteCount === 1 ? "value" : "values";
-  const languageNamesText =
-    languages.length > 0
-      ? ` across ${languages.map((language) => language.languageName).join(", ")}`
-      : "";
+  const languageNames = languages.map((language) => language.languageName).join(", ");
   const pendingPayload = useMemo(
     () =>
       buildBulkEditPayload(
@@ -234,7 +241,7 @@ export function BulkEditKeysDialog({
       ),
     [glossariesToApply, keys, languages, moduleGlossaryIdsByModule, trimmedTranslation],
   );
-  const saveButtonLabel = `Save ${pendingPayload.length} ${pendingPayload.length === 1 ? "key" : "keys"}`;
+  const saveButtonLabel = t("BULK_EDIT_KEYS_DIALOG.SAVE_KEYS", { count: pendingPayload.length });
 
   const handleModuleGlossariesResolved = useCallback((moduleId: string, glossaryIds: string[]) => {
     setModuleGlossaryIdsByModule((current) => {
@@ -270,7 +277,7 @@ export function BulkEditKeysDialog({
       if (!response?.success) {
         toast({
           variant: "destructive",
-          title: "Bulk edit failed",
+          title: t("BULK_EDIT_KEYS_DIALOG.BULK_EDIT_FAILED"),
           description: response?.errorMessage || getErrorMessage(response),
         });
         return;
@@ -278,14 +285,14 @@ export function BulkEditKeysDialog({
 
       toast({
         variant: "success",
-        title: "Bulk edit complete",
-        description: `${pendingPayload.length} ${pendingPayload.length === 1 ? "key was" : "keys were"} updated successfully.`,
+        title: t("BULK_EDIT_KEYS_DIALOG.BULK_EDIT_COMPLETE"),
+        description: t("BULK_EDIT_KEYS_DIALOG.KEYS_UPDATED", { count: pendingPayload.length }),
       });
       onSaved();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Bulk edit failed",
+        title: t("BULK_EDIT_KEYS_DIALOG.BULK_EDIT_FAILED"),
         description: getErrorMessage(error),
       });
     }
@@ -295,11 +302,9 @@ export function BulkEditKeysDialog({
     <DialogContent className="h-[calc(100dvh-1rem)] max-h-208 grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:max-w-2xl">
       <DialogHeader className="border-b px-6 pb-5 pt-6 pr-12">
         <DialogTitle className="text-xl">
-          Bulk edit {keys.length} {keys.length === 1 ? "key" : "keys"}
+          {t("BULK_EDIT_KEYS_DIALOG.TITLE", { count: keys.length })}
         </DialogTitle>
-        <DialogDescription>
-          Set one translation value and optionally apply glossaries to every selected key.
-        </DialogDescription>
+        <DialogDescription>{t("BULK_EDIT_KEYS_DIALOG.DESCRIPTION")}</DialogDescription>
       </DialogHeader>
 
       <ScrollArea className="min-h-0">
@@ -310,20 +315,19 @@ export function BulkEditKeysDialog({
                 id="bulk-translation-heading"
                 className="text-sm font-semibold text-high-emphasis"
               >
-                Translation value (optional)
+                {t("BULK_EDIT_KEYS_DIALOG.TRANSLATION_VALUE_HEADING")}
               </h3>
               <p className="mt-1 text-sm text-medium-emphasis">
-                Enter a value to replace all configured languages, or leave it empty to keep current
-                translations.
+                {t("BULK_EDIT_KEYS_DIALOG.TRANSLATION_VALUE_HINT")}
               </p>
             </div>
             <Textarea
-              aria-label="Translation value for all selected keys"
+              aria-label={t("BULK_EDIT_KEYS_DIALOG.TRANSLATION_VALUE_ARIA")}
               autoFocus
               className="min-h-28 resize-y shadow-none"
               disabled={isPending}
               maxLength={5000}
-              placeholder="Enter the shared translation value"
+              placeholder={t("BULK_EDIT_KEYS_DIALOG.TRANSLATION_VALUE_PLACEHOLDER")}
               value={translationValue}
               onChange={(event) => setTranslationValue(event.target.value)}
             />
@@ -331,8 +335,12 @@ export function BulkEditKeysDialog({
               <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
                 <p>
-                  Saving will overwrite {overwriteCount} translation {valueLabel}
-                  {languageNamesText}.
+                  {languages.length > 0
+                    ? t("BULK_EDIT_KEYS_DIALOG.OVERWRITE_WITH_LANGUAGES", {
+                        count: overwriteCount,
+                        languages: languageNames,
+                      })
+                    : t("BULK_EDIT_KEYS_DIALOG.OVERWRITE", { count: overwriteCount })}
                 </p>
               </div>
             )}
@@ -344,22 +352,27 @@ export function BulkEditKeysDialog({
           >
             <div>
               <h3 id="bulk-glossary-heading" className="text-sm font-semibold text-high-emphasis">
-                Apply glossaries to all keys
+                {t("BULK_EDIT_KEYS_DIALOG.GLOSSARIES_HEADING")}
               </h3>
               <p className="mt-1 text-sm text-medium-emphasis">
-                Existing assignments are preserved. Glossaries selected here are added to every key.
+                {t("BULK_EDIT_KEYS_DIALOG.GLOSSARIES_HINT")}
               </p>
             </div>
 
             {glossariesToApply.length > 0 && (
-              <div className="flex flex-wrap gap-2" aria-label="Glossaries to apply">
+              <div
+                className="flex flex-wrap gap-2"
+                aria-label={t("BULK_EDIT_KEYS_DIALOG.GLOSSARIES_TO_APPLY")}
+              >
                 {glossariesToApply.map((glossary) => (
                   <Badge key={glossary.itemId} variant="secondary" className="gap-1 pr-1">
                     {glossary.name}
                     <button
                       type="button"
                       className="rounded-sm p-0.5 hover:bg-muted-foreground/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label={`Remove ${glossary.name}`}
+                      aria-label={t("BULK_EDIT_KEYS_DIALOG.REMOVE_GLOSSARY", {
+                        name: glossary.name,
+                      })}
                       disabled={isPending}
                       onClick={() => removeGlossary(glossary.itemId)}
                     >
@@ -376,14 +389,14 @@ export function BulkEditKeysDialog({
                   type="button"
                   variant="outline"
                   role="combobox"
-                  aria-label="Search and add glossaries"
+                  aria-label={t("BULK_EDIT_KEYS_DIALOG.SEARCH_ADD_GLOSSARIES")}
                   aria-expanded={isGlossaryPickerOpen}
                   className="w-full justify-between font-normal"
                   disabled={isPending}
                 >
                   <span className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
-                    Search and add glossaries
+                    {t("BULK_EDIT_KEYS_DIALOG.SEARCH_ADD_GLOSSARIES")}
                   </span>
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -395,12 +408,12 @@ export function BulkEditKeysDialog({
               >
                 <Command shouldFilter={false}>
                   <CommandInput
-                    placeholder="Search glossaries..."
+                    placeholder={t("BULK_EDIT_KEYS_DIALOG.SEARCH_GLOSSARIES_PLACEHOLDER")}
                     value={searchText}
                     onValueChange={setSearchText}
                   />
                   <CommandList>
-                    <CommandEmpty>No glossary found.</CommandEmpty>
+                    <CommandEmpty>{t("BULK_EDIT_KEYS_DIALOG.NO_GLOSSARY_FOUND")}</CommandEmpty>
                     <CommandGroup>
                       {availableGlossaries.map((glossary) => (
                         <CommandItem
@@ -426,10 +439,10 @@ export function BulkEditKeysDialog({
           <section aria-labelledby="selected-keys-heading" className="space-y-3 border-t pt-5">
             <div>
               <h3 id="selected-keys-heading" className="text-sm font-semibold text-high-emphasis">
-                Selected keys and current glossaries
+                {t("BULK_EDIT_KEYS_DIALOG.SELECTED_HEADING")}
               </h3>
               <p className="mt-1 text-sm text-medium-emphasis">
-                Review the assignments that each key already has.
+                {t("BULK_EDIT_KEYS_DIALOG.SELECTED_HINT")}
               </p>
             </div>
             <div className="divide-y rounded-md border">
@@ -463,14 +476,14 @@ export function BulkEditKeysDialog({
 
       <DialogFooter className="z-10 border-t bg-background px-6 py-4 sm:gap-2">
         <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>
-          Cancel
+          {t("common:CANCEL")}
         </Button>
         <Button
           type="button"
           disabled={pendingPayload.length === 0 || isPending}
           onClick={() => void handleSave()}
         >
-          {isPending ? "Saving changes..." : saveButtonLabel}
+          {isPending ? t("BULK_EDIT_KEYS_DIALOG.SAVING_CHANGES") : saveButtonLabel}
         </Button>
       </DialogFooter>
     </DialogContent>
