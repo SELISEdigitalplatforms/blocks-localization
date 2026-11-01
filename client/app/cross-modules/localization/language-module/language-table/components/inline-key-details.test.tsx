@@ -107,14 +107,14 @@ const deferred = <T,>() => {
  * No violation list and no info line. The polite live region stays mounted while empty, so
  * this checks that every status region is empty instead of that none exists.
  */
-/** No row reports a glossary issue ("All glossary terms followed" is fine). */
+/** No row reports a glossary issue ("All glossaries followed" is fine). */
 const expectNoGlossaryIssues = () =>
   expect(
     screen.queryAllByRole("status").filter((region) => /issue/.test(region.textContent ?? "")),
   ).toEqual([]);
 
 const glossaryRegion = (language: string) =>
-  screen.findByRole("region", { name: `Glossary terms for ${language}` });
+  screen.findByRole("region", { name: `Glossaries for ${language}` });
 
 describe("InlineKeyDetails — glossary-aware suggestions", () => {
   beforeEach(() => {
@@ -186,7 +186,7 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
         expect(textbox("German translation").value).toBe("Öffnen Sie Ihren Werkbereich"),
       );
       expectNoGlossaryIssues();
-      expect(screen.queryByRole("region", { name: "Glossary terms for German" })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Glossaries for German" })).toBeNull();
     });
 
     it("keeps the in-flight state per row (C22)", async () => {
@@ -232,14 +232,14 @@ describe("InlineKeyDetails — glossary-aware suggestions", () => {
       renderEditor();
       const german = await glossaryRegion("German");
       expect(within(german).getByText("Arbeitsbereich")).toBeTruthy();
-      expect(within(german).getByText("Use these terms in this translation")).toBeTruthy();
+      expect(within(german).getByText("Use these glossaries in this translation")).toBeTruthy();
       const french = await glossaryRegion("French");
       expect(within(french).getByText("Espace de travail")).toBeTruthy();
       expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
 
       fireEvent.change(textbox("English translation"), { target: { value: "Hello" } });
       await waitFor(() =>
-        expect(screen.queryByRole("region", { name: "Glossary terms for German" })).toBeNull(),
+        expect(screen.queryByRole("region", { name: "Glossaries for German" })).toBeNull(),
       );
     });
 

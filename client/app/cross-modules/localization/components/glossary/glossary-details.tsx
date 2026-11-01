@@ -330,7 +330,7 @@ const TranslationsTable = ({
           <Alert variant="destructive">
             <TriangleAlert />
             <AlertDescription>
-              <p>This term was changed by someone else. Reload the latest version, then save again.</p>
+              <p>This glossary was changed by someone else. Reload the latest version, then save again.</p>
               <Button
                 type="button"
                 size="sm"
@@ -385,7 +385,7 @@ function renderTranslationsContent(
   if (isUnsupported) {
     return (
       <p className="text-sm text-medium-emphasis">
-        This term was saved by a newer version and can&apos;t be shown here.
+        This glossary was saved by a newer version and can&apos;t be shown here.
       </p>
     );
   }
@@ -403,7 +403,7 @@ function renderTranslationsContent(
   return (
     <>
       {meta.rule === "forbidden" && (
-        <p className="pb-4 text-sm text-medium-emphasis">Do not use this term.</p>
+        <p className="pb-4 text-sm text-medium-emphasis">Do not use this glossary.</p>
       )}
       <TranslationsTable
         glossary={glossary}
@@ -569,7 +569,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         toast({
           variant: "success",
           title: "Success",
-          description: "Term deprecated. It no longer reaches the AI or highlights.",
+          description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         });
       } else {
         showErrorToast({ errors: res?.validationErrors?.[0]?.errorMessage || res?.errorMessage });
@@ -950,7 +950,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" align="start" className="max-w-72 text-left text-xs font-normal">
-                    Notes for your team, such as where the term came from or who approved it. Never
+                    Notes for your team, such as where the glossary came from or who approved it. Never
                     sent to the AI.
                   </TooltipContent>
                 </Tooltip>

@@ -177,7 +177,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
           await translations.openTranslationKeysTab();
           await translations.expandKey(names.key);
           await expect(
-            page.getByRole("region", { name: /^Glossary terms for / }).first(),
+            page.getByRole("region", { name: /^Glossaries for / }).first(),
           ).toBeVisible({
             timeout: 15_000,
           });
@@ -188,7 +188,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
           await setTheme(page, theme);
           await page.getByPlaceholder("Enter default value").fill(fixtures.source);
           await expect(
-            page.getByRole("region", { name: /^Glossary terms for / }).first(),
+            page.getByRole("region", { name: /^Glossaries for / }).first(),
           ).toBeVisible({
             timeout: 15_000,
           });

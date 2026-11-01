@@ -113,7 +113,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
         toast({
           variant: "success",
           title: "Success",
-          description: "Term deprecated. It no longer reaches the AI or highlights.",
+          description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         });
         onClose();
       } else {

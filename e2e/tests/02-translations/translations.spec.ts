@@ -977,7 +977,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await translations.glossaryTerm(dialog, names.g1).click();
         const [newPage] = await Promise.all([
           page.context().waitForEvent("page"),
-          translations.termPopover.getByRole("button", { name: "Open term" }).click(),
+          translations.termPopover.getByRole("button", { name: "Open glossary" }).click(),
         ]);
         await expect(newPage).toHaveURL(new RegExp(`/services/glossary/${ids.g1}$`));
         await newPage.close();
@@ -1026,7 +1026,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect(page.getByRole("button", { name: /^Insert/ })).toHaveCount(0);
         // H13: typing the approved value marks the term followed in that row only.
         await translations.inlineTranslation(target.languageName).fill("Arbeitsbereich");
-        await expect(checklist.getByText("All glossary terms followed")).toBeVisible();
+        await expect(checklist.getByText("All glossaries followed")).toBeVisible();
         const other = targets.find((language) => language.languageCode !== target.languageCode);
         if (other) {
           // A language without a value for the term says so (C3).

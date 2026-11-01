@@ -353,7 +353,6 @@ describe("localization/constants/query-keys", () => {
       ["usage", localizationQueryKeys.glossaries.usage("t1", "g1")],
       ["byIds", localizationQueryKeys.glossaries.byIds("t1", ["a", "b"])],
       ["match", localizationQueryKeys.glossaries.match("t1", "en-US", "k1", "m1", "text")],
-      ["summaryCount", localizationQueryKeys.glossaries.summaryCount("t1", "draft")],
     ])("should build the %s key under the 'all' prefix so glossary writes refresh it", (_, key) => {
       expect(key.slice(0, localizationQueryKeys.glossaries.all.length)).toEqual(
         localizationQueryKeys.glossaries.all,

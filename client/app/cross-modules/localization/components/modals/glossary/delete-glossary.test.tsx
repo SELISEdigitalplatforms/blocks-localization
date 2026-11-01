@@ -234,7 +234,7 @@ describe("modals/glossary/delete-glossary", () => {
       expect(cascadeAsync).not.toHaveBeenCalled();
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: "Term deprecated. It no longer reaches the AI or highlights.",
+          description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         }),
       );
     });

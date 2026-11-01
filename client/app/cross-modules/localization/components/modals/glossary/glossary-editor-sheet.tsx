@@ -177,7 +177,7 @@ const firstVariantError = (variants: string[], name: string): string | undefined
       return `Variant must be ${GLOSSARY_LIMITS.value} characters or fewer`;
     }
     const normalized = normalizeGlossaryName(variant);
-    if (normalized === normalizedName) return "Variant can't be the same as the term";
+    if (normalized === normalizedName) return "Variant can't be the same as the glossary";
     if (seen.has(normalized)) return "Variant already listed";
     seen.add(normalized);
   }
@@ -761,7 +761,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       onReloaded?.(latest);
     } catch (error) {
       if (isNotFoundError(error)) {
-        showErrorToast({ errors: "This term no longer exists." });
+        showErrorToast({ errors: "This glossary no longer exists." });
         onClose();
         return;
       }
@@ -896,7 +896,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
             {isEditMode ? "Edit Glossary" : "Add Glossary"}
           </SheetTitle>
           <SheetDescription className="text-medium-emphasis">
-            Define the term, its translations, meaning and scope.
+            Define the glossary, its translations, meaning and scope.
           </SheetDescription>
         </div>
         <SheetClose asChild>
@@ -933,7 +933,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <Alert className="border-warning-200 bg-warning-50 text-warning-700">
                     <TriangleAlert />
                     <AlertDescription className="text-warning-700">
-                      This term was saved by a newer version and can&apos;t be edited here.
+                      This glossary was saved by a newer version and can&apos;t be edited here.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -942,7 +942,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                 <section className="grid gap-5" aria-labelledby="glossary-section-term">
                   <SectionHeading
                     id="glossary-section-term"
-                    title="Term"
+                    title="Glossary"
                     description="The word or phrase, and how the AI should treat it."
                   />
                   <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:gap-4">
@@ -997,7 +997,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                               Language
                             </FormLabel>
                             <FieldInfo label="language">
-                              The language the term is written in, usually your project&apos;s
+                              The language the glossary is written in, usually your project&apos;s
                               source language.
                             </FieldInfo>
                           </LabelRow>
@@ -1115,7 +1115,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                           </SelectContent>
                         </Select>
                         <FormDescription className="text-xs text-medium-emphasis">
-                          Only Approved terms are sent to the AI.
+                          Only Approved glossaries are sent to the AI.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1160,7 +1160,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Variants
                           </FormLabel>
                           <FieldInfo label="variants">
-                            Other forms of this term, such as plurals, spellings or synonyms, e.g.
+                            Other forms of this glossary, such as plurals, spellings or synonyms, e.g.
                             &quot;Workspaces&quot; or &quot;work space&quot;. AI suggestions apply
                             this entry&apos;s rule to them too. Up to {GLOSSARY_LIMITS.variants}.
                           </FieldInfo>
@@ -1194,8 +1194,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                           title="Translations"
                           description={
                             rule === "forbidden"
-                              ? "Words that must not be used in each language instead of this term."
-                              : "The approved translation for each project language. The AI must use it wherever the term appears."
+                              ? "Words that must not be used in each language instead of this glossary."
+                              : "The approved translation for each project language. The AI must use it wherever the glossary appears."
                           }
                         />
                         {canSuggest && missingTargets.length > 0 && (
@@ -1228,7 +1228,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <SectionHeading
                     id="glossary-section-meaning"
                     title="Meaning"
-                    description="Context that helps the AI and your team understand the term."
+                    description="Context that helps the AI and your team understand the glossary."
                   />
                   <FormField
                     name="type"
@@ -1238,7 +1238,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                         <LabelRow>
                           <FormLabel className="font-medium text-high-emphasis">Type</FormLabel>
                           <FieldInfo label="type">
-                            What kind of term this is, e.g. an acronym or a phrase. Helps your team
+                            What kind of glossary this is, e.g. an acronym or a phrase. Helps your team
                             understand and review it.
                           </FieldInfo>
                         </LabelRow>
@@ -1274,13 +1274,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Definition
                           </FormLabel>
                           <FieldInfo label="definition">
-                            What the term means in your product. It is sent to the AI as context, so
+                            What the glossary means in your product. It is sent to the AI as context, so
                             keep it short and clear.
                           </FieldInfo>
                         </LabelRow>
                         <FormControl>
                           <Textarea
-                            placeholder="What the term means"
+                            placeholder="What the glossary means"
                             className="resize-none"
                             rows={3}
                             {...field}
@@ -1304,7 +1304,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Part of speech
                           </FormLabel>
                           <FieldInfo label="part of speech">
-                            Whether the term is a noun, verb and so on. It is sent to the AI with the
+                            Whether the glossary is a noun, verb and so on. It is sent to the AI with the
                             definition, to tell apart words like &quot;Save&quot; (verb) and
                             &quot;Save&quot; (noun).
                           </FieldInfo>
@@ -1344,7 +1344,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Usage examples
                           </FormLabel>
                           <FieldInfo label="usage examples">
-                            Sentences that show the term in use. Shown to your team on the term&apos;s
+                            Sentences that show the glossary in use. Shown to your team on the glossary&apos;s
                             page; not sent to the AI. Up to {GLOSSARY_LIMITS.usageExamples}.
                           </FieldInfo>
                         </LabelRow>
@@ -1403,7 +1403,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <SectionHeading
                     id="glossary-section-scope"
                     title="Scope"
-                    description="Where the term applies."
+                    description="Where the glossary applies."
                   />
                   <FormField
                     name="scope"
@@ -1558,7 +1558,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                       <span className="text-xs text-low-emphasis">Optional</span>
                     </div>
                     <FieldInfo label="internal note">
-                      Notes for your team, such as where the term came from or who approved it.
+                      Notes for your team, such as where the glossary came from or who approved it.
                       Never sent to the AI.
                     </FieldInfo>
                   </div>
@@ -1598,7 +1598,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <TriangleAlert />
                   <AlertDescription>
                     <p>
-                      This term was changed by someone else. Reload the latest version and re-apply
+                      This glossary was changed by someone else. Reload the latest version and re-apply
                       your changes.
                     </p>
                     <Button

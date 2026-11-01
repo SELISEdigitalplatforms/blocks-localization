@@ -6,7 +6,6 @@ import { renderWithProviders } from "@/test-utils/render";
 import useIsMobile from "@/hooks/use-is-mobile";
 import {
   useGetGlossaries,
-  useGetGlossarySummaryCounts,
   useGetLanguages,
 } from "@blocks-localization/hooks/use-language-manager";
 import GlossaryTable, { GLOSSARY_COLUMNS_STORAGE_KEY, getGlossaryLanguageName } from "./glossary-table";
@@ -22,7 +21,6 @@ vi.mock("@/hooks/use-is-mobile", () => ({ default: vi.fn(() => false) }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
-  useGetGlossarySummaryCounts: vi.fn(),
 }));
 vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
   default: ({ selected }: { selected: { name: string }[] }) =>
@@ -67,12 +65,6 @@ describe("glossary-table (Phase 8)", () => {
     localStorage.clear();
     vi.mocked(useIsMobile).mockReturnValue(false);
     vi.mocked(useGetLanguages).mockReturnValue({ data: languages } as never);
-    vi.mocked(useGetGlossarySummaryCounts).mockReturnValue({
-      total: 128,
-      approved: 112,
-      draft: 9,
-      deprecated: 7,
-    });
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -130,20 +122,12 @@ describe("glossary-table (Phase 8)", () => {
   });
 
   describe("empty state (H2)", () => {
-    it("offers Create your first term, which opens the sheet", async () => {
-      const user = userEvent.setup();
-      setItems([]);
-      renderWithProviders(<GlossaryTable />);
-      await user.click(screen.getByRole("button", { name: "Create your first term" }));
-      expect(screen.getByText("sheet-new")).toBeTruthy();
-    });
-
     it("offers Clear filters instead when a filter is active", async () => {
       const user = userEvent.setup();
       setItems([]);
       renderWithProviders(<GlossaryTable />);
-      await user.click(screen.getByRole("button", { name: /9 draft/ }));
-      expect(screen.queryByRole("button", { name: "Create your first term" })).toBeNull();
+      await user.click(screen.getByRole("combobox", { name: "Status" }));
+      await user.click(screen.getByRole("option", { name: "Draft" }));
       await user.click(screen.getByRole("button", { name: "Clear filters" }));
       expect(lastFilters()).toMatchObject({ status: undefined });
     });
@@ -207,23 +191,6 @@ describe("glossary-table (Phase 8)", () => {
     });
   });
 
-  describe("summary strip (H18)", () => {
-    it("shows the counts and applies a Status filter", async () => {
-      const user = userEvent.setup();
-      setItems([term("g1", "Workspace")]);
-      renderWithProviders(<GlossaryTable />);
-      const total = screen.getByRole("button", { name: "128 terms" });
-      expect(total.getAttribute("aria-pressed")).toBe("true");
-      await user.click(screen.getByRole("button", { name: "112 approved" }));
-      expect(lastFilters()).toMatchObject({ status: "approved" });
-      expect(
-        screen.getByRole("button", { name: "112 approved" }).getAttribute("aria-pressed"),
-      ).toBe("true");
-      await user.click(screen.getByRole("button", { name: "128 terms" }));
-      expect(lastFilters()).toMatchObject({ status: undefined });
-    });
-  });
-
   describe("selection (H19, C9, C10)", () => {
     it("selects the page from the header, skipping terms of a newer format", async () => {
       const user = userEvent.setup();
@@ -235,7 +202,7 @@ describe("glossary-table (Phase 8)", () => {
       expect(
         (screen.getByRole("checkbox", { name: "Select Legacy" }) as HTMLButtonElement).disabled,
       ).toBe(true);
-      await user.click(screen.getByRole("checkbox", { name: "Select all terms on this page" }));
+      await user.click(screen.getByRole("checkbox", { name: "Select all glossaries on this page" }));
       expect(screen.getByText("bulk-Workspace")).toBeTruthy();
     });
 
@@ -245,7 +212,8 @@ describe("glossary-table (Phase 8)", () => {
       renderWithProviders(<GlossaryTable />);
       await user.click(screen.getByRole("checkbox", { name: "Select Workspace" }));
       expect(screen.getByText("bulk-Workspace")).toBeTruthy();
-      await user.click(screen.getByRole("button", { name: /9 draft/ }));
+      await user.click(screen.getByRole("combobox", { name: "Status" }));
+      await user.click(screen.getByRole("option", { name: "Draft" }));
       expect(screen.queryByText("bulk-Workspace")).toBeNull();
     });
 
@@ -264,7 +232,7 @@ describe("glossary-table (Phase 8)", () => {
       setItems([term("g1", "Workspace")]);
       renderWithProviders(<GlossaryTable />);
       expect(screen.queryByRole("table")).toBeNull();
-      const list = screen.getByRole("list", { name: "Glossary terms" });
+      const list = screen.getByRole("list", { name: "Glossaries" });
       expect(within(list).getByRole("link", { name: "Workspace" }).getAttribute("href")).toBe(
         "/scoped/services/glossary/g1",
       );

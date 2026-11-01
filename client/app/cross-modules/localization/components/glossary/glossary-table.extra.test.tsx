@@ -18,7 +18,6 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
-  useGetGlossarySummaryCounts: vi.fn(() => ({})),
 }));
 vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
   default: ({ selected }: { selected: { name: string }[] }) =>

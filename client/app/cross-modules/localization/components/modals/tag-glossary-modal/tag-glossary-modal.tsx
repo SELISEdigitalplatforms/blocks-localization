@@ -124,7 +124,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
       <DialogHeader className="space-y-1.5">
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
         <DialogDescription className="text-left text-sm text-medium-emphasis">
-          Tagged terms guide AI translation and glossary checks for every key in{" "}
+          Tagged glossaries guide AI translation and glossary checks for every key in{" "}
           <span className="font-medium text-high-emphasis">{module.moduleName}</span>.
         </DialogDescription>
       </DialogHeader>

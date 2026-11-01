@@ -562,26 +562,6 @@ describe("localization/hooks/use-language-manager", () => {
     ).toBeDefined();
   });
 
-  it("useGetGlossarySummaryCounts should request total and each status with PageSize 1 (H18)", async () => {
-    svc.fetchGlossaries.mockImplementation(async (request) => ({
-      items: [],
-      totalCount:
-        ({ approved: 112, draft: 9, deprecated: 7 } as Record<string, number | undefined>)[
-          request.status ?? ""
-        ] ?? 128,
-    }));
-    const { result } = renderQ(() => hooks.useGetGlossarySummaryCounts());
-    await waitFor(() => expect(result.current.deprecated).toBe(7));
-    expect(result.current).toEqual({ total: 128, approved: 112, draft: 9, deprecated: 7 });
-    expect(svc.fetchGlossaries).toHaveBeenCalledTimes(4);
-    expect(svc.fetchGlossaries).toHaveBeenCalledWith({ pageNumber: 0, pageSize: 1 });
-    expect(svc.fetchGlossaries).toHaveBeenCalledWith({
-      pageNumber: 0,
-      pageSize: 1,
-      status: "draft",
-    });
-  });
-
   it("useGetKeysByGlossaryId should send the Tagged Keys search and module filter (H4)", async () => {
     svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
     const { result } = renderQ(() =>

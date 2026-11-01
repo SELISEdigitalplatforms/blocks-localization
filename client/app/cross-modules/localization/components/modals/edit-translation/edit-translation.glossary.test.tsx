@@ -296,7 +296,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
     const renderFresh = (props: Partial<React.ComponentProps<typeof EditTranslation>>) =>
       renderModal({ keyDetails: freshKey(), ...props });
     const highlight = (name: string) =>
-      screen.findByRole("button", { name: new RegExp(`^Glossary term ${name}`) });
+      screen.findByRole("button", { name: new RegExp(`^Glossary ${name}`) });
 
     it("requests /Glossary/Match once with the key and reuses it when reopened (H6, C11)", async () => {
       const { close, reopen } = renderFresh({});
@@ -334,7 +334,7 @@ describe("edit-translation — glossary-aware suggestions", () => {
     it("says the terms have approved wording when the glossary has it", async () => {
       renderFresh({});
       await highlight("Workspace");
-      expect(screen.getByText("1 glossary term · select to see the approved wording")).toBeTruthy();
+      expect(screen.getByText("1 glossary · select to see the approved wording")).toBeTruthy();
     });
 
     it("is honest when the glossary has no wording for the target language", async () => {
@@ -346,10 +346,10 @@ describe("edit-translation — glossary-aware suggestions", () => {
         ],
       });
       expect((await highlight("Workspace")).getAttribute("aria-label")).toBe(
-        "Glossary term Workspace: Translate, no Bengali wording in the glossary",
+        "Glossary Workspace: Translate, no Bengali wording in the glossary",
       );
       expect(
-        screen.getByText("1 glossary term · no Bengali wording in the glossary yet"),
+        screen.getByText("1 glossary · no Bengali wording in the glossary yet"),
       ).toBeTruthy();
     });
 

@@ -75,7 +75,7 @@ function EditKeyGlossaryBody({
       <DialogHeader className="space-y-1.5">
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
         <DialogDescription className="text-left text-sm text-medium-emphasis">
-          Tagged terms guide AI translation and glossary checks for the key{" "}
+          Tagged glossaries guide AI translation and glossary checks for the key{" "}
           <span className="break-all font-medium text-high-emphasis">{keyDetails.keyName}</span>.
         </DialogDescription>
       </DialogHeader>

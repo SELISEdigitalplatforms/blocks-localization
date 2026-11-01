@@ -169,7 +169,7 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
         await expect(glossary.caseSensitiveSwitch).toBeVisible();
         await expect(glossary.statusSelect).toHaveText("Approved");
         await expect(
-          glossary.editorSheet.getByText("Only Approved terms are sent to the AI."),
+          glossary.editorSheet.getByText("Only Approved glossaries are sent to the AI."),
         ).toBeVisible();
         await glossary.fillGlossaryName(name);
         await glossary.addVariant(`${name}s`);

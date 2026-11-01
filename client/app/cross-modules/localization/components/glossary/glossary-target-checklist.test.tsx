@@ -55,8 +55,8 @@ const renderChecklist = (targetText: string, targetCulture = "de-DE", onLiveFix 
 describe("GlossaryTargetChecklist", () => {
   it("lists what to write for every term before the row has text", () => {
     renderChecklist("");
-    const region = screen.getByRole("region", { name: "Glossary terms for German" });
-    expect(within(region).getByText("Use these terms in this translation")).toBeTruthy();
+    const region = screen.getByRole("region", { name: "Glossaries for German" });
+    expect(within(region).getByText("Use these glossaries in this translation")).toBeTruthy();
     expect(within(region).getByText("Arbeitsbereich")).toBeTruthy();
     expect(within(region).getByText("· Keep as written")).toBeTruthy();
     expect(within(region).getByText("· Do not use")).toBeTruthy();
@@ -67,7 +67,7 @@ describe("GlossaryTargetChecklist", () => {
 
   it("marks every term followed when the translation uses them", () => {
     renderChecklist("Öffnen Sie Ihren Arbeitsbereich und das SELISE-Konto");
-    expect(screen.getByRole("status").textContent).toBe("All glossary terms followed");
+    expect(screen.getByRole("status").textContent).toBe("All glossaries followed");
     expect(screen.getAllByText("Followed:")).toHaveLength(3);
   });
 
@@ -120,7 +120,7 @@ describe("GlossaryTargetChecklist", () => {
 
   it("says only the checked terms were followed when some have no rule", () => {
     renderChecklist("Ouvrez SELISE", "fr-FR");
-    expect(screen.getByRole("status").textContent).toBe("All checked terms followed");
+    expect(screen.getByRole("status").textContent).toBe("All checked glossaries followed");
   });
 
   it("renders only the empty live region without matches", () => {
@@ -152,7 +152,7 @@ describe("GlossaryTargetChecklist", () => {
       />,
     );
     expect(
-      await screen.findByText('Draft term: "Werkbereich" is not allowed · use "Arbeitsbereich"'),
+      await screen.findByText('Draft glossary: "Werkbereich" is not allowed · use "Arbeitsbereich"'),
     ).toBeTruthy();
   });
 
@@ -207,7 +207,7 @@ describe("GlossaryTargetChecklist", () => {
         }),
         onSuggestionFix,
       );
-      const region = screen.getByRole("region", { name: "Glossary terms for German" });
+      const region = screen.getByRole("region", { name: "Glossaries for German" });
       expect(within(region).getByText("Workspace")).toBeTruthy();
       expect(within(region).queryByText("SELISE")).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Fix" }));

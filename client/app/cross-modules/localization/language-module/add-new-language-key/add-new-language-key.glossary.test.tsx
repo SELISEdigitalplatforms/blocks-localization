@@ -95,14 +95,14 @@ const deferred = <T,>() => {
  * No violation list and no info line. The polite live region stays mounted while empty, so
  * this checks that every status region is empty instead of that none exists.
  */
-/** No row reports a glossary issue ("All glossary terms followed" is fine). */
+/** No row reports a glossary issue ("All glossaries followed" is fine). */
 const expectNoGlossaryIssues = () =>
   expect(
     screen.queryAllByRole("status").filter((region) => /issue/.test(region.textContent ?? "")),
   ).toEqual([]);
 
 const glossaryRegion = (language: string) =>
-  screen.findByRole("region", { name: `Glossary terms for ${language}` });
+  screen.findByRole("region", { name: `Glossaries for ${language}` });
 
 describe("add-new-language-key — glossary-aware suggestions", () => {
   beforeEach(() => {

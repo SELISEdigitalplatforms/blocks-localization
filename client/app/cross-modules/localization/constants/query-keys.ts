@@ -200,9 +200,6 @@ export const localizationQueryKeys = {
         filters.sortBy ?? "",
         filters.sortDescending ?? "",
       ] as const,
-    /** Summary-strip count (`Gets?PageSize=1`) for one status, or every term when "total". */
-    summaryCount: (tenantId: string, status: string) =>
-      ["get-glossaries", "summary", tenantId, status] as const,
     /** `Glossary/Usage` (delete dialog count); under `all`, so glossary writes refresh it. */
     usage: (tenantId: string, glossaryId: string) =>
       ["get-glossaries", "usage", tenantId, glossaryId] as const,

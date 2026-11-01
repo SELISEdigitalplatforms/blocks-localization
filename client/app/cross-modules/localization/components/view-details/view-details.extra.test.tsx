@@ -81,7 +81,7 @@ describe("view-details (extra coverage)", () => {
     renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
     expect(screen.getByText("GlobalTerm")).toBeTruthy();
     expect(screen.getByText("ModuleTerm")).toBeTruthy();
-    const list = screen.getByRole("list", { name: "Glossary terms for this key" });
+    const list = screen.getByRole("list", { name: "Glossaries for this key" });
     expect(within(list).getByText("Global")).toBeTruthy();
     expect(within(list).getByText("Module")).toBeTruthy();
   });

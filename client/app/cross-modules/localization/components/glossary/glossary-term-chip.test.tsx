@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test-utils/render";
 import { TooltipProvider } from "@/components/ui-kits/tooltip/tooltip";
 import { IGlossary } from "@blocks-localization/models/language";
-import GlossaryTermCard, { mergeSourcedGlossaries } from "./glossary-term-card";
+import GlossaryTermChip, { mergeSourcedGlossaries } from "./glossary-term-chip";
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
@@ -18,15 +18,10 @@ const term = (itemId: string, extra: Partial<IGlossary> = {}): IGlossary => ({
   ...extra,
 });
 
-const languages = [
-  { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
-  { itemId: "2", languageCode: "de-DE", languageName: "German" },
-];
-
-const renderCard = (props: Partial<Parameters<typeof GlossaryTermCard>[0]> = {}) =>
+const renderChip = (props: Partial<Parameters<typeof GlossaryTermChip>[0]> = {}) =>
   renderWithProviders(
     <TooltipProvider>
-      <GlossaryTermCard
+      <GlossaryTermChip
         glossary={term("g1", {
           name: "Workspace",
           rule: "translate",
@@ -34,7 +29,6 @@ const renderCard = (props: Partial<Parameters<typeof GlossaryTermCard>[0]> = {})
           translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] }],
         })}
         source="tagged"
-        languages={languages}
         {...props}
       />
     </TooltipProvider>,
@@ -61,38 +55,37 @@ describe("mergeSourcedGlossaries", () => {
   });
 });
 
-describe("components/glossary/glossary-term-card", () => {
-  it("shows the name link, rule, source label, chips and definition (H12)", () => {
-    renderCard();
+describe("components/glossary/glossary-term-chip", () => {
+  it("shows only the name link and the source label (H12)", () => {
+    renderChip();
     expect(screen.getByRole("link", { name: "Workspace" }).getAttribute("href")).toBe(
       "/scoped/services/glossary/g1",
     );
-    expect(screen.getByText("Translate")).toBeTruthy();
     expect(screen.getByText("Tagged")).toBeTruthy();
-    expect(screen.getByText("de-DE")).toBeTruthy();
-    expect(screen.getByText("Shared area")).toBeTruthy();
+    expect(screen.queryByText("Translate")).toBeNull();
+    expect(screen.queryByText("de-DE")).toBeNull();
+    expect(screen.queryByText("Shared area")).toBeNull();
   });
 
-  it("offers a labelled remove button on tagged cards", () => {
+  it("offers a labelled remove button on tagged chips", () => {
     const onRemove = vi.fn();
-    renderCard({ onRemove });
+    renderChip({ onRemove });
     fireEvent.click(screen.getByRole("button", { name: "Remove Workspace from key" }));
     expect(onRemove).toHaveBeenCalled();
   });
 
-  it("offers Add on suggested cards", () => {
+  it("offers Add on suggested chips", () => {
     const onAdd = vi.fn();
-    renderCard({ source: "suggested", onAdd });
+    renderChip({ source: "suggested", onAdd });
     expect(screen.getByText("Suggested")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Tag Workspace to key" }));
     expect(onAdd).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Remove/ })).toBeNull();
   });
 
-  it("shows no chips for Keep terms and no definition when empty", () => {
-    renderCard({ glossary: term("g2", { name: "SELISE", rule: "keep" }), source: "global" });
-    expect(screen.getByText("Keep")).toBeTruthy();
+  it("offers no actions on module and global chips", () => {
+    renderChip({ glossary: term("g2", { name: "SELISE", rule: "keep" }), source: "global" });
     expect(screen.getByText("Global")).toBeTruthy();
-    expect(screen.queryByText("de-DE")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

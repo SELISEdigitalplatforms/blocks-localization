@@ -63,7 +63,7 @@ const GlossaryMobileList = ({
   }
 
   return (
-    <ul className="flex flex-col gap-3" aria-label="Glossary terms">
+    <ul className="flex flex-col gap-3" aria-label="Glossaries">
       {glossaries.map((glossary) => {
         const isUnsupported = isUnsupportedGlossaryNote(glossary);
         const meta = toGlossaryMeta(glossary);

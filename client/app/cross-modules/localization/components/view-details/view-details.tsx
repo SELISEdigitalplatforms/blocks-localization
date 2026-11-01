@@ -21,9 +21,9 @@ import { formatErrorMessage } from "@/lib/error";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
-import GlossaryTermCard, {
+import GlossaryTermChip, {
   mergeSourcedGlossaries,
-} from "@blocks-localization/components/glossary/glossary-term-card";
+} from "@blocks-localization/components/glossary/glossary-term-chip";
 import { TooltipProvider } from "@/components/ui-kits/tooltip/tooltip";
 
 const MAX_SHOWN_SUGGESTIONS = 10;
@@ -94,13 +94,13 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
 
   const shownSuggestions = glossarySuggestions.slice(0, MAX_SHOWN_SUGGESTIONS);
   const hiddenSuggestionCount = glossarySuggestions.length - shownSuggestions.length;
-  const termCards = mergeSourcedGlossaries({
+  const termChips = mergeSourcedGlossaries({
     tagged: resolvedGlossaries,
     module: moduleGlossariesData?.items,
     global: globalGlossariesData?.items,
     suggested: shownSuggestions,
   });
-  const suggestedCount = termCards.filter((card) => card.source === "suggested").length;
+  const suggestedCount = termChips.filter((chip) => chip.source === "suggested").length;
 
   // Saves the full key without the glossary; context, routes and resources stay as they are (C20).
   const untagGlossary = async (glossaryId: string) => {
@@ -363,13 +363,13 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           </CardHeader>
           <CardContent>
             <TooltipProvider delayDuration={200}>
-              {termCards.length === 0 ? (
+              {termChips.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No glossary added.</p>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      These terms are applied when translating this key.
+                      These glossaries are applied when translating this key.
                     </p>
                     {suggestedCount > 0 && (
                       <Button
@@ -384,16 +384,12 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                       </Button>
                     )}
                   </div>
-                  <ul
-                    className="divide-y divide-border rounded-sm border"
-                    aria-label="Glossary terms for this key"
-                  >
-                    {termCards.map(({ glossary, source }) => (
-                      <li key={glossary.itemId}>
-                        <GlossaryTermCard
+                  <ul className="flex flex-wrap gap-2" aria-label="Glossaries for this key">
+                    {termChips.map(({ glossary, source }) => (
+                      <li key={glossary.itemId} className="max-w-full">
+                        <GlossaryTermChip
                           glossary={glossary}
                           source={source}
-                          languages={languageListData}
                           disabled={isTagging}
                           onRemove={
                             source === "tagged"

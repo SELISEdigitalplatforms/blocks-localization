@@ -239,7 +239,7 @@ describe("view-details — glossary suggestions", () => {
     });
   });
 
-  describe("term cards (Phase 8 H12, C20)", () => {
+  describe("glossary chips (Phase 8 H12, C20)", () => {
     it("shows one merged list in Tagged, Module, Global, Suggested order, each term once", () => {
       h.useGetModuleGlossaries.mockReturnValue({
         data: { items: [term("g-mod", "Billing"), term("g-tagged", "Workspace")] },
@@ -249,20 +249,20 @@ describe("view-details — glossary suggestions", () => {
       } as never);
       suggest([term("g-other", "Customer Portal")]);
       renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-      const list = screen.getByRole("list", { name: "Glossary terms for this key" });
-      const cards = within(list).getAllByRole("listitem");
-      expect(cards.map((card) => within(card).getByRole("link").textContent)).toEqual([
+      const list = screen.getByRole("list", { name: "Glossaries for this key" });
+      const chips = within(list).getAllByRole("listitem");
+      expect(chips.map((chip) => within(chip).getByRole("link").textContent)).toEqual([
         "Workspace",
         "Billing",
         "SELISE",
         "Customer Portal",
       ]);
       expect(
-        cards.map(
-          (card) => within(card).getAllByText(/^(Tagged|Module|Global|Suggested)$/)[0].textContent,
+        chips.map(
+          (chip) => within(chip).getAllByText(/^(Tagged|Module|Global|Suggested)$/)[0].textContent,
         ),
       ).toEqual(["Tagged", "Module", "Global", "Suggested"]);
-      expect(screen.getByText("These terms are applied when translating this key.")).toBeTruthy();
+      expect(screen.getByText("These glossaries are applied when translating this key.")).toBeTruthy();
     });
 
     it("removes a tagged term with the full key payload unchanged otherwise (C20)", async () => {

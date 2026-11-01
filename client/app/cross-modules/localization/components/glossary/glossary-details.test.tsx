@@ -411,7 +411,7 @@ describe("components/glossary/glossary-details", () => {
       renderGlossary({ additionalNote: "@@glossary-meta:v2@@{}" });
       expect(screen.queryByText("Translate")).toBeNull();
       expect(
-        screen.getByText("This term was saved by a newer version and can't be shown here."),
+        screen.getByText("This glossary was saved by a newer version and can't be shown here."),
       ).toBeTruthy();
     });
   });

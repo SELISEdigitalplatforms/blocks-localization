@@ -18,7 +18,6 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
-  useGetGlossarySummaryCounts: vi.fn(() => ({})),
 }));
 vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
   default: ({ selected }: { selected: { name: string }[] }) =>
@@ -232,7 +231,7 @@ describe("components/glossary/glossary-table", () => {
     renderWithProviders(<GlossaryTable />);
     expect(screen.queryByText("editor-open")).toBeNull();
     expect(screen.getByRole("heading", { level: 1, name: "Glossary" })).toBeTruthy();
-    fireEvent.click(screen.getByText("New term"));
+    fireEvent.click(screen.getByText("New Glossary"));
     expect(screen.getByText("editor-open")).toBeTruthy();
   });
 

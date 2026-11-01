@@ -94,7 +94,7 @@ describe("glossary-editor-sheet (Phase 8)", () => {
     fireEvent.click(screen.getByRole("combobox", { name: "Tag modules" }));
     fireEvent.click(screen.getByRole("option", { name: "Billing" }));
     fireEvent.change(nameInput(), { target: { value: "Invoice" } });
-    fireEvent.change(screen.getByPlaceholderText("What the term means"), {
+    fireEvent.change(screen.getByPlaceholderText("What the glossary means"), {
       target: { value: "A bill" },
     });
 
@@ -106,7 +106,7 @@ describe("glossary-editor-sheet (Phase 8)", () => {
     );
 
     await waitFor(() => expect(nameInput().value).toBe(""));
-    expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
       "",
     );
     expect((screen.getByLabelText("Keep") as HTMLButtonElement).getAttribute("data-state")).toBe(

@@ -134,7 +134,7 @@ describe("GlossaryTermPopover", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     expect(
-      await screen.findByText("The glossary has no French translation for this term yet."),
+      await screen.findByText("The glossary has no French translation for this glossary yet."),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
     fireEvent.click(
@@ -193,7 +193,7 @@ describe("GlossaryTermPopover", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     renderPopover(matchOf(G1));
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open term (opens in a new tab)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open glossary (opens in a new tab)" }));
     expect(open).toHaveBeenCalledWith("/app/p1/services/glossary/g1", "_blank", "noopener");
   });
 

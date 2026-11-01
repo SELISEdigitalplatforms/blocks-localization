@@ -106,7 +106,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     const headings = screen
       .getAllByRole("heading", { level: 3 })
       .map((heading) => heading.textContent);
-    expect(headings).toEqual(["Term", "Translations", "Meaning", "Scope"]);
+    expect(headings).toEqual(["Glossary", "Translations", "Meaning", "Scope"]);
     const scope = screen.getByRole("heading", { name: "Scope" });
     const note = screen.getByRole("button", { name: "Internal Note" });
     expect(scope.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -131,7 +131,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     });
     openForbidden("de-DE");
     addChip(screen.getByLabelText("Forbidden alternatives for German (de-DE)"), "Werkbereich");
-    fireEvent.change(screen.getByPlaceholderText("What the term means"), {
+    fireEvent.change(screen.getByPlaceholderText("What the glossary means"), {
       target: { value: "A container for projects shared by a team. " },
     });
     save();
@@ -220,7 +220,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
       "From JSON",
     );
-    expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
       "A container.",
     );
     save();
@@ -247,7 +247,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
   it("should disable editing for an unsupported version (C2)", () => {
     renderSheet(makeGlossary({ additionalNote: "@@glossary-meta:v2@@{}" }));
     expect(
-      screen.getByText("This term was saved by a newer version and can't be edited here."),
+      screen.getByText("This glossary was saved by a newer version and can't be edited here."),
     ).toBeTruthy();
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
     expect((nameInput().closest("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
@@ -257,7 +257,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     renderSheet(makeGlossary({ name: "SELISE" }));
     fireEvent.click(screen.getByRole("radio", { name: "Keep" }));
     expect(screen.queryByRole("heading", { name: "Translations" })).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("What the term means"), {
+    fireEvent.change(screen.getByPlaceholderText("What the glossary means"), {
       target: { value: "Company name." },
     });
     save();
@@ -285,7 +285,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     it("should show the Status select after Rule with its helper text, Approved on create (H2)", () => {
       renderSheet();
       expect(statusTrigger().textContent).toContain("Approved");
-      expect(screen.getByText("Only Approved terms are sent to the AI.")).toBeTruthy();
+      expect(screen.getByText("Only Approved glossaries are sent to the AI.")).toBeTruthy();
       const keep = screen.getByRole("radio", { name: "Keep" });
       expect(
         keep.compareDocumentPosition(statusTrigger()) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -381,7 +381,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       const input = screen.getByLabelText("Variants");
       addChip(input, "workspace ");
       save();
-      expect(await screen.findByText("Variant can't be the same as the term")).toBeTruthy();
+      expect(await screen.findByText("Variant can't be the same as the glossary")).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: "Remove variant workspace" }));
       addChip(input, "Area");
       addChip(input, "area");
@@ -465,7 +465,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
         translations: [{ language: "de-DE", value: "Neu", forbiddenValues: [] }],
       }),
     );
-    expect((screen.getByPlaceholderText("What the term means") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
       "A container.",
     );
     save();
@@ -531,7 +531,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
 
   it("should validate definition and note length", async () => {
     renderSheet(makeGlossary());
-    fireEvent.change(screen.getByPlaceholderText("What the term means"), {
+    fireEvent.change(screen.getByPlaceholderText("What the glossary means"), {
       target: { value: "x".repeat(1001) },
     });
     save();
@@ -750,7 +750,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
 
   describe("version conflict (SPEC5)", () => {
     const CONFLICT_TEXT =
-      "This term was changed by someone else. Reload the latest version and re-apply your changes.";
+      "This glossary was changed by someone else. Reload the latest version and re-apply your changes.";
     const versionError = {
       propertyName: "Version",
       errorMessage: "This glossary was changed by someone else. Reload and try again.",
@@ -881,7 +881,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       fetchLatestGlossary.mockRejectedValue(Object.assign(new Error("Not found"), { status: 404 }));
       fireEvent.click(reloadButton());
       await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-      expect(showErrorToast).toHaveBeenCalledWith({ errors: "This term no longer exists." });
+      expect(showErrorToast).toHaveBeenCalledWith({ errors: "This glossary no longer exists." });
     });
 
     it("should toast an ItemId error and keep the sheet open", async () => {

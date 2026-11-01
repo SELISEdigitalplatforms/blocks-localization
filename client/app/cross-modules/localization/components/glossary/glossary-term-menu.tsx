@@ -25,7 +25,7 @@ export const getGlossaryTermMenuShortcut = () =>
     : { keys: "Alt+Shift+G", label: "Alt+Shift+G" };
 
 export const getGlossaryTermMenuHint = () =>
-  `Press ${getGlossaryTermMenuShortcut().label} to insert a glossary term at the cursor.`;
+  `Press ${getGlossaryTermMenuShortcut().label} to insert a glossary at the cursor.`;
 
 /**
  * True for Alt+Shift+G (Option+Shift+G on macOS). Reads `code`, not `key`: on macOS
@@ -102,11 +102,11 @@ const GlossaryTermMenu = ({
           onReturnFocus();
         }}
       >
-        <Command aria-label="Insert glossary term">
-          <CommandInput placeholder="Search glossary terms..." />
+        <Command aria-label="Insert glossary">
+          <CommandInput placeholder="Search glossaries..." />
           <CommandList>
             <CommandEmpty>
-              {items.length === 0 ? "No glossary terms in the source" : "No matching terms"}
+              {items.length === 0 ? "No glossaries in the source" : "No matching glossaries"}
             </CommandEmpty>
             {items.length > 0 && (
               <CommandGroup heading={`Insert in ${languageName}`}>

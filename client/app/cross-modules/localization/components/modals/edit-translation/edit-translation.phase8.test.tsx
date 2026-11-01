@@ -145,12 +145,12 @@ describe("edit-translation (Phase 8)", () => {
       renderModal();
       await screen.findByText("Workspace");
       const hint = document.getElementById(field().getAttribute("aria-describedby")!);
-      expect(hint?.textContent).toBe("Press Alt+Shift+G to insert a glossary term at the cursor.");
+      expect(hint?.textContent).toBe("Press Alt+Shift+G to insert a glossary at the cursor.");
     });
 
-    it("opens the term menu from the Insert glossary term button", async () => {
+    it("opens the term menu from the Insert glossary button", async () => {
       renderModal();
-      fireEvent.click(await screen.findByRole("button", { name: /Insert glossary term/ }));
+      fireEvent.click(await screen.findByRole("button", { name: /Insert glossary/ }));
       const option = await screen.findByRole("option", { name: /Workspace.*Arbeitsbereich/ });
       fireEvent.click(option);
       await waitFor(() => expect(field().value).toBe("Öffne Arbeitsbereich"));
@@ -165,7 +165,7 @@ describe("edit-translation (Phase 8)", () => {
         ],
       });
       await screen.findByText("Portal");
-      expect(screen.queryByRole("button", { name: /Insert glossary term/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Insert glossary/ })).toBeNull();
       expect(field().getAttribute("aria-describedby")).toBeNull();
     });
 
@@ -195,13 +195,13 @@ describe("edit-translation (Phase 8)", () => {
         ],
       });
       fireEvent.keyDown(field(), { code: "KeyG", altKey: true, shiftKey: true });
-      expect(await screen.findByText("No glossary terms in the source")).toBeTruthy();
+      expect(await screen.findByText("No glossaries in the source")).toBeTruthy();
     });
 
     it("ignores G without Alt+Shift", () => {
       renderModal();
       fireEvent.keyDown(field(), { code: "KeyG", shiftKey: true });
-      expect(screen.queryByText("No glossary terms in the source")).toBeNull();
+      expect(screen.queryByText("No glossaries in the source")).toBeNull();
       expect(screen.queryByRole("option")).toBeNull();
     });
   });

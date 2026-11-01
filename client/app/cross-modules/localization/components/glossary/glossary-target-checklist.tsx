@@ -115,8 +115,8 @@ const checklistSummary = (counts: ChecklistCounts, hasText: boolean, language: s
   if (counts.checkable === 0) return nothingToCheckText(language);
   if (counts.issues > 0) return issueCountText(counts.issues);
   return counts.checkable < counts.terms
-    ? "All checked terms followed"
-    : "All glossary terms followed";
+    ? "All checked glossaries followed"
+    : "All glossaries followed";
 };
 
 /** The visible header hint next to "Glossary". */
@@ -127,7 +127,7 @@ const checklistHint = (
   language: string,
 ) => {
   if (counts.checkable === 0) return nothingToCheckText(language);
-  if (!hasText) return "Use these terms in this translation";
+  if (!hasText) return "Use these glossaries in this translation";
   if (counts.issues === 0) return summary;
   return `${summary} · you can still save`;
 };
@@ -331,7 +331,7 @@ export const GlossaryTargetChecklist = ({
       </output>
       {terms.length > 0 && (
         <section
-          aria-label={`Glossary terms for ${language}`}
+          aria-label={`Glossaries for ${language}`}
           className={cn("rounded-md border px-3 py-2", sectionClass)}
         >
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">

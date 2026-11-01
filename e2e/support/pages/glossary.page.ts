@@ -20,7 +20,7 @@ export class GlossaryPage {
     this.page = page;
 
     this.heading = page.getByRole("heading", { name: "Glossary", exact: true });
-    this.newGlossaryButton = page.getByRole("button", { name: "New term" });
+    this.newGlossaryButton = page.getByRole("button", { name: "New Glossary" });
     this.glossaryDescription = page.getByText("Glossaries help keep");
     this.noGlossariesMessage = page.getByText("No glossaries yet");
     this.firstGlossaryRow = page.getByRole("row").nth(1);
@@ -82,7 +82,7 @@ export class GlossaryPage {
 
   async expectEditorSectionsInOrder() {
     const headings = this.editorSheet.getByRole("heading", { level: 3 });
-    await expect(headings).toHaveText(["Term", "Translations", "Meaning", "Scope"]);
+    await expect(headings).toHaveText(["Glossary", "Translations", "Meaning", "Scope"]);
     await expect(this.editorSheet.getByRole("button", { name: "Internal Note" })).toBeVisible();
   }
 

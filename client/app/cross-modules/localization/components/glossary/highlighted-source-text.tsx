@@ -9,7 +9,7 @@ import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 
 const termLabel = (match: GlossaryMatch, missingFor?: string) => {
-  const label = `Glossary term ${match.surface}: ${GLOSSARY_RULE_LABELS[match.meta.rule]}`;
+  const label = `Glossary ${match.surface}: ${GLOSSARY_RULE_LABELS[match.meta.rule]}`;
   return missingFor ? `${label}, no ${missingFor} wording in the glossary` : label;
 };
 

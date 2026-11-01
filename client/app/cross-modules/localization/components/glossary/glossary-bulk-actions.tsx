@@ -42,7 +42,7 @@ import { languageManagerService } from "@blocks-localization/services/language-m
 /** Summed key usage from which a bulk delete needs "delete N terms" typed (Phase 8 A3). */
 export const BULK_DELETE_CONFIRM_THRESHOLD = 50;
 
-const pluralizeTerms = (count: number) => `${count} term${count === 1 ? "" : "s"}`;
+const pluralizeTerms = (count: number) => `${count} ${count === 1 ? "glossary" : "glossaries"}`;
 
 type DialogKind = "set-project" | "delete" | "tag-module" | null;
 
@@ -93,7 +93,7 @@ const DeleteTermsDialog = ({
       <DialogHeader>
         <DialogTitle>Delete {pluralizeTerms(glossaries.length)}</DialogTitle>
         <DialogDescription>
-          This can&apos;t be undone. Deleting removes the terms from every key that uses them.
+          This can&apos;t be undone. Deleting removes the glossaries from every key that uses them.
         </DialogDescription>
       </DialogHeader>
       <ul className="max-h-40 list-disc overflow-y-auto pl-5 text-sm text-high-emphasis">
@@ -104,7 +104,7 @@ const DeleteTermsDialog = ({
       {isLoading && <p className="text-sm text-medium-emphasis">Checking usage…</p>}
       {isError && (
         <div className="flex items-center gap-2">
-          <p className="text-sm text-error">Failed to check how many keys use these terms.</p>
+          <p className="text-sm text-error">Failed to check how many keys use these glossaries.</p>
           <Button type="button" size="sm" variant="outline" onClick={() => void refetch()}>
             Retry
           </Button>
@@ -159,7 +159,7 @@ const TagModuleDialog = ({
     <DialogContent>
       <DialogHeader>
         <DialogTitle>Tag {pluralizeTerms(count)} to a module</DialogTitle>
-        <DialogDescription>The module keeps the terms it already has.</DialogDescription>
+        <DialogDescription>The module keeps the glossaries it already has.</DialogDescription>
       </DialogHeader>
       <Select value={moduleId} onValueChange={setModuleId}>
         <SelectTrigger aria-label="Module">
@@ -206,7 +206,7 @@ const SetProjectDialog = ({
     <DialogHeader>
       <DialogTitle>Set {pluralizeTerms(count)} to whole project</DialogTitle>
       <DialogDescription>
-        The terms will apply to every key in the project. Removes their module links.
+        The glossaries will apply to every key in the project. Removes their module links.
       </DialogDescription>
     </DialogHeader>
     <DialogFooter className="mt-2">
@@ -243,7 +243,7 @@ const GlossaryBulkActions = ({
     if (!result) return;
     toast({
       variant: result.failed.length === 0 ? "success" : "destructive",
-      title: result.failed.length === 0 ? "Success" : "Some terms failed",
+      title: result.failed.length === 0 ? "Success" : "Some glossaries failed",
       description: `${verb} ${result.succeeded} of ${pluralizeTerms(result.total)}`,
     });
     setFailures(result.failed);

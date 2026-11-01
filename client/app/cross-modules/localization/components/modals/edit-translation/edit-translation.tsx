@@ -41,7 +41,7 @@ const NO_MATCHES: GlossaryMatch[] = [];
 
 /** The hint next to the source label, honest about what the glossary has for this language. */
 const sourceTermsHint = (termCount: number, withWording: number, language: string) => {
-  const terms = termCount === 1 ? "1 glossary term" : `${termCount} glossary terms`;
+  const terms = termCount === 1 ? "1 glossary" : `${termCount} glossaries`;
   if (withWording === termCount) return `${terms} · select to see the approved wording`;
   if (withWording === 0) return `${terms} · no ${language} wording in the glossary yet`;
   return `${terms} · ${withWording} with ${language} wording`;
@@ -291,13 +291,13 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                   size="sm"
                   variant="outline"
                   className="gap-2"
-                  aria-label="Insert glossary term"
+                  aria-label="Insert glossary"
                   aria-keyshortcuts="Alt+Shift+G"
                   title={getGlossaryTermMenuHint()}
                   onClick={() => setTermMenuOpen(true)}
                 >
                   <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="hidden whitespace-nowrap sm:inline">Insert term</span>
+                  <span className="hidden whitespace-nowrap sm:inline">Insert glossary</span>
                   <kbd
                     aria-hidden="true"
                     className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium leading-none text-low-emphasis sm:inline"

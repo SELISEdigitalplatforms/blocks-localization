@@ -40,8 +40,8 @@ describe("HighlightedSourceText", () => {
     expect(container.textContent).toBe(SOURCE);
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual(["Workspace", "SELISE", "portal"]);
-    expect(buttons[0].getAttribute("aria-label")).toBe("Glossary term Workspace: Translate");
-    expect(buttons[1].getAttribute("aria-label")).toBe("Glossary term SELISE: Keep");
+    expect(buttons[0].getAttribute("aria-label")).toBe("Glossary Workspace: Translate");
+    expect(buttons[1].getAttribute("aria-label")).toBe("Glossary SELISE: Keep");
     expect(buttons[0].className).toContain("decoration-dotted");
   });
 
@@ -61,7 +61,7 @@ describe("HighlightedSourceText", () => {
         onInsert={onInsert}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Glossary term Workspace/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Glossary Workspace/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
     expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
   });
@@ -76,14 +76,14 @@ describe("HighlightedSourceText without a rule for the target", () => {
         targetLanguage={{ languageCode: "bn-BD", languageName: "Bengali" }}
       />,
     );
-    const workspace = screen.getByRole("button", { name: /Glossary term Workspace/ });
+    const workspace = screen.getByRole("button", { name: /Glossary Workspace/ });
     expect(workspace.getAttribute("aria-label")).toBe(
-      "Glossary term Workspace: Translate, no Bengali wording in the glossary",
+      "Glossary Workspace: Translate, no Bengali wording in the glossary",
     );
     expect(workspace.className).toContain("decoration-low-emphasis/50");
     // Keep and Forbidden apply to every language.
-    const selise = screen.getByRole("button", { name: /Glossary term SELISE/ });
-    expect(selise.getAttribute("aria-label")).toBe("Glossary term SELISE: Keep");
+    const selise = screen.getByRole("button", { name: /Glossary SELISE/ });
+    expect(selise.getAttribute("aria-label")).toBe("Glossary SELISE: Keep");
     expect(selise.className).toContain("decoration-primary/70");
   });
 });

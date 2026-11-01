@@ -128,15 +128,12 @@ describe("GlossaryPicker", () => {
     saveGlossaryAsync.mockResolvedValue({ success: true });
   });
 
-  it("shows the name, rule and up to 3 translation chips per row (H7, C16)", () => {
+  it("shows only the name and rule per row (H7, C16)", () => {
     renderWithProviders(<Harness />);
     openPicker();
     const workspace = screen.getByRole("option", { name: /Workspace/ });
     expect(within(workspace).getByText("Translate")).toBeTruthy();
-    expect(within(workspace).getByText("de-DE")).toBeTruthy();
-    expect(within(workspace).getByText("es-ES")).toBeTruthy();
-    expect(within(workspace).queryByText("it-IT missing")).toBeNull();
-    expect(within(workspace).getByText("+1")).toBeTruthy();
+    expect(within(workspace).queryByText("de-DE")).toBeNull();
     expect(within(screen.getByRole("option", { name: /SELISE/ })).getByText("Keep")).toBeTruthy();
     expect(within(screen.getByRole("option", { name: /Future/ })).getByText("—")).toBeTruthy();
   });

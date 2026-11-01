@@ -76,7 +76,7 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
           <div className="space-y-0.5">
             <ValueCaption>{language}</ValueCaption>
             <p className="text-sm text-medium-emphasis">
-              The glossary has no {language} translation for this term yet.
+              The glossary has no {language} translation for this glossary yet.
             </p>
           </div>
           <AlsoAvoid values={term.alsoAvoid} />
@@ -155,7 +155,7 @@ const GlossaryTermPopover = ({
       <PopoverContent
         align="start"
         className="w-[min(360px,calc(100vw-2rem))] min-w-0 overflow-hidden p-0"
-        aria-label={`Glossary term ${match.glossary.name}`}
+        aria-label={`Glossary ${match.glossary.name}`}
         onCloseAutoFocus={(event) => {
           // After Insert the target textarea keeps focus instead of the term.
           if (insertedRef.current) {
@@ -219,10 +219,10 @@ const GlossaryTermPopover = ({
               variant="ghost"
               size="sm"
               className="ml-auto gap-1.5 px-2 text-medium-emphasis hover:text-high-emphasis"
-              aria-label="Open term (opens in a new tab)"
+              aria-label="Open glossary (opens in a new tab)"
               onClick={openTerm}
             >
-              Open term
+              Open glossary
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           )}

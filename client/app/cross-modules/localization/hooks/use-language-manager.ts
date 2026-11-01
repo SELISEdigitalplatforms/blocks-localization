@@ -2,7 +2,6 @@ import { useProjectStore } from "@seliseblocks/genesis-os";
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   ExportHistoryFilters,
-  GLOSSARY_STATUSES,
   IBlocksLanguageKeyResponse,
   IDeleteModuleRequest,
   IGlossary,
@@ -817,40 +816,6 @@ export const useGetGlossaries = (
       }),
     staleTime: 0,
     refetchOnMount: true,
-  });
-};
-
-/** Summary strip counts: cached 30 s, refreshed by every glossary write (under `all`). */
-export const GLOSSARY_SUMMARY_STALE_TIME = 30_000;
-
-export interface GlossarySummaryCounts {
-  total?: number;
-  approved?: number;
-  draft?: number;
-  deprecated?: number;
-}
-
-/** One `Gets?PageSize=1` per count (total + each status); a failed count stays undefined. */
-export const useGetGlossarySummaryCounts = () => {
-  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
-  const buckets = ["total", ...GLOSSARY_STATUSES] as const;
-  return useQueries({
-    queries: buckets.map((bucket) => ({
-      queryKey: localizationQueryKeys.glossaries.summaryCount(tenantId, bucket),
-      queryFn: async () =>
-        (
-          await languageManagerService.fetchGlossaries({
-            pageNumber: 0,
-            pageSize: 1,
-            ...(bucket !== "total" && { status: bucket }),
-          })
-        ).totalCount ?? 0,
-      enabled: !!tenantId,
-      staleTime: GLOSSARY_SUMMARY_STALE_TIME,
-      retry: false,
-    })),
-    combine: (results): GlossarySummaryCounts =>
-      Object.fromEntries(buckets.map((bucket, index) => [bucket, results[index]?.data])),
   });
 };
 

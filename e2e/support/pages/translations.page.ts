@@ -1142,18 +1142,18 @@ export class TranslationsPage {
 
   /** The per-language glossary checklist under a target row (inline editor, new key). */
   glossaryChecklist(scope: Locator | Page, languageName: string) {
-    return scope.getByRole("region", { name: `Glossary terms for ${languageName}` });
+    return scope.getByRole("region", { name: `Glossaries for ${languageName}` });
   }
 
   glossaryTerm(scope: Locator | Page, surface: string) {
     return scope.getByRole("button", {
-      name: new RegExp(`^Glossary term ${escapeRegex(surface)}:`),
+      name: new RegExp(`^Glossary ${escapeRegex(surface)}:`),
     });
   }
 
   get termPopover() {
     // Named by the popover itself, so it also matches the "Add it in the glossary" state.
-    return this.page.getByRole("dialog", { name: /^Glossary term / });
+    return this.page.getByRole("dialog", { name: /^Glossary / });
   }
 
   /** Shows the key in the table by searching for it and expands its inline editor. */

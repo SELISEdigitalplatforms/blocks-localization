@@ -80,7 +80,6 @@ import GlossaryStatusBadge, {
 import GlossaryTranslationChips, {
   MAX_TRANSLATION_CHIPS,
 } from "@blocks-localization/components/glossary/glossary-translation-chips";
-import GlossarySummaryStrip from "@blocks-localization/components/glossary/glossary-summary-strip";
 import GlossaryBulkActions from "@blocks-localization/components/glossary/glossary-bulk-actions";
 import GlossaryMobileList from "@blocks-localization/components/glossary/glossary-mobile-list";
 import {
@@ -264,7 +263,7 @@ const SelectAllHeader = ({
   onCheckedChange: CheckedChange;
 }>) => (
   <Checkbox
-    aria-label="Select all terms on this page"
+    aria-label="Select all glossaries on this page"
     checked={allSelected || (someSelected && "indeterminate")}
     disabled={disabled}
     onCheckedChange={onCheckedChange}
@@ -589,12 +588,10 @@ function renderTableRows(
 function GlossaryEmptyState({
   searchQuery,
   isFiltered,
-  onCreate,
   onClearFilters,
 }: Readonly<{
   searchQuery: string;
   isFiltered: boolean;
-  onCreate: () => void;
   onClearFilters: () => void;
 }>) {
   const clearButton = (
@@ -631,10 +628,6 @@ function GlossaryEmptyState({
       <p className="text-muted-foreground">
         Glossaries help keep terminology consistent across translations.
       </p>
-      <Button type="button" size="sm" className="mt-2" onClick={onCreate}>
-        <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
-        Create your first term
-      </Button>
     </output>
   );
 }
@@ -681,14 +674,6 @@ const GlossaryTable = () => {
       setter(value === ALL_FILTER ? undefined : (value as T));
       resetPaging();
     };
-
-  const handleStatusChange = useCallback(
-    (status: GlossaryStatus | undefined) => {
-      setStatusFilter(status);
-      resetPaging();
-    },
-    [resetPaging],
-  );
 
   const handleSort = useCallback(
     (sortBy: GlossarySortBy) => {
@@ -830,7 +815,6 @@ const GlossaryTable = () => {
     <GlossaryEmptyState
       searchQuery={searchText}
       isFiltered={isFiltered}
-      onCreate={() => setAddModalOpen(true)}
       onClearFilters={clearFilters}
     />
   );
@@ -855,7 +839,7 @@ const GlossaryTable = () => {
               className="h-10 bg-primary text-sm text-primary-foreground"
             >
               <Plus className="mr-2 h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">New term</span>
+              <span className="sr-only sm:not-sr-only">New Glossary</span>
             </Button>
           }
         />
@@ -864,9 +848,8 @@ const GlossaryTable = () => {
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader className="gap-2">
           <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
-            Terms
+            Glossaries
           </CardTitle>
-          <GlossarySummaryStrip status={statusFilter} onStatusChange={handleStatusChange} />
         </CardHeader>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start">
           <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">

@@ -69,7 +69,7 @@ describe("getGlossaryTermMenuShortcut", () => {
     );
     expect(getGlossaryTermMenuShortcut()).toEqual({ keys: "⌥⇧G", label: "Option+Shift+G" });
     expect(getGlossaryTermMenuHint()).toBe(
-      "Press Option+Shift+G to insert a glossary term at the cursor.",
+      "Press Option+Shift+G to insert a glossary at the cursor.",
     );
   });
 
@@ -141,6 +141,6 @@ describe("components/glossary/glossary-term-menu", () => {
 
   it("says when the source has no glossary terms (C6)", () => {
     renderMenu([match("g4", "Werkbereich", "forbidden")]);
-    expect(screen.getByText("No glossary terms in the source")).toBeTruthy();
+    expect(screen.getByText("No glossaries in the source")).toBeTruthy();
   });
 });

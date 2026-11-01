@@ -147,7 +147,7 @@ describe("GlossaryViolationList", () => {
         onFix={vi.fn()}
       />,
     );
-    expect(screen.getByText('Draft term: "Werkbereich" is not allowed')).toBeTruthy();
+    expect(screen.getByText('Draft glossary: "Werkbereich" is not allowed')).toBeTruthy();
   });
 });
 

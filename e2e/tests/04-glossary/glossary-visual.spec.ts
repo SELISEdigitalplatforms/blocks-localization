@@ -123,7 +123,7 @@ test.describe("Glossary — visual evidence", () => {
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
 
-    const trigger = page.getByRole("button", { name: "New term" });
+    const trigger = page.getByRole("button", { name: "New Glossary" });
     await trigger.focus();
     await page.keyboard.press("Enter");
     const sheet = glossary.editorSheet;

@@ -112,7 +112,7 @@ describe("components/glossary/glossary-bulk-actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "Updated 1 of 2 terms" }),
+        expect.objectContaining({ description: "Updated 1 of 2 glossaries" }),
       ),
     );
     expect(run).toHaveBeenCalledWith({ kind: "status", status: "approved" }, selected);
@@ -130,7 +130,7 @@ describe("components/glossary/glossary-bulk-actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Deprecate" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "success", description: "Updated 2 of 2 terms" }),
+        expect.objectContaining({ variant: "success", description: "Updated 2 of 2 glossaries" }),
       ),
     );
     expect(run).toHaveBeenCalledWith({ kind: "status", status: "deprecated" }, selected);
@@ -164,12 +164,12 @@ describe("components/glossary/glossary-bulk-actions", () => {
     const input = screen.getByLabelText(/to confirm/);
     fireEvent.change(input, { target: { value: "delete 2 term" } });
     expect(confirm().disabled).toBe(true);
-    fireEvent.change(input, { target: { value: "delete 2 terms" } });
+    fireEvent.change(input, { target: { value: "delete 2 glossaries" } });
     expect(confirm().disabled).toBe(false);
     fireEvent.click(confirm());
     await waitFor(() => expect(run).toHaveBeenCalledWith({ kind: "delete" }, selected));
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Deleted 2 of 2 terms" }),
+      expect.objectContaining({ description: "Deleted 2 of 2 glossaries" }),
     );
   });
 

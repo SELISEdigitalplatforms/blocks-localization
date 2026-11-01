@@ -16,15 +16,13 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
-import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import {
-  useGetLanguages,
   useResolveGlossariesByIds,
   useSearchGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
 import { useDebouncedValue } from "@blocks-localization/hooks/use-live-glossary-check";
-import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import {
   isUnsupportedGlossaryNote,
@@ -34,7 +32,7 @@ import {
 export const PICKER_SEARCH_DEBOUNCE_MS = 300;
 const NO_RESULTS: IGlossary[] = [];
 export const CREATED_NOT_FOUND_MESSAGE =
-  "Term created, but it couldn't be selected. Search for it.";
+  "Glossary created, but it couldn't be selected. Search for it.";
 
 /**
  * `Glossary/Save` returns no id (A3): the new term is the search result whose name equals
@@ -58,34 +56,24 @@ export const pickCreatedGlossary = (
 
 const GlossaryResultRow = ({
   glossary,
-  languages,
   selected,
 }: Readonly<{
   glossary: IGlossary;
-  languages: ILanguageConfig[] | undefined;
   selected: boolean;
 }>) => {
-  const meta = toGlossaryMeta(glossary);
   const unsupported = isUnsupportedGlossaryNote(glossary);
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2">
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-medium text-high-emphasis">{glossary.name}</span>
-          {unsupported ? (
-            <span className="text-xs text-medium-emphasis">—</span>
-          ) : (
-            <GlossaryRuleBadge rule={meta.rule} />
-          )}
-        </div>
-        {!unsupported && (
-          <div className="text-xs">
-            <GlossaryTranslationChips meta={meta} languages={languages} max={3} />
-          </div>
-        )}
-      </div>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="min-w-0 flex-1 truncate font-medium text-high-emphasis">
+        {glossary.name}
+      </span>
+      {unsupported ? (
+        <span className="text-xs text-medium-emphasis">—</span>
+      ) : (
+        <GlossaryRuleBadge rule={toGlossaryMeta(glossary).rule} />
+      )}
       <Check
-        className={cn("mt-0.5 h-4 w-4 shrink-0 text-primary", !selected && "opacity-0")}
+        className={cn("h-4 w-4 shrink-0 text-primary", !selected && "opacity-0")}
         aria-hidden="true"
       />
     </div>
@@ -172,7 +160,6 @@ const GlossaryPicker = ({
     isError: isSearchError,
     refetch: retrySearch,
   } = useSearchGlossaries(searchText, open);
-  const { data: languages } = useGetLanguages();
   const results = searchResults?.items ?? NO_RESULTS;
 
   const known = useMemo(() => {
@@ -271,7 +258,7 @@ const GlossaryPicker = ({
     return (
       <>
         <CommandEmpty className="px-3 py-6 text-center text-sm text-medium-emphasis">
-          {trimmedQuery ? `No glossary terms match "${trimmedQuery}".` : "No glossary terms yet."}
+          {trimmedQuery ? `No glossaries match "${trimmedQuery}".` : "No glossaries yet."}
         </CommandEmpty>
         {results.length > 0 && (
           <CommandGroup>
@@ -284,7 +271,6 @@ const GlossaryPicker = ({
               >
                 <GlossaryResultRow
                   glossary={glossary}
-                  languages={languages}
                   selected={selectedIds.includes(glossary.itemId)}
                 />
               </CommandItem>
@@ -346,7 +332,7 @@ const GlossaryPicker = ({
             >
               <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">
-                {allowCreate ? "Search or create glossary terms…" : "Search glossary terms…"}
+                {allowCreate ? "Search or create glossaries…" : "Search glossaries…"}
               </span>
               <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
             </Button>
