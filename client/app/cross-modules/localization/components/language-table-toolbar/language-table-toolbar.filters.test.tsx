@@ -48,10 +48,7 @@ vi.mock("@/components/filter-toolbar", async (importOriginal) => {
   };
 });
 
-import {
-  LanguageTableToolbar,
-  useKeysFilterQueryParams,
-} from "./language-table-toolbar";
+import { LanguageTableToolbar, useKeysFilterQueryParams } from "./language-table-toolbar";
 
 const Probe = () => {
   const { queryParams } = useKeysFilterQueryParams();

@@ -362,7 +362,13 @@ function TimelineEntry({
   );
 }
 
-const TIMELINE_SKELETON_DESCRIPTION_WIDTHS = ["w-[45%]", "w-[58%]", "w-[38%]", "w-[52%]", "w-[42%]"];
+const TIMELINE_SKELETON_DESCRIPTION_WIDTHS = [
+  "w-[45%]",
+  "w-[58%]",
+  "w-[38%]",
+  "w-[52%]",
+  "w-[42%]",
+];
 
 function TimelineSkeleton({ isMobile }: Readonly<{ isMobile: boolean }>) {
   return (

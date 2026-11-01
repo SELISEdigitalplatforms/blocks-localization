@@ -15,16 +15,22 @@ export const MAX_TRANSLATION_CHIPS = 4;
 interface GlossaryTranslationChipsProps {
   meta: GlossaryMeta;
   languages: ILanguageConfig[] | undefined;
+  /** Chips shown before "+N" (the glossary picker shows 3). */
+  max?: number;
 }
 
 /** One chip per non-default project language: the value on hover, or a "missing" warning. */
-const GlossaryTranslationChips = ({ meta, languages }: Readonly<GlossaryTranslationChipsProps>) => {
+const GlossaryTranslationChips = ({
+  meta,
+  languages,
+  max = MAX_TRANSLATION_CHIPS,
+}: Readonly<GlossaryTranslationChipsProps>) => {
   const targets = getTargetLanguages(languages);
   if (meta.rule !== "translate" || targets.length === 0) {
     return <span>—</span>;
   }
 
-  const visible = targets.slice(0, MAX_TRANSLATION_CHIPS);
+  const visible = targets.slice(0, max);
   const hiddenCount = targets.length - visible.length;
 
   return (

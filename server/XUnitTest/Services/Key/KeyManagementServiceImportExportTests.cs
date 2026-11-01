@@ -214,9 +214,8 @@ namespace XUnitTest
             var result = await InvokeImport("ImportExcelFile", stream, File("uilm.xlsx"));
 
             result.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.Is<IEnumerable<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "welcome")),
-                It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(
+                It.Is<List<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "welcome"))), Times.Once);
         }
 
         [Fact]
@@ -249,8 +248,7 @@ namespace XUnitTest
             var result = await InvokeImport("ImportExcelFile", stream, File("uilm.xlsx"));
 
             result.Should().BeFalse();
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string>()), Times.Never);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()), Times.Never);
         }
 
         [Fact]
@@ -282,9 +280,8 @@ namespace XUnitTest
             var result = await InvokeImport("ImportCsvFile", stream, File("uilm.csv"));
 
             result.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.Is<IEnumerable<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "hello")),
-                It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(
+                It.Is<List<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "hello"))), Times.Once);
         }
 
         [Fact]
@@ -313,9 +310,8 @@ namespace XUnitTest
             var result = await InvokeImport("ImportJsonFile", stream, File("uilm.json"));
 
             result.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.InsertUilmResourceKeys(
-                It.Is<IEnumerable<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "hello")),
-                It.IsAny<string>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.InsertOrMergeResourceKeysAsync(
+                It.Is<List<BlocksLanguageKey>>(k => k.Any(x => x.KeyName == "hello"))), Times.Once);
         }
 
         [Fact]
@@ -391,12 +387,12 @@ namespace XUnitTest
         private List<string> RecordImportWriteOrder()
         {
             var calls = new List<string>();
-            _keyRepositoryMock.Setup(r => r.InsertUilmApplications(It.IsAny<List<BlocksLanguageModule>>(), It.IsAny<string>()))
+            _keyRepositoryMock.Setup(r => r.InsertModulesSkippingTakenNamesAsync(It.IsAny<List<BlocksLanguageModule>>()))
                 .Callback(() => calls.Add("modules"))
-                .Returns(Task.CompletedTask);
-            _keyRepositoryMock.Setup(r => r.InsertUilmResourceKeys(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string>()))
+                .ReturnsAsync(new List<BlocksLanguageModule>());
+            _keyRepositoryMock.Setup(r => r.InsertOrMergeResourceKeysAsync(It.IsAny<List<BlocksLanguageKey>>()))
                 .Callback(() => calls.Add("keys"))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(new List<BlocksLanguageKey>());
             _keyRepositoryMock.Setup(r => r.UpsertResourceKeysWithMergeAsync(It.IsAny<IEnumerable<BlocksLanguageKey>>(), It.IsAny<string?>()))
                 .Callback(() => calls.Add("keys"))
                 .ReturnsAsync((1L, 0L));

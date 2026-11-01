@@ -3,6 +3,8 @@ using Blocks.Genesis;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Utilities;
@@ -55,8 +57,20 @@ builder.Services.Configure<MvcOptions>(options =>
 });
 services.AddEurolmRegisterApplicationServices(localizationSecret);
 
+// Large list payloads (Key/Gets: rows x cultures) are mostly repeated JSON; compress API responses only.
+services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = new[] { "application/json" };
+});
+services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+
 var app = builder.Build();
 
+app.UseResponseCompression();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 var indexHtml = Path.Combine(app.Environment.WebRootPath ?? "", "index.html");

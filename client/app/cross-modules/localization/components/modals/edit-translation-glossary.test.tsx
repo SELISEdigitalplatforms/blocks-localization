@@ -12,12 +12,15 @@ const autoTranslateAsync = vi.fn();
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useGetTranslationSuggestion: vi.fn(),
   useSearchGlossaries: vi.fn(),
+  useGetLanguages: () => ({ data: [] }),
+  useResolveGlossariesByIds: () => ({ glossaries: [], failedIds: [] }),
 }));
 
 const withDialog = (node: React.ReactNode) => (
@@ -161,7 +164,10 @@ describe("modals/edit-translation", () => {
       await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
       await waitFor(() =>
         expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({ variant: "success", description: "Language key updated successfully" }),
+          expect.objectContaining({
+            variant: "success",
+            description: "Language key updated successfully",
+          }),
         ),
       );
       expect(onClose).toHaveBeenCalledWith(false);
@@ -301,8 +307,47 @@ describe("modals/edit-key-glossary", () => {
         />,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("keeps the key's context, routes and resources when saving new tags (H9, C13)", async () => {
+    saveKeyAsync.mockResolvedValue({ success: true });
+    const tagged = {
+      ...keyDetails,
+      context: "Formal tone.",
+      routes: ["/home", "/settings"],
+      resources: [{ culture: "en-US", value: "Hello" }],
+      isPartiallyTranslated: true,
+      glossaryIds: ["g1", "g2"],
+    };
+    render(
+      withDialog(
+        <EditKeyGlossary
+          keyDetails={tagged}
+          resolvedGlossaries={
+            [
+              { itemId: "g1", name: "Widget" },
+              { itemId: "g2", name: "Gadget" },
+            ] as never
+          }
+          onClose={vi.fn()}
+        />,
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove Widget" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+    expect(saveKeyAsync.mock.calls[0][0]).toEqual({
+      itemId: tagged.itemId,
+      keyName: tagged.keyName,
+      moduleId: tagged.moduleId,
+      resources: [{ culture: "en-US", value: "Hello" }],
+      routes: ["/home", "/settings"],
+      glossaryIds: ["g2"],
+      isPartiallyTranslated: true,
+      context: "Formal tone.",
+    });
   });
 });

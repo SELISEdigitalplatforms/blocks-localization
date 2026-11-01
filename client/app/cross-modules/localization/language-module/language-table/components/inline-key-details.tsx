@@ -20,6 +20,8 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
+import { GlossaryUnavailableNote } from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -89,9 +91,12 @@ export const InlineKeyDetails = memo(
       (languageModule) => languageModule.itemId === keyDetails.moduleId,
     )?.moduleName;
     const {
+      applyLiveFix,
       autoTranslate,
       discardChanges,
       draftTranslations,
+      fixViolation,
+      getGlossaryRow,
       hasChanges,
       hasEmptyChange,
       isAutoTranslating,
@@ -99,6 +104,7 @@ export const InlineKeyDetails = memo(
       saveChanges,
       setTranslation,
       sortedLanguages,
+      sourceMatches,
     } = useInlineKeyEditor(keyDetails, languageListData);
 
     return (
@@ -130,51 +136,75 @@ export const InlineKeyDetails = memo(
           <p className="mb-2 text-xs font-medium text-low-emphasis">Translations</p>
           <TooltipProvider delayDuration={300}>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {sortedLanguages.map((language) => (
-                <div key={language.languageCode} className="min-w-0">
-                  <div className="mb-1.5 flex min-h-8 items-center justify-between gap-2">
-                    <label
-                      htmlFor={`translation-${keyDetails.itemId}-${language.languageCode}`}
-                      className="truncate text-xs font-medium text-medium-emphasis"
-                    >
-                      {language.languageName}
-                      {language.isDefault ? " (Default)" : ""}
-                    </label>
+              {sortedLanguages.map((language) => {
+                const glossaryRow = getGlossaryRow(language.languageCode);
+                const isRowTranslating = isAutoTranslating(language.languageCode);
+                return (
+                  <div key={language.languageCode} className="min-w-0">
+                    <div className="mb-1.5 flex min-h-8 items-center justify-between gap-2">
+                      <label
+                        htmlFor={`translation-${keyDetails.itemId}-${language.languageCode}`}
+                        className="truncate text-xs font-medium text-medium-emphasis"
+                      >
+                        {language.languageName}
+                        {language.isDefault ? " (Default)" : ""}
+                      </label>
+                      {!language.isDefault && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 shrink-0 p-0"
+                              aria-label={`Auto-translate ${language.languageName}`}
+                              disabled={isRowTranslating}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void autoTranslate(language.languageCode);
+                              }}
+                            >
+                              <Wand className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>Auto-translate</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <Textarea
+                      id={`translation-${keyDetails.itemId}-${language.languageCode}`}
+                      aria-label={`${language.languageName} translation`}
+                      className="min-h-[96px] resize-y border-border bg-background text-high-emphasis caret-primary shadow-none placeholder:text-low-emphasis focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                      placeholder="Enter translation"
+                      value={draftTranslations[language.languageCode] ?? ""}
+                      onChange={(event) =>
+                        setTranslation(language.languageCode, event.target.value)
+                      }
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                    {glossaryRow.glossaryUnavailable && (
+                      <GlossaryUnavailableNote className="mt-1" />
+                    )}
                     {!language.isDefault && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 shrink-0 p-0"
-                            aria-label={`Auto-translate ${language.languageName}`}
-                            disabled={isAutoTranslating}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void autoTranslate(language.languageCode);
-                            }}
-                          >
-                            <Wand className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p>Auto-translate</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <GlossaryTargetChecklist
+                        row={glossaryRow}
+                        targetText={draftTranslations[language.languageCode] ?? ""}
+                        targetCulture={language.languageCode}
+                        languageName={language.languageName}
+                        liveMatches={sourceMatches}
+                        disabled={isRowTranslating}
+                        onSuggestionFix={(violation) =>
+                          fixViolation(language.languageCode, violation)
+                        }
+                        onRetry={() => void autoTranslate(language.languageCode)}
+                        onLiveFix={(fixed) => applyLiveFix(language.languageCode, fixed)}
+                      />
                     )}
                   </div>
-                  <Textarea
-                    id={`translation-${keyDetails.itemId}-${language.languageCode}`}
-                    aria-label={`${language.languageName} translation`}
-                    className="min-h-[96px] resize-y border-border bg-background text-high-emphasis caret-primary shadow-none placeholder:text-low-emphasis focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
-                    placeholder="Enter translation"
-                    value={draftTranslations[language.languageCode] ?? ""}
-                    onChange={(event) => setTranslation(language.languageCode, event.target.value)}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </TooltipProvider>
         </div>

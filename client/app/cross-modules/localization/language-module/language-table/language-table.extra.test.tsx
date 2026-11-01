@@ -57,7 +57,11 @@ vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+  // The duplicate chips have their own tests; here the summary simply has not loaded.
+  useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
+  useGetBlocksLanguageKeysInfinite: vi.fn(),
   useGetLanguageModules: vi.fn(),
   useGetLanguages: vi.fn(),
   useDeleteLanguageKey: vi.fn(),
@@ -105,6 +109,19 @@ const baseLanguages = [
 ];
 
 const setBaseMocks = (languages: unknown = baseLanguages) => {
+  // The All view is off at the default page size; its query stays idle.
+  h.useGetBlocksLanguageKeysInfinite.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    fetchNextPage: vi.fn(),
+    refetch: vi.fn(),
+    error: null,
+  } as never);
   h.useGetLanguageModules.mockReturnValue({
     data: [{ itemId: "m1", moduleName: "UILM" }],
     isLoading: false,
@@ -452,7 +469,7 @@ describe("language-table (extra coverage)", () => {
       const germanTranslation = await screen.findByRole("textbox", {
         name: "German translation",
       });
-      expect((germanTranslation as HTMLTextAreaElement).value).toBe("Hallo");
+      await waitFor(() => expect((germanTranslation as HTMLTextAreaElement).value).toBe("Hallo"));
       expect(suggestTranslationAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           sourceText: "Hello",
@@ -707,7 +724,10 @@ describe("language-table (extra coverage)", () => {
       setKeys(oneKey());
       renderWithProviders(<LanguageTable />);
       await user.click(screen.getByText("greeting"));
-      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1");
+      expect(navigate).toHaveBeenCalledWith("/scoped/services/language/translations/k1", {
+        // Key details returns to this list (with its filters) after a delete.
+        state: { returnSearch: expect.any(String) },
+      });
     });
 
     it("opens and confirms the single-key translate dialog", async () => {

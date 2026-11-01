@@ -1,3 +1,5 @@
+using Eurolm.DomainService.Repositories;
+using Microsoft.Extensions.Logging;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Shared.Events;
@@ -72,7 +74,7 @@ namespace XUnitTest
             var evt = new UilmImportEvent { FileId = "f1", MessageCoRelationId = "cor-4", ProjectKey = "p1" };
             _keyManagementService.Setup(x => x.ImportUilmFile(evt)).ReturnsAsync(true);
 
-            var consumer = new UilmImportEventConsumer(_keyManagementService.Object, _webHookService.Object);
+            var consumer = new UilmImportEventConsumer(_keyManagementService.Object, _webHookService.Object, new Mock<ILocalizationUniquenessRepository>().Object, new Mock<ILogger<UilmImportEventConsumer>>().Object);
             await consumer.Consume(evt);
 
             _keyManagementService.Verify(x => x.ImportUilmFile(evt), Times.Once);
@@ -85,7 +87,7 @@ namespace XUnitTest
             var evt = new UilmImportEvent { FileId = "f1", MessageCoRelationId = "cor-4", ProjectKey = "p1" };
             _keyManagementService.Setup(x => x.ImportUilmFile(evt)).ReturnsAsync(false);
 
-            var consumer = new UilmImportEventConsumer(_keyManagementService.Object, _webHookService.Object);
+            var consumer = new UilmImportEventConsumer(_keyManagementService.Object, _webHookService.Object, new Mock<ILocalizationUniquenessRepository>().Object, new Mock<ILogger<UilmImportEventConsumer>>().Object);
             await consumer.Consume(evt);
 
             _keyManagementService.Verify(x => x.ImportUilmFile(evt), Times.Once);

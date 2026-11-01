@@ -79,7 +79,15 @@ export class ModulesPage {
   }
 
   async closeNewModuleDialog() {
-    await this.page.getByRole("button", { name: "Close" }).click({ force: true });
+    // The dialog animates in and re-centres when its content height changes, so a
+    // forced click on the small X can miss it. Click normally and confirm it closed.
+    const dialog = this.page.getByRole("dialog");
+    await expect(async () => {
+      if (await dialog.isVisible()) {
+        await dialog.getByRole("button", { name: "Close" }).click({ timeout: 2_000 });
+      }
+      await expect(dialog).toBeHidden({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
   }
 
   getRowMenuButton(moduleName: string) {
@@ -110,6 +118,20 @@ export class ModulesPage {
     await expect(this.page.getByRole("menuitem", { name: "Tag glossary" })).toBeVisible();
     await this.page.getByRole("menuitem", { name: "Tag glossary" }).click();
     await expect(this.page.getByRole("heading", { name: "Tag Glossary" })).toBeVisible();
+  }
+
+  /** The Tag Glossary dialog and its shared glossary picker (SPEC4). */
+  get tagGlossaryDialog() {
+    return this.page.getByRole("dialog", { name: "Tag Glossary" });
+  }
+
+  /** Opens the picker's search and types a query (the search is debounced by 300 ms). */
+  async searchInTagPicker(query: string) {
+    const dialog = this.tagGlossaryDialog;
+    const search = dialog.getByPlaceholder("Search glossary...");
+    if (!(await search.isVisible())) await dialog.getByRole("combobox").click();
+    await search.fill(query);
+    return search;
   }
 
   getModuleRow(moduleName: string) {
@@ -198,12 +220,16 @@ export class ModulesPage {
   }
 
   async expectGlossaryTabLoaded() {
-    await expect(this.page.getByRole("heading", { name: /Tagged Glossaries/ })).toBeVisible({ timeout: 15_000 });
+    await expect(this.page.getByRole("heading", { name: /Tagged Glossaries/ })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   async expectNoGlossariesTaggedOrTableVisible() {
     const noGlossariesTagged = this.page.getByText(/No glossaries tagged to this/);
     const taggedGlossariesTable = this.page.getByRole("table");
-    await expect(noGlossariesTagged.or(taggedGlossariesTable).first()).toBeVisible({ timeout: 15_000 });
+    await expect(noGlossariesTagged.or(taggedGlossariesTable).first()).toBeVisible({
+      timeout: 15_000,
+    });
   }
 }

@@ -55,10 +55,12 @@ describe("localization/constants/endpoint.constant", () => {
       ROLLBACK: `${UILM_BASE}/Key/RollBack`,
       GET_LOCALIZATION_TIMELINE: `${UILM_BASE}/Key/GetLocalizationTimeline`,
       GET_TIMELINE_BY_OPERATION_ID: `${UILM_BASE}/Key/GetTimelineByOperationId`,
+      GET_DUPLICATE_SUMMARY: `${UILM_BASE}/Key/GetDuplicateSummary`,
+      ENFORCE_UNIQUENESS: `${UILM_BASE}/Key/EnforceUniqueness`,
     } as const;
 
-    it("should expose exactly 17 key endpoints", () => {
-      expect(Object.keys(LANGUAGE_KEY_ENDPOINTS)).toHaveLength(17);
+    it("should expose exactly 19 key endpoints", () => {
+      expect(Object.keys(LANGUAGE_KEY_ENDPOINTS)).toHaveLength(19);
     });
 
     it.each(Object.entries(expected))("should expose %s = %s", (key, value) => {

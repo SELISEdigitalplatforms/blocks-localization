@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 
 namespace Eurolm.DomainService.Services
@@ -47,6 +48,15 @@ namespace Eurolm.DomainService.Services
             {
                 var repoModule = await MappedIntoRepoModuleAsync(module);
                 await _moduleRepository.SaveAsync(repoModule);
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique module-name index caught a concurrent save; answer as ModuleValidator would.
+                // The exception is not logged because its message repeats the duplicate ModuleName.
+#pragma warning disable S6667
+                _logger.LogWarning("A module save was rejected by the unique module-name index");
+#pragma warning restore S6667
+                return new ApiResponse(string.Empty, [new ValidationFailure(nameof(SaveModuleRequest.ModuleName), "Module name must be unique.")]);
             }
             catch (Exception ex)
             {
@@ -111,6 +121,16 @@ namespace Eurolm.DomainService.Services
 
                 await _moduleRepository.DeleteAsync(request.ItemId);
                 return new BaseMutationResponse { IsSuccess = true };
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // The unique key index rejected the move: a key with the same name reached the target
+                // module after the name check. The module is kept. The exception is not logged because
+                // its message repeats the duplicate KeyName.
+#pragma warning disable S6667
+                _logger.LogWarning("A module delete was rejected because the unique key index blocked moving its keys");
+#pragma warning restore S6667
+                return DeleteModuleFailure(TargetModuleIdErrorKey, "Keys with the same names now exist in the target module. Rename or delete them before moving");
             }
             catch (Exception ex)
             {

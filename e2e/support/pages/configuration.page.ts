@@ -85,7 +85,7 @@ export class ConfigurationPage {
       .or(this.page.getByRole("button", { name: "Language *" }))
       .first();
     await languageButton.click();
-    await this.page.getByPlaceholder("Search language...").fill(languageName.toLowerCase());
+    await this.page.getByPlaceholder("Search by name or code...").fill(languageName.toLowerCase());
     await this.page.getByRole("option", { name: languageName }).click();
   }
 
@@ -95,11 +95,11 @@ export class ConfigurationPage {
       .or(this.page.getByRole("button", { name: "Language *" }))
       .first();
     await languageButton.click();
-    await this.page.getByPlaceholder("Search language...").fill(query);
+    await this.page.getByPlaceholder("Search by name or code...").fill(query);
   }
 
   async expectNoLanguageSearchResults() {
-    await expect(this.page.getByText("No language found.", { exact: true })).toBeVisible();
+    await expect(this.page.getByText(/^No language matches ".*"\.$/)).toBeVisible();
   }
 
   async closeLanguageSearch() {

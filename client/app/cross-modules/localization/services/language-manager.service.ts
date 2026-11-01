@@ -11,6 +11,7 @@ import {
 import {
   ExportHistoryFilters,
   IBlocksLanguageKey,
+  IBlocksLanguageKeyResponse,
   IGetExportHistory,
   IGlossary,
   IGetGlossariesResponse,
@@ -23,6 +24,8 @@ import {
   IKeyUilmExport,
   ILanguageConfig,
   IDeleteModuleRequest,
+  IDuplicateSummary,
+  IEnforceUniquenessResult,
   IModuleGets,
   IRollbackResponse,
   ISaveBlocksLanguageKeyPayload,
@@ -33,26 +36,33 @@ import {
 
 export class LanguageManagerService {
   private readonly httpClient = serviceInstances.localizationService;
-  fetchBlocksLanguageKey = (request: {
-    pageNumber: number;
-    pageSize: number;
-    searchKey: string;
-    moduleIds: string[];
-    isPartiallyTranslated: boolean;
-    sortProperty: string;
-    isDescending: boolean;
-    createDateRange?: {
-      startDate?: string;
-      endDate?: string;
-    };
-    lastUpdateDateRange?: {
-      startDate?: string;
-      endDate?: string;
-    };
-    resourceSearchFilters?: { culture: string; searchText: string }[];
-    glossaryId?: string;
-    missingLanguages?: string[];
-  }): Promise<{ totalCount: number; keys: IBlocksLanguageKey[] }> => {
+  fetchBlocksLanguageKey = (
+    request: {
+      pageNumber: number;
+      pageSize: number;
+      searchKey: string;
+      moduleIds: string[];
+      isPartiallyTranslated: boolean;
+      sortProperty: string;
+      isDescending: boolean;
+      createDateRange?: {
+        startDate?: string;
+        endDate?: string;
+      };
+      lastUpdateDateRange?: {
+        startDate?: string;
+        endDate?: string;
+      };
+      resourceSearchFilters?: { culture: string; searchText: string }[];
+      glossaryId?: string;
+      missingLanguages?: string[];
+      onlyDuplicates?: boolean;
+      /** Keyset token from a previous `nextCursor`; when set the server ignores `pageNumber`. */
+      cursor?: string;
+      includeTotalCount?: boolean;
+    },
+    options?: { signal?: AbortSignal },
+  ): Promise<IBlocksLanguageKeyResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
     const payload = { ...request };
     if (!request.createDateRange) {
@@ -69,7 +79,18 @@ export class LanguageManagerService {
     } else if (payload?.lastUpdateDateRange?.endDate === "") {
       delete payload.lastUpdateDateRange.endDate;
     }
-    return this.httpClient.post(url, payload);
+    return this.httpClient.post(url, payload, undefined, { signal: options?.signal });
+  };
+
+  fetchDuplicateSummary = (): Promise<IDuplicateSummary> => {
+    return this.httpClient.get(LANGUAGE_KEY_ENDPOINTS.GET_DUPLICATE_SUMMARY);
+  };
+
+  enforceUniqueness = (): Promise<IEnforceUniquenessResult> => {
+    return this.httpClient.post<IEnforceUniquenessResult>(
+      LANGUAGE_KEY_ENDPOINTS.ENFORCE_UNIQUENESS,
+      {},
+    );
   };
 
   fetchBlocksLanguageKeyById = (request: { itemId: string }): Promise<IBlocksLanguageKey> => {
@@ -253,10 +274,16 @@ export class LanguageManagerService {
     destinationLanguage: string;
     currentLanguage: string;
     temperature: number;
-    // elementDetailContext: string;
+    /** Replaces the server's default instruction; the server appends its glossary lines and the source text. */
+    elementDetailContext?: string;
     glossaryIds?: string[];
     moduleId?: string;
     destinationLanguageCode?: string;
+    /**
+     * True when `elementDetailContext` carries this client's terminology rules, so the Phase 6
+     * server skips its own rules and retry for this request. Ignored by servers without it.
+     */
+    clientGlossaryRules?: boolean;
   }): Promise<{
     content: string;
     errors: null | unknown;

@@ -1,5 +1,8 @@
 import { type Page, type Locator, expect } from "@playwright/test";
 
+const CHROME_WEB_STORE_LISTING_URL =
+  "https://chromewebstore.google.com/detail/selise-blocks-assistant/ehnhmdghlkaeaiinoahgipdeogkikjem";
+
 export class ExtensionGuidesPage {
   readonly page: Page;
 
@@ -52,20 +55,18 @@ export class ExtensionGuidesPage {
     await expect(button).toHaveAttribute("data-state", "closed");
   }
 
-  async clickChromeWebStoreLink() {
-    const page3Promise = this.page.waitForEvent("popup");
-    await this.page.getByRole("link", { name: "Chrome Web Store" }).click();
-    return page3Promise;
-  }
-
-  async expectChromeStoreHeadingVisible(popupPage: Page) {
-    await popupPage.waitForLoadState("domcontentloaded");
-    await expect(
-      popupPage.getByRole("heading", {
-        name: "SELISE Blocks Assistant",
-        exact: true,
-      }),
-    ).toBeVisible();
+  /**
+   * Asserts the Chrome Web Store link points to the extension's store listing
+   * without opening it. From the E2E runner Google serves a cookie-consent page
+   * before the listing, so loading the external page is not reliable
+   * (approved on blocks-localization#345, Q2: B).
+   */
+  async expectChromeWebStoreLinkTargetsListing() {
+    const link = this.page.getByRole("link", { name: "Chrome Web Store" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", CHROME_WEB_STORE_LISTING_URL);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
   }
 
   async bringMainPageToFront() {

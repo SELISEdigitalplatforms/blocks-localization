@@ -77,7 +77,10 @@ describe("localization/services/user-lookup.service", () => {
         name: "Alice",
       });
       const [, body] = vi.mocked(http.post).mock.calls[0];
-      expect((body as unknown as Record<string, unknown>).filter).toEqual({ email: "a@b.com", name: "Alice" });
+      expect((body as unknown as Record<string, unknown>).filter).toEqual({
+        email: "a@b.com",
+        name: "Alice",
+      });
     });
   });
 

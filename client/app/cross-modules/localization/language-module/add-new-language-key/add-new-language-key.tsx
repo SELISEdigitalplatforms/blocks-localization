@@ -36,16 +36,28 @@ import { cn } from "@/lib/utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
+  GlossaryUnavailableNote,
+  useGlossarySuggestionRows,
+} from "@blocks-localization/components/glossary/glossary-violation-list";
+import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
+import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
+import {
+  LIVE_CHECK_DEBOUNCE_MS,
+  useApplicableGlossaryMatches,
+  useDebouncedValue,
+  useLoadedGlossaries,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import {
   useGetLanguageModules,
   useGetLanguages,
-  useGetTranslationSuggestion,
   useSaveBlocksLanguageKey,
 } from "@blocks-localization/hooks/use-language-manager";
 import { ILanguageConfig } from "@blocks-localization/models/language";
+import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronsUpDown, Info, Plus, Trash, Wand } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 interface MutationResponse {
@@ -181,9 +193,15 @@ function AddNewLanguageKey() {
   const inputRef = useRef(null);
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
-  const { mutateAsync: autoTranslateAsync } = useGetTranslationSuggestion();
-
-  const [loadingIndex, setLoadingIndex] = React.useState<number | null>(null);
+  const loadGlossaries = useLoadAllGlossaries();
+  // One suggestion state per target language (C22); keyed by language code.
+  const {
+    request,
+    isPending: isRowTranslating,
+    getRow: getGlossaryRow,
+    clearViolations,
+    fix,
+  } = useGlossarySuggestionRows({ loadGlossaries });
 
   BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
   const form = useForm<FormValues>({
@@ -212,6 +230,35 @@ function AddNewLanguageKey() {
     control: form.control,
     name: "routes",
   });
+
+  // Per-row glossary checklists (Phase 4). Resources follow sortedLanguages.
+  const watchedResources = useWatch({ control: form.control, name: "resources" });
+  const watchedModuleId = useWatch({ control: form.control, name: "moduleId" });
+  const glossaries = useLoadedGlossaries(loadGlossaries);
+  const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
+  const debouncedSource = useDebouncedValue(
+    watchedResources?.[0]?.value ?? "",
+    LIVE_CHECK_DEBOUNCE_MS,
+  );
+  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+    sourceCulture: defaultLanguageCode,
+    moduleId: watchedModuleId || undefined,
+  });
+  const resourcePath = React.useCallback(
+    (culture: string) => {
+      const index = sortedLanguages?.findIndex((language) => language.languageCode === culture);
+      return `resources.${index ?? -1}.value` as const;
+    },
+    [sortedLanguages],
+  );
+  /** A live Fix is a user edit: the suggestion's list gives way to the live check. */
+  const editTranslation = React.useCallback(
+    (culture: string, value: string) => {
+      form.setValue(resourcePath(culture), value, { shouldDirty: true, shouldValidate: true });
+      clearViolations(culture);
+    },
+    [clearViolations, form, resourcePath],
+  );
 
   React.useEffect(() => {
     if (!sortedLanguages?.length) {
@@ -303,64 +350,52 @@ function AddNewLanguageKey() {
     return "Unable to save language key";
   };
 
-  async function runAutoTranslate(
-    destinationLanguage: string | undefined,
-    defaultLanguageText: string,
-    index: number,
-    destinationLanguageCode?: string,
-  ): Promise<void> {
-    setLoadingIndex(index);
-    try {
-      const defaultLanguage =
-        languageListData?.find((lang) => lang.isDefault) ?? languageListData?.[0];
-      const payload = {
-        sourceText: defaultLanguageText,
-        destinationLanguage: destinationLanguage || "English",
+  async function runAutoTranslate(index: number): Promise<void> {
+    const destination = sortedLanguages?.[index + 1];
+    const destinationLanguageCode = destination?.languageCode;
+    const defaultLanguage = getDefaultLanguage(languageListData);
+    const sourceText = form.getValues().resources[0]?.value ?? "";
+    const moduleId = form.getValues("moduleId") || undefined;
+    const outcome = await request({
+      requestKey: destinationLanguageCode ?? String(index),
+      legacyPayload: {
+        sourceText,
+        destinationLanguage: destination?.languageName || "English",
         currentLanguage: defaultLanguage?.languageName ?? "English",
         temperature: 0.1,
-        moduleId: form.getValues("moduleId") || undefined,
+        moduleId,
         destinationLanguageCode,
-      };
-      const res = await autoTranslateAsync(payload);
-      if (res.content) {
-        toast({
-          variant: "success",
-          title: "Success",
-          description: "Translated successfully",
-        });
-        form.setValue(`resources.${index + 1}.value`, res.content);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: JSON.stringify(res?.errors),
-        });
-      }
-    } catch (error) {
+      },
+      sourceText,
+      defaultLanguage,
+      targetLanguage: {
+        languageName: destination?.languageName ?? "",
+        languageCode: destinationLanguageCode ?? "",
+      },
+      keyContext: form.getValues("context"),
+      moduleId,
+    });
+    if (outcome.status === "stale") return;
+    if (outcome.status === "success") {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: JSON.stringify(error),
+        variant: "success",
+        title: "Success",
+        description: "Translated successfully",
       });
-    } finally {
-      setLoadingIndex(null);
+      form.setValue(`resources.${index + 1}.value`, outcome.content);
+      return;
     }
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
+    });
   }
 
-  function autoTranslate(
-    destinationLanguage: string | undefined,
-    defaultLanguageText: string,
-    index: number,
-    destinationLanguageCode?: string,
-  ): React.MouseEventHandler<HTMLButtonElement> {
+  function autoTranslate(index: number): React.MouseEventHandler<HTMLButtonElement> {
     return (e) => {
       e.preventDefault();
-      void runAutoTranslate(
-        destinationLanguage,
-        defaultLanguageText,
-        index,
-        destinationLanguageCode,
-      );
+      void runAutoTranslate(index);
     };
   }
 
@@ -585,41 +620,65 @@ function AddNewLanguageKey() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4">
-                    {resourceFields.slice(1).map((field, index) => (
-                      <div key={field.id} className="grid gap-3">
-                        <div className="grid grid-cols-2">
-                          <Label>{sortedLanguages?.[index + 1]?.languageName} Translation</Label>
-                          <div className="flex justify-end gap-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 gap-1"
-                              // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() keeps the button state in sync with the source value.
-                              disabled={loadingIndex === index || !form.watch().resources[0].value} // Disable only the clicked button.
-                              onClick={autoTranslate(
-                                sortedLanguages?.[index + 1]?.languageName,
-                                form.getValues().resources[0].value,
-                                index,
-                                sortedLanguages?.[index + 1]?.languageCode,
-                              )}
-                            >
-                              <Wand className="h-3.5 w-3.5" />
-                              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                {loadingIndex === index ? "Loading..." : "Auto-Translate"}{" "}
-                                {/* Show loading text */}
-                              </span>
-                            </Button>
+                    {resourceFields.slice(1).map((field, index) => {
+                      const rowKey = sortedLanguages?.[index + 1]?.languageCode ?? String(index);
+                      const isLoading = isRowTranslating(rowKey);
+                      const glossaryRow = getGlossaryRow(rowKey);
+                      const valuePath = `resources.${index + 1}.value` as const;
+                      const translationField = form.register(valuePath);
+                      return (
+                        <div key={field.id} className="grid gap-3">
+                          <div className="grid grid-cols-2">
+                            <Label>{sortedLanguages?.[index + 1]?.languageName} Translation</Label>
+                            <div className="flex justify-end gap-4">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 gap-1"
+                                // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() keeps the button state in sync with the source value.
+                                disabled={isLoading || !form.watch().resources[0].value} // Only this row's request disables it.
+                                onClick={autoTranslate(index)}
+                              >
+                                <Wand className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                  {isLoading ? "Loading..." : "Auto-Translate"}{" "}
+                                  {/* Show loading text */}
+                                </span>
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter translation"
-                            className="min-h-20 shadow-none"
-                            {...form.register(`resources.${index + 1}.value`)}
+                          {glossaryRow.glossaryUnavailable && (
+                            <GlossaryUnavailableNote className="-mt-1" />
+                          )}
+                          <FormControl>
+                            <Textarea
+                              placeholder="Enter translation"
+                              className="min-h-20 shadow-none"
+                              {...translationField}
+                              onChange={(event) => {
+                                clearViolations(rowKey);
+                                return translationField.onChange(event);
+                              }}
+                            />
+                          </FormControl>
+                          <GlossaryTargetChecklist
+                            className="mt-0"
+                            row={glossaryRow}
+                            targetText={watchedResources?.[index + 1]?.value ?? ""}
+                            targetCulture={rowKey}
+                            languageName={sortedLanguages?.[index + 1]?.languageName}
+                            liveMatches={sourceMatches}
+                            disabled={isLoading}
+                            onSuggestionFix={(violation) => {
+                              const fixed = fix(rowKey, violation, form.getValues(valuePath) ?? "");
+                              if (fixed !== null) form.setValue(valuePath, fixed);
+                            }}
+                            onRetry={() => void runAutoTranslate(index)}
+                            onLiveFix={(fixed) => editTranslation(rowKey, fixed)}
                           />
-                        </FormControl>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

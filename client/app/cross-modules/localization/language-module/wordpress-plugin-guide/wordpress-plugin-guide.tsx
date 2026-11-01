@@ -14,7 +14,11 @@ export const WordPressPluginGuide = () => {
     if (!projectId) return;
     setOpening(true);
     try {
-      globalThis.location.assign(await fetchBlocksOsRedirectUrl(`/app/${encodeURIComponent(projectId)}/secret-management/integration`));
+      globalThis.location.assign(
+        await fetchBlocksOsRedirectUrl(
+          `/app/${encodeURIComponent(projectId)}/secret-management/integration`,
+        ),
+      );
     } catch {
       showErrorToast({ errors: "Could not open Integrations in Blocks OS." });
     } finally {
@@ -39,7 +43,11 @@ export const WordPressPluginGuide = () => {
           Create a connection there, then copy its one-time credentials into the plugin.
         </p>
         <Button className="mt-4" onClick={openIntegrations} disabled={opening || !projectId}>
-          {opening ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+          {opening ? (
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ExternalLink className="mr-2 h-4 w-4" />
+          )}
           Open Integrations in Blocks OS
         </Button>
       </Card>
