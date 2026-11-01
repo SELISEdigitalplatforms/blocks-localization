@@ -1,12 +1,16 @@
 import { ExternalLink, LoaderCircle, Puzzle } from "lucide-react";
 import { useState } from "react";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
 import { showErrorToast } from "@/hooks/use-toast";
 import { fetchBlocksOsRedirectUrl } from "@blocks-localization/services/wordpress-plugin.service";
 
+const MODULE = "localization.tools";
+
 export const WordPressPluginGuide = () => {
+  const { t } = useT(MODULE);
   const [opening, setOpening] = useState(false);
   const projectId = useProjectStore()?.selectedProject?.itemId;
 
@@ -20,7 +24,7 @@ export const WordPressPluginGuide = () => {
         ),
       );
     } catch {
-      showErrorToast({ errors: "Could not open Integrations in Blocks OS." });
+      showErrorToast({ errors: t("WORDPRESS_PLUGIN_GUIDE.OPEN_FAILED") });
     } finally {
       setOpening(false);
     }
@@ -31,16 +35,16 @@ export const WordPressPluginGuide = () => {
       <div className="flex items-center gap-3">
         <Puzzle className="h-6 w-6 text-muted-foreground" />
         <div>
-          <h1 className="text-2xl font-semibold">WordPress Plugin Guide</h1>
+          <h1 className="text-2xl font-semibold">{t("WORDPRESS_PLUGIN_GUIDE.TITLE")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Connect your WordPress site to Blocks Localization from Integrations in Blocks OS.
+            {t("WORDPRESS_PLUGIN_GUIDE.SUBTITLE")}
           </p>
         </div>
       </div>
 
       <Card className="p-4 sm:p-6">
         <p className="text-base leading-7 text-muted-foreground">
-          Create a connection there, then copy its one-time credentials into the plugin.
+          {t("WORDPRESS_PLUGIN_GUIDE.INSTRUCTION")}
         </p>
         <Button className="mt-4" onClick={openIntegrations} disabled={opening || !projectId}>
           {opening ? (
@@ -48,7 +52,7 @@ export const WordPressPluginGuide = () => {
           ) : (
             <ExternalLink className="mr-2 h-4 w-4" />
           )}
-          Open Integrations in Blocks OS
+          {t("WORDPRESS_PLUGIN_GUIDE.OPEN_INTEGRATIONS")}
         </Button>
       </Card>
     </div>

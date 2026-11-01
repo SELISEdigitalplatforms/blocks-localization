@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -26,6 +26,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/rad
 import { toast } from "@/hooks/use-toast";
 import { isErrorWithErrors } from "@/lib/error";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import {
   useGetLanguageModule,
   useGetLanguages,
@@ -45,6 +46,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/po
 import { useNotificationListener } from "@blocks-utilities/notification";
 import StepperWithoutIndicator from "@/components/stepper/stepper-without-indicator";
 
+const MODULE = "localization.tools";
+
 const outputTypes = [
   { id: 0, label: "Json" },
   // { id: 1, label: "Xml" },
@@ -56,11 +59,14 @@ const outputTypes = [
 
 type DateRangeType = { from?: Date; to?: Date } | null;
 
-const FormSchema = z.object({
-  items: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: "You have to select at least one item.",
-  }),
-});
+const buildFormSchema = (t: (key: string) => string) =>
+  z.object({
+    items: z.array(z.string()).refine((value) => value.some((item) => item), {
+      message: t("EXPORT_KEY.SELECT_AT_LEAST_ONE"),
+    }),
+  });
+
+type FormValues = z.infer<ReturnType<typeof buildFormSchema>>;
 
 interface ExportKeyProps {
   open?: boolean;
@@ -68,6 +74,7 @@ interface ExportKeyProps {
 }
 
 export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
+  const { t } = useT(MODULE);
   const [currentStep, setCurrentStep] = useState(1);
   const projectKey = useProjectStore().selectedProject?.tenantId || "";
   const { data: languageModules } = useGetLanguageModule(projectKey);
@@ -147,8 +154,8 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
     // Validate file type
     if (!file.name.endsWith(".xlf") && !file.name.endsWith(".xliff")) {
       toast({
-        title: "Invalid File",
-        description: "Please upload a valid XLF file.",
+        title: t("EXPORT_KEY.INVALID_FILE_TITLE"),
+        description: t("EXPORT_KEY.INVALID_FILE_DESCRIPTION"),
         variant: "destructive",
       });
       return;
@@ -166,8 +173,9 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
     setDate(selectedDateRange ?? null);
   };
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+  const formSchema = useMemo(() => buildFormSchema(t), [t]);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       items: [],
     },
@@ -250,9 +258,8 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       }
 
       toast({
-        title: "Export Started",
-        description:
-          "Your export is being prepared. The download will start when the file is ready.",
+        title: t("EXPORT_KEY.EXPORT_STARTED_TITLE"),
+        description: t("EXPORT_KEY.EXPORT_STARTED_DESCRIPTION"),
         variant: "success",
       });
 
@@ -437,16 +444,16 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
 
   const showSuccessToast = () => {
     toast({
-      title: "Status",
-      description: "Successfully downloaded the export keys.",
+      title: t("EXPORT_KEY.STATUS_TITLE"),
+      description: t("EXPORT_KEY.DOWNLOAD_SUCCESS"),
       variant: "success",
     });
   };
 
   const showErrorToast = () => {
     toast({
-      title: "Download Failed",
-      description: "Download failed. Please check the logs for more details.",
+      title: t("EXPORT_KEY.DOWNLOAD_FAILED_TITLE"),
+      description: t("EXPORT_KEY.DOWNLOAD_FAILED_DESCRIPTION"),
       variant: "destructive",
     });
   };
@@ -456,21 +463,23 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
       {/* {!showConfirmation ? ( */}
       <>
         <DialogHeader>
-          <DialogTitle className="text-left">Export keys</DialogTitle>
+          <DialogTitle className="text-left">{t("EXPORT_KEY.TITLE")}</DialogTitle>
           <DialogDescription className="mt-[12px]! text-sm text-medium-emphasis">
-            Select the modules you’d like to export
+            {t("EXPORT_KEY.SELECT_MODULES")}
           </DialogDescription>
         </DialogHeader>
         <div className="mt-[8px]! mb-8 flex-1 overflow-y-auto p-1 text-left text-high-emphasis">
           <StepperWithoutIndicator currentStep={currentStep} stepNumber={1}>
             <div className="mb-6 flex flex-col gap-1.5">
-              <p className="text-sm text-high-emphasis">Date Range</p>
+              <p className="text-sm text-high-emphasis">{t("EXPORT_KEY.DATE_RANGE")}</p>
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="flex w-full justify-between" type="button">
                     {!date?.from ? (
                       <div className="flex w-full items-center justify-between">
-                        <span className="font-normal text-low-emphasis">Set date range</span>
+                        <span className="font-normal text-low-emphasis">
+                          {t("EXPORT_KEY.SET_DATE_RANGE")}
+                        </span>
                         <CalendarIcon className="ml-2 h-4 w-4" />
                       </div>
                     ) : (
@@ -523,10 +532,10 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                         setPopoverOpen(false);
                       }}
                     >
-                      Reset
+                      {t("common:RESET")}
                     </Button>
                     <Button type="button" className="w-full" onClick={() => setPopoverOpen(false)}>
-                      Apply
+                      {t("common:APPLY")}
                     </Button>
                   </div>
                 </PopoverContent>
@@ -554,10 +563,14 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                                 }}
                               />
                             </FormControl>
-                            <FormLabel className="font-normal">Select all</FormLabel>
+                            <FormLabel className="font-normal">
+                              {t("EXPORT_KEY.SELECT_ALL")}
+                            </FormLabel>
                           </FormItem>
                         ) : (
-                          <div className="text-sm text-medium-emphasis">No module found.</div>
+                          <div className="text-sm text-medium-emphasis">
+                            {t("EXPORT_KEY.NO_MODULE_FOUND")}
+                          </div>
                         )}
                       </div>
                       <div className="max-h-80 overflow-y-auto">
@@ -614,9 +627,11 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                 {/* XLF File Upload Section */}
                 {selectedOutputType === 5 && (
                   <div className="mt-4 space-y-2 rounded-md border border-border-default p-4">
-                    <p className="text-sm font-medium text-high-emphasis">Upload XLF File</p>
+                    <p className="text-sm font-medium text-high-emphasis">
+                      {t("EXPORT_KEY.UPLOAD_XLF_TITLE")}
+                    </p>
                     <p className="text-xs text-medium-emphasis">
-                      Please upload an XLF file to use as a template for export.
+                      {t("EXPORT_KEY.UPLOAD_XLF_DESCRIPTION")}
                     </p>
                     {!xlfFile ? (
                       <div className="mt-2">
@@ -625,7 +640,9 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                           className="bg-surface-default hover:bg-surface-hover flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-default px-4 py-3 text-sm"
                         >
                           <Upload className="h-4 w-4 text-medium-emphasis" />
-                          <span className="text-medium-emphasis">Click to select XLF file</span>
+                          <span className="text-medium-emphasis">
+                            {t("EXPORT_KEY.CLICK_TO_SELECT_XLF")}
+                          </span>
                         </label>
                         <input
                           id="xlf-upload"
@@ -654,9 +671,11 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
 
                     {/* Language Selection Section for XLF */}
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-high-emphasis">Select Languages</p>
+                      <p className="text-sm font-medium text-high-emphasis">
+                        {t("EXPORT_KEY.SELECT_LANGUAGES_TITLE")}
+                      </p>
                       <p className="text-xs text-medium-emphasis">
-                        Choose one or more languages to export.
+                        {t("EXPORT_KEY.SELECT_LANGUAGES_DESCRIPTION")}
                       </p>
                       {availableLanguages && availableLanguages.length > 0 ? (
                         <div className="mt-2 space-y-3">
@@ -673,7 +692,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                               }}
                             />
                             <Label htmlFor="select-all-languages" className="font-normal">
-                              Select all
+                              {t("EXPORT_KEY.SELECT_ALL")}
                             </Label>
                           </div>
 
@@ -699,14 +718,16 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-2 text-sm text-medium-emphasis">No languages found.</div>
+                        <div className="mt-2 text-sm text-medium-emphasis">
+                          {t("EXPORT_KEY.NO_LANGUAGES_FOUND")}
+                        </div>
                       )}
                     </div>
                   </div>
                 )}
 
                 <div className="mt-2 text-sm text-medium-emphasis">
-                  How would you like to export?
+                  {t("EXPORT_KEY.HOW_TO_EXPORT")}
                 </div>
                 {/* <FormField
                     control={form.control}
@@ -737,7 +758,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                           onCheckedChange={(checked) => setDownloadChecked(checked === true)}
                         />
                       </FormControl>
-                      <FormLabel className="font-normal">Download</FormLabel>
+                      <FormLabel className="font-normal">{t("common:DOWNLOAD")}</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -773,11 +794,11 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
               onClick={handleSelectFileType}
               disabled={selectedModuleIds.length === 0}
             >
-              Select file type
+              {t("EXPORT_KEY.SELECT_FILE_TYPE")}
             </Button>
             <DialogClose asChild>
               <Button variant="outline" size="default">
-                Cancel
+                {t("common:CANCEL")}
               </Button>
             </DialogClose>
           </div>
@@ -785,12 +806,12 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
           <div className="flex justify-between">
             <DialogClose asChild>
               <Button variant="outline" size="default">
-                Cancel
+                {t("common:CANCEL")}
               </Button>
             </DialogClose>
             <div className="space-x-2">
               <Button size="default" variant="outline" onClick={handleBack}>
-                Back
+                {t("common:BACK")}
               </Button>
               <Button
                 size="default"
@@ -801,7 +822,7 @@ export default function ExportKey({ open, onClose }: Readonly<ExportKeyProps>) {
                   isUploadingXlf
                 }
               >
-                Export
+                {t("EXPORT_KEY.EXPORT")}
               </Button>
             </div>
           </div>

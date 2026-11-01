@@ -27,8 +27,11 @@ import {
 } from "@/components/ui-kits/table/table";
 import { useRevertKeyTimeline } from "@blocks-localization/hooks/use-language-manager";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
+
+const MODULE = "localization.tools";
 
 /* eslint-disable no-unused-vars */
 export interface TimelineProps {
@@ -54,6 +57,7 @@ const canRevert = (event: TimelineEvents) =>
   !!event.previousData && event.logFrom !== "KeyController.BulkMove";
 
 const Timeline = (props: TimelineProps) => {
+  const { t } = useT(MODULE);
   const isMobile = useIsMobile();
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvents | null>(null);
@@ -75,7 +79,7 @@ const Timeline = (props: TimelineProps) => {
       return false;
     }
 
-    showSuccessToast({ description: "Timeline reverted successfully!" });
+    showSuccessToast({ description: t("TIMELINE.REVERTED") });
     return true;
   };
 
@@ -168,7 +172,7 @@ const Timeline = (props: TimelineProps) => {
                                 }}
                               >
                                 <RotateCcw className="h-4 w-4" />
-                                <span className="ml-[8px]">Revert</span>
+                                <span className="ml-[8px]">{t("TIMELINE.REVERT")}</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -187,7 +191,7 @@ const Timeline = (props: TimelineProps) => {
                             >
                               <RotateCcw className="h-4 w-4" />
                               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Revert
+                                {t("TIMELINE.REVERT")}
                               </span>
                             </Button>
                           )}
@@ -206,21 +210,23 @@ const Timeline = (props: TimelineProps) => {
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Language Difference</DialogTitle>
+            <DialogTitle>{t("TIMELINE.DIFFERENCE_TITLE")}</DialogTitle>
           </DialogHeader>
 
           {selectedEvent &&
             (selectedEvent.logFrom === "Published" &&
             !selectedEvent.currentData &&
             !selectedEvent.previousData ? (
-              <p className="py-4 text-sm text-muted-foreground">No changes published.</p>
+              <p className="py-4 text-sm text-muted-foreground">
+                {t("TIMELINE.NO_CHANGES_PUBLISHED")}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Language</TableHead>
-                    <TableHead>Previous</TableHead>
-                    <TableHead>Current</TableHead>
+                    <TableHead>{t("TIMELINE.COLUMN_LANGUAGE")}</TableHead>
+                    <TableHead>{t("TIMELINE.COLUMN_PREVIOUS")}</TableHead>
+                    <TableHead>{t("TIMELINE.COLUMN_CURRENT")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -259,10 +265,10 @@ const Timeline = (props: TimelineProps) => {
             onCancel={() => {}}
             onConfirm={onConfirmRevert}
             data={{
-              dialogTitle: "Confirmation",
-              dialogSubtitle: `Are you sure you want to revert this change?`,
-              confirmButton: "Revert",
-              cancelButton: "Cancel",
+              dialogTitle: t("TIMELINE.CONFIRM_TITLE"),
+              dialogSubtitle: t("TIMELINE.CONFIRM_REVERT"),
+              confirmButton: t("TIMELINE.REVERT"),
+              cancelButton: t("common:CANCEL"),
             }}
             buttonState={{ confirm: { disable: isRevertPending } }}
           />

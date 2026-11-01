@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { useGetExportHistory } from "@blocks-localization/hooks/use-language-manager";
 import { IExportFileDetails } from "@blocks-localization/models/language";
 import { ExportHistoryFilters } from "./export-history-filters";
@@ -21,7 +22,10 @@ import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { flushSync } from "react-dom";
 
+const MODULE = "localization.tools";
+
 export const ExportHistory = () => {
+  const { t } = useT(MODULE);
   const projectKey = useProjectStore()?.selectedProject?.tenantId || "";
   const [filters, setFilters] = useState<{
     searchText?: string;
@@ -85,12 +89,15 @@ export const ExportHistory = () => {
     }
   };
 
-  const columns = ["File Name", "Date", "Download"];
-  const columnClassNames: Record<string, string> = {
-    "File Name": "",
-    Date: "w-[140px] sm:w-[200px]",
-    Download: "w-[96px] text-center sm:w-[120px]",
-  };
+  const columns = [
+    { id: "fileName", label: t("EXPORT_HISTORY.COLUMN_FILE_NAME"), className: "" },
+    { id: "date", label: t("EXPORT_HISTORY.COLUMN_DATE"), className: "w-[140px] sm:w-[200px]" },
+    {
+      id: "download",
+      label: t("EXPORT_HISTORY.COLUMN_DOWNLOAD"),
+      className: "w-[96px] text-center sm:w-[120px]",
+    },
+  ];
   const totalCount = exportHistoryData?.totalCount ?? 0;
 
   const formatExportDate = (dateStr: string | undefined | null): string => {
@@ -125,11 +132,9 @@ export const ExportHistory = () => {
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <FileX className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
               <p className="mb-1 text-base font-medium text-medium-emphasis">
-                No export history found
+                {t("EXPORT_HISTORY.EMPTY_TITLE")}
               </p>
-              <p className="text-sm">
-                Your exported files will appear here once you create an export.
-              </p>
+              <p className="text-sm">{t("EXPORT_HISTORY.EMPTY_DESCRIPTION")}</p>
             </div>
           </TableCell>
         </TableRow>
@@ -165,7 +170,7 @@ export const ExportHistory = () => {
         <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-semibold">Export History</h1>
+        <h1 className="text-2xl font-semibold">{t("EXPORT_HISTORY.PAGE_TITLE")}</h1>
       </div>
 
       <Card>
@@ -189,8 +194,8 @@ export const ExportHistory = () => {
               <TableHeader>
                 <TableRow>
                   {columns.map((c) => (
-                    <TableHead key={c} className={columnClassNames[c]}>
-                      {c}
+                    <TableHead key={c.id} className={c.className}>
+                      {c.label}
                     </TableHead>
                   ))}
                 </TableRow>
