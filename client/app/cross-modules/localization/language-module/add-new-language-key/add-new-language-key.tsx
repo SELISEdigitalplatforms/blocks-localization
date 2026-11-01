@@ -61,6 +61,8 @@ import { useNavigate } from "react-router";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+const COMMON_ERROR = "common:ERROR";
+
 interface MutationResponse {
   success?: boolean;
   errorMessage?: string;
@@ -322,14 +324,14 @@ function AddNewLanguageKey() {
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: buildErrorMessage(res),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -392,7 +394,7 @@ function AddNewLanguageKey() {
     }
     toast({
       variant: "destructive",
-      title: t("common:ERROR"),
+      title: t(COMMON_ERROR),
       description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   }

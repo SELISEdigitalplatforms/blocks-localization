@@ -11,6 +11,8 @@ import { ILanguageConfig } from "@blocks-localization/models/language";
 import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
 import { findInTarget } from "@blocks-localization/utils/glossary-validation";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languageName">;
 
 /**
@@ -44,7 +46,7 @@ const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (
 );
 
 const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return values.length > 0 ? (
     <div className="space-y-1">
       <ValueCaption>{t("GLOSSARY_TERM_POPOVER.ALSO_AVOID")}</ValueCaption>
@@ -64,7 +66,7 @@ const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) => {
 
 /** The answer the translator came for: what to write in the target language. */
 const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; language: string }>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   switch (term.kind) {
     case "translate":
       return (
@@ -124,7 +126,7 @@ const GlossaryTermPopover = ({
   onInsert,
   children,
 }: Readonly<GlossaryTermPopoverProps>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const [open, setOpen] = useState(false);
   const insertedRef = useRef(false);
   const scoped = useScopedPath();

@@ -3,6 +3,8 @@ import type { ToastActionElement, ToastProps } from "@/components/ui-kits/toaste
 import { getForbiddenErrorMessage, handleErrorMessages } from "@/lib/error";
 import { tStatic } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_SHARED_MODULE = "localization.shared";
+
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
 
@@ -178,7 +180,7 @@ type ErrorToastOptions = {
 };
 
 export const showSuccessToast = ({
-  title = tStatic("localization.shared", "common:SUCCESS"),
+  title = tStatic(LOCALIZATION_SHARED_MODULE, "common:SUCCESS"),
   description,
 }: SuccessToastOptions) => {
   toast({
@@ -189,7 +191,7 @@ export const showSuccessToast = ({
 };
 
 export const showInfoToast = ({
-  title = tStatic("localization.shared", "TOAST.INFO"),
+  title = tStatic(LOCALIZATION_SHARED_MODULE, "TOAST.INFO"),
   description,
 }: InfoToastOptions) => {
   toast({
@@ -200,7 +202,7 @@ export const showInfoToast = ({
 };
 
 export const showErrorToast = ({
-  title = tStatic("localization.shared", "TOAST.FAILED"),
+  title = tStatic(LOCALIZATION_SHARED_MODULE, "TOAST.FAILED"),
   errors,
   customMessages,
 }: ErrorToastOptions) => {

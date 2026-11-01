@@ -13,6 +13,8 @@ import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-mar
 import { toast } from "@/hooks/use-toast";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
+const AUTO_TRANSLATE_UNKNOWN_ERROR = "AUTO_TRANSLATE.UNKNOWN_ERROR";
+
 interface AutoTranslateProps {
   onClose?: (value?: boolean) => void;
 }
@@ -24,16 +26,16 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
 
   const formatErrorMessage = (errors: unknown): string => {
-    if (errors === null || errors === undefined) return t("AUTO_TRANSLATE.UNKNOWN_ERROR");
+    if (errors === null || errors === undefined) return t(AUTO_TRANSLATE_UNKNOWN_ERROR);
     if (typeof errors === "string") return errors;
     if (typeof errors === "object") {
       const entries = Object.entries(errors);
       if (entries.length > 0) {
         return entries.map(([, value]) => String(value)).join("; ");
       }
-      return t("AUTO_TRANSLATE.UNKNOWN_ERROR");
+      return t(AUTO_TRANSLATE_UNKNOWN_ERROR);
     }
-    return t("AUTO_TRANSLATE.UNKNOWN_ERROR");
+    return t(AUTO_TRANSLATE_UNKNOWN_ERROR);
   };
 
   const handleTranslate = async () => {

@@ -13,6 +13,8 @@ import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/m
 import { toast } from "@/hooks/use-toast";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
+const COMMON_ERROR = "common:ERROR";
+
 const getTranslationValues = (
   keyDetails: IBlocksLanguageKey,
   languages: Pick<ILanguageConfig, "languageCode">[],
@@ -133,13 +135,13 @@ export const useInlineKeyEditor = (
 
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: JSON.stringify(response?.errorMessage),
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -183,7 +185,7 @@ export const useInlineKeyEditor = (
     }
     toast({
       variant: "destructive",
-      title: t("common:ERROR"),
+      title: t(COMMON_ERROR),
       description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   };

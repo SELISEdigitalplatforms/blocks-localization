@@ -13,6 +13,8 @@ import type {
 } from "@blocks-localization/models/language";
 import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+
 const getModuleHue = (moduleId: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < moduleId.length; index++) {
@@ -80,7 +82,7 @@ const COMPLETENESS_BADGE_VARIANT: Record<
 };
 
 const CompletenessBadge = ({ value }: { value: string }) => {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const labels: Record<string, string> = {
     Complete: t("USE_LANGUAGE_TABLE_COLUMNS.COMPLETE"),
     Partial: t("USE_LANGUAGE_TABLE_COLUMNS.PARTIAL"),
@@ -98,7 +100,7 @@ const CompletenessBadge = ({ value }: { value: string }) => {
 };
 
 const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) => {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const characterWidth = 7.5;
   const horizontalPadding = 8;
   const containerWidth = 150;
@@ -247,7 +249,7 @@ export const useLanguageTableColumns = ({
   translatingKeys,
   selectAllLabel,
 }: UseLanguageTableColumnsOptions) => {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {

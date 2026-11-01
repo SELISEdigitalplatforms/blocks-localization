@@ -34,11 +34,13 @@ import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
 const DefinitionHeader = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <div className="flex items-center">
       <span className="font-bold text-medium-emphasis">
@@ -49,7 +51,7 @@ const DefinitionHeader = () => {
 };
 
 const RuleHeader = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <div className="flex items-center">
       <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_RULE")}</span>
@@ -58,7 +60,7 @@ const RuleHeader = () => {
 };
 
 const TranslationsHeader = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <div className="flex items-center">
       <span className="font-bold text-medium-emphasis">
@@ -69,7 +71,7 @@ const TranslationsHeader = () => {
 };
 
 const ActionsHeader = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <div className="flex items-center">
       <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_ACTIONS")}</span>
@@ -147,7 +149,7 @@ function renderTableRows(
 }
 
 function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   if (searchQuery) {
     return (
       <output className="flex flex-col items-center gap-2 py-4">
@@ -168,7 +170,7 @@ function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) 
 }
 
 const GlossaryTable = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [pageNumber, setPageNumber] = useState(0);

@@ -36,6 +36,8 @@ import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
+const COMMON_ERROR = "common:ERROR";
+
 // Same rule as the server's LanguageValidator, so a bad code fails here, not after the request.
 const CUSTOM_LANGUAGE_CODE_PATTERN = /^([a-z]{2,3}-[A-Z]{2,10}|[a-z]{2,3}-x-[A-Za-z]{1,8})$/;
 
@@ -136,7 +138,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       if (isDuplicate) {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: t("NEW_LANGUAGE.ALREADY_ADDED"),
         });
         return;
@@ -144,7 +146,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       if (!languageName) {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: t("NEW_LANGUAGE.NOT_FOUND"),
         });
         return;
@@ -161,14 +163,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: formatErrorMessage(error),
       });
     }

@@ -116,6 +116,12 @@ import {
 } from "./language-table.utils";
 import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+const COMMON_DELETE = "common:DELETE";
+const COMMON_CANCEL = "common:CANCEL";
+const LANGUAGE_TABLE_TRANSLATE = "LANGUAGE_TABLE.TRANSLATE";
+const COMMON_SUCCESS = "common:SUCCESS";
+
 // The virtualizer is only needed in the All view, so it stays out of the main bundle.
 const VirtualKeyRows = lazy(() => import("./components/virtual-key-rows"));
 
@@ -197,7 +203,7 @@ const getRowCountTargets = (
 
 const getSelectAllLabel = (isAllView: boolean, loadedCount: number) =>
   isAllView
-    ? tStatic("localization.language-table", "LANGUAGE_TABLE.SELECT_ALL_LOADED", {
+    ? tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE.SELECT_ALL_LOADED", {
         count: loadedCount,
       })
     : undefined;
@@ -233,7 +239,7 @@ const getKeyTableLayout = ({
 const showErrorToast = (description: string) => {
   toast({
     variant: "destructive",
-    title: tStatic("localization.language-table", "common:ERROR"),
+    title: tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "common:ERROR"),
     description,
   });
 };
@@ -294,7 +300,7 @@ function LanguageTableEmptyState({
   hasActiveFilters: boolean;
   importProgress: LanguageImportProgress | null;
 }>) {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   if (hasActiveFilters && !importProgress) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
@@ -317,7 +323,7 @@ function LanguageTableEmptyState({
 }
 
 function AllViewLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return (
     <div className="flex items-center justify-center gap-3">
       <span className="text-sm text-medium-emphasis">{t("LANGUAGE_TABLE.LOAD_MORE_FAILED")}</span>
@@ -333,7 +339,7 @@ function ImportProgressState({
 }: Readonly<{
   importProgress: LanguageImportProgress;
 }>) {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const isFailed = importProgress.status === "failed";
   const isDelayed = importProgress.status === "delayed";
   const isFinalizing = importProgress.status === "finalizing";
@@ -385,7 +391,7 @@ function ImportProgressState({
 export function LanguageTable() {
   "use no memo";
 
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const {
     selectedLanguages,
     setSelectedLanguages,
@@ -578,22 +584,22 @@ export function LanguageTable() {
   const deleteLanguageKeyModalData = {
     dialogTitle: t("LANGUAGE_TABLE.DELETE_KEY_TITLE"),
     dialogSubtitle: t("LANGUAGE_TABLE.DELETE_KEY_SUBTITLE"),
-    confirmButton: t("common:DELETE"),
-    cancelButton: t("common:CANCEL"),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const publishChangesModalData = {
     dialogTitle: t("LANGUAGE_TABLE.PUBLISH_TITLE"),
     dialogSubtitle: t("LANGUAGE_TABLE.PUBLISH_SUBTITLE"),
     confirmButton: t("LANGUAGE_TABLE.PUBLISH"),
-    cancelButton: t("common:CANCEL"),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const translateKeyModalData = {
     dialogTitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_TITLE"),
     dialogSubtitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_SUBTITLE"),
-    confirmButton: t("LANGUAGE_TABLE.TRANSLATE"),
-    cancelButton: t("common:CANCEL"),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onDeleteClick = (itemId: string) => {
@@ -643,7 +649,7 @@ export function LanguageTable() {
     await runKeyAction({
       request: () => deleteAsync({ itemId: selectedLanguageKeyId }),
       success: {
-        title: t("common:SUCCESS"),
+        title: t(COMMON_SUCCESS),
         description: t("LANGUAGE_TABLE.DELETED_SUCCESSFULLY"),
       },
       onSuccess: () => setIsDeleteDialogOpen(false),
@@ -830,15 +836,15 @@ export function LanguageTable() {
   const bulkDeleteModalData = {
     dialogTitle: t("LANGUAGE_TABLE.BULK_DELETE_TITLE"),
     dialogSubtitle: t("LANGUAGE_TABLE.BULK_DELETE_SUBTITLE", { count: selectedKeys.length }),
-    confirmButton: t("common:DELETE"),
-    cancelButton: t("common:CANCEL"),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const bulkTranslateModalData = {
     dialogTitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_TITLE"),
     dialogSubtitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_SUBTITLE", { count: selectedKeys.length }),
-    confirmButton: t("LANGUAGE_TABLE.TRANSLATE"),
-    cancelButton: t("common:CANCEL"),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onConfirmBulkDelete = async () => {
@@ -847,7 +853,7 @@ export function LanguageTable() {
     await runKeyAction({
       request: () => bulkDeleteAsync({ itemIds: selectedKeys }),
       success: {
-        title: t("common:SUCCESS"),
+        title: t(COMMON_SUCCESS),
         description: t("LANGUAGE_TABLE.KEYS_DELETED_SUCCESSFULLY"),
       },
       onSuccess: () => {
@@ -927,7 +933,7 @@ export function LanguageTable() {
     await runKeyAction({
       request: () => mutateAsync({ guid: uuidv4() }),
       success: {
-        title: t("common:SUCCESS"),
+        title: t(COMMON_SUCCESS),
         description: t("LANGUAGE_TABLE.FILE_GENERATION_IN_PROGRESS"),
       },
       onSuccess: () => setIsPublishChangesDialogOpen(false),
@@ -1250,7 +1256,7 @@ export function LanguageTable() {
                     >
                       <Languages className="lg:mr-1 h-4 w-4" />
                       <span className="sr-only lg:not-sr-only">
-                        {t("LANGUAGE_TABLE.TRANSLATE")}
+                        {t(LANGUAGE_TABLE_TRANSLATE)}
                       </span>
                     </Button>
                     <Button
@@ -1260,7 +1266,7 @@ export function LanguageTable() {
                       className="border-error text-error hover:bg-error hover:text-primary-foreground"
                     >
                       <Trash className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">{t("common:DELETE")}</span>
+                      <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
                     </Button>
                   </div>
                 </div>

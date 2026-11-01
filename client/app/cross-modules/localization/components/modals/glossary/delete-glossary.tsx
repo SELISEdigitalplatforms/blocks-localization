@@ -17,6 +17,8 @@ import { useT } from "@seliseblocks/genesis-os/i18n";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 
+const COMMON_ERROR = "common:ERROR";
+
 interface DeleteGlossaryProps {
   itemId: string;
   glossaryName: string;
@@ -65,7 +67,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
       } else if (res.status === "keys-failed") {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description:
             res.reason === "iteration-limit"
               ? t("DELETE_GLOSSARY.KEYS_FAILED_LIMIT", {
@@ -81,7 +83,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: formatErrorMessage(res.errors),
         });
         void refetchUsageCount();
@@ -89,7 +91,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({ itemId, glossaryName, o
     } catch {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: t("DELETE_GLOSSARY.DELETE_FAILED"),
       });
       void refetchUsageCount();

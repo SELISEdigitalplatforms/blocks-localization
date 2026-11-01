@@ -35,6 +35,8 @@ import type {
 } from "@blocks-localization/models/language";
 import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+
 interface BulkEditKeysDialogProps {
   keys: IBlocksLanguageKey[];
   languages: ILanguageConfig[];
@@ -96,15 +98,15 @@ export const buildBulkEditPayload = (
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
-  return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.UPDATE_FAILED");
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "BULK_EDIT_KEYS_DIALOG.UPDATE_FAILED");
 };
 
 const getGlossaryAssignmentTitle = (source: "key" | "module" | "pending"): string => {
   if (source === "pending")
-    return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_PENDING");
+    return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "BULK_EDIT_KEYS_DIALOG.ASSIGNED_PENDING");
   if (source === "module")
-    return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_MODULE");
-  return tStatic("localization.language-table", "BULK_EDIT_KEYS_DIALOG.ASSIGNED_KEY");
+    return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "BULK_EDIT_KEYS_DIALOG.ASSIGNED_MODULE");
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "BULK_EDIT_KEYS_DIALOG.ASSIGNED_KEY");
 };
 
 interface KeyGlossaryAssignmentsProps {
@@ -124,7 +126,7 @@ function KeyGlossaryAssignments({
   onModuleGlossariesResolved,
   pendingGlossaries,
 }: Readonly<KeyGlossaryAssignmentsProps>) {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const { data: moduleGlossariesData, isLoading: isLoadingModuleGlossaries } =
     useGetModuleGlossaries(moduleId);
 
@@ -203,7 +205,7 @@ export function BulkEditKeysDialog({
   onCancel,
   onSaved,
 }: Readonly<BulkEditKeysDialogProps>) {
-  const { t } = useT("localization.language-table");
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const [translationValue, setTranslationValue] = useState("");
   const [searchText, setSearchText] = useState("");
   const [isGlossaryPickerOpen, setIsGlossaryPickerOpen] = useState(false);

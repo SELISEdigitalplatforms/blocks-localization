@@ -12,6 +12,8 @@ import {
 
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 /**
  * Whether the glossary says anything for this language: Keep and Forbidden always do; a
  * translate term needs an approved value or banned words for the culture. Without one there
@@ -295,16 +297,16 @@ export const applyFix = (
 export const formatViolationMessage = (violation: GlossaryViolation): string => {
   switch (violation.kind) {
     case "missing-translation":
-      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.EXPECTED", {
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.EXPECTED", {
         expected: violation.expected ?? "",
         term: violation.term,
       });
     case "missing-keep":
-      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.KEEP_UNCHANGED", {
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.KEEP_UNCHANGED", {
         value: violation.expected ?? violation.term,
       });
     default:
-      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.NOT_ALLOWED", {
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.NOT_ALLOWED", {
         value: violation.found ?? violation.term,
       });
   }

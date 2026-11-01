@@ -1,8 +1,10 @@
 import type { RowSelectionState } from "@tanstack/react-table";
 import { tStatic } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+
 const deleteKeyFallbackMessage = () =>
-  tStatic("localization.language-table", "LANGUAGE_TABLE_UTILS.DELETE_KEY_FAILED");
+  tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE_UTILS.DELETE_KEY_FAILED");
 
 /** A single key delete's errors come back as a list or as a field-to-message map. */
 export const getDeleteKeyErrorMessage = (rawErrors: unknown) => {
@@ -22,7 +24,7 @@ export const getDeleteKeysErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && Object.keys(error).length > 0) {
     return JSON.stringify(error);
   }
-  return tStatic("localization.language-table", "LANGUAGE_TABLE_UTILS.DELETE_KEYS_FAILED");
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE_UTILS.DELETE_KEYS_FAILED");
 };
 
 export const parseResourceSearch = (resourceSearch: string | null | undefined) => {
@@ -177,12 +179,12 @@ export const areAllRowsSelected = (rowIds: string[], selection: RowSelectionStat
  */
 export const getSelectedKeysLabel = (selectedCount: number, totalCount?: number) => {
   if (totalCount === undefined || selectedCount >= totalCount) {
-    return tStatic("localization.language-table", "LANGUAGE_TABLE_UTILS.KEYS_SELECTED", {
+    return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE_UTILS.KEYS_SELECTED", {
       count: selectedCount,
       formatted: String(selectedCount),
     });
   }
-  return tStatic("localization.language-table", "LANGUAGE_TABLE_UTILS.KEYS_SELECTED_OF_TOTAL", {
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE_UTILS.KEYS_SELECTED_OF_TOTAL", {
     selected: selectedCount.toLocaleString(),
     total: totalCount.toLocaleString(),
   });

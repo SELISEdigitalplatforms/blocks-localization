@@ -37,17 +37,21 @@ type KeyAction = "move" | "delete";
 
 // Replaces the marker in a translated sentence with the module name shown in bold.
 const NAME_MARKER = "\u0001";
-const withBoldName = (text: string, name: string) =>
-  text.split(NAME_MARKER).flatMap((part, index) =>
-    index === 0
-      ? [part]
-      : [
-          <span key={`name-${index}`} className="font-semibold">
-            {name}
-          </span>,
-          part,
-        ],
-  );
+const withBoldName = (text: string, name: string) => {
+  const [first, ...rest] = text.split(NAME_MARKER);
+  const nodes: React.ReactNode[] = [first];
+  let offset = first.length;
+  for (const part of rest) {
+    nodes.push(
+      <span key={`name-${offset}`} className="font-semibold">
+        {name}
+      </span>,
+      part,
+    );
+    offset += NAME_MARKER.length + part.length;
+  }
+  return nodes;
+};
 
 interface DeleteModuleModalProps {
   module: IModuleGets;

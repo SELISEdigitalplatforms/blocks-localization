@@ -14,6 +14,8 @@ import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-ma
 import { toast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router";
 
+const COMMON_ERROR = "common:ERROR";
+
 /**
  * The query string the Translations table had when it opened this key, so a delete returns to
  * the same filtered list. Only a "?..." string is trusted; other entry points carry no state.
@@ -40,7 +42,7 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
     if (!tenantId || !itemId) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: t("DELETE_LANGUAGE_KEY.MISSING_IDENTIFIER"),
       });
       return;
@@ -69,14 +71,14 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
         }
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: errorMessage,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: error instanceof Error ? error.message : t("DELETE_LANGUAGE_KEY.UNEXPECTED_ERROR"),
       });
     }

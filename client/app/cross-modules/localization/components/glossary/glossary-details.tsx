@@ -42,6 +42,8 @@ import DeleteGlossary from "@blocks-localization/components/modals/glossary/dele
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 const TAGGED_KEYS_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const TAGGED_KEYS_SKELETON_ROW_KEYS = Array.from(
@@ -63,7 +65,7 @@ const formatDate = (value: string | null | undefined) => {
 
 // Empty table cells show a muted dash; screen readers hear "None" instead of a stray symbol.
 const EmptyCell = () => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <span className="text-low-emphasis">
       <span aria-hidden="true">—</span>
@@ -83,7 +85,7 @@ const DetailField = ({
 );
 
 const DetailValue = ({ value }: Readonly<{ value: string | null | undefined }>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return hasText(value) ? (
     <p className="break-words text-base font-normal text-high-emphasis">{value}</p>
   ) : (
@@ -201,7 +203,7 @@ function renderTranslationsContent(
 }
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { data: glossary, isLoading } = useGetGlossaryById(itemId);

@@ -61,7 +61,7 @@ type DateRangeType = { from?: Date; to?: Date } | null;
 
 const buildFormSchema = (t: (key: string) => string) =>
   z.object({
-    items: z.array(z.string()).refine((value) => value.some((item) => item), {
+    items: z.array(z.string()).refine((value) => value.some(Boolean), {
       message: t("EXPORT_KEY.SELECT_AT_LEAST_ONE"),
     }),
   });

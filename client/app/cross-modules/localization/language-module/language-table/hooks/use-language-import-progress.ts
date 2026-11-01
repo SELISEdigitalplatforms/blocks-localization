@@ -7,6 +7,8 @@ import type { ILanguageImportRequest } from "@blocks-localization/models/languag
 import { toast } from "@/hooks/use-toast";
 import { tStatic } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+
 export type LanguageImportStatus = "processing" | "finalizing" | "delayed" | "failed";
 
 export interface LanguageImportProgress {
@@ -98,9 +100,9 @@ const extractImportNotification = (notificationData: unknown) => {
 
 export const getImportFileLabel = (fileNames: string[]) => {
   if (fileNames.length === 0)
-    return tStatic("localization.language-table", "USE_LANGUAGE_IMPORT_PROGRESS.FILE_FALLBACK");
+    return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "USE_LANGUAGE_IMPORT_PROGRESS.FILE_FALLBACK");
   if (fileNames.length === 1) return fileNames[0];
-  return tStatic("localization.language-table", "USE_LANGUAGE_IMPORT_PROGRESS.FILE_AND_MORE", {
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "USE_LANGUAGE_IMPORT_PROGRESS.FILE_AND_MORE", {
     name: fileNames[0],
     count: fileNames.length - 1,
   });
@@ -245,11 +247,11 @@ export const useLanguageImportProgress = ({
         toast({
           variant: "destructive",
           title: tStatic(
-            "localization.language-table",
+            LOCALIZATION_LANGUAGE_TABLE_MODULE,
             "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_FAILED_TITLE",
           ),
           description: tStatic(
-            "localization.language-table",
+            LOCALIZATION_LANGUAGE_TABLE_MODULE,
             "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_FAILED_DESCRIPTION",
           ),
         });
@@ -307,11 +309,11 @@ export const useLanguageImportProgress = ({
           toast({
             variant: "success",
             title: tStatic(
-              "localization.language-table",
+              LOCALIZATION_LANGUAGE_TABLE_MODULE,
               "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_COMPLETE_TITLE",
             ),
             description: tStatic(
-              "localization.language-table",
+              LOCALIZATION_LANGUAGE_TABLE_MODULE,
               "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_COMPLETE_DESCRIPTION",
             ),
           });

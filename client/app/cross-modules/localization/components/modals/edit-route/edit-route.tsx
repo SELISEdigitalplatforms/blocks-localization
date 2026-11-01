@@ -18,6 +18,8 @@ import { showErrorToast, toast } from "@/hooks/use-toast";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 
+const COMMON_ERROR = "common:ERROR";
+
 // Puts a styled node where the marker sits in a translated sentence.
 const MARKER = "\u0001";
 const withNode = (text: string, node: ReactNode) => {
@@ -116,13 +118,13 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
         });
       } else {
         showErrorToast({
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           errors: res?.errorMessage,
         });
       }
     } catch (error) {
       showErrorToast({
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         errors: error,
       });
     }
@@ -142,13 +144,13 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
         onClose();
       } else {
         showErrorToast({
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           errors: res?.errorMessage,
         });
       }
     } catch (error) {
       showErrorToast({
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         errors: error,
       });
     }

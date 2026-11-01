@@ -1,14 +1,16 @@
 import { tStatic } from "@seliseblocks/genesis-os/i18n";
 
+const LOCALIZATION_SHARED_MODULE = "localization.shared";
+
 // English text of ERROR.FORBIDDEN in i18n/localization.shared.en.json; tests compare against it.
 // The code below shows the translated text via forbiddenText().
 export const FORBIDDEN_ERROR_MESSAGE =
   "You don't have permission to perform this action. Contact your administrator for access.";
 
-const forbiddenText = () => tStatic("localization.shared", "ERROR.FORBIDDEN");
-const somethingWentWrong = () => tStatic("localization.shared", "ERROR.SOMETHING_WENT_WRONG");
-const unexpectedError = () => tStatic("localization.shared", "ERROR.UNEXPECTED");
-const unexpectedErrorTryAgain = () => tStatic("localization.shared", "ERROR.UNEXPECTED_TRY_AGAIN");
+const forbiddenText = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.FORBIDDEN");
+const somethingWentWrong = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.SOMETHING_WENT_WRONG");
+const unexpectedError = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.UNEXPECTED");
+const unexpectedErrorTryAgain = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.UNEXPECTED_TRY_AGAIN");
 
 type UnknownRecord = Record<string, unknown>;
 

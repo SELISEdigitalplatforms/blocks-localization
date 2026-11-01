@@ -17,6 +17,8 @@ import {
   hasRuleForCulture,
 } from "@blocks-localization/utils/glossary-validation";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 type TermStatus = "pending" | "followed" | "issue" | "no-value";
 
 /** What the target should contain for one term, read by rule (Phase 2 A9). */
@@ -57,11 +59,13 @@ const issueText = (t: TFunction, violation: GlossaryViolation) => {
   }
 };
 
+const LOW_EMPHASIS_CLASS = "text-low-emphasis";
+
 const STATUS_ICON: Record<TermStatus, { Icon: typeof Check; className: string }> = {
-  pending: { Icon: CircleDashed, className: "text-low-emphasis" },
+  pending: { Icon: CircleDashed, className: LOW_EMPHASIS_CLASS },
   followed: { Icon: CircleCheck, className: "text-success" },
   issue: { Icon: TriangleAlert, className: "text-warning-700" },
-  "no-value": { Icon: CircleDashed, className: "text-low-emphasis" },
+  "no-value": { Icon: CircleDashed, className: LOW_EMPHASIS_CLASS },
 };
 
 const statusLabel = (t: TFunction, status: TermStatus) => {
@@ -78,7 +82,7 @@ const statusLabel = (t: TFunction, status: TermStatus) => {
 };
 
 const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -171,7 +175,7 @@ interface TermIssueProps {
 }
 
 const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<TermIssueProps>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const fixable = canApplyFix(violation, matches, culture);
   const replacement = getFixReplacement(violation, matches, culture);
   return (
@@ -221,14 +225,14 @@ const ChecklistTerm = ({
   disabled,
   onFix,
 }: Readonly<ChecklistTermProps>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const ruleLabels = useGlossaryRuleLabels();
   const { value, note } = termGuidance(t, match, culture);
   const { rule } = match.meta;
   const status = termStatus(hasRuleForCulture(match.meta, culture), hasText, violations.length);
   const { Icon, className: iconClass } = STATUS_ICON[status];
   const label = statusLabel(t, status);
-  const noteClass = rule === "forbidden" ? "text-error" : "text-low-emphasis";
+  const noteClass = rule === "forbidden" ? "text-error" : LOW_EMPHASIS_CLASS;
   return (
     <li className="py-1.5">
       <div className="flex min-w-0 items-center gap-2">
@@ -302,7 +306,7 @@ export const GlossaryTargetChecklist = ({
   onLiveFix,
   className,
 }: Readonly<GlossaryTargetChecklistProps>) => {
-  const { t } = useT("localization.glossary");
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const live = useLiveGlossaryCheck({ targetText, targetCulture, matches: liveMatches });
   const fromSuggestion = row.fromSuggestion;
   const matches = fromSuggestion ? row.matches : liveMatches;

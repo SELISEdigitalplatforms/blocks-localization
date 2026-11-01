@@ -18,7 +18,8 @@ export function renderRichText(text: string, slots: Record<string, SlotRenderer>
     const render = slots[tag];
     if (!render) continue;
     if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
-    nodes.push(<Fragment key={`${tag}-${index++}`}>{render(match[3] ?? null)}</Fragment>);
+    nodes.push(<Fragment key={`${tag}-${index}`}>{render(match[3] ?? null)}</Fragment>);
+    index += 1;
     cursor = match.index + match[0].length;
   }
   if (cursor < text.length) nodes.push(text.slice(cursor));

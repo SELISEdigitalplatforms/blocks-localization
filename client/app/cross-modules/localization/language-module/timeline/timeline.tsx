@@ -31,6 +31,8 @@ import { useT } from "@seliseblocks/genesis-os/i18n";
 import { showErrorToast, showSuccessToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 
+const TIMELINE_REVERT = "TIMELINE.REVERT";
+
 const MODULE = "localization.tools";
 
 /* eslint-disable no-unused-vars */
@@ -172,7 +174,7 @@ const Timeline = (props: TimelineProps) => {
                                 }}
                               >
                                 <RotateCcw className="h-4 w-4" />
-                                <span className="ml-[8px]">{t("TIMELINE.REVERT")}</span>
+                                <span className="ml-[8px]">{t(TIMELINE_REVERT)}</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -191,7 +193,7 @@ const Timeline = (props: TimelineProps) => {
                             >
                               <RotateCcw className="h-4 w-4" />
                               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                {t("TIMELINE.REVERT")}
+                                {t(TIMELINE_REVERT)}
                               </span>
                             </Button>
                           )}
@@ -267,7 +269,7 @@ const Timeline = (props: TimelineProps) => {
             data={{
               dialogTitle: t("TIMELINE.CONFIRM_TITLE"),
               dialogSubtitle: t("TIMELINE.CONFIRM_REVERT"),
-              confirmButton: t("TIMELINE.REVERT"),
+              confirmButton: t(TIMELINE_REVERT),
               cancelButton: t("common:CANCEL"),
             }}
             buttonState={{ confirm: { disable: isRevertPending } }}

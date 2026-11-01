@@ -38,6 +38,8 @@ import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
+const COMMON_ERROR = "common:ERROR";
+
 const NO_MATCHES: GlossaryMatch[] = [];
 
 /** The hint next to the source label, honest about what the glossary has for this language. */
@@ -150,7 +152,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     }
     toast({
       variant: "destructive",
-      title: t("common:ERROR"),
+      title: t(COMMON_ERROR),
       description: formatErrorMessage(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   }
@@ -207,14 +209,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: formatErrorMessage(error),
       });
     }

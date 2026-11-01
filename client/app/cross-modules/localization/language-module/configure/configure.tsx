@@ -58,6 +58,9 @@ import { useProjectStore } from "@seliseblocks/genesis-os";
 import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 import { cn } from "@/lib/utils";
 
+const COMMON_SUCCESS = "common:SUCCESS";
+const COMMON_ERROR = "common:ERROR";
+
 const MODULE = "localization.tools";
 
 const LanguageHeader = () => {
@@ -296,20 +299,20 @@ function Configure() {
         webhookForm.reset(values);
         toast({
           variant: "success",
-          title: t("common:SUCCESS"),
+          title: t(COMMON_SUCCESS),
           description: t("CONFIGURE.WEBHOOK_SAVED"),
         });
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: JSON.stringify(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -348,21 +351,21 @@ function Configure() {
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: t("common:SUCCESS"),
+          title: t(COMMON_SUCCESS),
           description: t("CONFIGURE.LANGUAGE_DELETED"),
         });
         setIsDeleteDialogOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: getDeleteLanguageErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: getDeleteLanguageErrorMessage(error),
       });
     }
@@ -377,21 +380,21 @@ function Configure() {
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: t("common:SUCCESS"),
+          title: t(COMMON_SUCCESS),
           description: t("CONFIGURE.DEFAULT_SET"),
         });
         setIsMakeDefaultDialogOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: t("common:ERROR"),
+          title: t(COMMON_ERROR),
           description: JSON.stringify(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: t("common:ERROR"),
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
