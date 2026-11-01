@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { isValid as isValidDate, isBefore } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
@@ -18,23 +19,27 @@ export const formatDate = (date: Date, withoutTime?: boolean): string => {
 
 export const formatFullDate = (date: Date, withoutTime?: boolean): string => {
   const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
+    tStatic("localization.shared", "DATE.MONTH_JAN"),
+    tStatic("localization.shared", "DATE.MONTH_FEB"),
+    tStatic("localization.shared", "DATE.MONTH_MAR"),
+    tStatic("localization.shared", "DATE.MONTH_APR"),
+    tStatic("localization.shared", "DATE.MONTH_MAY"),
+    tStatic("localization.shared", "DATE.MONTH_JUN"),
+    tStatic("localization.shared", "DATE.MONTH_JUL"),
+    tStatic("localization.shared", "DATE.MONTH_AUG"),
+    tStatic("localization.shared", "DATE.MONTH_SEP"),
+    tStatic("localization.shared", "DATE.MONTH_OCT"),
+    tStatic("localization.shared", "DATE.MONTH_NOV"),
+    tStatic("localization.shared", "DATE.MONTH_DEC"),
   ];
-  const dateStr = `${monthNames[date.getMonth()]} ${pad(date.getDate())}, ${date.getFullYear()}`;
+  const dateStr = tStatic("localization.shared", "DATE.FULL_DATE", {
+    month: monthNames[date.getMonth()],
+    day: pad(date.getDate()),
+    year: date.getFullYear(),
+  });
   const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   if (withoutTime) return dateStr;
-  return `${dateStr} at ${timeStr}`;
+  return tStatic("localization.shared", "DATE.DATE_AT_TIME", { date: dateStr, time: timeStr });
 };
 
 export function parseDateString(dateString: string): Date {

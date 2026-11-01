@@ -1,10 +1,13 @@
 import { useLocation } from "react-router";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import {
   BREADCRUMB_CUSTOM_TITLES,
   BREADCRUMB_SKIP_PATHS,
 } from "@/constants/breadcrumb-custom-title";
 
 const useRoutePathSegments = () => {
+  // Subscribes to language changes: the fixed breadcrumb titles are read in the current language.
+  useT("localization.shared");
   const { pathname } = useLocation();
   const pathArray = pathname.split("/").filter((path) => path);
 

@@ -30,6 +30,9 @@ import {
   SUBSCRIPTION_ENDPOINTS,
   CLOUD_BUILD_ENDPOINTS,
 } from "@blocks-identifier/constants/endpoint.constant";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
+const invalidJwksMessage = () => tStatic("localization.shared", "PROJECT_SERVICE.INVALID_JWKS_URL");
 
 interface JwtClaimPayload {
   userId: string;
@@ -212,7 +215,7 @@ export class ProjectService {
         // HTTP error
         return {
           isValid: false,
-          error: `Invalid, provide a valid jwks URL`,
+          error: invalidJwksMessage(),
         };
       }
 
@@ -222,7 +225,7 @@ export class ProjectService {
         // Response is not JSON
         return {
           isValid: false,
-          error: "Invalid, provide a valid jwks URL",
+          error: invalidJwksMessage(),
         };
       }
 
@@ -234,7 +237,7 @@ export class ProjectService {
         // Missing or invalid 'keys' array in JWKS
         return {
           isValid: false,
-          error: "Invalid, provide a valid jwks URL",
+          error: invalidJwksMessage(),
         };
       }
 
@@ -243,7 +246,7 @@ export class ProjectService {
       console.error("JWKS URL Validation Error:", error);
       return {
         isValid: false,
-        error: "Invalid, provide a valid jwks URL",
+        error: invalidJwksMessage(),
       };
     }
   }

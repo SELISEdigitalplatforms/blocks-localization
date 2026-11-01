@@ -7,7 +7,8 @@ import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as peopleHooks from "./use-people";
 import * as serviceHooks from "./use-services";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedTenantGroup: "group-1" }),
 }));
 vi.mock("@blocks-identifier/services/people.service", () => ({

@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui-kits/tooltip/tooltip";
 import { cn } from "@/lib/utils";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 type CopyableTableValueProps = {
   value: string | null | undefined;
@@ -42,6 +43,7 @@ export function CopyableTableValue({
   valueStyle,
   valueTooltip,
 }: Readonly<CopyableTableValueProps>) {
+  const { t } = useT("localization.shared");
   const [isCopied, setIsCopied] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,7 +191,11 @@ export function CopyableTableValue({
                 size="icon"
                 data-revealed={isRevealed}
                 className="pointer-events-none h-7 w-7 shrink-0 opacity-0 transition-opacity group-focus-within/copy:pointer-events-auto group-focus-within/copy:opacity-100 data-[revealed=true]:pointer-events-auto data-[revealed=true]:opacity-100 [@media(hover:hover)]:group-hover/copy:pointer-events-auto [@media(hover:hover)]:group-hover/copy:opacity-100"
-                aria-label={`${isCopied ? "Copied" : "Copy"} ${label}`}
+                aria-label={
+                  isCopied
+                    ? t("COPYABLE_TABLE_VALUE.COPIED_LABEL", { label })
+                    : t("COPYABLE_TABLE_VALUE.COPY_LABEL", { label })
+                }
                 onClick={(event) => {
                   event.stopPropagation();
                   void handleCopy();
@@ -204,7 +210,9 @@ export function CopyableTableValue({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">{isCopied ? "Copied" : `Copy ${label}`}</TooltipContent>
+            <TooltipContent side="top">
+              {isCopied ? t("common:COPIED") : t("COPYABLE_TABLE_VALUE.COPY_LABEL", { label })}
+            </TooltipContent>
           </Tooltip>
         )}
       </div>
