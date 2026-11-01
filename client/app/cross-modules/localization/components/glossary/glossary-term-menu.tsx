@@ -15,10 +15,21 @@ import {
 } from "@blocks-localization/components/glossary/glossary-term-popover";
 import { distinctGlossaryMatches } from "@blocks-localization/components/glossary/highlighted-source-text";
 
-export const GLOSSARY_TERM_MENU_HINT = "Press Alt+Shift+G to insert a glossary term.";
+const isApplePlatform = () =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/** The shortcut in the platform's own terms: Option (⌥) on Apple keyboards, Alt elsewhere. */
+export const getGlossaryTermMenuShortcut = () =>
+  isApplePlatform()
+    ? { keys: "⌥⇧G", label: "Option+Shift+G" }
+    : { keys: "Alt+Shift+G", label: "Alt+Shift+G" };
+
+export const getGlossaryTermMenuHint = () =>
+  `Press ${getGlossaryTermMenuShortcut().label} to insert a glossary term at the cursor.`;
 
 /**
- * True for Alt+Shift+G. Reads `code`, not `key`: on macOS Option+Shift+G types "˝".
+ * True for Alt+Shift+G (Option+Shift+G on macOS). Reads `code`, not `key`: on macOS
+ * Option+Shift+G types "˝".
  */
 export const isGlossaryTermMenuShortcut = (event: KeyboardEvent<HTMLElement>) =>
   event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && event.code === "KeyG";
@@ -51,6 +62,9 @@ export const getGlossaryTermMenuItems = (
         return [];
     }
   });
+
+export const hasInsertableGlossaryTerms = (matches: GlossaryMatch[], targetCulture: string) =>
+  getGlossaryTermMenuItems(matches, targetCulture).some((item) => !!item.value);
 
 interface GlossaryTermMenuProps {
   open: boolean;

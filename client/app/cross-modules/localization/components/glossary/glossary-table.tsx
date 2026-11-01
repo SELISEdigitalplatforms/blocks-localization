@@ -77,7 +77,9 @@ import GlossaryRuleBadge, {
 import GlossaryStatusBadge, {
   GLOSSARY_STATUS_LABELS,
 } from "@blocks-localization/components/glossary/glossary-status-badge";
-import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
+import GlossaryTranslationChips, {
+  MAX_TRANSLATION_CHIPS,
+} from "@blocks-localization/components/glossary/glossary-translation-chips";
 import GlossarySummaryStrip from "@blocks-localization/components/glossary/glossary-summary-strip";
 import GlossaryBulkActions from "@blocks-localization/components/glossary/glossary-bulk-actions";
 import GlossaryMobileList from "@blocks-localization/components/glossary/glossary-mobile-list";
@@ -86,7 +88,10 @@ import {
   isUnsupportedGlossaryNote,
   toGlossaryMeta,
 } from "@blocks-localization/utils/glossary-display";
-import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
+import {
+  getTargetLanguages,
+  stripRuleMarker,
+} from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -441,6 +446,67 @@ const buildGlossaryColumns = ({
     ),
   },
 ];
+
+const BADGE_SKELETON_CLASS = "h-[26px] rounded";
+const TEXT_SKELETON_CLASS = "h-5 rounded";
+
+function renderSkeletonCell(columnId: string, chipCount: number) {
+  switch (columnId) {
+    case "select":
+      return <Skeleton className="h-4 w-4 rounded-sm" />;
+    case "name":
+      return (
+        <div className="min-w-[150px] max-w-[240px]">
+          <Skeleton className={`${TEXT_SKELETON_CLASS} w-28`} />
+        </div>
+      );
+    case "rule":
+      return <Skeleton className={`${BADGE_SKELETON_CLASS} w-[84px]`} />;
+    case "status":
+      return <Skeleton className={`${BADGE_SKELETON_CLASS} w-[92px]`} />;
+    case "translations":
+      return chipCount === 0 ? (
+        <Skeleton className={`${TEXT_SKELETON_CLASS} w-3`} />
+      ) : (
+        <div className="flex flex-wrap items-center gap-1">
+          {Array.from({ length: chipCount }).map((_, index) => (
+            <Skeleton key={index} className={`${BADGE_SKELETON_CLASS} w-12`} />
+          ))}
+        </div>
+      );
+    case "language":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-20`} />;
+    case "type":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-16`} />;
+    case "context":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-40 max-w-[200px]`} />;
+    case "createDate":
+    case "lastUpdateDate":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-20`} />;
+    case "actions":
+      return <Skeleton className="h-8 w-8 rounded-md" />;
+    default:
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-full`} />;
+  }
+}
+
+function renderSkeletonRows(
+  rowCount: number,
+  columnIds: string[],
+  languages: ILanguageConfig[] | undefined,
+) {
+  const chipCount = languages
+    ? Math.min(getTargetLanguages(languages).length, MAX_TRANSLATION_CHIPS)
+    : 2;
+
+  return Array.from({ length: rowCount }).map((_, rowIndex) => (
+    <TableRow key={rowIndex}>
+      {columnIds.map((columnId) => (
+        <TableCell key={columnId}>{renderSkeletonCell(columnId, chipCount)}</TableCell>
+      ))}
+    </TableRow>
+  ));
+}
 
 function renderTableRows(
   tableRows: Row<IGlossary>[],
@@ -934,16 +1000,18 @@ const GlossaryTable = () => {
                   </TableHeader>
                   <TableBody>
                     {isLoading
-                      ? Array.from({ length: 10 }).map((_, index) => (
-                          <TableRow key={index}>
-                            {Array.from({ length: visibleColumnCount }).map((_, colIndex) => (
-                              <TableCell key={colIndex}>
-                                <Skeleton className="h-6 w-full rounded" />
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
-                      : renderTableRows(tableRows, visibleColumnCount, scoped, navigate, emptyState)}
+                      ? renderSkeletonRows(
+                          pageSize,
+                          table.getVisibleLeafColumns().map((column) => column.id),
+                          languageListData,
+                        )
+                      : renderTableRows(
+                          tableRows,
+                          visibleColumnCount,
+                          scoped,
+                          navigate,
+                          emptyState,
+                        )}
                   </TableBody>
                 </Table>
               </div>

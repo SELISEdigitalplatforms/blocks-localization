@@ -367,26 +367,27 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 <p className="text-sm text-muted-foreground">No glossary added.</p>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    These terms are applied when translating this key.
-                  </p>
-                  {suggestedCount > 0 && (
-                    <div className="flex items-center justify-end">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      These terms are applied when translating this key.
+                    </p>
+                    {suggestedCount > 0 && (
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2"
+                        className="h-7 shrink-0 px-2"
                         disabled={isTagging}
-                        onClick={() =>
-                          void tagGlossaries(glossarySuggestions.map((g) => g.itemId))
-                        }
+                        onClick={() => void tagGlossaries(glossarySuggestions.map((g) => g.itemId))}
                       >
                         Add all suggested
                       </Button>
-                    </div>
-                  )}
-                  <ul className="space-y-2" aria-label="Glossary terms for this key">
+                    )}
+                  </div>
+                  <ul
+                    className="divide-y divide-border rounded-sm border"
+                    aria-label="Glossary terms for this key"
+                  >
                     {termCards.map(({ glossary, source }) => (
                       <li key={glossary.itemId}>
                         <GlossaryTermCard
@@ -395,7 +396,9 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                           languages={languageListData}
                           disabled={isTagging}
                           onRemove={
-                            source === "tagged" ? () => void untagGlossary(glossary.itemId) : undefined
+                            source === "tagged"
+                              ? () => void untagGlossary(glossary.itemId)
+                              : undefined
                           }
                           onAdd={
                             source === "suggested"

@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { KeyboardEvent } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GlossaryRule } from "@blocks-localization/models/glossary-meta";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import GlossaryTermMenu, {
+  getGlossaryTermMenuHint,
   getGlossaryTermMenuItems,
+  getGlossaryTermMenuShortcut,
   isGlossaryTermMenuShortcut,
 } from "./glossary-term-menu";
 
@@ -55,6 +57,25 @@ describe("getGlossaryTermMenuItems", () => {
       { glossaryId: "g2", name: "Invoice" },
       { glossaryId: "g3", name: "SELISE", value: "Selise" },
     ]);
+  });
+});
+
+describe("getGlossaryTermMenuShortcut", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("names Option on Apple keyboards", () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    );
+    expect(getGlossaryTermMenuShortcut()).toEqual({ keys: "⌥⇧G", label: "Option+Shift+G" });
+    expect(getGlossaryTermMenuHint()).toBe(
+      "Press Option+Shift+G to insert a glossary term at the cursor.",
+    );
+  });
+
+  it("names Alt elsewhere", () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0)");
+    expect(getGlossaryTermMenuShortcut()).toEqual({ keys: "Alt+Shift+G", label: "Alt+Shift+G" });
   });
 });
 

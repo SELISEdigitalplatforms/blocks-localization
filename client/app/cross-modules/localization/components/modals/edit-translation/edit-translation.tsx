@@ -28,7 +28,9 @@ import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import GlossaryTermMenu, {
-  GLOSSARY_TERM_MENU_HINT,
+  getGlossaryTermMenuHint,
+  getGlossaryTermMenuShortcut,
+  hasInsertableGlossaryTerms,
   isGlossaryTermMenuShortcut,
 } from "@blocks-localization/components/glossary/glossary-term-menu";
 import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
@@ -213,6 +215,10 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   const termsWithWording = terms.filter((match) =>
     hasRuleForCulture(match.meta, destinationLanguageCode),
   ).length;
+  const canInsertTerm =
+    !destinationLanguage?.isDefault &&
+    hasInsertableGlossaryTerms(highlightMatches, destinationLanguageCode);
+  const termShortcut = getGlossaryTermMenuShortcut();
 
   return (
     <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[700px]">
@@ -278,23 +284,46 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             >
               {destinationLanguage?.languageName} translation
             </Label>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              aria-label="Auto-Translate"
-              disabled={isAutoTranslateLoading || destinationLanguage?.isDefault}
-              onClick={autoTranslate}
-            >
-              {isAutoTranslateLoading ? (
-                <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Wand className="h-3.5 w-3.5" aria-hidden="true" />
+            <div className="flex shrink-0 items-center gap-2">
+              {canInsertTerm && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  aria-label="Insert glossary term"
+                  aria-keyshortcuts="Alt+Shift+G"
+                  title={getGlossaryTermMenuHint()}
+                  onClick={() => setTermMenuOpen(true)}
+                >
+                  <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="hidden whitespace-nowrap sm:inline">Insert term</span>
+                  <kbd
+                    aria-hidden="true"
+                    className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium leading-none text-low-emphasis sm:inline"
+                  >
+                    {termShortcut.keys}
+                  </kbd>
+                </Button>
               )}
-              <span className="hidden whitespace-nowrap sm:inline">
-                {isAutoTranslateLoading ? "Translating…" : "Auto-Translate"}
-              </span>
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                aria-label="Auto-Translate"
+                disabled={isAutoTranslateLoading || destinationLanguage?.isDefault}
+                onClick={autoTranslate}
+              >
+                {isAutoTranslateLoading ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Wand className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                <span className="hidden whitespace-nowrap sm:inline">
+                  {isAutoTranslateLoading ? "Translating…" : "Auto-Translate"}
+                </span>
+              </Button>
+            </div>
           </div>
           <GlossaryTermMenu
             open={termMenuOpen}
@@ -317,7 +346,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                 targetRef.current = element;
                 targetBinding.ref(element);
               }}
-              aria-describedby={destinationLanguage?.isDefault ? undefined : "glossary-term-menu-hint"}
+              aria-describedby={canInsertTerm ? "glossary-term-menu-hint" : undefined}
               onKeyDown={(event) => {
                 if (destinationLanguage?.isDefault || !isGlossaryTermMenuShortcut(event)) return;
                 event.preventDefault();
@@ -326,9 +355,9 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               onChange={(e) => editTranslation(e.target.value)}
             />
           </GlossaryTermMenu>
-          {!destinationLanguage?.isDefault && (
-            <p id="glossary-term-menu-hint" className="text-xs text-low-emphasis">
-              {GLOSSARY_TERM_MENU_HINT}
+          {canInsertTerm && (
+            <p id="glossary-term-menu-hint" className="sr-only">
+              {getGlossaryTermMenuHint()}
             </p>
           )}
           <GlossaryTargetChecks

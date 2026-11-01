@@ -3,7 +3,6 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
-import { Card, CardContent } from "@/components/ui-kits/card/card";
 import {
   Tooltip,
   TooltipContent,
@@ -80,76 +79,71 @@ const GlossaryTermCard = ({
   const definition = stripRuleMarker(glossary.context);
 
   return (
-    <Card className="rounded-sm shadow-none">
-      <CardContent className="grid gap-2 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <Link
-              to={scoped(`services/glossary/${glossary.itemId}`)}
-              className="break-words font-medium text-high-emphasis underline-offset-4 hover:underline"
-            >
-              {glossary.name}
-            </Link>
-            {!isUnsupported && <GlossaryRuleBadge rule={meta.rule} />}
-            <Badge variant="outline">{GLOSSARY_TERM_SOURCE_LABELS[source]}</Badge>
-          </div>
-          {onRemove && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 shrink-0"
-              aria-label={`Remove ${glossary.name} from key`}
-              disabled={disabled}
-              onClick={onRemove}
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          )}
-          {onAdd && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 shrink-0 gap-1 px-2"
-              aria-label={`Tag ${glossary.name} to key`}
-              disabled={disabled}
-              onClick={onAdd}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              Add
-            </Button>
-          )}
-        </div>
-        {!isUnsupported && meta.rule === "translate" && (
-          <GlossaryTranslationChips meta={meta} languages={languages} max={3} />
+    <div className="grid gap-2 px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={scoped(`services/glossary/${glossary.itemId}`)}
+          className="min-w-0 break-words py-0.5 text-sm font-medium text-high-emphasis underline-offset-4 hover:underline"
+        >
+          {glossary.name}
+        </Link>
+        {onRemove && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="-mr-1 h-7 w-7 shrink-0"
+            aria-label={`Remove ${glossary.name} from key`}
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
         )}
-        {definition && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="block w-full rounded-sm text-left text-sm text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onKeyDown={(event) => {
-                    // Only shows the tooltip: Enter and Space must not click it, which would close it.
-                    if (event.key === "Enter" || event.key === " ") event.preventDefault();
-                  }}
-                >
-                  <span className="line-clamp-2">{definition}</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                className="max-w-80 whitespace-pre-wrap text-sm font-normal"
+        {onAdd && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 shrink-0 gap-1 px-2"
+            aria-label={`Tag ${glossary.name} to key`}
+            disabled={disabled}
+            onClick={onAdd}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            Add
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {!isUnsupported && <GlossaryRuleBadge rule={meta.rule} />}
+        <Badge variant="outline">{GLOSSARY_TERM_SOURCE_LABELS[source]}</Badge>
+      </div>
+      {!isUnsupported && meta.rule === "translate" && (
+        <GlossaryTranslationChips meta={meta} languages={languages} max={3} compact />
+      )}
+      {definition && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="block w-full rounded-sm text-left text-xs text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onKeyDown={(event) => {
+                  // Only shows the tooltip: Enter and Space must not click it, which would close it.
+                  if (event.key === "Enter" || event.key === " ") event.preventDefault();
+                }}
               >
-                {definition}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </CardContent>
-    </Card>
+                <span className="line-clamp-1">{definition}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-80 whitespace-pre-wrap text-sm font-normal">
+              {definition}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
   );
 };
 

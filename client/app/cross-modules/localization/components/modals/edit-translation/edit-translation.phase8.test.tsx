@@ -141,10 +141,32 @@ describe("edit-translation (Phase 8)", () => {
   });
 
   describe("insert shortcut (H11, C6)", () => {
-    it("describes the shortcut on the target field", () => {
+    it("describes the shortcut on the target field", async () => {
       renderModal();
+      await screen.findByText("Workspace");
       const hint = document.getElementById(field().getAttribute("aria-describedby")!);
-      expect(hint?.textContent).toBe("Press Alt+Shift+G to insert a glossary term.");
+      expect(hint?.textContent).toBe("Press Alt+Shift+G to insert a glossary term at the cursor.");
+    });
+
+    it("opens the term menu from the Insert glossary term button", async () => {
+      renderModal();
+      fireEvent.click(await screen.findByRole("button", { name: /Insert glossary term/ }));
+      const option = await screen.findByRole("option", { name: /Workspace.*Arbeitsbereich/ });
+      fireEvent.click(option);
+      await waitFor(() => expect(field().value).toBe("Öffne Arbeitsbereich"));
+    });
+
+    it("hides the button and hint when no term has wording to insert", async () => {
+      renderModal({
+        ...keyDetails,
+        resources: [
+          { culture: "en-US", value: "Open the Portal" },
+          { culture: "de-DE", value: "" },
+        ],
+      });
+      await screen.findByText("Portal");
+      expect(screen.queryByRole("button", { name: /Insert glossary term/ })).toBeNull();
+      expect(field().getAttribute("aria-describedby")).toBeNull();
     });
 
     it("lists the matched terms by rule and inserts the chosen value at the caret", async () => {
