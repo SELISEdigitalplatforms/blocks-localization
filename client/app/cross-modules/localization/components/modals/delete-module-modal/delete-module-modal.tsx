@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { AlertTriangle, Check, ChevronsUpDown, Eye, Info } from "lucide-react";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
@@ -34,6 +35,20 @@ import { IModuleGets } from "@blocks-localization/models/language";
 
 type KeyAction = "move" | "delete";
 
+// Replaces the marker in a translated sentence with the module name shown in bold.
+const NAME_MARKER = "\u0001";
+const withBoldName = (text: string, name: string) =>
+  text.split(NAME_MARKER).flatMap((part, index) =>
+    index === 0
+      ? [part]
+      : [
+          <span key={`name-${index}`} className="font-semibold">
+            {name}
+          </span>,
+          part,
+        ],
+  );
+
 interface DeleteModuleModalProps {
   module: IModuleGets;
   modules: Pick<IModuleGets, "itemId" | "moduleName">[];
@@ -41,6 +56,7 @@ interface DeleteModuleModalProps {
 }
 
 const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, onClose }) => {
+  const { t } = useT("localization.modules");
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [targetModuleId, setTargetModuleId] = useState("");
@@ -53,7 +69,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
   } = useGetModuleKeyCount(module.itemId);
 
   const hasKeys = (keyCount ?? 0) > 0;
-  const keyLabel = keyCount === 1 ? "key" : "keys";
+  const keyCountLabel = t("DELETE_MODULE_MODAL.KEY_COUNT", { count: keyCount ?? 0 });
   const targetModules = modules.filter((m) => m.itemId !== module.itemId);
   const selectedTarget = targetModules.find((m) => m.itemId === targetModuleId);
   const canMove = targetModules.length > 0;
@@ -69,9 +85,11 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     target?: Pick<IModuleGets, "itemId" | "moduleName">,
     deleteKeys?: boolean,
   ) => {
-    if (target) return `Module deleted. Its keys were moved to ${target.moduleName}.`;
-    if (deleteKeys) return "Module and its keys deleted";
-    return "Module deleted";
+    if (target) {
+      return t("DELETE_MODULE_MODAL.DELETED_KEYS_MOVED", { name: target.moduleName });
+    }
+    if (deleteKeys) return t("DELETE_MODULE_MODAL.DELETED_WITH_KEYS");
+    return t("DELETE_MODULE_MODAL.DELETED");
   };
 
   const handleSubmit = async (
@@ -87,21 +105,21 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Success",
+          title: t("common:SUCCESS"),
           description: getSuccessMessage(target, deleteKeys),
         });
         onClose(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Failed to delete module",
+          title: t("common:ERROR"),
+          description: t("DELETE_MODULE_MODAL.DELETE_FAILED"),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: getHttpErrorMessage(error),
       });
       void refetchKeyCount();
@@ -112,7 +130,10 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     if (isKeyCountLoading) {
       return (
         <>
-          Checking keys in <span className="font-semibold">{module.moduleName}</span>...
+          {withBoldName(
+            t("DELETE_MODULE_MODAL.CHECKING_KEYS", { name: NAME_MARKER }),
+            module.moduleName,
+          )}
         </>
       );
     }
@@ -120,16 +141,20 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
     if (hasKeys) {
       return (
         <>
-          <span className="font-semibold">{module.moduleName}</span> has {keyCount} {keyLabel}. Move
-          them to another module or delete them together with the module.
+          {withBoldName(
+            t("DELETE_MODULE_MODAL.HAS_KEYS", { name: NAME_MARKER, count: keyCount ?? 0 }),
+            module.moduleName,
+          )}
         </>
       );
     }
 
     return (
       <>
-        Are you sure you want to delete <span className="font-semibold">{module.moduleName}</span>?
-        This action cannot be undone.
+        {withBoldName(
+          t("DELETE_MODULE_MODAL.CONFIRM_DELETE", { name: NAME_MARKER }),
+          module.moduleName,
+        )}
       </>
     );
   };
@@ -152,7 +177,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
       <div className="flex min-w-0 items-center gap-2">
         {label && <p className="text-sm font-medium text-high-emphasis">{label}</p>}
         <Badge variant="warning" className="shrink-0 rounded-full font-normal">
-          {keyCount} {keyLabel}
+          {keyCountLabel}
         </Badge>
       </div>
       <Button
@@ -163,7 +188,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         onClick={handleViewKeys}
       >
         <Eye className="h-4 w-4" />
-        View keys
+        {t("DELETE_MODULE_MODAL.VIEW_KEYS")}
       </Button>
     </div>
   );
@@ -175,13 +200,13 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           type="button"
           variant="outline"
           role="combobox"
-          aria-label="Target module"
+          aria-label={t("DELETE_MODULE_MODAL.TARGET_MODULE")}
           aria-expanded={isTargetPickerOpen}
           className="h-[37px] w-full justify-between font-normal shadow-none"
           disabled={isPending}
         >
           <span className="truncate">
-            {selectedTarget?.moduleName ?? "Select target module..."}
+            {selectedTarget?.moduleName ?? t("DELETE_MODULE_MODAL.SELECT_TARGET")}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -192,9 +217,9 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         portalled={false}
       >
         <Command>
-          <CommandInput placeholder="Search module..." />
+          <CommandInput placeholder={t("DELETE_MODULE_MODAL.SEARCH_MODULE")} />
           <CommandList>
-            <CommandEmpty>No module found.</CommandEmpty>
+            <CommandEmpty>{t("DELETE_MODULE_MODAL.NO_MODULE_FOUND")}</CommandEmpty>
             <CommandGroup>
               {targetModules.map((m) => (
                 <CommandItem
@@ -223,11 +248,11 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
 
   const renderKeyActions = () => (
     <div className="space-y-3">
-      {renderKeysHeader("What should happen to the keys?")}
+      {renderKeysHeader(t("DELETE_MODULE_MODAL.KEY_ACTION_QUESTION"))}
       <RadioGroup
         value={keyAction}
         onValueChange={(value) => setChosenKeyAction(value as KeyAction)}
-        aria-label="What should happen to the keys?"
+        aria-label={t("DELETE_MODULE_MODAL.KEY_ACTION_QUESTION")}
         className="gap-3"
         disabled={isPending}
       >
@@ -235,19 +260,21 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           <div className="flex items-center gap-2">
             <RadioGroupItem value="move" id="delete-module-move-keys" disabled={!canMove} />
             <Label htmlFor="delete-module-move-keys" className={cn(!canMove && "opacity-50")}>
-              Move all keys to another module
+              {t("DELETE_MODULE_MODAL.MOVE_ALL_KEYS")}
             </Label>
           </div>
           {!canMove && (
             <p className="flex items-center gap-1.5 pl-6 text-xs text-primary">
               <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>There is no other module to move the keys to.</span>
+              <span>{t("DELETE_MODULE_MODAL.NO_OTHER_MODULE")}</span>
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
           <RadioGroupItem value="delete" id="delete-module-delete-keys" />
-          <Label htmlFor="delete-module-delete-keys">Delete all keys with the module</Label>
+          <Label htmlFor="delete-module-delete-keys">
+            {t("DELETE_MODULE_MODAL.DELETE_ALL_KEYS")}
+          </Label>
         </div>
       </RadioGroup>
 
@@ -256,22 +283,13 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           {renderTargetPicker()}
           <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
-            <p>
-              The module is deleted once its keys are moved, and this cannot be undone. Translations
-              and glossaries tagged on the keys are kept; the target module&apos;s glossaries apply
-              instead of this module&apos;s. Publish changes afterwards to update the language
-              files.
-            </p>
+            <p>{t("DELETE_MODULE_MODAL.MOVE_WARNING")}</p>
           </div>
         </>
       ) : (
         <div className="flex items-start gap-2 rounded-md bg-warning-100 px-3 py-2.5 text-sm text-high-emphasis">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-icon-warning" />
-          <p>
-            {keyCount} {keyLabel} and all of their translations are permanently deleted with the
-            module, and this cannot be undone. Publish changes afterwards to update the language
-            files.
-          </p>
+          <p>{t("DELETE_MODULE_MODAL.DELETE_WARNING", { count: keyCount ?? 0 })}</p>
         </div>
       )}
     </div>
@@ -285,7 +303,9 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         disabled={!selectedTarget || isPending}
         onClick={() => handleSubmit(selectedTarget)}
       >
-        {isPending ? "Moving & deleting..." : "Move keys & delete module"}
+        {isPending
+          ? t("DELETE_MODULE_MODAL.MOVING_DELETING")
+          : t("DELETE_MODULE_MODAL.MOVE_AND_DELETE")}
       </Button>
     ) : (
       <Button
@@ -294,14 +314,16 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
         disabled={isPending}
         onClick={() => handleSubmit(undefined, true)}
       >
-        {isPending ? "Deleting..." : "Delete module & keys"}
+        {isPending
+          ? t("DELETE_MODULE_MODAL.DELETING")
+          : t("DELETE_MODULE_MODAL.DELETE_MODULE_AND_KEYS")}
       </Button>
     );
 
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Delete module</DialogTitle>
+        <DialogTitle>{t("DELETE_MODULE_MODAL.TITLE")}</DialogTitle>
         <DialogDescription>{renderDescription()}</DialogDescription>
       </DialogHeader>
 
@@ -314,7 +336,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
           disabled={isPending}
           onClick={() => onClose(false)}
         >
-          Cancel
+          {t("common:CANCEL")}
         </Button>
         {hasKeys ? (
           renderKeyActionButton()
@@ -324,7 +346,7 @@ const DeleteModuleModal: React.FC<DeleteModuleModalProps> = ({ module, modules, 
             disabled={isPending || isKeyCountLoading}
             onClick={() => handleSubmit()}
           >
-            {isPending ? "Deleting..." : "Delete"}
+            {isPending ? t("DELETE_MODULE_MODAL.DELETING") : t("common:DELETE")}
           </Button>
         )}
       </DialogFooter>

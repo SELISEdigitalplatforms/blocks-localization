@@ -2,6 +2,7 @@ import { registerTranslations } from "@seliseblocks/genesis-os/i18n";
 import glossary from "./localization.glossary.en.json";
 import keys from "./localization.keys.en.json";
 import languageTable from "./localization.language-table.en.json";
+import modules from "./localization.modules.en.json";
 import shared from "./localization.shared.en.json";
 
 // Bundled English for every module. German comes from the remote dictionary.
@@ -9,6 +10,7 @@ export const bundledModules: Record<string, Record<string, string>> = {
   "localization.glossary": glossary,
   "localization.keys": keys,
   "localization.language-table": languageTable,
+  "localization.modules": modules,
   "localization.shared": shared,
 };
 

@@ -1,4 +1,5 @@
 import React from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -28,18 +29,18 @@ interface EditModuleProps {
   onClose: (open: boolean) => void;
 }
 
-const schema = z.object({
-  moduleName: z
-    .string()
-    .min(3, { message: "Module name must be at least 3 characters" })
-    .max(100, { message: "Module name must be less than 100 characters" }),
-});
-
 interface FormValues {
   moduleName: string;
 }
 
 const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
+  const { t } = useT("localization.modules");
+  const schema = z.object({
+    moduleName: z
+      .string()
+      .min(3, { message: t("EDIT_MODULE.NAME_TOO_SHORT") })
+      .max(100, { message: t("EDIT_MODULE.NAME_TOO_LONG") }),
+  });
   const { isPending, mutateAsync } = useSaveLanguageModule();
 
   const form = useForm<FormValues>({
@@ -59,8 +60,8 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Module updated",
+          title: t("common:SUCCESS"),
+          description: t("EDIT_MODULE.UPDATED"),
         });
         form.reset();
         onClose(false);
@@ -76,7 +77,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
     }
@@ -87,7 +88,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(formSubmitHandler)}>
           <DialogHeader className="mb-4">
-            <DialogTitle>Edit module</DialogTitle>
+            <DialogTitle>{t("EDIT_MODULE.TITLE")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <FormField
@@ -96,12 +97,12 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    Module name
+                    {t("EDIT_MODULE.NAME_LABEL")}
                   </FormLabel>
                   <FormControl>
                     <Input
                       id="moduleName"
-                      placeholder="Enter module name"
+                      placeholder={t("EDIT_MODULE.NAME_PLACEHOLDER")}
                       className="border-default col-span-3 mt-1 border shadow-none"
                       {...field}
                     />
@@ -118,9 +119,9 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
               variant="secondary"
               onClick={() => onClose(false)}
             >
-              Cancel
+              {t("common:CANCEL")}
             </Button>
-            <Button disabled={isPending || !form.formState.isValid}>Save</Button>
+            <Button disabled={isPending || !form.formState.isValid}>{t("common:SAVE")}</Button>
           </DialogFooter>
         </form>
       </Form>
