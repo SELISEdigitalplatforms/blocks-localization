@@ -36,15 +36,20 @@ import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
 const NO_MATCHES: GlossaryMatch[] = [];
 
 /** The hint next to the source label, honest about what the glossary has for this language. */
-const sourceTermsHint = (termCount: number, withWording: number, language: string) => {
-  const terms = termCount === 1 ? "1 glossary term" : `${termCount} glossary terms`;
-  if (withWording === termCount) return `${terms} · select to see the approved wording`;
-  if (withWording === 0) return `${terms} · no ${language} wording in the glossary yet`;
-  return `${terms} · ${withWording} with ${language} wording`;
+const sourceTermsHint = (
+  t: TFunction,
+  termCount: number,
+  withWording: number,
+  language: string,
+) => {
+  if (withWording === termCount) return t("EDIT_TRANSLATION.HINT_ALL", { count: termCount });
+  if (withWording === 0) return t("EDIT_TRANSLATION.HINT_NONE", { count: termCount, language });
+  return t("EDIT_TRANSLATION.HINT_SOME", { count: termCount, withWording, language });
 };
 
 interface EditTranslationProps {
@@ -65,6 +70,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   onClose,
   loadGlossaries,
 }) => {
+  const { t } = useT("localization.keys");
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const {
     request,
@@ -102,7 +108,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       setTranslation(value);
       clearViolations(destinationLanguageCode);
     },
-    [clearViolations, destinationLanguageCode],
+    [clearViolations, destinationLanguageCode, setTranslation],
   );
   const { bindTarget, insert } = useTargetInsertion({
     cultures: [destinationLanguageCode],
@@ -137,14 +143,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       setTranslation(outcome.content);
       toast({
         variant: "success",
-        title: "Success",
-        description: "Translated successfully",
+        title: t("common:SUCCESS"),
+        description: t("EDIT_TRANSLATION.TRANSLATED"),
       });
       return;
     }
     toast({
       variant: "destructive",
-      title: "Error",
+      title: t("common:ERROR"),
       description: formatErrorMessage(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   }
@@ -194,21 +200,21 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Language key updated successfully",
+          title: t("common:SUCCESS"),
+          description: t("EDIT_TRANSLATION.UPDATED"),
         });
         onClose(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
     }
@@ -233,12 +239,13 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               id="edit-translation-source-label"
               className="text-sm font-medium text-medium-emphasis"
             >
-              {defaultLanguage?.languageName} (default)
+              {t("EDIT_TRANSLATION.SOURCE_LABEL", { language: defaultLanguage?.languageName ?? "" })}
             </p>
             {terms.length > 0 && (
               <p className="flex items-center gap-1.5 text-xs text-low-emphasis">
                 <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 {sourceTermsHint(
+                  t,
                   terms.length,
                   termsWithWording,
                   destinationLanguage?.languageName || destinationLanguageCode,
@@ -266,13 +273,13 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               htmlFor="destinationLanguageText"
               className="text-sm font-medium text-high-emphasis"
             >
-              {destinationLanguage?.languageName} translation
+              {t("EDIT_TRANSLATION.TRANSLATION_LABEL", { language: destinationLanguage?.languageName ?? "" })}
             </Label>
             <Button
               size="sm"
               variant="outline"
               className="gap-2"
-              aria-label="Auto-Translate"
+              aria-label={t("EDIT_TRANSLATION.AUTO_TRANSLATE")}
               disabled={isAutoTranslateLoading || destinationLanguage?.isDefault}
               onClick={autoTranslate}
             >
@@ -282,7 +289,9 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                 <Wand className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span className="hidden whitespace-nowrap sm:inline">
-                {isAutoTranslateLoading ? "Translating…" : "Auto-Translate"}
+                {isAutoTranslateLoading
+                  ? t("EDIT_TRANSLATION.TRANSLATING")
+                  : t("EDIT_TRANSLATION.AUTO_TRANSLATE")}
               </span>
             </Button>
           </div>
@@ -290,7 +299,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           <Textarea
             id="destinationLanguageText"
             className="border-default min-h-[116px] border shadow-none"
-            placeholder="Enter translation"
+            placeholder={t("EDIT_TRANSLATION.PLACEHOLDER")}
             value={translation}
             {...bindTarget(destinationLanguageCode)}
             onChange={(e) => editTranslation(e.target.value)}
@@ -314,11 +323,11 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       <DialogFooter className="gap-2 sm:gap-2">
         <DialogClose asChild>
           <Button variant="outline" size="default">
-            Cancel
+            {t("common:CANCEL")}
           </Button>
         </DialogClose>
         <Button size="default" disabled={isPending || !translation} onClick={handleSave}>
-          {isPending ? "Saving…" : "Save"}
+          {isPending ? t("EDIT_TRANSLATION.SAVING") : t("common:SAVE")}
         </Button>
       </DialogFooter>
     </DialogContent>
