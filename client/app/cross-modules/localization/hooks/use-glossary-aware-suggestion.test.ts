@@ -21,7 +21,8 @@ import {
 
 const project = vi.hoisted(() => ({ tenantId: "tenant-1" }));
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: project.tenantId } }),
 }));
 vi.mock("@blocks-localization/services/language-manager.service", () => ({

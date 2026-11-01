@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
 import { ColumnDef, flexRender, getCoreRowModel, Row, useReactTable } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
@@ -36,29 +37,45 @@ import { langConfigureData } from "@blocks-localization/constants/language-dummy
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
-const DefinitionHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Definition</span>
-  </div>
-);
+const DefinitionHeader = () => {
+  const { t } = useT("localization.glossary");
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">
+        {t("GLOSSARY_TABLE.COLUMN_DEFINITION")}
+      </span>
+    </div>
+  );
+};
 
-const RuleHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Rule</span>
-  </div>
-);
+const RuleHeader = () => {
+  const { t } = useT("localization.glossary");
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_RULE")}</span>
+    </div>
+  );
+};
 
-const TranslationsHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Translations</span>
-  </div>
-);
+const TranslationsHeader = () => {
+  const { t } = useT("localization.glossary");
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">
+        {t("GLOSSARY_TABLE.COLUMN_TRANSLATIONS")}
+      </span>
+    </div>
+  );
+};
 
-const ActionsHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Actions</span>
-  </div>
-);
+const ActionsHeader = () => {
+  const { t } = useT("localization.glossary");
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_ACTIONS")}</span>
+    </div>
+  );
+};
 
 function renderDefinitionCell(row: { original: IGlossary }) {
   const definition = getOptionalCellText(stripRuleMarker(row.original.context));
@@ -130,12 +147,13 @@ function renderTableRows(
 }
 
 function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {
+  const { t } = useT("localization.glossary");
   if (searchQuery) {
     return (
       <output className="flex flex-col items-center gap-2 py-4">
-        <p className="font-medium text-high-emphasis">No matching glossaries</p>
+        <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.NO_MATCHING_TITLE")}</p>
         <p className="text-muted-foreground">
-          No glossaries match &ldquo;{searchQuery}&rdquo;. Try a different search.
+          {t("GLOSSARY_TABLE.NO_MATCHING_BODY", { query: searchQuery })}
         </p>
       </output>
     );
@@ -143,15 +161,14 @@ function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) 
 
   return (
     <output className="flex flex-col items-center gap-2 py-4">
-      <p className="font-medium text-high-emphasis">No glossaries yet</p>
-      <p className="text-muted-foreground">
-        Glossaries help keep terminology consistent across translations.
-      </p>
+      <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.EMPTY_TITLE")}</p>
+      <p className="text-muted-foreground">{t("GLOSSARY_TABLE.EMPTY_BODY")}</p>
     </output>
   );
 }
 
 const GlossaryTable = () => {
+  const { t } = useT("localization.glossary");
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const [pageNumber, setPageNumber] = useState(0);
@@ -187,7 +204,9 @@ const GlossaryTable = () => {
         accessorKey: "name",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Name</span>
+            <span className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_TABLE.COLUMN_NAME")}
+            </span>
           </div>
         ),
         cell: ({ row }) => (
@@ -210,7 +229,9 @@ const GlossaryTable = () => {
         accessorKey: "language",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Language</span>
+            <span className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_TABLE.COLUMN_LANGUAGE")}
+            </span>
           </div>
         ),
         cell: ({ row }) => (
@@ -227,7 +248,9 @@ const GlossaryTable = () => {
         accessorKey: "type",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Type</span>
+            <span className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_TABLE.COLUMN_TYPE")}
+            </span>
           </div>
         ),
         cell: ({ row }) => (
@@ -245,7 +268,9 @@ const GlossaryTable = () => {
         accessorKey: "createDate",
         header: () => (
           <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">Created</span>
+            <span className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_TABLE.COLUMN_CREATED")}
+            </span>
           </div>
         ),
         cell: ({ row }) => (
@@ -283,7 +308,7 @@ const GlossaryTable = () => {
                 }}
               >
                 <Pencil className="mr-2 h-4 w-4" />
-                <span>Edit</span>
+                <span>{t("common:EDIT")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer text-error"
@@ -293,14 +318,14 @@ const GlossaryTable = () => {
                 }}
               >
                 <Trash className="mr-2 h-4 w-4" />
-                <span>Delete</span>
+                <span>{t("common:DELETE")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ],
-    [handleEditClick, handleDeleteClick, languageListData],
+    [handleEditClick, handleDeleteClick, languageListData, t],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable is the table API this component is built on.
@@ -317,7 +342,7 @@ const GlossaryTable = () => {
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold">Glossary Management</h1>
+        <h1 className="text-2xl font-semibold">{t("GLOSSARY_TABLE.TITLE")}</h1>
         <GlossaryEditorSheet
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
@@ -328,7 +353,7 @@ const GlossaryTable = () => {
               className="h-10 bg-primary text-sm text-primary-foreground"
             >
               <Plus className="mr-2 h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">New Glossary</span>
+              <span className="sr-only sm:not-sr-only">{t("GLOSSARY_TABLE.NEW_GLOSSARY")}</span>
             </Button>
           }
         />
@@ -337,12 +362,12 @@ const GlossaryTable = () => {
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
-            Glossary
+            {t("GLOSSARY_TABLE.CARD_TITLE")}
           </CardTitle>
         </CardHeader>
         <div className="mb-4 w-full sm:w-[300px]">
           <FilterControls.SearchInput
-            placeholder="Search glossary..."
+            placeholder={t("GLOSSARY_TABLE.SEARCH_PLACEHOLDER")}
             value={searchText}
             onChange={handleSearchChange}
             className="h-9 w-full"

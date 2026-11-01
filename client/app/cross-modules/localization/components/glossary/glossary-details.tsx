@@ -40,6 +40,7 @@ import {
 } from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 
 const TAGGED_KEYS_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -52,8 +53,6 @@ interface GlossaryDetailsProps {
   itemId: string;
 }
 
-const NOT_PROVIDED = "Not provided";
-
 const hasText = (value: string | null | undefined): value is string => !!value?.trim();
 
 const formatDate = (value: string | null | undefined) => {
@@ -63,12 +62,15 @@ const formatDate = (value: string | null | undefined) => {
 };
 
 // Empty table cells show a muted dash; screen readers hear "None" instead of a stray symbol.
-const EmptyCell = () => (
-  <span className="text-low-emphasis">
-    <span aria-hidden="true">—</span>
-    <span className="sr-only">None</span>
-  </span>
-);
+const EmptyCell = () => {
+  const { t } = useT("localization.glossary");
+  return (
+    <span className="text-low-emphasis">
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{t("GLOSSARY_DETAILS.NONE")}</span>
+    </span>
+  );
+};
 
 const DetailField = ({
   label,
@@ -80,12 +82,16 @@ const DetailField = ({
   </div>
 );
 
-const DetailValue = ({ value }: Readonly<{ value: string | null | undefined }>) =>
-  hasText(value) ? (
+const DetailValue = ({ value }: Readonly<{ value: string | null | undefined }>) => {
+  const { t } = useT("localization.glossary");
+  return hasText(value) ? (
     <p className="break-words text-base font-normal text-high-emphasis">{value}</p>
   ) : (
-    <p className="text-base font-normal italic text-low-emphasis">{NOT_PROVIDED}</p>
+    <p className="text-base font-normal italic text-low-emphasis">
+      {t("GLOSSARY_DETAILS.NOT_PROVIDED")}
+    </p>
   );
+};
 
 const EmptyText = ({ children }: Readonly<{ children: React.ReactNode }>) => (
   <p className="text-base italic text-low-emphasis">{children}</p>
@@ -104,18 +110,24 @@ const ForbiddenList = ({ values }: Readonly<{ values: string[] }>) =>
     <EmptyCell />
   );
 
-function renderTranslationsTable(meta: GlossaryMeta, targets: ILanguageConfig[]) {
+function renderTranslationsTable(t: TFunction, meta: GlossaryMeta, targets: ILanguageConfig[]) {
   const showTranslation = meta.rule === "translate";
   return (
     <div className="w-full overflow-x-auto">
       <Table className="text-sm">
         <TableHeader>
           <TableRow className="border-none hover:bg-transparent">
-            <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_DETAILS.LANGUAGE")}
+            </TableHead>
             {showTranslation && (
-              <TableHead className="font-bold text-medium-emphasis">Translation</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("GLOSSARY_DETAILS.COLUMN_TRANSLATION")}
+              </TableHead>
             )}
-            <TableHead className="font-bold text-medium-emphasis">Forbidden alternatives</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("GLOSSARY_DETAILS.COLUMN_FORBIDDEN")}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -133,7 +145,7 @@ function renderTranslationsTable(meta: GlossaryMeta, targets: ILanguageConfig[])
                     ) : (
                       <Badge variant="warning" className="w-fit gap-1">
                         <TriangleAlert className="h-3 w-3" aria-hidden="true" />
-                        Missing
+                        {t("GLOSSARY_DETAILS.MISSING")}
                       </Badge>
                     )}
                   </TableCell>
@@ -151,6 +163,7 @@ function renderTranslationsTable(meta: GlossaryMeta, targets: ILanguageConfig[])
 }
 
 function renderTranslationsContent(
+  t: TFunction,
   parsed: ReturnType<typeof parseGlossaryMeta>,
   languages: ILanguageConfig[] | undefined,
 ) {
@@ -158,32 +171,37 @@ function renderTranslationsContent(
   if (status === "unsupported-version") {
     return (
       <p className="px-6 pb-6 text-sm text-medium-emphasis">
-        This term was saved by a newer version and can&apos;t be shown here.
+        {t("GLOSSARY_DETAILS.UNSUPPORTED_VERSION")}
       </p>
     );
   }
   if (meta.rule === "keep") {
-    return <p className="px-6 pb-6 text-sm text-medium-emphasis">Kept as-is in all languages.</p>;
+    return (
+      <p className="px-6 pb-6 text-sm text-medium-emphasis">{t("GLOSSARY_DETAILS.KEPT_AS_IS")}</p>
+    );
   }
   const targets = getTargetLanguages(languages);
   if (targets.length === 0) {
     return (
       <p className="px-6 pb-6 text-sm text-medium-emphasis">
-        The project has no languages to translate into.
+        {t("GLOSSARY_DETAILS.NO_TARGET_LANGUAGES")}
       </p>
     );
   }
   return (
     <>
       {meta.rule === "forbidden" && (
-        <p className="px-6 pb-4 text-sm text-medium-emphasis">Do not use this term.</p>
+        <p className="px-6 pb-4 text-sm text-medium-emphasis">
+          {t("GLOSSARY_DETAILS.DO_NOT_USE_TERM")}
+        </p>
       )}
-      {renderTranslationsTable(meta, targets)}
+      {renderTranslationsTable(t, meta, targets)}
     </>
   );
 }
 
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
+  const { t } = useT("localization.glossary");
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { data: glossary, isLoading } = useGetGlossaryById(itemId);
@@ -231,15 +249,20 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   }
 
   if (!glossary) {
-    return <div className="mt-10 text-center text-medium-emphasis">Glossary item not found.</div>;
+    return (
+      <div className="mt-10 text-center text-medium-emphasis">
+        {t("GLOSSARY_DETAILS.NOT_FOUND")}
+      </div>
+    );
   }
 
   const defaultLanguage = languageListData?.find((l) => l.isDefault);
   const parsedMeta = parseGlossaryMeta(glossary.additionalNote);
   const { meta } = parsedMeta;
   const moduleCount = glossary.moduleIds?.length ?? 0;
-  const moduleSuffix = moduleCount === 1 ? "" : "s";
-  const scopeLabel = glossary.isGlobal ? "Whole project" : `${moduleCount} module${moduleSuffix}`;
+  const scopeLabel = glossary.isGlobal
+    ? t("GLOSSARY_DETAILS.SCOPE_WHOLE_PROJECT")
+    : t("GLOSSARY_DETAILS.SCOPE_MODULES", { count: moduleCount });
   const definition = stripRuleMarker(glossary.context);
 
   const resolvedLanguage =
@@ -258,13 +281,17 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     }
 
     if (isTaggedKeysError || !taggedKeysData) {
-      return <p className="px-6 pb-6 text-sm text-medium-emphasis">Failed to load tagged keys.</p>;
+      return (
+        <p className="px-6 pb-6 text-sm text-medium-emphasis">
+          {t("GLOSSARY_DETAILS.TAGGED_KEYS_FAILED")}
+        </p>
+      );
     }
 
     if (!taggedKeysData.keys?.length) {
       return (
         <p className="px-6 pb-6 text-sm text-medium-emphasis">
-          No keys are tagged with this glossary.
+          {t("GLOSSARY_DETAILS.TAGGED_KEYS_EMPTY")}
         </p>
       );
     }
@@ -275,12 +302,18 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           <Table className="text-sm">
             <TableHeader>
               <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="font-bold text-medium-emphasis">Key Name</TableHead>
-                <TableHead className="font-bold text-medium-emphasis">Module</TableHead>
+                <TableHead className="font-bold text-medium-emphasis">
+                  {t("GLOSSARY_DETAILS.COLUMN_KEY_NAME")}
+                </TableHead>
+                <TableHead className="font-bold text-medium-emphasis">
+                  {t("GLOSSARY_DETAILS.COLUMN_MODULE")}
+                </TableHead>
                 <TableHead className="font-bold text-medium-emphasis">
                   {defaultLanguage
-                    ? `${defaultLanguage.languageName} (Default)`
-                    : "Default Language"}
+                    ? t("GLOSSARY_DETAILS.COLUMN_DEFAULT_NAMED", {
+                        language: defaultLanguage.languageName,
+                      })
+                    : t("GLOSSARY_DETAILS.COLUMN_DEFAULT_LANGUAGE")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -319,8 +352,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         </div>
         <div className="flex flex-col gap-3 border-t px-6 py-3 md:flex-row md:items-center md:justify-between">
           <span className="text-sm text-medium-emphasis">
-            {taggedKeysData.totalCount} key
-            {taggedKeysData.totalCount === 1 ? "" : "s"} total
+            {t("GLOSSARY_DETAILS.KEYS_TOTAL", { count: taggedKeysData.totalCount ?? 0 })}
           </span>
           <Pagination
             page={keysPage}
@@ -354,7 +386,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
             trigger={
               <Button size="default" variant="outline" className="gap-2">
                 <Pencil className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  {t("common:EDIT")}
+                </span>
               </Button>
             }
           />
@@ -364,7 +398,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               <Button size="default" variant="outline" className="gap-2">
                 <Trash className="h-4 w-4 text-error" />
                 <span className="sr-only text-error sm:not-sr-only sm:whitespace-nowrap">
-                  Delete
+                  {t("common:DELETE")}
                 </span>
               </Button>
             </DialogTrigger>
@@ -389,13 +423,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         </Badge>
         {meta.caseSensitive && (
           <Badge variant="outline" className="w-fit">
-            Case-sensitive
+            {t("GLOSSARY_DETAILS.CASE_SENSITIVE")}
           </Badge>
         )}
       </div>
       {meta.variants.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-medium-emphasis">Variants:</span>
+          <span className="text-sm text-medium-emphasis">{t("GLOSSARY_DETAILS.VARIANTS")}</span>
           {meta.variants.map((variant, index) => (
             // Stored variants may repeat (written by other clients), so the index keeps keys unique.
             <Badge key={`${variant}-${index}`} variant="secondary" className="w-fit">
@@ -408,34 +442,34 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="rounded-sm shadow-none lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-xl">Translations</CardTitle>
+            <CardTitle className="text-xl">{t("GLOSSARY_DETAILS.TRANSLATIONS")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {renderTranslationsContent(parsedMeta, languageListData)}
+            {renderTranslationsContent(t, parsedMeta, languageListData)}
           </CardContent>
         </Card>
 
         <Card className="h-min rounded-sm shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Details</CardTitle>
+            <CardTitle className="text-xl">{t("common:DETAILS")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-5">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <DetailField label="Language">
+              <DetailField label={t("GLOSSARY_DETAILS.LANGUAGE")}>
                 <DetailValue value={resolvedLanguage} />
               </DetailField>
-              <DetailField label="Type">
+              <DetailField label={t("GLOSSARY_DETAILS.TYPE")}>
                 <DetailValue value={glossary.type} />
               </DetailField>
-              <DetailField label="Created on">
+              <DetailField label={t("GLOSSARY_DETAILS.CREATED_ON")}>
                 <DetailValue value={formatDate(glossary.createDate)} />
               </DetailField>
-              <DetailField label="Last updated">
+              <DetailField label={t("GLOSSARY_DETAILS.LAST_UPDATED")}>
                 <DetailValue value={formatDate(glossary.lastUpdateDate)} />
               </DetailField>
             </div>
 
-            <DetailField label="Tagged Modules">
+            <DetailField label={t("GLOSSARY_DETAILS.TAGGED_MODULES")}>
               {moduleCount > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {glossary.moduleIds?.map((id) => {
@@ -449,7 +483,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                 </div>
               ) : (
                 <EmptyText>
-                  {glossary.isGlobal ? "Applies to every module." : "No modules tagged."}
+                  {glossary.isGlobal
+                    ? t("GLOSSARY_DETAILS.APPLIES_TO_ALL")
+                    : t("GLOSSARY_DETAILS.NO_MODULES_TAGGED")}
                 </EmptyText>
               )}
             </DetailField>
@@ -459,7 +495,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
         <div className="flex flex-col gap-6">
           <Card className="rounded-sm shadow-none">
             <CardHeader>
-              <CardTitle className="text-xl">Definition</CardTitle>
+              <CardTitle className="text-xl">{t("GLOSSARY_DETAILS.DEFINITION")}</CardTitle>
             </CardHeader>
             <CardContent>
               {hasText(definition) ? (
@@ -467,7 +503,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   {definition}
                 </p>
               ) : (
-                <EmptyText>No definition provided.</EmptyText>
+                <EmptyText>{t("GLOSSARY_DETAILS.NO_DEFINITION")}</EmptyText>
               )}
             </CardContent>
           </Card>
@@ -479,13 +515,12 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-flex w-fit cursor-help items-center gap-1.5">
-                        Internal Note
+                        {t("GLOSSARY_DETAILS.INTERNAL_NOTE")}
                         <CircleAlert className="h-4 w-4 text-medium-emphasis" />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-80 text-sm font-normal">
-                      Not utilized for auto translation, only given for additional comments by the
-                      user
+                      {t("GLOSSARY_DETAILS.INTERNAL_NOTE_TOOLTIP")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -497,7 +532,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                   {meta.note}
                 </p>
               ) : (
-                <EmptyText>No internal note.</EmptyText>
+                <EmptyText>{t("GLOSSARY_DETAILS.NO_INTERNAL_NOTE")}</EmptyText>
               )}
             </CardContent>
           </Card>
@@ -506,7 +541,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
 
       <Card className="mt-6 rounded-sm shadow-none">
         <CardHeader>
-          <CardTitle className="text-xl">Tagged Keys</CardTitle>
+          <CardTitle className="text-xl">{t("GLOSSARY_DETAILS.TAGGED_KEYS")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">{renderTaggedKeysContent()}</CardContent>
       </Card>

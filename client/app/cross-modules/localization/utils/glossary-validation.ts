@@ -1,3 +1,4 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import {
   GlossaryMatch,
   isNoSpaceCulture,
@@ -294,11 +295,18 @@ export const applyFix = (
 export const formatViolationMessage = (violation: GlossaryViolation): string => {
   switch (violation.kind) {
     case "missing-translation":
-      return `Expected "${violation.expected ?? ""}" for "${violation.term}"`;
+      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.EXPECTED", {
+        expected: violation.expected ?? "",
+        term: violation.term,
+      });
     case "missing-keep":
-      return `Keep "${violation.expected ?? violation.term}" unchanged`;
+      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.KEEP_UNCHANGED", {
+        value: violation.expected ?? violation.term,
+      });
     default:
-      return `"${violation.found ?? violation.term}" is not allowed`;
+      return tStatic("localization.glossary", "GLOSSARY_VALIDATION.NOT_ALLOWED", {
+        value: violation.found ?? violation.term,
+      });
   }
 };
 

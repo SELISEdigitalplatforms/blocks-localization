@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, CircleCheck, CircleDashed, Copy, TriangleAlert } from "lucide-react";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Button } from "@/components/ui-kits/button/button";
 import { cn } from "@/lib/utils";
-import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
+import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { GlossaryRowState } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { distinctGlossaryMatches } from "@blocks-localization/components/glossary/highlighted-source-text";
 import { useLiveGlossaryCheck } from "@blocks-localization/hooks/use-live-glossary-check";
@@ -19,12 +20,12 @@ import {
 type TermStatus = "pending" | "followed" | "issue" | "no-value";
 
 /** What the target should contain for one term, read by rule (Phase 2 A9). */
-const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
+const termGuidance = (t: TFunction, match: GlossaryMatch, targetCulture: string) => {
   switch (match.meta.rule) {
     case "keep":
-      return { value: match.surface, note: "Keep as written" };
+      return { value: match.surface, note: t("GLOSSARY_TARGET_CHECKLIST.KEEP_AS_WRITTEN") };
     case "forbidden":
-      return { value: null, note: "Do not use" };
+      return { value: null, note: t("GLOSSARY_TARGET_CHECKLIST.DO_NOT_USE") };
     default: {
       const value = match.meta.translations[targetCulture]?.trim() || null;
       if (value) return { value, note: null };
@@ -33,33 +34,51 @@ const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
         value,
         note:
           banned.length > 0
-            ? `No translation in the glossary; avoid ${banned.join(", ")}`
-            : "No translation in the glossary",
+            ? t("GLOSSARY_TARGET_CHECKLIST.NO_TRANSLATION_AVOID", { words: banned.join(", ") })
+            : t("GLOSSARY_TARGET_CHECKLIST.NO_TRANSLATION"),
       };
     }
   }
 };
 
 /** The short problem line under a term; the term row already shows the expected value. */
-const issueText = (violation: GlossaryViolation) => {
+const issueText = (t: TFunction, violation: GlossaryViolation) => {
   switch (violation.kind) {
     case "missing-translation":
-      return "Not used yet";
+      return t("GLOSSARY_TARGET_CHECKLIST.NOT_USED_YET");
     case "missing-keep":
-      return `"${violation.expected ?? violation.term}" is missing or changed`;
+      return t("GLOSSARY_TARGET_CHECKLIST.MISSING_OR_CHANGED", {
+        value: violation.expected ?? violation.term,
+      });
     default:
-      return `"${violation.found ?? violation.term}" is not allowed`;
+      return t("GLOSSARY_TARGET_CHECKLIST.NOT_ALLOWED", {
+        value: violation.found ?? violation.term,
+      });
   }
 };
 
-const STATUS_ICON: Record<TermStatus, { Icon: typeof Check; className: string; label: string }> = {
-  pending: { Icon: CircleDashed, className: "text-low-emphasis", label: "Not checked yet" },
-  followed: { Icon: CircleCheck, className: "text-success", label: "Followed" },
-  issue: { Icon: TriangleAlert, className: "text-warning-700", label: "Needs attention" },
-  "no-value": { Icon: CircleDashed, className: "text-low-emphasis", label: "No rule to check" },
+const STATUS_ICON: Record<TermStatus, { Icon: typeof Check; className: string }> = {
+  pending: { Icon: CircleDashed, className: "text-low-emphasis" },
+  followed: { Icon: CircleCheck, className: "text-success" },
+  issue: { Icon: TriangleAlert, className: "text-warning-700" },
+  "no-value": { Icon: CircleDashed, className: "text-low-emphasis" },
+};
+
+const statusLabel = (t: TFunction, status: TermStatus) => {
+  switch (status) {
+    case "pending":
+      return t("GLOSSARY_TARGET_CHECKLIST.STATUS_PENDING");
+    case "followed":
+      return t("GLOSSARY_TARGET_CHECKLIST.STATUS_FOLLOWED");
+    case "issue":
+      return t("GLOSSARY_TARGET_CHECKLIST.STATUS_ISSUE");
+    default:
+      return t("GLOSSARY_TARGET_CHECKLIST.STATUS_NO_VALUE");
+  }
 };
 
 const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
+  const { t } = useT("localization.glossary");
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -76,7 +95,11 @@ const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
       variant="ghost"
       size="sm"
       className="h-6 w-6 shrink-0 p-0 text-low-emphasis hover:text-high-emphasis"
-      aria-label={copied ? `Copied "${value}"` : `Copy "${value}"`}
+      aria-label={
+        copied
+          ? t("GLOSSARY_TARGET_CHECKLIST.COPIED_VALUE", { value })
+          : t("GLOSSARY_TARGET_CHECKLIST.COPY_VALUE", { value })
+      }
       onClick={(event) => {
         event.stopPropagation();
         copy();
@@ -91,8 +114,8 @@ const CopyValueButton = ({ value }: Readonly<{ value: string }>) => {
   );
 };
 
-const issueCountText = (count: number) =>
-  count === 1 ? "1 glossary issue" : `${count} glossary issues`;
+const issueCountText = (t: TFunction, count: number) =>
+  t("GLOSSARY_TARGET_CHECKLIST.ISSUES", { count });
 
 interface ChecklistCounts {
   terms: number;
@@ -101,29 +124,36 @@ interface ChecklistCounts {
   issues: number;
 }
 
-const nothingToCheckText = (language: string) => `Nothing to check for ${language}`;
+const nothingToCheckText = (t: TFunction, language: string) =>
+  t("GLOSSARY_TARGET_CHECKLIST.NOTHING_TO_CHECK", { language });
 
 /** The announced summary: empty until the row has text and the source has terms. */
-const checklistSummary = (counts: ChecklistCounts, hasText: boolean, language: string) => {
+const checklistSummary = (
+  t: TFunction,
+  counts: ChecklistCounts,
+  hasText: boolean,
+  language: string,
+) => {
   if (counts.terms === 0 || !hasText) return "";
-  if (counts.checkable === 0) return nothingToCheckText(language);
-  if (counts.issues > 0) return issueCountText(counts.issues);
+  if (counts.checkable === 0) return nothingToCheckText(t, language);
+  if (counts.issues > 0) return issueCountText(t, counts.issues);
   return counts.checkable < counts.terms
-    ? "All checked terms followed"
-    : "All glossary terms followed";
+    ? t("GLOSSARY_TARGET_CHECKLIST.ALL_CHECKED_FOLLOWED")
+    : t("GLOSSARY_TARGET_CHECKLIST.ALL_FOLLOWED");
 };
 
 /** The visible header hint next to "Glossary". */
 const checklistHint = (
+  t: TFunction,
   counts: ChecklistCounts,
   hasText: boolean,
   summary: string,
   language: string,
 ) => {
-  if (counts.checkable === 0) return nothingToCheckText(language);
-  if (!hasText) return "Use these terms in this translation";
+  if (counts.checkable === 0) return nothingToCheckText(t, language);
+  if (!hasText) return t("GLOSSARY_TARGET_CHECKLIST.HINT_USE_TERMS");
   if (counts.issues === 0) return summary;
-  return `${summary} · you can still save`;
+  return t("GLOSSARY_TARGET_CHECKLIST.HINT_CAN_SAVE", { summary });
 };
 
 const termStatus = (checkable: boolean, hasText: boolean, issueCount: number): TermStatus => {
@@ -141,13 +171,16 @@ interface TermIssueProps {
 }
 
 const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<TermIssueProps>) => {
+  const { t } = useT("localization.glossary");
   const fixable = canApplyFix(violation, matches, culture);
   const replacement = getFixReplacement(violation, matches, culture);
   return (
     <div className="ml-6 mt-1 flex items-center gap-2">
       <p className="min-w-0 flex-1 break-words text-xs text-warning-700">
-        {issueText(violation)}
-        {fixable && replacement && ` · use "${replacement}"`}
+        {issueText(t, violation)}
+        {fixable &&
+          replacement &&
+          ` · ${t("GLOSSARY_TARGET_CHECKLIST.USE_REPLACEMENT", { replacement })}`}
       </p>
       {fixable && (
         <Button
@@ -161,7 +194,7 @@ const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<Te
             onFix(violation);
           }}
         >
-          Fix
+          {t("GLOSSARY_TARGET_CHECKLIST.FIX")}
         </Button>
       )}
     </div>
@@ -188,13 +221,13 @@ const ChecklistTerm = ({
   disabled,
   onFix,
 }: Readonly<ChecklistTermProps>) => {
-  const { value, note } = termGuidance(match, culture);
+  const { t } = useT("localization.glossary");
+  const ruleLabels = useGlossaryRuleLabels();
+  const { value, note } = termGuidance(t, match, culture);
   const { rule } = match.meta;
-  const {
-    Icon,
-    className: iconClass,
-    label,
-  } = STATUS_ICON[termStatus(hasRuleForCulture(match.meta, culture), hasText, violations.length)];
+  const status = termStatus(hasRuleForCulture(match.meta, culture), hasText, violations.length);
+  const { Icon, className: iconClass } = STATUS_ICON[status];
+  const label = statusLabel(t, status);
   const noteClass = rule === "forbidden" ? "text-error" : "text-low-emphasis";
   return (
     <li className="py-1.5">
@@ -208,12 +241,12 @@ const ChecklistTerm = ({
               <span className="text-low-emphasis" aria-hidden="true">
                 →
               </span>
-              <span className="sr-only">use</span>
+              <span className="sr-only">{t("GLOSSARY_TARGET_CHECKLIST.USE")}</span>
               <span className="break-all font-medium text-high-emphasis">{value}</span>
             </>
           )}
           {note && <span className={cn("text-xs", noteClass)}>· {note}</span>}
-          <span className="sr-only">({GLOSSARY_RULE_LABELS[rule]})</span>
+          <span className="sr-only">({ruleLabels[rule]})</span>
         </p>
         {value && <CopyValueButton value={value} />}
       </div>
@@ -269,6 +302,7 @@ export const GlossaryTargetChecklist = ({
   onLiveFix,
   className,
 }: Readonly<GlossaryTargetChecklistProps>) => {
+  const { t } = useT("localization.glossary");
   const live = useLiveGlossaryCheck({ targetText, targetCulture, matches: liveMatches });
   const fromSuggestion = row.fromSuggestion;
   const matches = fromSuggestion ? row.matches : liveMatches;
@@ -296,7 +330,7 @@ export const GlossaryTargetChecklist = ({
     checkable: terms.filter((match) => hasRuleForCulture(match.meta, culture)).length,
     issues: issueCount,
   };
-  const summary = checklistSummary(counts, hasText, language);
+  const summary = checklistSummary(t, counts, hasText, language);
   const sectionClass =
     issueCount > 0 && hasText ? "border-warning-200 bg-warning-50" : "border-border bg-muted/30";
 
@@ -308,13 +342,15 @@ export const GlossaryTargetChecklist = ({
       </output>
       {terms.length > 0 && (
         <section
-          aria-label={`Glossary terms for ${language}`}
+          aria-label={t("GLOSSARY_TARGET_CHECKLIST.ARIA_TERMS_FOR", { language })}
           className={cn("rounded-md border px-3 py-2", sectionClass)}
         >
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-xs font-semibold text-medium-emphasis">Glossary</p>
+            <p className="text-xs font-semibold text-medium-emphasis">
+              {t("GLOSSARY_TARGET_CHECKLIST.HEADING")}
+            </p>
             <p className="text-xs text-low-emphasis" aria-hidden="true">
-              {checklistHint(counts, hasText, summary, language)}
+              {checklistHint(t, counts, hasText, summary, language)}
             </p>
             {canRetry && (
               <Button
@@ -328,7 +364,7 @@ export const GlossaryTargetChecklist = ({
                   onRetry();
                 }}
               >
-                Retry
+                {t("GLOSSARY_TARGET_CHECKLIST.RETRY")}
               </Button>
             )}
           </div>

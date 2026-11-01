@@ -1,6 +1,7 @@
 import { ReactElement, ReactNode, useRef, useState } from "react";
 import { Ban, Check, ExternalLink } from "lucide-react";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Button } from "@/components/ui-kits/button/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
@@ -42,10 +43,11 @@ const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (
   <p className="text-xs font-medium text-low-emphasis">{children}</p>
 );
 
-const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) =>
-  values.length > 0 ? (
+const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) => {
+  const { t } = useT("localization.glossary");
+  return values.length > 0 ? (
     <div className="space-y-1">
-      <ValueCaption>Also avoid</ValueCaption>
+      <ValueCaption>{t("GLOSSARY_TERM_POPOVER.ALSO_AVOID")}</ValueCaption>
       <ul className="flex flex-wrap gap-1">
         {values.map((value) => (
           <li
@@ -58,9 +60,11 @@ const AlsoAvoid = ({ values }: Readonly<{ values: string[] }>) =>
       </ul>
     </div>
   ) : null;
+};
 
 /** The answer the translator came for: what to write in the target language. */
 const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; language: string }>) => {
+  const { t } = useT("localization.glossary");
   switch (term.kind) {
     case "translate":
       return (
@@ -75,7 +79,7 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
           <div className="space-y-0.5">
             <ValueCaption>{language}</ValueCaption>
             <p className="text-sm text-medium-emphasis">
-              The glossary has no {language} translation for this term yet.
+              {t("GLOSSARY_TERM_POPOVER.NO_TRANSLATION", { language })}
             </p>
           </div>
           <AlsoAvoid values={term.alsoAvoid} />
@@ -84,7 +88,7 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
     case "keep":
       return (
         <div className="space-y-0.5">
-          <ValueCaption>Keep as written</ValueCaption>
+          <ValueCaption>{t("GLOSSARY_TERM_POPOVER.KEEP_AS_WRITTEN")}</ValueCaption>
           <p className="break-words text-base font-semibold text-high-emphasis">{term.value}</p>
         </div>
       );
@@ -93,7 +97,7 @@ const TermValue = ({ term, language }: Readonly<{ term: GlossaryTermValue; langu
         <div className="space-y-1.5">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-error">
             <Ban className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Do not use
+            {t("GLOSSARY_TERM_POPOVER.DO_NOT_USE")}
           </p>
           <AlsoAvoid values={term.alsoAvoid} />
         </div>
@@ -120,6 +124,7 @@ const GlossaryTermPopover = ({
   onInsert,
   children,
 }: Readonly<GlossaryTermPopoverProps>) => {
+  const { t } = useT("localization.glossary");
   const [open, setOpen] = useState(false);
   const insertedRef = useRef(false);
   const scoped = useScopedPath();
@@ -152,7 +157,7 @@ const GlossaryTermPopover = ({
       <PopoverContent
         align="start"
         className="w-[min(360px,calc(100vw-2rem))] min-w-0 overflow-hidden p-0"
-        aria-label={`Glossary term ${match.glossary.name}`}
+        aria-label={t("GLOSSARY_TERM_POPOVER.ARIA_TERM", { name: match.glossary.name })}
         onCloseAutoFocus={(event) => {
           // After Insert the target textarea keeps focus instead of the term.
           if (insertedRef.current) {
@@ -179,12 +184,12 @@ const GlossaryTermPopover = ({
           {showInsert && alreadyUsed && (
             <p className="flex items-center gap-1.5 text-sm text-medium-emphasis">
               <Check className="h-4 w-4 text-success" aria-hidden="true" />
-              Already used
+              {t("GLOSSARY_TERM_POPOVER.ALREADY_USED")}
             </p>
           )}
           {showInsert && !alreadyUsed && (
             <Button type="button" size="sm" onClick={handleInsert}>
-              Insert
+              {t("GLOSSARY_TERM_POPOVER.INSERT")}
             </Button>
           )}
           {isMissing ? (
@@ -193,10 +198,12 @@ const GlossaryTermPopover = ({
               variant="outline"
               size="sm"
               className="gap-1.5"
-              aria-label={`Add the ${languageName} translation in the glossary (opens in a new tab)`}
+              aria-label={t("GLOSSARY_TERM_POPOVER.ARIA_ADD_TRANSLATION", {
+                language: languageName,
+              })}
               onClick={openTerm}
             >
-              Add it in the glossary
+              {t("GLOSSARY_TERM_POPOVER.ADD_IN_GLOSSARY")}
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           ) : (
@@ -205,10 +212,10 @@ const GlossaryTermPopover = ({
               variant="ghost"
               size="sm"
               className="ml-auto gap-1.5 px-2 text-medium-emphasis hover:text-high-emphasis"
-              aria-label="Open term (opens in a new tab)"
+              aria-label={t("GLOSSARY_TERM_POPOVER.ARIA_OPEN_TERM")}
               onClick={openTerm}
             >
-              Open term
+              {t("GLOSSARY_TERM_POPOVER.OPEN_TERM")}
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           )}

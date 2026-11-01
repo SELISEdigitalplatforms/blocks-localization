@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
 import { Info, TriangleAlert } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Button } from "@/components/ui-kits/button/button";
 import { cn } from "@/lib/utils";
 import { useLiveGlossaryCheck } from "@blocks-localization/hooks/use-live-glossary-check";
 import {
-  GLOSSARY_UNAVAILABLE_MESSAGE,
+  getGlossaryUnavailableMessage,
   GlossarySuggestionInput,
   GlossarySuggestionOutcome,
   useGlossaryAwareSuggestion,
@@ -140,6 +141,7 @@ export const GlossaryViolationList = ({
   onRetry,
   className,
 }: GlossaryViolationListProps) => {
+  const { t } = useT("localization.glossary");
   const hasViolations = violations.length > 0;
   const count = violations.length;
   return (
@@ -156,9 +158,11 @@ export const GlossaryViolationList = ({
           <p className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning-700" aria-hidden="true" />
             <span className="font-semibold text-high-emphasis">
-              {count === 1 ? "1 glossary issue" : `${count} glossary issues`}
+              {t("GLOSSARY_VIOLATION_LIST.ISSUES", { count })}
             </span>
-            <span className="text-medium-emphasis">You can still save.</span>
+            <span className="text-medium-emphasis">
+              {t("GLOSSARY_VIOLATION_LIST.CAN_STILL_SAVE")}
+            </span>
           </p>
           <ul className="space-y-1.5">
             {violations.map((violation) => {
@@ -176,7 +180,10 @@ export const GlossaryViolationList = ({
                       {formatViolationMessage(violation)}
                     </span>
                     {fixable && replacement && (
-                      <span className="text-sm text-medium-emphasis"> · use “{replacement}”</span>
+                      <span className="text-sm text-medium-emphasis">
+                        {" · "}
+                        {t("GLOSSARY_VIOLATION_LIST.USE_REPLACEMENT", { replacement })}
+                      </span>
                     )}
                   </p>
                   {showAction && (
@@ -192,7 +199,9 @@ export const GlossaryViolationList = ({
                         else onRetry?.();
                       }}
                     >
-                      {fixable ? "Fix" : "Retry"}
+                      {fixable
+                        ? t("GLOSSARY_VIOLATION_LIST.FIX")
+                        : t("GLOSSARY_VIOLATION_LIST.RETRY")}
                     </Button>
                   )}
                 </li>
@@ -275,9 +284,12 @@ export const GlossaryTargetChecks = ({
 };
 
 /** C6 info line, shown under the Auto-translate button. */
-export const GlossaryUnavailableNote = ({ className }: { className?: string }) => (
-  <output className={cn("flex items-center gap-1 text-xs text-low-emphasis", className)}>
-    <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-    {GLOSSARY_UNAVAILABLE_MESSAGE}
-  </output>
-);
+export const GlossaryUnavailableNote = ({ className }: { className?: string }) => {
+  useT("localization.glossary");
+  return (
+    <output className={cn("flex items-center gap-1 text-xs text-low-emphasis", className)}>
+      <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      {getGlossaryUnavailableMessage()}
+    </output>
+  );
+};

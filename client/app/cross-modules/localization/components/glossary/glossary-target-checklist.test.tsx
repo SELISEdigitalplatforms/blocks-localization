@@ -7,7 +7,8 @@ import { IGlossary } from "@blocks-localization/models/language";
 import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
 import { GlossaryTargetChecklist } from "./glossary-target-checklist";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 
