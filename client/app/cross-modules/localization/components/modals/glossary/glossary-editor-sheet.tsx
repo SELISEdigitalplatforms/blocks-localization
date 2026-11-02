@@ -876,19 +876,23 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
         </div>
         <FieldError message={translationError(code)} />
         {isUnchangedTranslation(code) && (
-          <p className="flex flex-wrap items-center gap-x-1 text-xs text-medium-emphasis">
-            This value is the same as the glossary. Did you mean {GLOSSARY_RULE_LABELS.keep}?
-            {!isReadOnly && (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs font-medium"
-                onClick={() => form.setValue("rule", "keep", { shouldDirty: true })}
-              >
-                Use {GLOSSARY_RULE_LABELS.keep}
-              </Button>
-            )}
+          <p className="flex items-start gap-1.5 text-xs text-warning-700">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              This value is the same as the glossary. Did you mean {GLOSSARY_RULE_LABELS.keep}?
+              {!isReadOnly && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="font-medium underline underline-offset-4 hover:no-underline"
+                    onClick={() => form.setValue("rule", "keep", { shouldDirty: true })}
+                  >
+                    Use {GLOSSARY_RULE_LABELS.keep}
+                  </button>
+                </>
+              )}
+            </span>
           </p>
         )}
         <Collapsible defaultOpen={forbiddenValues.length > 0} className="group/forbidden">

@@ -265,7 +265,7 @@ describe("modals/glossary/glossary-editor-sheet", () => {
   });
 
   it("should suggest Keep when a translation equals the glossary and switch on click", async () => {
-    const hint = "This value is the same as the glossary. Did you mean Keep?";
+    const hint = /This value is the same as the glossary\. Did you mean Keep\?/;
     renderSheet(makeGlossary({ name: "Portal" }));
     fireEvent.change(screen.getByLabelText("German (de-DE)"), { target: { value: "Portail" } });
     expect(screen.queryByText(hint)).toBeNull();
