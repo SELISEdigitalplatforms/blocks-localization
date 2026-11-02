@@ -118,9 +118,6 @@ namespace Eurolm.DomainService.Services
                 return result;
             }
 
-            // One job per tenant at a time: an older job finishing after a newer one would write back violations
-            // computed with the older glossary. A message that finds the lease taken leaves its marker queued;
-            // the lease holder drains every queued marker before it stops, so no request waits on a message.
             var owner = Guid.NewGuid().ToString("N");
             var eventGlossaryId = @event.GlossaryId;
             while (await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
