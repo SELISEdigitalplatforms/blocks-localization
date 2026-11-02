@@ -5,7 +5,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
-import GlossaryEditorSheet from "./glossary-editor-sheet";
+import GlossaryEditorSheet, { COMPOSITION_ENTER_WINDOW_MS } from "./glossary-editor-sheet";
 
 const saveGlossaryAsync = vi.fn();
 const fetchLatestGlossary = vi.fn();
@@ -217,12 +217,10 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       "Arbeitsbereich",
     );
     expect(screen.getByText("workspaces")).toBeTruthy();
-    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(
-      "From JSON",
-    );
-    expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
-      "A container.",
-    );
+    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe("From JSON");
+    expect(
+      (screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value,
+    ).toBe("A container.");
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     expect(lastPayload()).toMatchObject({
@@ -348,16 +346,25 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     });
 
     it("should keep commas in a chip and ignore Enter during IME composition", async () => {
-      renderSheet(makeGlossary());
-      const input = screen.getByLabelText("Variants");
-      fireEvent.change(input, { target: { value: "Inc., Ltd" } });
-      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
-      fireEvent.keyDown(input, { key: "Enter", isComposing: true });
-      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
-      fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
-      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
-      fireEvent.keyDown(input, { key: "Enter" });
-      expect((input as HTMLInputElement).value).toBe("");
+      // Event timestamps come from Date.now() in jsdom; only Date is faked, so waitFor still runs.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        renderSheet(makeGlossary());
+        const input = screen.getByLabelText("Variants");
+        fireEvent.change(input, { target: { value: "Inc., Ltd" } });
+        expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+        fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+        expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+        // Safari: the confirming Enter arrives just after compositionend, no longer composing.
+        fireEvent.compositionEnd(input);
+        fireEvent.keyDown(input, { key: "Enter" });
+        expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+        vi.setSystemTime(Date.now() + COMPOSITION_ENTER_WINDOW_MS);
+        fireEvent.keyDown(input, { key: "Enter" });
+        expect((input as HTMLInputElement).value).toBe("");
+      } finally {
+        vi.useRealTimers();
+      }
       save();
       await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
       expect(savedMeta().variants).toEqual(["Inc., Ltd"]);
@@ -482,9 +489,9 @@ describe("modals/glossary/glossary-editor-sheet", () => {
         translations: [{ language: "de-DE", value: "Neu", forbiddenValues: [] }],
       }),
     );
-    expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
-      "A container.",
-    );
+    expect(
+      (screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value,
+    ).toBe("A container.");
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     expect(lastPayload().context).toBe("A container.");

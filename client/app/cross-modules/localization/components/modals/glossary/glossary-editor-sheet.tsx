@@ -6,6 +6,7 @@ import {
   SyntheticEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router";
@@ -353,6 +354,12 @@ const buildTranslationsPayload = (
   });
 };
 
+/**
+ * Safari sends the Enter that confirms an IME candidate right after `compositionend`, with
+ * `isComposing` already false; an Enter this soon after a composition ended belongs to it.
+ */
+export const COMPOSITION_ENTER_WINDOW_MS = 100;
+
 interface ChipInputProps {
   id?: string;
   values: string[];
@@ -377,6 +384,7 @@ const ChipInput = ({
   ariaLabel,
 }: Readonly<ChipInputProps>) => {
   const [draft, setDraft] = useState("");
+  const compositionEndedAt = useRef<number | null>(null);
 
   const addValues = (items: string[]) => {
     const next = items.map((item) => item.trim()).filter(Boolean);
@@ -385,7 +393,10 @@ const ChipInput = ({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // Enter while an IME is composing confirms the composition, not the chip.
-    if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
+    const endsComposition =
+      compositionEndedAt.current !== null &&
+      event.timeStamp - compositionEndedAt.current < COMPOSITION_ENTER_WINDOW_MS;
+    if (event.key !== "Enter" || event.nativeEvent.isComposing || endsComposition) return;
     event.preventDefault();
     addValues([draft]);
     setDraft("");
@@ -424,6 +435,9 @@ const ChipInput = ({
         className="h-6 w-auto min-w-32 flex-1 border-0 bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100"
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
+        onCompositionEnd={(event) => {
+          compositionEndedAt.current = event.timeStamp;
+        }}
         onPaste={handlePaste}
         onBlur={() => {
           addValues([draft]);
@@ -1172,9 +1186,10 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Variants
                           </FormLabel>
                           <FieldInfo label="variants">
-                            Other forms of this glossary, such as plurals, spellings or synonyms, e.g.
-                            &quot;Workspaces&quot; or &quot;work space&quot;. AI suggestions apply
-                            this entry&apos;s rule to them too. Up to {GLOSSARY_LIMITS.variants}.
+                            Other forms of this glossary, such as plurals, spellings or synonyms,
+                            e.g. &quot;Workspaces&quot; or &quot;work space&quot;. AI suggestions
+                            apply this entry&apos;s rule to them too. Up to{" "}
+                            {GLOSSARY_LIMITS.variants}.
                           </FieldInfo>
                         </LabelRow>
                         <ChipInput
@@ -1250,8 +1265,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                         <LabelRow>
                           <FormLabel className="font-medium text-high-emphasis">Type</FormLabel>
                           <FieldInfo label="type">
-                            What kind of glossary this is, e.g. an acronym or a phrase. Helps your team
-                            understand and review it.
+                            What kind of glossary this is, e.g. an acronym or a phrase. Helps your
+                            team understand and review it.
                           </FieldInfo>
                         </LabelRow>
                         <Select
@@ -1286,8 +1301,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Definition
                           </FormLabel>
                           <FieldInfo label="definition">
-                            What the glossary means in your product. It is sent to the AI as context, so
-                            keep it short and clear.
+                            What the glossary means in your product. It is sent to the AI as
+                            context, so keep it short and clear.
                           </FieldInfo>
                         </LabelRow>
                         <FormControl>
@@ -1316,9 +1331,9 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Part of speech
                           </FormLabel>
                           <FieldInfo label="part of speech">
-                            Whether the glossary is a noun, verb and so on. It is sent to the AI with the
-                            definition, to tell apart words like &quot;Save&quot; (verb) and
-                            &quot;Save&quot; (noun).
+                            Whether the glossary is a noun, verb and so on. It is sent to the AI
+                            with the definition, to tell apart words like &quot;Save&quot; (verb)
+                            and &quot;Save&quot; (noun).
                           </FieldInfo>
                         </LabelRow>
                         <Select
@@ -1356,8 +1371,9 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                             Usage examples
                           </FormLabel>
                           <FieldInfo label="usage examples">
-                            Sentences that show the glossary in use. Shown to your team on the glossary&apos;s
-                            page; not sent to the AI. Up to {GLOSSARY_LIMITS.usageExamples}.
+                            Sentences that show the glossary in use. Shown to your team on the
+                            glossary&apos;s page; not sent to the AI. Up to{" "}
+                            {GLOSSARY_LIMITS.usageExamples}.
                           </FieldInfo>
                         </LabelRow>
                         <div className="grid gap-2">
@@ -1610,8 +1626,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <TriangleAlert />
                   <AlertDescription>
                     <p>
-                      This glossary was changed by someone else. Reload the latest version and re-apply
-                      your changes.
+                      This glossary was changed by someone else. Reload the latest version and
+                      re-apply your changes.
                     </p>
                     <Button
                       type="button"

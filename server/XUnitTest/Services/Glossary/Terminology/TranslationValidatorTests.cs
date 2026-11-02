@@ -45,6 +45,15 @@ namespace XUnitTest.Terminology
             Validate(new[] { Workspace() }, "Open your Workspace", output).Should().BeEmpty();
         }
 
+        [Theory]
+        [InlineData("de-DE")]
+        [InlineData("de_DE")]
+        [InlineData("DE")]
+        public void The_target_language_is_read_from_a_culture_with_either_separator(string culture)
+        {
+            TranslationValidator.ContainsApprovedTranslation("Projektarbeitsbereich", "Arbeitsbereich", culture).Should().BeTrue();
+        }
+
         [Fact]
         public void A_translation_inside_another_word_is_still_reported_where_compounds_are_not_written_as_one_word()
         {

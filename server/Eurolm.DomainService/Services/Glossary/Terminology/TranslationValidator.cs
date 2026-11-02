@@ -124,6 +124,8 @@ namespace Eurolm.DomainService.Services
         /// <summary>Languages that write compounds as one word ("Standardarbeitsbereich").</summary>
         private static readonly string[] CompoundingLanguages = { "de", "nl", "sv", "da", "nb", "nn", "no", "is", "fo", "fi", "et", "af", "lb", "fy" };
 
+        private static readonly char[] CultureSeparators = { '-', '_' };
+
         /// <summary>A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag".</summary>
         public const int MinCompoundPartLength = 4;
 
@@ -139,7 +141,7 @@ namespace Eurolm.DomainService.Services
             if (FindAll(text, approved, true, culture).Count > 0) return true;
 
             var needle = JsText.Trim(NormalizeNfc(approved));
-            var language = culture.Split('-', '_')[0].ToLowerInvariant();
+            var language = culture.Split(CultureSeparators)[0].ToLowerInvariant();
             string core;
             Func<string, bool> allowsPrefix;
             switch (language)

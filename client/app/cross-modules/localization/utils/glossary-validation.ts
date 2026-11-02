@@ -151,7 +151,7 @@ const ARABIC_PROCLITICS = /^[وف]?(?:[بكل]?ال|لل|[بكل])?$/u;
 /** Hebrew prefix letters (ו, ה, ב, כ, ל, מ, ש), up to three, written onto the next word. */
 const HEBREW_PROCLITICS = /^[והבכלמש]{0,3}$/u;
 /** Languages that write compounds as one word ("Standardarbeitsbereich"). */
-const COMPOUNDING_LANGUAGES: readonly string[] = [
+const COMPOUNDING_LANGUAGES: ReadonlySet<string> = new Set([
   "de",
   "nl",
   "sv",
@@ -166,7 +166,7 @@ const COMPOUNDING_LANGUAGES: readonly string[] = [
   "af",
   "lb",
   "fy",
-];
+]);
 /** A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag". */
 export const MIN_COMPOUND_PART_LENGTH = 4;
 
@@ -184,10 +184,7 @@ const attachmentOf = (
   if (language === "he" || language === "iw") {
     return { core: approved, allowsPrefix: (prefix) => HEBREW_PROCLITICS.test(prefix) };
   }
-  if (
-    COMPOUNDING_LANGUAGES.includes(language) &&
-    [...approved].length >= MIN_COMPOUND_PART_LENGTH
-  ) {
+  if (COMPOUNDING_LANGUAGES.has(language) && [...approved].length >= MIN_COMPOUND_PART_LENGTH) {
     return { core: approved, allowsPrefix: () => true };
   }
   return null;
