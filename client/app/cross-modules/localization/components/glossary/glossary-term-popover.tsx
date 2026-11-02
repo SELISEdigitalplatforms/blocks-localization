@@ -9,7 +9,7 @@ import GlossaryStatusBadge from "@blocks-localization/components/glossary/glossa
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
-import { findInTarget } from "@blocks-localization/utils/glossary-validation";
+import { containsApprovedTranslation } from "@blocks-localization/utils/glossary-validation";
 
 export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languageName">;
 
@@ -132,8 +132,7 @@ const GlossaryTermPopover = ({
   // Keep terms are already right in the source wording, so there is nothing to insert.
   const insertValue = term.kind === "translate" ? term.value : null;
   const alreadyUsed =
-    insertValue !== null &&
-    !!findInTarget(targetText, insertValue, { caseInsensitive: true, targetCulture: code });
+    insertValue !== null && containsApprovedTranslation(targetText, insertValue, code);
   // Only an approved value can be inserted: no greyed-out button for a missing translation.
   const showInsert = !!onInsert && term.kind === "translate";
   const isMissing = term.kind === "missing";

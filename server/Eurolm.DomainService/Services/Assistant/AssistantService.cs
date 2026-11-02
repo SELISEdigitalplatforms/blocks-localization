@@ -40,8 +40,7 @@ namespace Eurolm.DomainService.Services
 
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
         {
-            if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null
-                || ClientRulesGuard.IsClientRuled(query.ElementDetailContext))
+            if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null)
             {
                 return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
             }
@@ -67,25 +66,39 @@ namespace Eurolm.DomainService.Services
                 return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
             }
 
+            if (prompt.MissingTranslations.Count > 0)
+            {
+                // Translate All runs here too: this is the only trace of glossaries it could not apply.
+                _logger.LogInformation("SuggestTranslation: {MissingCount} matched glossaries have no {Culture} translation",
+                    prompt.MissingTranslations.Count, query.DestinationLanguageCode);
+            }
+
             var first = await CompleteAsync(prompt.Prompt, query);
             if (first == null)
-                return new SuggestionResult { AppliedTerms = prompt.AppliedTerms };
+                return new SuggestionResult { AppliedTerms = prompt.AppliedTerms, MissingGlossaryTranslations = prompt.MissingTranslations };
 
             var violations = TranslationValidator.Validate(first, query.DestinationLanguageCode, prompt.RuleMatches);
             if (violations.Count == 0)
-                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms };
+                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms, MissingGlossaryTranslations = prompt.MissingTranslations };
 
             // One correction attempt at most; if it fails or comes back empty, keep the first answer.
             var corrected = await CompleteAsync(TerminologyPromptBuilder.BuildCorrection(prompt, violations), query);
             _logger.LogInformation("SuggestTranslation: correction attempt made for {ViolationCount} glossary violations, succeeded: {Succeeded}",
                 violations.Count, corrected != null);
             if (corrected == null)
-                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms, GlossaryViolations = violations };
+                return new SuggestionResult
+                {
+                    Content = first,
+                    AppliedTerms = prompt.AppliedTerms,
+                    GlossaryViolations = violations,
+                    MissingGlossaryTranslations = prompt.MissingTranslations
+                };
 
             return new SuggestionResult
             {
                 Content = corrected,
                 AppliedTerms = prompt.AppliedTerms,
+                MissingGlossaryTranslations = prompt.MissingTranslations,
                 GlossaryViolations = TranslationValidator.Validate(corrected, query.DestinationLanguageCode, prompt.RuleMatches)
             };
         }

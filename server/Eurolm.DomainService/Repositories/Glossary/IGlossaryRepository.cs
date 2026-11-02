@@ -21,6 +21,12 @@ namespace Eurolm.DomainService.Repositories
         /// <summary>Every stored glossary of the tenant database (for the matcher cache and the migration).</summary>
         Task<List<BlocksGlossary>> GetAllEntitiesAsync(string tenantId);
 
+        /// <summary>
+        /// A cheap stamp of the tenant's glossaries (count and latest LastUpdateDate): it changes on every create,
+        /// save, delete and module tagging, so another process can tell its cached matcher is outdated.
+        /// </summary>
+        Task<string> GetRevisionAsync(string tenantId);
+
         /// <summary>Replaces each glossary only when its stored Version still equals the expected one. Returns the modified count.</summary>
         Task<long> ReplaceManyAsync(IReadOnlyList<(BlocksGlossary Glossary, int ExpectedVersion)> glossaries);
 

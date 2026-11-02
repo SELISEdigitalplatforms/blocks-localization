@@ -28,7 +28,8 @@ namespace BlocksTemplate.Api.Controllers
             {
                 Content = response?.Content,
                 AppliedTerms = response?.AppliedTerms ?? new List<AppliedTerm>(),
-                GlossaryViolations = response?.GlossaryViolations ?? new List<GlossaryViolationDto>()
+                GlossaryViolations = response?.GlossaryViolations ?? new List<GlossaryViolationDto>(),
+                MissingGlossaryTranslations = response?.MissingGlossaryTranslations ?? new List<MissingGlossaryTranslation>()
             });
         }
     }

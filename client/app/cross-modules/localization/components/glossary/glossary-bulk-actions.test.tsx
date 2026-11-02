@@ -203,11 +203,29 @@ describe("components/glossary/glossary-bulk-actions", () => {
     expect((screen.getByRole("button", { name: "Tag" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("disables Tag while the module's glossaries are only cached or refetching", () => {
+    vi.mocked(useGetAllModuleGlossaries).mockReturnValue({
+      data: [term("x", "Existing")],
+      isLoading: false,
+      isError: false,
+      isFetching: true,
+      isFetchedAfterMount: false,
+    } as never);
+    renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Tag to module" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Module" }));
+    fireEvent.click(screen.getByRole("option", { name: "Billing" }));
+    expect(screen.getByText("Loading the module's glossaries…")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Tag" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("tags with the module's existing glossary ids once they are loaded", async () => {
     vi.mocked(useGetAllModuleGlossaries).mockReturnValue({
       data: [term("x", "Existing")],
       isLoading: false,
       isError: false,
+      isFetching: false,
+      isFetchedAfterMount: true,
     } as never);
     run.mockResolvedValue({ total: 2, succeeded: 2, failed: [] });
     renderBar();

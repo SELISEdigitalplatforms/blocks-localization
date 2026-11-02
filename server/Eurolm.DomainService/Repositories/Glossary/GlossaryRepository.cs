@@ -246,6 +246,20 @@ namespace Eurolm.DomainService.Repositories
             return await collection.Find(Builders<BlocksGlossary>.Filter.Empty).ToListAsync();
         }
 
+        public async Task<string> GetRevisionAsync(string tenantId)
+        {
+            var dataBase = GetDatabase(tenantId);
+            var collection = dataBase.GetCollection<BlocksGlossary>(_collectionName);
+
+            var count = await collection.CountDocumentsAsync(Builders<BlocksGlossary>.Filter.Empty);
+            var latest = await collection.Find(Builders<BlocksGlossary>.Filter.Empty)
+                .Sort(Builders<BlocksGlossary>.Sort.Descending(g => g.LastUpdateDate))
+                .Limit(1)
+                .Project(g => g.LastUpdateDate)
+                .FirstOrDefaultAsync();
+            return $"{count}:{latest.Ticks}";
+        }
+
         public async Task<long> ReplaceManyAsync(IReadOnlyList<(BlocksGlossary Glossary, int ExpectedVersion)> glossaries)
         {
             if (glossaries.Count == 0) return 0;

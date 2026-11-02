@@ -14,6 +14,7 @@ import { Input } from "@/components/ui-kits/input/input";
 import { Label } from "@/components/ui-kits/label/label";
 import {
   useDeleteGlossaryWithCascade,
+  useFetchLatestGlossary,
   useGetGlossaryUsage,
   useSaveGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
@@ -28,6 +29,11 @@ import { formatErrorMessage, getHttpErrorMessage } from "@/lib/error";
 
 /** From this many keys, Delete needs the term's exact name typed (Phase 8 A3). */
 export const DELETE_CONFIRM_THRESHOLD = 50;
+
+/** `validationErrors` property the server uses when the term changed since it was loaded. */
+const VERSION_ERROR_PROPERTY = "Version";
+
+const normalizeName = (value: string) => value.trim().normalize("NFC");
 
 interface DeleteGlossaryProps {
   itemId: string;
@@ -55,22 +61,27 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   } = useGetGlossaryUsage(itemId);
   const { isPending, mutateAsync } = useDeleteGlossaryWithCascade();
   const { isPending: isDeprecating, mutateAsync: saveGlossary } = useSaveGlossary();
+  const fetchLatestGlossary = useFetchLatestGlossary();
   const runningRef = useRef(false);
   const [confirmText, setConfirmText] = useState("");
+  // Set after a version conflict, so the next "Deprecate instead" saves on top of it.
+  const [latestGlossary, setLatestGlossary] = useState<IGlossary | undefined>(undefined);
+  const currentGlossary = latestGlossary ?? glossary;
 
   const usageCount = usage?.keyCount;
   const moduleCount = usage?.moduleIds?.length ?? 0;
   const hasKnownCount = !isCountError && typeof usageCount === "number";
   const isBusy = isPending || isDeprecating;
   const needsTyping = hasKnownCount && usageCount >= DELETE_CONFIRM_THRESHOLD;
-  const isTypedNameValid = !needsTyping || confirmText.trim() === glossaryName;
+  const isTypedNameValid =
+    !needsTyping || normalizeName(confirmText) === normalizeName(glossaryName ?? "");
   const canConfirm = hasKnownCount && !isCounting && !isRecounting && !isBusy && isTypedNameValid;
   const canDeprecate =
-    !!glossary &&
+    !!currentGlossary &&
     hasKnownCount &&
     usageCount > 0 &&
-    !isUnsupportedGlossaryNote(glossary) &&
-    getGlossaryStatus(glossary) !== "deprecated";
+    !isUnsupportedGlossaryNote(currentGlossary) &&
+    getGlossaryStatus(currentGlossary) !== "deprecated";
 
   const deleteGlossary = async () => {
     if (runningRef.current || !hasKnownCount || !isTypedNameValid) {
@@ -111,10 +122,13 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
 
   // Keeps the term and every key's tags; only its status changes (H24).
   const deprecateInstead = async () => {
-    if (!glossary || runningRef.current) return;
+    if (!currentGlossary || runningRef.current) return;
     runningRef.current = true;
     try {
-      const res = await saveGlossary({ ...toGlossarySavePayload(glossary), status: "deprecated" });
+      const res = await saveGlossary({
+        ...toGlossarySavePayload(currentGlossary),
+        status: "deprecated",
+      });
       if (res?.success) {
         toast({
           variant: "success",
@@ -122,6 +136,14 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
           description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         });
         onClose();
+      } else if (res?.validationErrors?.some((e) => e.propertyName === VERSION_ERROR_PROPERTY)) {
+        setLatestGlossary(await fetchLatestGlossary(itemId));
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description:
+            "This glossary was changed by someone else. The latest version is loaded; try again.",
+        });
       } else {
         showErrorToast({
           errors: res?.validationErrors?.[0]?.errorMessage || res?.errorMessage,

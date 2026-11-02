@@ -366,6 +366,12 @@ export interface IAppliedTerm {
   expected?: string;
 }
 
+/** A matched Translate glossary with no approved translation for the requested target. */
+export interface IMissingGlossaryTranslation {
+  glossaryId: string;
+  term: string;
+}
+
 /** A violation in a suggestion response (no culture: it is the requested target). */
 export interface IGlossaryViolationDto {
   glossaryId: string;
@@ -444,6 +450,7 @@ export interface ITranslationSuggestionResponse {
   content: string;
   appliedTerms?: IAppliedTerm[];
   glossaryViolations?: IGlossaryViolationDto[];
+  missingGlossaryTranslations?: IMissingGlossaryTranslation[];
   errors: unknown;
   isSuccess: boolean;
 }

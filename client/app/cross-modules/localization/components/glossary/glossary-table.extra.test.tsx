@@ -133,8 +133,9 @@ describe("glossary-table (extra coverage)", () => {
     renderWithProviders(<GlossaryTable />);
     expect(screen.getByText("Translate")).toBeTruthy();
     expect(screen.getByText("de-DE")).toBeTruthy();
-    expect(screen.getByText("fr-FR missing")).toBeTruthy();
-    expect(screen.queryByText("en-US missing")).toBeNull();
+    // A missing language shows only its code; "is missing" is for screen readers and the tooltip.
+    expect(screen.getByText("fr-FR").textContent).toBe("fr-FR is missing");
+    expect(screen.queryByText("en-US")).toBeNull();
   });
 
   it("shows a dash instead of chips for Keep and Forbidden terms", () => {
@@ -222,6 +223,22 @@ describe("glossary-table (extra coverage)", () => {
       rule: undefined,
       status: "draft",
     });
+  });
+
+  it("steps back to the last page when deletes leave the current page empty", () => {
+    setData([row], 45);
+    const { container, rerender } = renderWithProviders(<GlossaryTable />);
+    const nextButton = () =>
+      Array.from((container.querySelector(".mt-5") as HTMLElement).querySelectorAll("button")).find(
+        (b) => b.querySelector(".lucide-chevron-right") && !(b as HTMLButtonElement).disabled,
+      )!;
+    fireEvent.click(nextButton());
+    fireEvent.click(nextButton());
+    expect(mockGlossaries).toHaveBeenLastCalledWith(2, 20, "", expect.anything());
+
+    setData([], 25);
+    rerender(<GlossaryTable />);
+    expect(mockGlossaries).toHaveBeenLastCalledWith(1, 20, "", expect.anything());
   });
 
   it("shows the filtered empty state and keeps search enabled when filters match nothing", async () => {

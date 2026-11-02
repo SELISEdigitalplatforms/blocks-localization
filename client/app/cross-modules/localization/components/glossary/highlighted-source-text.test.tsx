@@ -51,6 +51,23 @@ describe("HighlightedSourceText", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("sorts matches and leaves out-of-range or overlapping ones as plain text", () => {
+    const [workspace, selise, portal] = matches(SOURCE);
+    const overlapping = { ...workspace, start: workspace.start + 2 };
+    const outOfRange = { ...portal, start: SOURCE.length - 2 };
+    const { container } = render(
+      <HighlightedSourceText
+        text={SOURCE}
+        matches={[selise, outOfRange, overlapping, workspace]}
+      />,
+    );
+    expect(container.textContent).toBe(SOURCE);
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Workspace",
+      "SELISE",
+    ]);
+  });
+
   it("opens the popover for the editor's target and inserts (Example 1)", async () => {
     const onInsert = vi.fn();
     render(

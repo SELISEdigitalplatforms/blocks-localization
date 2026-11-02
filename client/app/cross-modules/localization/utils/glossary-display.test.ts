@@ -6,6 +6,7 @@ import {
   getGlossaryStatus,
   isUnsupportedGlossaryNote,
   toGlossaryMeta,
+  toGlossarySavePayload,
 } from "@blocks-localization/utils/glossary-display";
 
 const glossary = (overrides: Partial<IGlossary> = {}): IGlossary => ({
@@ -106,9 +107,9 @@ describe("utils/glossary-display", () => {
       expect(getGlossaryNote(glossary({ additionalNote: '@@glossary-meta:v1@@{"rule":"keep"}' }))).toBe("");
     });
 
-    it("returns the whole raw text for corrupt v1 JSON", () => {
+    it("returns no note for corrupt v1 JSON", () => {
       const raw = "@@glossary-meta:v1@@{not json";
-      expect(getGlossaryNote(glossary({ additionalNote: raw }))).toBe(raw);
+      expect(getGlossaryNote(glossary({ additionalNote: raw }))).toBe("");
     });
 
     it("returns no note for an unsupported version and for a missing note", () => {
@@ -135,6 +136,18 @@ describe("utils/glossary-display", () => {
       expect(getGlossaryStatus({ status: "weird" as never })).toBe("approved");
       expect(getGlossaryStatus({ status: "draft" })).toBe("draft");
       expect(getGlossaryStatus({ status: "deprecated" })).toBe("deprecated");
+    });
+  });
+
+  describe("toGlossarySavePayload", () => {
+    it("replaces a corrupt v1 note and keeps a plain one", () => {
+      expect(
+        toGlossarySavePayload(glossary({ additionalNote: "@@glossary-meta:v1@@{not json" }))
+          .additionalNote,
+      ).toBe("");
+      expect(toGlossarySavePayload(glossary({ additionalNote: "plain note" })).additionalNote).toBe(
+        "plain note",
+      );
     });
   });
 });

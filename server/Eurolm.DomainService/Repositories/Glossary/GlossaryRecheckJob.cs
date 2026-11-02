@@ -16,5 +16,7 @@ namespace Eurolm.DomainService.Repositories
         public DateTime QueuedAt { get; set; }
         public bool WholeProject { get; set; }
         public List<string> GlossaryIds { get; set; } = new();
+        /// <summary>Modules the glossaries were scoped to before the change, so their keys are re-checked too.</summary>
+        public List<string> ModuleIds { get; set; } = new();
     }
 }

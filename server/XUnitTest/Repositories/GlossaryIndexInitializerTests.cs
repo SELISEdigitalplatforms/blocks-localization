@@ -43,7 +43,8 @@ namespace XUnitTest.Repositories
             {
                 ("ix_isglobal", BsonDocument.Parse("{ IsGlobal: 1 }").ToJson()),
                 ("ix_moduleids", BsonDocument.Parse("{ ModuleIds: 1 }").ToJson()),
-                ("ix_status", BsonDocument.Parse("{ Status: 1 }").ToJson())
+                ("ix_status", BsonDocument.Parse("{ Status: 1 }").ToJson()),
+                ("ix_lastupdatedate", BsonDocument.Parse("{ LastUpdateDate: -1 }").ToJson())
             });
         }
 

@@ -18,6 +18,13 @@ namespace Eurolm.DomainService.Services
         public string? Expected { get; set; }
     }
 
+    /// <summary>A matched Translate glossary with no approved translation for the target language.</summary>
+    public class MissingGlossaryTranslation
+    {
+        public string GlossaryId { get; set; } = "";
+        public string Term { get; set; } = "";
+    }
+
     public class GlossaryViolationDto
     {
         public string GlossaryId { get; set; } = "";
@@ -38,5 +45,7 @@ namespace Eurolm.DomainService.Services
         /// <summary>The matches whose rules are in the prompt (Approved, applicable, within the caps).</summary>
         public List<GlossaryMatch> RuleMatches { get; init; } = new();
         public List<AppliedTerm> AppliedTerms { get; init; } = new();
+        /// <summary>Matched Translate glossaries the AI had no target wording for (nothing to apply or check).</summary>
+        public List<MissingGlossaryTranslation> MissingTranslations { get; init; } = new();
     }
 }

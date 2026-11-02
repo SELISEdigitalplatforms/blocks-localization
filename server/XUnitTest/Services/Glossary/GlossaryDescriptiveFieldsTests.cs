@@ -176,10 +176,13 @@ namespace XUnitTest.Services.Glossary
             _repository.Setup(r => r.GetStoredByIdAsync("g1")).ReturnsAsync(Stored());
 
             await _service.SaveGlossaryAsync(new GlossaryModel { Name = "New term" });
+            var createdId = _written!.ItemId;
             await _service.SaveGlossaryAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace" });
 
-            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == _written!.ItemId)), Times.Once);
-            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == "g1")), Times.Once);
+            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == createdId)), Times.Once);
+            // An update also names the scope the glossary had before the save.
+            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == "g1"),
+                It.IsAny<IReadOnlyCollection<string>>(), Stored().IsGlobal), Times.Once);
         }
 
         [Fact]
@@ -190,17 +193,33 @@ namespace XUnitTest.Services.Glossary
             await _service.SaveGlossaryAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace", Version = 1 });
 
             _recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
+            _recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<bool>()), Times.Never);
         }
 
         [Fact]
-        public async Task Delete_triggers_a_recheck_for_that_glossary()
+        public async Task Delete_of_an_unused_module_glossary_rechecks_its_former_modules()
         {
-            _repository.Setup(r => r.GetByIdAsync("g1")).ReturnsAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace" });
+            _repository.Setup(r => r.GetByIdAsync("g1"))
+                .ReturnsAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace", ModuleIds = new List<string> { "m1" } });
 
             var result = await _service.DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "g1" });
 
             result.IsSuccess.Should().BeTrue();
-            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == "g1")), Times.Once);
+            _recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Single() == "g1"),
+                It.Is<IReadOnlyCollection<string>>(m => m.SequenceEqual(new[] { "m1" })), false), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true, 0)]
+        [InlineData(false, 3)]
+        public async Task Delete_of_a_global_or_tagged_glossary_rechecks_the_whole_project(bool isGlobal, long untaggedKeys)
+        {
+            _repository.Setup(r => r.GetByIdAsync("g1")).ReturnsAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace", IsGlobal = isGlobal });
+            _keyRepository.Setup(k => k.RemoveGlossaryIdFromKeysAsync("g1")).ReturnsAsync(untaggedKeys);
+
+            await _service.DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "g1" });
+
+            _recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>(), true), Times.Once);
         }
 
         [Fact]

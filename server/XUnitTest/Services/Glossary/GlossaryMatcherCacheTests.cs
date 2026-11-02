@@ -105,5 +105,48 @@ namespace XUnitTest
 
             requested.Should().Equal("tenant-a", "tenant-b");
         }
+
+        [Fact]
+        public async Task A_changed_revision_from_another_process_rebuilds_before_the_TTL()
+        {
+            var revision = "1:100";
+            var loads = 0;
+            var cache = new GlossaryMatcherCache(
+                _ => { loads++; return Task.FromResult(new List<BlocksGlossary>()); },
+                () => _now,
+                _ => Task.FromResult(revision));
+
+            await cache.GetAsync("t1");
+            _now += TimeSpan.FromSeconds(1);
+            await cache.GetAsync("t1");
+            loads.Should().Be(1, "the revision is only checked every few seconds");
+
+            _now += GlossaryMatcherCache.RevisionCheckInterval;
+            await cache.GetAsync("t1");
+            loads.Should().Be(1, "the revision is unchanged");
+
+            revision = "2:200";
+            _now += GlossaryMatcherCache.RevisionCheckInterval;
+            await cache.GetAsync("t1");
+            loads.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task A_failing_revision_check_keeps_the_cached_matcher()
+        {
+            var loads = 0;
+            var calls = 0;
+            var cache = new GlossaryMatcherCache(
+                _ => { loads++; return Task.FromResult(new List<BlocksGlossary>()); },
+                () => _now,
+                _ => ++calls == 1 ? Task.FromResult("1:1") : throw new InvalidOperationException("db down"));
+
+            var first = await cache.GetAsync("t1");
+            _now += GlossaryMatcherCache.RevisionCheckInterval;
+            var second = await cache.GetAsync("t1");
+
+            second.Should().BeSameAs(first);
+            loads.Should().Be(1);
+        }
     }
 }

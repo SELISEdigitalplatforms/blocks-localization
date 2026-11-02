@@ -19,7 +19,9 @@ namespace Eurolm.DomainService.Repositories
         {
             Model("ix_isglobal", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.IsGlobal)),
             Model("ix_moduleids", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.ModuleIds)),
-            Model("ix_status", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.Status))
+            Model("ix_status", Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.Status)),
+            // The matcher cache's revision check reads the latest LastUpdateDate.
+            Model("ix_lastupdatedate", Builders<BlocksGlossary>.IndexKeys.Descending(g => g.LastUpdateDate))
         };
 
         /// <summary>

@@ -14,10 +14,11 @@ import {
   useGlossaryAwareSuggestion,
 } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
-import { IAppliedTerm } from "@blocks-localization/models/language";
+import { IAppliedTerm, IMissingGlossaryTranslation } from "@blocks-localization/models/language";
 import {
   applyFix,
   canApplyFix,
+  containsApprovedTranslation,
   findInTarget,
   formatViolationMessage,
   getFixReplacement,
@@ -32,6 +33,8 @@ export interface GlossaryRowState {
   matches: GlossaryMatch[];
   /** The server's applied terms of the suggestion; cleared by the user's first edit (H25). */
   appliedTerms: IAppliedTerm[];
+  /** Matched Translate glossaries without a translation for this language; cleared with `appliedTerms`. */
+  missingTranslations?: IMissingGlossaryTranslation[];
   targetCulture: string;
   /**
    * True from a successful suggestion until the user's first edit of the row: until then the
@@ -67,8 +70,9 @@ export const recheckViolations = (
       );
     }
     if (!violation.expected) return true;
-    const caseInsensitive = violation.kind === "missing-translation";
-    return !findInTarget(normalized, violation.expected, { caseInsensitive, targetCulture });
+    if (violation.kind === "missing-translation")
+      return !containsApprovedTranslation(normalized, violation.expected, targetCulture);
+    return !findInTarget(normalized, violation.expected, { caseInsensitive: false, targetCulture });
   });
 };
 
@@ -86,6 +90,7 @@ export const useGlossarySuggestionRows = () => {
                 violations: outcome.violations,
                 matches: outcome.matches,
                 appliedTerms: outcome.appliedTerms,
+                missingTranslations: outcome.missingTranslations,
                 targetCulture: input.targetLanguage.languageCode,
                 fromSuggestion: true,
               }
@@ -107,7 +112,13 @@ export const useGlossarySuggestionRows = () => {
       const next = { ...previous };
       for (const key of keys) {
         if (next[key]) {
-          next[key] = { ...next[key], violations: [], appliedTerms: [], fromSuggestion: false };
+          next[key] = {
+            ...next[key],
+            violations: [],
+            appliedTerms: [],
+            missingTranslations: [],
+            fromSuggestion: false,
+          };
         }
       }
       return next;
@@ -263,6 +274,16 @@ export const GlossaryAppliedTerms = ({ terms }: Readonly<{ terms: IAppliedTerm[]
     </p>
   ) : null;
 
+/** The suggestion's glossaries the AI had no approved wording for in this language. */
+export const GlossaryMissingTranslations = ({
+  terms = [],
+}: Readonly<{ terms?: IMissingGlossaryTranslation[] }>) =>
+  terms.length > 0 ? (
+    <p className="text-xs text-low-emphasis">
+      No glossary translation for this language yet: {terms.map((term) => term.term).join(", ")}
+    </p>
+  ) : null;
+
 /**
  * The violation list under one target field. Right after a suggestion it shows that
  * suggestion's violations (with Retry); from the user's first edit on it shows the live
@@ -289,6 +310,7 @@ export const GlossaryTargetChecks = ({
     return (
       <>
         <GlossaryAppliedTerms terms={row.appliedTerms} />
+        <GlossaryMissingTranslations terms={row.missingTranslations} />
         <GlossaryViolationList
           className={className}
           violations={row.violations}

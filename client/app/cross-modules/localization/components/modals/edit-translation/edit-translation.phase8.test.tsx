@@ -84,7 +84,7 @@ const languages: ILanguageConfig[] = [
   { itemId: "l2", languageName: "German", languageCode: "de-DE" },
 ];
 
-const renderModal = (key: IBlocksLanguageKey = keyDetails) =>
+const renderModal = (key: IBlocksLanguageKey = keyDetails, destinationLanguageCode = "de-DE") =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
@@ -93,7 +93,7 @@ const renderModal = (key: IBlocksLanguageKey = keyDetails) =>
         <EditTranslation
           dialogTitle="Edit translation"
           keyDetails={key}
-          destinationLanguageCode="de-DE"
+          destinationLanguageCode={destinationLanguageCode}
           languageListData={languages}
           onClose={vi.fn()}
         />
@@ -213,6 +213,21 @@ describe("edit-translation (Phase 8)", () => {
       selectSourceText("Open your");
       fireEvent.click(screen.getByRole("button", { name: "Add to glossary" }));
       expect(screen.getByText("sheet-Open your")).toBeTruthy();
+    });
+
+    it("is not offered for text that already is a glossary, in any letter case", async () => {
+      renderModal();
+      await screen.findByText("Workspace");
+      selectSourceText("Workspace");
+      expect(screen.queryByRole("button", { name: "Add to glossary" })).toBeNull();
+    });
+
+    it("is not offered while editing the default language", async () => {
+      renderModal(keyDetails, "en-US");
+      // The source block and the field both hold the English text.
+      await screen.findAllByText(/Open your/);
+      selectSourceText("Open your");
+      expect(screen.queryByRole("button", { name: "Add to glossary" })).toBeNull();
     });
 
     it("shows nothing for a selection outside the source block", () => {

@@ -170,4 +170,20 @@ describe("useInlineKeyEditor — /Glossary/Match", () => {
     await waitFor(() => expect(matchGlossary).toHaveBeenCalledTimes(2));
     expect(matchGlossary.mock.calls[1][0]).toMatchObject({ text: "Open your Workspace now!" });
   });
+
+  it("drops the previous source's matches until the edited source is matched", async () => {
+    const { result } = setup();
+    act(() => {
+      vi.advanceTimersByTime(MATCH_DEBOUNCE_MS);
+    });
+    await waitFor(() => expect(result.current.sourceMatches).toHaveLength(1));
+
+    act(() => result.current.setTranslation("en-US", "Your Workspace"));
+    expect(result.current.sourceMatches).toHaveLength(0);
+    act(() => {
+      vi.advanceTimersByTime(MATCH_DEBOUNCE_MS);
+    });
+    await waitFor(() => expect(result.current.sourceMatches).toHaveLength(1));
+    expect(result.current.sourceMatches[0].start).toBe(5);
+  });
 });

@@ -20,15 +20,12 @@ interface GlossaryTranslationChipsProps {
   languages: ILanguageConfig[] | undefined;
   /** Chips shown before "+N" (the glossary picker shows 3). */
   max?: number;
-  /** Missing chips show only the code; "missing" moves to a tooltip (narrow side panels). */
-  compact?: boolean;
 }
 
 const GlossaryTranslationChips = ({
   meta,
   languages,
   max = MAX_TRANSLATION_CHIPS,
-  compact = false,
 }: Readonly<GlossaryTranslationChipsProps>) => {
   const targets = getTargetLanguages(languages);
   if (meta.rule !== "translate" || targets.length === 0) {
@@ -43,28 +40,21 @@ const GlossaryTranslationChips = ({
       <div className="flex flex-wrap items-center gap-1">
         {visible.map(({ languageCode }) => {
           const value = meta.translations[languageCode];
-          if (!value && compact) {
+          // The chip shows only the code; "is missing" is in the tooltip and read by screen readers.
+          if (!value) {
             return (
               <Tooltip key={languageCode}>
                 <TooltipTrigger asChild>
                   <Badge variant="outline" className={MISSING_CHIP_CLASS} tabIndex={0}>
                     <TriangleAlert className="h-3 w-3" aria-hidden="true" />
                     {languageCode}
-                    <span className="sr-only"> missing</span>
+                    <span className="sr-only"> is missing</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-sm font-normal">
-                  No {languageCode} translation yet
+                  {languageCode} is missing
                 </TooltipContent>
               </Tooltip>
-            );
-          }
-          if (!value) {
-            return (
-              <Badge key={languageCode} variant="outline" className={MISSING_CHIP_CLASS}>
-                <TriangleAlert className="h-3 w-3" aria-hidden="true" />
-                {languageCode} missing
-              </Badge>
             );
           }
           return (

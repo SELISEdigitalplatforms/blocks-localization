@@ -1,4 +1,13 @@
-import { FC, KeyboardEvent, ReactNode, SyntheticEvent, useEffect, useMemo, useState } from "react";
+import {
+  ClipboardEvent,
+  FC,
+  KeyboardEvent,
+  ReactNode,
+  SyntheticEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { z } from "zod";
@@ -110,6 +119,11 @@ import {
 } from "@blocks-localization/utils/glossary-rule-marker";
 import { useGlossaryTermSuggestion } from "@blocks-localization/hooks/use-glossary-term-suggestion";
 import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
+import {
+  FORBIDDEN_TRANSLATION_ERROR,
+  isForbiddenTranslation,
+  TRANSLATION_LENGTH_ERROR,
+} from "@blocks-localization/utils/glossary-validation";
 import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { GLOSSARY_STATUS_LABELS } from "@blocks-localization/components/glossary/glossary-status-badge";
 
@@ -192,17 +206,12 @@ const firstForbiddenError = (
   if (values.length > GLOSSARY_LIMITS.forbiddenPerLanguage) {
     return `Add at most ${GLOSSARY_LIMITS.forbiddenPerLanguage} forbidden alternatives per language`;
   }
-  const normalizedTranslation = normalizeGlossaryName(translation ?? "");
   for (const value of values) {
     if (value.trim().length > GLOSSARY_LIMITS.value) {
       return `Forbidden alternative must be ${GLOSSARY_LIMITS.value} characters or fewer`;
     }
-    if (
-      checkTranslation &&
-      normalizedTranslation &&
-      normalizeGlossaryName(value) === normalizedTranslation
-    ) {
-      return "A translation can't also be forbidden";
+    if (checkTranslation && isForbiddenTranslation(value, translation)) {
+      return FORBIDDEN_TRANSLATION_ERROR;
     }
   }
   return undefined;
@@ -255,7 +264,7 @@ const buildSchema = (targetCodes: string[]) =>
           ctx.addIssue({
             code: "custom",
             path: ["translations", code],
-            message: "Translation must be 200 characters or fewer",
+            message: TRANSLATION_LENGTH_ERROR,
           });
         }
         if (values.rule !== "keep") {
@@ -354,7 +363,10 @@ interface ChipInputProps {
   ariaLabel?: string;
 }
 
-/** Token field: Enter or a comma turns the typed text into a removable chip inside the box. */
+/**
+ * Token field: Enter turns the typed text into a removable chip inside the box; pasted lines
+ * become one chip each. Commas stay in the value ("Inc., Ltd").
+ */
 const ChipInput = ({
   id,
   values,
@@ -371,20 +383,19 @@ const ChipInput = ({
     if (next.length > 0) onChange([...values, ...next]);
   };
 
-  const handleChange = (text: string) => {
-    if (!text.includes(",")) {
-      setDraft(text);
-      return;
-    }
-    const parts = text.split(",");
-    setDraft(parts.pop() ?? "");
-    addValues(parts);
-  };
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
+    // Enter while an IME is composing confirms the composition, not the chip.
+    if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
     addValues([draft]);
+    setDraft("");
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const text = event.clipboardData.getData("text");
+    if (!/[\r\n]/.test(text)) return;
+    event.preventDefault();
+    addValues(`${draft}${text}`.split(/\r?\n|\r/));
     setDraft("");
   };
 
@@ -411,8 +422,9 @@ const ChipInput = ({
         placeholder={values.length > 0 ? "Add another…" : placeholder}
         disabled={disabled}
         className="h-6 w-auto min-w-32 flex-1 border-0 bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100"
-        onChange={(event) => handleChange(event.target.value)}
+        onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         onBlur={() => {
           addValues([draft]);
           setDraft("");
@@ -1174,7 +1186,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                               shouldValidate: formState.isSubmitted,
                             })
                           }
-                          placeholder="Plurals, synonyms… press Enter or comma"
+                          placeholder="Plurals, synonyms… press Enter"
                           removeLabel={(value) => `Remove variant ${value}`}
                           disabled={isReadOnly}
                         />

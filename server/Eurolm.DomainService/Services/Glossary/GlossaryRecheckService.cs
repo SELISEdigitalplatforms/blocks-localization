@@ -17,6 +17,14 @@ namespace Eurolm.DomainService.Services
         public const int PageSize = 1000;
         /// <summary>A pending marker older than this is assumed lost and is published again.</summary>
         public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
+        /// <summary>How long a running job holds the tenant's lease without renewing it (renewed every page).</summary>
+        public static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
+        public static readonly TimeSpan LeaseRetryInterval = TimeSpan.FromSeconds(5);
+        /// <summary>
+        /// How long a job waits for the running one to finish. After that its marker stays queued and is taken over
+        /// once stale.
+        /// </summary>
+        public static readonly TimeSpan MaxLeaseWait = TimeSpan.FromMinutes(10);
 
         private readonly IGlossaryRecheckJobRepository _jobRepository;
         private readonly IGlossaryRepository _glossaryRepository;
@@ -43,15 +51,22 @@ namespace Eurolm.DomainService.Services
             _logger = logger;
         }
 
+        /// <summary>Waits between lease attempts; replaceable in tests.</summary>
+        public Func<TimeSpan, Task> Delay { get; init; } = Task.Delay;
+
         private bool IsEnabled => GlossaryEnforcement.IsEnabled(_configuration);
 
-        public async Task TriggerAsync(IReadOnlyCollection<string> glossaryIds)
+        public Task TriggerAsync(IReadOnlyCollection<string> glossaryIds) =>
+            TriggerAsync(glossaryIds, Array.Empty<string>(), wholeProject: false);
+
+        public async Task TriggerAsync(IReadOnlyCollection<string> glossaryIds, IReadOnlyCollection<string> previousModuleIds, bool wholeProject)
         {
             if (!IsEnabled) return;
             try
             {
-                var ids = glossaryIds?.Where(id => !string.IsNullOrEmpty(id)).Distinct(StringComparer.Ordinal).ToList();
-                await EnqueueAsync(ids is { Count: > 0 } ? ids : null);
+                var ids = wholeProject ? null : DistinctIds(glossaryIds);
+                if (ids is { Count: 0 }) ids = null;
+                await EnqueueAsync(BlocksContext.GetContext()?.TenantId, ids, ids == null ? null : DistinctIds(previousModuleIds));
             }
             catch (Exception ex)
             {
@@ -60,14 +75,15 @@ namespace Eurolm.DomainService.Services
             }
         }
 
-        private async Task<bool> EnqueueAsync(IReadOnlyList<string>? glossaryIds)
+        private static List<string> DistinctIds(IEnumerable<string>? ids) =>
+            (ids ?? Array.Empty<string>()).Where(id => !string.IsNullOrEmpty(id)).Distinct(StringComparer.Ordinal).ToList();
+
+        private async Task<bool> EnqueueAsync(string? tenantId, IReadOnlyList<string>? glossaryIds, IReadOnlyList<string>? moduleIds)
         {
             if (!IsEnabled) return false;
-
-            var tenantId = BlocksContext.GetContext()?.TenantId;
             if (string.IsNullOrEmpty(tenantId)) return false;
 
-            if (!await _jobRepository.TryEnqueueAsync(tenantId, glossaryIds, DateTime.UtcNow, StaleAfter))
+            if (!await _jobRepository.TryEnqueueAsync(tenantId, glossaryIds, moduleIds, DateTime.UtcNow, StaleAfter))
             {
                 _logger.LogInformation("Glossary re-check already queued for tenant {TenantId}; request merged", tenantId);
                 return false;
@@ -104,13 +120,48 @@ namespace Eurolm.DomainService.Services
             var result = new GlossaryRecheckResult();
             var tenantId = BlocksContext.GetContext()?.TenantId ?? @event.ProjectKey ?? "";
 
-            // Claim first, so glossary edits made while this job runs queue the next one.
-            var job = await _jobRepository.ClaimAsync(tenantId);
             if (!IsEnabled)
             {
+                await _jobRepository.ClaimAsync(tenantId);
                 _logger.LogInformation("Glossary re-check skipped for tenant {TenantId}: enforcement is off", tenantId);
                 return result;
             }
+
+            // One job per tenant at a time: an older job finishing after a newer one would write back violations
+            // computed with the older glossary.
+            var owner = Guid.NewGuid().ToString("N");
+            if (!await WaitForLeaseAsync(tenantId, owner))
+            {
+                _logger.LogWarning("Glossary re-check for tenant {TenantId} gave up waiting for the running job; its request stays queued", tenantId);
+                return result;
+            }
+
+            try
+            {
+                return await RunAsync(tenantId, owner, @event, result);
+            }
+            finally
+            {
+                await _jobRepository.ReleaseLeaseAsync(tenantId, owner);
+            }
+        }
+
+        private async Task<bool> WaitForLeaseAsync(string tenantId, string owner)
+        {
+            var waited = TimeSpan.Zero;
+            while (!await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
+            {
+                if (waited >= MaxLeaseWait) return false;
+                await Delay(LeaseRetryInterval);
+                waited += LeaseRetryInterval;
+            }
+            return true;
+        }
+
+        private async Task<GlossaryRecheckResult> RunAsync(string tenantId, string owner, RecheckGlossaryViolationsEvent @event, GlossaryRecheckResult result)
+        {
+            // Claim after taking the lease, so glossary edits made while this job runs queue the next one.
+            var job = await _jobRepository.ClaimAsync(tenantId);
 
             var defaultCulture = (await _keyRepository.GetLanguageSettingAsync(tenantId))?.LanguageCode;
             if (string.IsNullOrEmpty(defaultCulture))
@@ -129,6 +180,14 @@ namespace Eurolm.DomainService.Services
             string? after = null;
             while (true)
             {
+                if (!await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
+                {
+                    // The lease ran out and another job took over; queue this job's scope again rather than racing it.
+                    _logger.LogWarning("Glossary re-check for tenant {TenantId} lost its lease after key {AfterKeyId}; scope queued again", tenantId, after);
+                    await EnqueueAsync(tenantId, scope?.GlossaryIds.ToList(), scope?.ModuleIds.ToList());
+                    return result;
+                }
+
                 var keys = await _keyRepository.GetKeysForGlossaryRecheckAsync(scope, after, PageSize);
                 if (keys.Count == 0) break;
 
@@ -201,10 +260,15 @@ namespace Eurolm.DomainService.Services
             var glossaries = await _glossaryRepository.GetStoredByIdsAsync(ids);
             if (glossaries.Any(g => g.IsGlobal)) return null;
 
+            // The job's modules are where the glossaries were scoped before the change (a removed module, a deleted
+            // glossary); the stored glossaries give where they are scoped now.
             return new GlossaryRecheckKeyScope
             {
                 GlossaryIds = ids.ToList(),
-                ModuleIds = glossaries.SelectMany(g => g.ModuleIds ?? new List<string>()).Distinct(StringComparer.Ordinal).ToList()
+                ModuleIds = glossaries.SelectMany(g => g.ModuleIds ?? new List<string>())
+                    .Concat(job?.ModuleIds ?? new List<string>())
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList()
             };
         }
 

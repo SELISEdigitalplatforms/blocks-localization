@@ -4,22 +4,30 @@ using System.Collections.Concurrent;
 namespace Eurolm.DomainService.Services
 {
     /// <summary>
-    /// One matcher per tenant, rebuilt when older than <see cref="Ttl"/>. Concurrent requests for the same
-    /// tenant share one build. A failed build is not cached, so the next request tries again.
+    /// One matcher per tenant, rebuilt when older than <see cref="Ttl"/>, or sooner when the tenant's glossary
+    /// revision (checked at most every <see cref="RevisionCheckInterval"/>) changed in another process.
+    /// Concurrent requests for the same tenant share one build. A failed build is not cached, so the next
+    /// request tries again.
     /// </summary>
     public sealed class GlossaryMatcherCache : IGlossaryMatcherCache
     {
         public static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan RevisionCheckInterval = TimeSpan.FromSeconds(5);
 
         private readonly Func<string, Task<List<BlocksGlossary>>> _loadGlossaries;
+        private readonly Func<string, Task<string>>? _loadRevision;
         private readonly Func<DateTimeOffset> _now;
         private readonly ConcurrentDictionary<string, Entry> _entries = new();
 
-        private sealed record Entry(Lazy<Task<GlossaryMatcher>> Build, DateTimeOffset BuiltAt);
+        private sealed record Built(GlossaryMatcher Matcher, string? Revision);
 
-        public GlossaryMatcherCache(Func<string, Task<List<BlocksGlossary>>> loadGlossaries, Func<DateTimeOffset>? now = null)
+        private sealed record Entry(Lazy<Task<Built>> Build, DateTimeOffset BuiltAt, DateTimeOffset CheckedAt);
+
+        public GlossaryMatcherCache(Func<string, Task<List<BlocksGlossary>>> loadGlossaries, Func<DateTimeOffset>? now = null,
+                                   Func<string, Task<string>>? loadRevision = null)
         {
             _loadGlossaries = loadGlossaries ?? throw new ArgumentNullException(nameof(loadGlossaries));
+            _loadRevision = loadRevision;
             _now = now ?? (() => DateTimeOffset.UtcNow);
         }
 
@@ -28,16 +36,12 @@ namespace Eurolm.DomainService.Services
             var key = tenantId ?? "";
             var now = _now();
             var entry = _entries.GetOrAdd(key, k => NewEntry(k, now));
-            if (now - entry.BuiltAt >= Ttl)
-            {
-                // Expired: replace it (only if nobody already did) and use whichever entry won.
-                var fresh = NewEntry(key, now);
-                entry = _entries.TryUpdate(key, fresh, entry) ? fresh : _entries.GetOrAdd(key, _ => fresh);
-            }
+            if (now - entry.BuiltAt >= Ttl) entry = Replace(key, entry, NewEntry(key, now));
 
+            Built built;
             try
             {
-                return await entry.Build.Value;
+                built = await entry.Build.Value;
             }
             catch
             {
@@ -45,17 +49,68 @@ namespace Eurolm.DomainService.Services
                 _entries.TryRemove(new KeyValuePair<string, Entry>(key, entry));
                 throw;
             }
+
+            if (_loadRevision == null || now - entry.CheckedAt < RevisionCheckInterval) return built.Matcher;
+            return await CheckRevisionAsync(key, entry, built, now);
         }
+
+        private async Task<GlossaryMatcher> CheckRevisionAsync(string key, Entry entry, Built built, DateTimeOffset now)
+        {
+            string revision;
+            try
+            {
+                revision = await _loadRevision!(key);
+            }
+            catch
+            {
+                // The TTL still bounds how stale the matcher gets.
+                return built.Matcher;
+            }
+
+            if (revision == built.Revision)
+            {
+                _entries.TryUpdate(key, entry with { CheckedAt = now }, entry);
+                return built.Matcher;
+            }
+
+            var fresh = Replace(key, entry, NewEntry(key, now));
+            try
+            {
+                return (await fresh.Build.Value).Matcher;
+            }
+            catch
+            {
+                _entries.TryRemove(new KeyValuePair<string, Entry>(key, fresh));
+                throw;
+            }
+        }
+
+        /// <summary>Replaces the entry (only if nobody already did) and returns whichever entry won.</summary>
+        private Entry Replace(string key, Entry current, Entry fresh) =>
+            _entries.TryUpdate(key, fresh, current) ? fresh : _entries.GetOrAdd(key, _ => fresh);
 
         public void Invalidate(string tenantId) => _entries.TryRemove(tenantId ?? "", out _);
 
         private Entry NewEntry(string tenantId, DateTimeOffset builtAt) =>
-            new(new Lazy<Task<GlossaryMatcher>>(() => BuildAsync(tenantId)), builtAt);
+            new(new Lazy<Task<Built>>(() => BuildAsync(tenantId)), builtAt, builtAt);
 
-        private async Task<GlossaryMatcher> BuildAsync(string tenantId)
+        private async Task<Built> BuildAsync(string tenantId)
         {
+            // Read the revision first: a change during the load then shows as a new revision on the next check.
+            string? revision = null;
+            if (_loadRevision != null)
+            {
+                try
+                {
+                    revision = await _loadRevision(tenantId);
+                }
+                catch
+                {
+                    // Unknown revision: the next check rebuilds, the TTL bounds it otherwise.
+                }
+            }
             var glossaries = await _loadGlossaries(tenantId);
-            return GlossaryMatcher.Build(glossaries.Select(g => (g, GlossaryTerminologyResolver.Resolve(g))));
+            return new Built(GlossaryMatcher.Build(glossaries.Select(g => (g, GlossaryTerminologyResolver.Resolve(g)))), revision);
         }
     }
 }

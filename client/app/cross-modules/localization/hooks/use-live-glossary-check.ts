@@ -14,7 +14,7 @@ import {
 export const LIVE_CHECK_DEBOUNCE_MS = 150;
 export const DRAFT_TERM_PREFIX = "Draft glossary:";
 
-const NO_MATCHES: GlossaryMatch[] = [];
+export const NO_MATCHES: GlossaryMatch[] = [];
 const NO_VIOLATIONS: GlossaryViolation[] = [];
 
 /** Returns `value` once it has stopped changing for `delayMs`. */

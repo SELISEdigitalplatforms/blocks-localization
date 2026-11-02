@@ -58,7 +58,7 @@ describe("components/glossary/glossary-mobile-list", () => {
     expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("2 modules")).toBeTruthy();
     expect(screen.getByText("de-DE")).toBeTruthy();
-    expect(screen.getByText("fr-FR missing")).toBeTruthy();
+    expect(screen.getByText("fr-FR").textContent).toBe("fr-FR is missing");
   });
 
   it("opens Edit and Delete from the card's actions menu", async () => {

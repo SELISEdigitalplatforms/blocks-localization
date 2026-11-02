@@ -37,7 +37,10 @@ import { useScopedPath } from "@seliseblocks/genesis-os";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
-import { useSourceGlossaryMatches } from "@blocks-localization/hooks/use-live-glossary-check";
+import {
+  NO_MATCHES,
+  useSourceGlossaryMatches,
+} from "@blocks-localization/hooks/use-live-glossary-check";
 import {
   useGetLanguageModules,
   useGetLanguages,
@@ -227,12 +230,13 @@ function AddNewLanguageKey() {
   const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
   // The key is not saved yet (no keyId): `/Glossary/Match` with the chosen module, 300 ms after
   // the default value stops changing (C18).
-  const { matches: sourceMatches } = useSourceGlossaryMatches({
+  const { matches, isCurrent } = useSourceGlossaryMatches({
     text: watchedResources?.[0]?.value ?? "",
     sourceCulture: defaultLanguageCode,
     moduleId: watchedModuleId || undefined,
     debounce: true,
   });
+  const sourceMatches = isCurrent ? matches : NO_MATCHES;
   const resourcePath = React.useCallback(
     (culture: string) => {
       const index = sortedLanguages?.findIndex((language) => language.languageCode === culture);

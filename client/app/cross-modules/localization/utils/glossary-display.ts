@@ -24,15 +24,15 @@ export const getGlossaryStatus = (glossary: Pick<IGlossary, "status">): Glossary
 
 /**
  * The internal note. A v1-prefixed `additionalNote` (not yet migrated, or last saved by the
- * Track A UI) returns the note inside the JSON, or the whole raw text when the JSON is
- * corrupt; anything else is already a plain note. Independent of `schemaVersion` (A6).
+ * Track A UI) returns the note inside the JSON, or no note when the JSON is corrupt, so a
+ * save replaces it; anything else is already a plain note. Independent of `schemaVersion` (A6).
  */
 export const getGlossaryNote = (glossary: Pick<IGlossary, "additionalNote">): string => {
   const raw = glossary.additionalNote ?? "";
   const prefix = GLOSSARY_META_PREFIX_PATTERN.exec(raw);
   if (prefix?.[1] !== "1") return prefix ? "" : raw;
   const parsed = parseGlossaryMeta(raw);
-  return parsed.status === "corrupt" ? raw : (parsed.meta.note ?? "");
+  return parsed.status === "corrupt" ? "" : (parsed.meta.note ?? "");
 };
 
 /** True when `additionalNote` carries a terminology prefix of a version other than 1 (C16). */

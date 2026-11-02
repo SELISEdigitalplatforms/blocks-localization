@@ -722,6 +722,12 @@ const GlossaryTable = () => {
     scope: scopeFilter,
     ...(!isDefaultSort && { sortBy: sort.sortBy, sortDescending: sort.descending }),
   });
+  // A delete can leave the current page past the last one; step back to the last page.
+  const totalCount = data?.totalCount;
+  if (totalCount !== undefined && pageNumber > 0 && pageNumber * pageSize >= totalCount) {
+    setPageNumber(Math.max(0, Math.ceil(totalCount / pageSize) - 1));
+    setSelectedIds(new Set());
+  }
   const { data: languageListData } = useGetLanguages();
   const pageItems = useMemo(() => data?.items ?? [], [data?.items]);
   // Terms saved by a newer version can't be edited here, so they can't be selected (C9).

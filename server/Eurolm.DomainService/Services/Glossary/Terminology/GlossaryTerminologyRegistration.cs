@@ -9,7 +9,9 @@ namespace Eurolm.DomainService.Services
         public static IServiceCollection AddGlossaryTerminology(this IServiceCollection services)
         {
             services.AddSingleton<IGlossaryMatcherCache>(sp =>
-                new GlossaryMatcherCache(tenantId => sp.GetRequiredService<IGlossaryRepository>().GetAllEntitiesAsync(tenantId)));
+                new GlossaryMatcherCache(
+                    tenantId => sp.GetRequiredService<IGlossaryRepository>().GetAllEntitiesAsync(tenantId),
+                    loadRevision: tenantId => sp.GetRequiredService<IGlossaryRepository>().GetRevisionAsync(tenantId)));
             services.AddSingleton<IGlossaryTerminologyService, GlossaryTerminologyService>();
             services.AddSingleton<IGlossaryRecheckJobRepository, GlossaryRecheckJobRepository>();
             services.AddSingleton<IGlossaryRecheckService, GlossaryRecheckService>();

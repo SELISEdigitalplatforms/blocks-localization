@@ -7,6 +7,7 @@ import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glo
 import {
   applyFix,
   canApplyFix,
+  containsApprovedTranslation,
   findInTarget,
   formatViolationMessage,
   GlossaryViolation,
@@ -79,10 +80,11 @@ describe("utils/glossary-validation validateTranslation", () => {
       validateTranslation("Öffnen Sie die Einstellungen Ihres Arbeitsbereichs", ws, "de-DE"),
     ).toEqual([]);
     expect(validateTranslation("Alle Arbeitsbereiche", ws, "de-DE")).toEqual([]);
-    // Inside a compound it is not at a word start: still reported (warn only).
-    expect(validateTranslation("Projektarbeitsbereich", ws, "de-DE")[0].kind).toBe(
-      "missing-translation",
-    );
+  });
+
+  it("accepts the translation at the end of a compound in a compounding language (C21, Example 10)", () => {
+    expect(validateTranslation("Projektarbeitsbereich öffnen", ws, "de-DE")).toEqual([]);
+    expect(validateTranslation("Den Standardarbeitsbereichs öffnen", ws, "de-DE")).toEqual([]);
   });
 
   it("finds an inflected forbidden value and reports only the matched span", () => {
@@ -195,6 +197,51 @@ const portalUsed: GlossaryViolation = {
   kind: "forbidden-used",
   found: "Portal",
 };
+
+const translateTo = (itemId: string, name: string, translations: Record<string, string>) =>
+  glossary({ itemId, name, additionalNote: meta({ rule: "translate", translations }) });
+
+describe("utils/glossary-validation attached approved translations", () => {
+  it("still reports a translation inside another word where compounds are not one word", () => {
+    const matches = match([translateTo("g1", "Workspace", { "en-GB": "space" })], "Workspace");
+    expect(validateTranslation("Open your workspace", matches, "en-GB")[0].kind).toBe(
+      "missing-translation",
+    );
+  });
+
+  it("still reports a short translation inside a compound", () => {
+    const day = match([translateTo("d", "Day", { "de-DE": "Tag" })], "Day");
+    expect(validateTranslation("Vertrag", day, "de-DE")[0].expected).toBe("Tag");
+    expect(validateTranslation("Tagesansicht", day, "de-DE")).toEqual([]);
+  });
+
+  it.each(["الحساب", "افتح حسابك", "افتح الحساب", "بالحساب", "وبالحساب", "للحساب", "فالحساب"])(
+    "accepts Arabic prefix letters and the article: %s",
+    (output) => {
+      const account = match([translateTo("a", "Account", { "ar-SA": "الحساب" })], "Account");
+      expect(validateTranslation(output, account, "ar-SA")).toEqual([]);
+    },
+  );
+
+  it("still reports an Arabic translation after letters that are not prefixes", () => {
+    const account = match([translateTo("a", "Account", { "ar-SA": "حساب" })], "Account");
+    expect(validateTranslation("مححساب", account, "ar-SA")[0].kind).toBe("missing-translation");
+  });
+
+  it.each(["החשבון", "בחשבון", "ולחשבון"])("accepts Hebrew prefix letters: %s", (output) => {
+    const account = match([translateTo("a", "Account", { "he-IL": "חשבון" })], "Account");
+    expect(validateTranslation(output, account, "he-IL")).toEqual([]);
+  });
+
+  it("never finds the translation inside a placeholder", () => {
+    expect(containsApprovedTranslation("{projektarbeitsbereich}", "Arbeitsbereich", "de-DE")).toBe(
+      false,
+    );
+    expect(containsApprovedTranslation("Projektarbeitsbereich", "Arbeitsbereich", "de-DE")).toBe(
+      true,
+    );
+  });
+});
 
 describe("utils/glossary-validation forbidden value inside the approved translation (m1)", () => {
   it("does not report a forbidden value that is part of the approved translation", () => {
@@ -369,10 +416,8 @@ describe("utils/glossary-validation placeholders", () => {
 
   it("does not count the approved value inside a placeholder or tag as present", () => {
     expect(
-      validateTranslation("Liste {{Benutzer}} <b title=\"Benutzer\">x</b>", matches, "de-DE"),
-    ).toEqual([
-      expect.objectContaining({ kind: "missing-translation", expected: "Benutzer" }),
-    ]);
+      validateTranslation('Liste {{Benutzer}} <b title="Benutzer">x</b>', matches, "de-DE"),
+    ).toEqual([expect.objectContaining({ kind: "missing-translation", expected: "Benutzer" })]);
   });
 
   it("Fix rewrites the text but never the placeholder", () => {

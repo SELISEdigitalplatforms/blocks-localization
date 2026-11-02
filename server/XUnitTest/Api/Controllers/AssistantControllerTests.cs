@@ -54,6 +54,24 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task GetTranslationSuggestion_ReturnsTheMissingGlossaryTranslations()
+        {
+            var request = new SuggestLanguageRequest { SourceText = "Open your Workspace", DestinationLanguageCode = "de-DE" };
+            _assistantServiceMock.Setup(x => x.SuggestTranslation(request)).ReturnsAsync(new SuggestionResult
+            {
+                Content = "Öffnen Sie Ihren Workspace",
+                MissingGlossaryTranslations = new List<MissingGlossaryTranslation> { new() { GlossaryId = "g1", Term = "Workspace" } }
+            });
+
+            var result = await _controller.GetTranslationSuggestion(request) as ObjectResult;
+
+            var body = System.Text.Json.JsonSerializer.SerializeToElement(result!.Value);
+            var missing = body.GetProperty("MissingGlossaryTranslations");
+            missing.GetArrayLength().Should().Be(1);
+            missing[0].GetProperty("GlossaryId").GetString().Should().Be("g1");
+        }
+
+        [Fact]
         public async Task GetTranslationSuggestion_WithEmptySourceText_ReturnsEmpty()
         {
             // Arrange
@@ -161,7 +179,7 @@ namespace XUnitTest
             var json = System.Text.Json.JsonSerializer.Serialize(result.Value,
                 new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
 
-            json.Should().Be("{\"content\":null,\"appliedTerms\":[],\"glossaryViolations\":[]}");
+            json.Should().Be("{\"content\":null,\"appliedTerms\":[],\"glossaryViolations\":[],\"missingGlossaryTranslations\":[]}");
         }
     }
 }

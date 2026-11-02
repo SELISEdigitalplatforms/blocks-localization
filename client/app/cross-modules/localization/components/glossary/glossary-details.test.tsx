@@ -75,6 +75,34 @@ describe("components/glossary/glossary-details", () => {
     expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary");
   });
 
+  it("should treat a 404 as not found", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: { status: 404 },
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />);
+    expect(screen.getByText("Glossary item not found.")).toBeTruthy();
+  });
+
+  it("should offer Retry instead of not found when loading fails", () => {
+    const refetch = vi.fn();
+    h.useGetGlossaryById.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: { status: 500 },
+      isFetching: false,
+      refetch,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />);
+    expect(screen.queryByText("Glossary item not found.")).toBeNull();
+    expect(screen.getByText("Couldn’t load this glossary.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
   it("should render glossary details with tagged modules", () => {
     h.useGetGlossaryById.mockReturnValue({
       data: {
@@ -286,6 +314,47 @@ describe("components/glossary/glossary-details", () => {
       1,
       10,
       { searchKey: "", moduleIds: [], glossaryModuleIds: [] },
+      true,
+    );
+  });
+
+  it("should step back to the last page when the tagged keys shrink", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", isGlobal: true },
+      isLoading: false,
+    } as never);
+    const keysPage = (totalCount: number) =>
+      ({
+        data: {
+          keys: [{ itemId: "k1", keyName: "alpha", moduleId: "m1", resources: [] }],
+          totalCount,
+        },
+        isLoading: false,
+        isError: false,
+      }) as never;
+    h.useGetKeysByGlossaryId.mockReturnValue(keysPage(25));
+    renderWithProviders(<GlossaryDetails itemId="g1" />, {
+      route: "/app/abc/services/glossary/g1",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith(
+      "g1",
+      2,
+      10,
+      expect.anything(),
+      true,
+    );
+    h.useGetKeysByGlossaryId.mockReturnValue(keysPage(12));
+    // Any re-render picks up the smaller total.
+    fireEvent.change(screen.getByRole("textbox", { name: "Search keys" }), {
+      target: { value: "a" },
+    });
+    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith(
+      "g1",
+      1,
+      10,
+      expect.anything(),
       true,
     );
   });
@@ -612,6 +681,27 @@ describe("components/glossary/glossary-details", () => {
       ).toBe("Espace");
       await user.click(screen.getByRole("button", { name: "Reload latest" }));
       await waitFor(() => expect(fetchLatest).toHaveBeenCalledWith("g1"));
+    });
+
+    it("validates an edited translation like the editor (length, forbidden values)", () => {
+      const mutateAsync = vi.fn();
+      h.useSaveGlossary.mockReturnValue({ mutateAsync, isPending: false } as never);
+      renderDetails();
+      fireEvent.click(screen.getByRole("button", { name: "Edit German translation" }));
+      const input = screen.getByRole("textbox", { name: "German translation" });
+      fireEvent.change(input, { target: { value: " WERKBEREICH " } });
+      expect(screen.getByText("A translation can't also be forbidden")).toBeTruthy();
+      expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      fireEvent.keyDown(input, { key: "Enter" });
+      fireEvent.change(input, { target: { value: "x".repeat(201) } });
+      expect(screen.getByText("Translation must be 200 characters or fewer")).toBeTruthy();
+      fireEvent.change(input, { target: { value: "Arbeitsraum" } });
+      expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+      expect(mutateAsync).not.toHaveBeenCalled();
     });
 
     it("shows the part of speech and usage examples (H22)", () => {

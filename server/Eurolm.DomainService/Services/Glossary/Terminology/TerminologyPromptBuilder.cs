@@ -45,8 +45,19 @@ namespace Eurolm.DomainService.Services
                 Context = context,
                 FinalLine = FinalLine(request),
                 RuleMatches = eligible.Where(m => ruleIds.Contains(m.Glossary.ItemId, StringComparer.Ordinal)).ToList(),
-                AppliedTerms = ruleIds.Select(id => ToAppliedTerm(id, groupById[id], target)).ToList()
+                AppliedTerms = ruleIds.Select(id => ToAppliedTerm(id, groupById[id], target)).ToList(),
+                MissingTranslations = CollectMissingTranslations(groups, target)
             };
+        }
+
+        private static List<MissingGlossaryTranslation> CollectMissingTranslations(List<MatchedGlossaryGroup> groups, string? target)
+        {
+            if (string.IsNullOrEmpty(target)) return new List<MissingGlossaryTranslation>();
+            return groups
+                .Where(g => g.Matches[0].Terminology.Rule == GlossaryRule.Translate
+                    && JsText.Trim(g.Matches[0].Terminology.ActiveTranslation(target) ?? "").Length == 0)
+                .Select(g => new MissingGlossaryTranslation { GlossaryId = g.Glossary.ItemId ?? "", Term = g.Glossary.Name ?? "" })
+                .ToList();
         }
 
         private static List<(string GlossaryId, string Line)> CollectRuleLines(List<MatchedGlossaryGroup> groups, string? target)

@@ -79,7 +79,8 @@ namespace Eurolm.DomainService.Services
                         : ValidationError(nameof(Glossary.ItemId), ItemNotFoundMessage);
                 }
                 InvalidateMatcher();
-                await TriggerRecheckAsync(glossary.ItemId);
+                // Keys of the old scope too: a module it left, or the whole project if it was global.
+                await TriggerRecheckAsync(glossary.ItemId, existing.ModuleIds, existing.IsGlobal);
             }
             catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
             {
@@ -157,9 +158,10 @@ namespace Eurolm.DomainService.Services
 
             // Untag every key first, so no key is left pointing at a deleted glossary. Retrying after a
             // failed delete below is safe: the pull is idempotent.
+            long modifiedKeys;
             try
             {
-                var modifiedKeys = await _keyRepository.RemoveGlossaryIdFromKeysAsync(request.ItemId);
+                modifiedKeys = await _keyRepository.RemoveGlossaryIdFromKeysAsync(request.ItemId);
                 _logger.LogInformation("Deleting glossary -- removed from {ModifiedKeyCount} keys", modifiedKeys);
             }
             catch (Exception ex)
@@ -177,8 +179,11 @@ namespace Eurolm.DomainService.Services
             }
 
             await _glossaryRepository.DeleteAsync(request.ItemId);
+            modifiedKeys += await RemoveLateTagsAsync(request.ItemId);
             InvalidateMatcher();
-            await TriggerRecheckAsync(request.ItemId);
+            // The untagged keys can't be found by glossary any more, and a global glossary may have hidden others
+            // on any key, so those cases re-check the whole project.
+            await TriggerRecheckAsync(request.ItemId, glossary.ModuleIds, glossary.IsGlobal || modifiedKeys > 0);
 
             _logger.LogInformation("Deleting glossary end -- Success");
             return new BaseMutationResponse { IsSuccess = true };
@@ -193,9 +198,29 @@ namespace Eurolm.DomainService.Services
             if (!string.IsNullOrEmpty(tenantId)) _matcherCache?.Invalidate(tenantId);
         }
 
+        /// <summary>
+        /// A key saved between the first pull and the delete may have kept the id; once the glossary is gone,
+        /// key saves reject it, so a second pull leaves nothing behind. A failure here only leaves a stale id.
+        /// </summary>
+        private async Task<long> RemoveLateTagsAsync(string glossaryId)
+        {
+            try
+            {
+                return await _keyRepository.RemoveGlossaryIdFromKeysAsync(glossaryId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Deleting glossary -- second untag pass failed; the migration's stale-id cleanup removes leftovers");
+                return 0;
+            }
+        }
+
         /// <summary>Queues a coalesced violation re-check for the glossary (server flag on only; never throws).</summary>
         private Task TriggerRecheckAsync(string glossaryId) =>
             _recheckService?.TriggerAsync(new[] { glossaryId }) ?? Task.CompletedTask;
+
+        private Task TriggerRecheckAsync(string glossaryId, IReadOnlyCollection<string>? previousModuleIds, bool wholeProject) =>
+            _recheckService?.TriggerAsync(new[] { glossaryId }, previousModuleIds ?? new List<string>(), wholeProject) ?? Task.CompletedTask;
 
         private static BlocksGlossary MapNewGlossary(Glossary glossary)
         {

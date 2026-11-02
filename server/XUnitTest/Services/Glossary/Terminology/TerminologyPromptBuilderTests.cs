@@ -268,5 +268,28 @@ namespace XUnitTest.Terminology
                 "Return only the corrected translation." + NL +
                 FinalLine);
         }
+
+        [Fact]
+        public void A_matched_translate_glossary_without_the_target_translation_is_reported_missing()
+        {
+            var portal = Glossary("p", "Portal", Meta(new Dictionary<string, object> { ["translations"] = Map(("fr-FR", "Portail")) }));
+            var brand = Glossary("b", "SELISE", Meta(new Dictionary<string, object> { ["rule"] = "keep" }));
+            var draft = Glossary("d", "Dashboard", Meta(new Dictionary<string, object> { ["translations"] = Map(("fr-FR", "Tableau")) }), status: GlossaryStatus.Draft);
+            var glossaries = new[] { Workspace(), portal, brand, draft };
+            const string source = "Open the SELISE Portal Dashboard and your Workspace";
+
+            var prompt = TerminologyPromptBuilder.Build(Request(source), Match(glossaries, source));
+
+            prompt.MissingTranslations.Should().ContainSingle().Which.Should().BeEquivalentTo(new MissingGlossaryTranslation { GlossaryId = "p", Term = "Portal" });
+            prompt.Prompt.Should().NotContain("Portal\" as");
+        }
+
+        [Fact]
+        public void Nothing_is_reported_missing_without_a_target_language()
+        {
+            var portal = Glossary("p", "Portal", Meta(new Dictionary<string, object> { ["translations"] = Map(("fr-FR", "Portail")) }));
+
+            TerminologyPromptBuilder.Build(Request("Portal", target: null), Match(new[] { portal }, "Portal")).MissingTranslations.Should().BeEmpty();
+        }
     }
 }

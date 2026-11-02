@@ -83,6 +83,7 @@ import {
   getTargetLanguages,
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
+import { getTranslationError } from "@blocks-localization/utils/glossary-validation";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 
@@ -192,8 +193,12 @@ const TranslationsTable = ({
   const fetchLatestGlossary = useFetchLatestGlossary();
   const { suggest, pendingCodes } = useGlossaryTermSuggestion();
 
+  const editingError = editing
+    ? getTranslationError(editing.value, meta.forbidden[editing.code] ?? [])
+    : undefined;
+
   const save = async () => {
-    if (!editing) return;
+    if (!editing || editingError) return;
     const payload = toGlossarySavePayload(glossary);
     try {
       const res = await mutateAsync({
@@ -254,8 +259,12 @@ const TranslationsTable = ({
             className="h-8 w-56"
             autoFocus
             disabled={isPending}
+            aria-invalid={!!editingError}
+            aria-describedby={
+              editingError ? `glossary-translation-error-${languageCode}` : undefined
+            }
           />
-          <Button size="sm" onClick={() => void save()} disabled={isPending}>
+          <Button size="sm" onClick={() => void save()} disabled={isPending || !!editingError}>
             {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
             Save
           </Button>
@@ -270,6 +279,15 @@ const TranslationsTable = ({
           >
             Cancel
           </Button>
+          {editingError && (
+            <p
+              id={`glossary-translation-error-${languageCode}`}
+              role="alert"
+              className="basis-full text-sm font-medium text-destructive"
+            >
+              {editingError}
+            </p>
+          )}
         </div>
       );
     }
@@ -479,6 +497,8 @@ const getKeysDescription = (glossary: IGlossary, hasModuleScope: boolean) => {
   return "Keys tagged with this glossary.";
 };
 
+const isNotFoundError = (error: unknown) => (error as { status?: unknown } | null)?.status === 404;
+
 const getNoKeysText = (glossary: IGlossary, hasModuleScope: boolean) => {
   if (glossary.isGlobal) return "No keys are tagged with this glossary directly.";
   if (hasModuleScope) return "No keys are tagged with this glossary or belong to its modules.";
@@ -488,7 +508,14 @@ const getNoKeysText = (glossary: IGlossary, hasModuleScope: boolean) => {
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const navigate = useNavigate();
   const scoped = useScopedPath();
-  const { data: glossary, isLoading } = useGetGlossaryById(itemId);
+  const {
+    data: glossary,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+    refetch,
+  } = useGetGlossaryById(itemId);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -530,12 +557,39 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     !!glossary,
   );
 
+  // Fewer tagged keys than before can leave the current page past the last one.
+  const taggedKeysTotal = taggedKeysData?.totalCount;
+  if (
+    typeof taggedKeysTotal === "number" &&
+    keysPage > 0 &&
+    keysPage * keysPageSize >= taggedKeysTotal
+  ) {
+    setKeysPage(Math.max(0, Math.ceil(taggedKeysTotal / keysPageSize) - 1));
+  }
+
   if (glossary?.name) {
     // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] = glossary.name;
   }
 
   if (isLoading) return <GlossaryDetailsSkeleton />;
+
+  if (!glossary && isError && !isNotFoundError(error)) {
+    return (
+      <div role="alert" className="mt-10 flex flex-col items-center gap-3 text-center">
+        <p className="text-medium-emphasis">Couldn&rsquo;t load this glossary.</p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+        >
+          {isFetching && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (!glossary) {
     return (

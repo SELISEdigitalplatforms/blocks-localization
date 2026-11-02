@@ -250,7 +250,7 @@ namespace XUnitTest
         #region DeleteGlossaryAsync Tests
 
         [Fact]
-        public async Task DeleteGlossaryAsync_ExistingItem_PullsFromKeysThenDeletes()
+        public async Task DeleteGlossaryAsync_ExistingItem_PullsFromKeysDeletesThenPullsLateTags()
         {
             var request = new DeleteGlossaryRequest { ItemId = "glossary-1" };
             var calls = new List<string>();
@@ -264,7 +264,7 @@ namespace XUnitTest
             var result = await _service.DeleteGlossaryAsync(request);
 
             result.IsSuccess.Should().BeTrue();
-            calls.Should().Equal("pull", "delete");
+            calls.Should().Equal("pull", "delete", "pull");
         }
 
         [Fact]

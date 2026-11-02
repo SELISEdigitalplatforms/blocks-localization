@@ -223,7 +223,7 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task Index_creation_is_idempotent_and_names_the_five_indexes()
+        public async Task Index_creation_is_idempotent_and_names_the_six_indexes()
         {
             await SeedAsync();
 
@@ -232,7 +232,7 @@ namespace XUnitTest.Repositories
 
             var names = (await (await _keys.Indexes.ListAsync()).ToListAsync()).Select(i => i["name"].AsString);
             names.Should().BeEquivalentTo("_id_", "ix_keys_keyname_id", "ix_keys_createdate_id", "ix_keys_lastupdatedate_id",
-                "ix_keys_moduleid_keyname_id", "ix_keys_glossaryids");
+                "ix_keys_moduleid_keyname_id", "ix_keys_glossaryids", "ix_keys_glossaryviolations_glossaryid");
         }
     }
 }

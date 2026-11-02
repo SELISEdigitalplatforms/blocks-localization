@@ -10,6 +10,13 @@ namespace Eurolm.DomainService.Services
         /// </summary>
         Task TriggerAsync(IReadOnlyCollection<string> glossaryIds);
 
+        /// <summary>
+        /// The trigger after a glossary changed scope or was deleted: <paramref name="previousModuleIds"/> are the
+        /// modules it was scoped to before the write, whose keys may now match a glossary it used to hide.
+        /// <paramref name="wholeProject"/> re-checks every key (it was global, or tagged keys were untagged).
+        /// </summary>
+        Task TriggerAsync(IReadOnlyCollection<string> glossaryIds, IReadOnlyCollection<string> previousModuleIds, bool wholeProject);
+
         /// <summary>The worker job: recomputes and stores the violations of the affected keys. No AI call.</summary>
         Task<GlossaryRecheckResult> RecheckAsync(RecheckGlossaryViolationsEvent @event);
     }

@@ -710,7 +710,9 @@ namespace Eurolm.DomainService.Repositories
             long removed = affected.Sum(k => (long)(k.GlossaryIds?.Count(id => !existing.Contains(id)) ?? 0));
             if (dryRun || affected.Count == 0) return removed;
 
-            var pull = Builders<BlocksLanguageKey>.Update.PullFilter<string>("GlossaryIds", new BsonDocument("$nin", new BsonArray(existingGlossaryIds)));
+            // Pull exactly the stale ids found above, so an id that became valid since is never removed.
+            var staleIds = affected.SelectMany(k => k.GlossaryIds ?? new List<string>()).Where(id => !existing.Contains(id)).Distinct(StringComparer.Ordinal);
+            var pull = Builders<BlocksLanguageKey>.Update.PullFilter<string>("GlossaryIds", new BsonDocument("$in", new BsonArray(staleIds)));
             foreach (var chunk in affected.Select(k => k.ItemId).Chunk(batchSize))
             {
                 await collection.UpdateManyAsync(Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, chunk), pull);

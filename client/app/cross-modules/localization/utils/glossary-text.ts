@@ -28,3 +28,10 @@ const charBefore = (text: string, index: number): string => {
  */
 export const isWordStart = (text: string, index: number): boolean =>
   !LETTER_OR_DIGIT.test(charBefore(text, index));
+
+/** The letters and digits of the same word that come before `index`. */
+export const wordPrefixBefore = (text: string, index: number): string => {
+  let start = index;
+  while (start > 0 && !isWordStart(text, start)) start -= charBefore(text, start).length;
+  return text.slice(start, index);
+};

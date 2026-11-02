@@ -20,6 +20,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaryUsage: vi.fn(),
   useDeleteGlossaryWithCascade: vi.fn(),
   useSaveGlossary: vi.fn(),
+  useFetchLatestGlossary: vi.fn(),
 }));
 
 const h = vi.mocked(hooks);
@@ -31,6 +32,7 @@ const withDialog = (node: React.ReactNode) => (
 );
 
 const saveAsync = vi.fn();
+const fetchLatest = vi.fn();
 
 /** `data` is the key count; `moduleIds` the Usage response's modules. */
 const mockUsage = (
@@ -66,6 +68,7 @@ describe("modals/glossary/delete-glossary", () => {
     mockUsage({ data: 3 });
     mockCascade();
     h.useSaveGlossary.mockReturnValue({ isPending: false, mutateAsync: saveAsync } as never);
+    h.useFetchLatestGlossary.mockReturnValue(fetchLatest);
   });
 
   it("should count usage for the glossary", () => {
@@ -211,6 +214,18 @@ describe("modals/glossary/delete-glossary", () => {
       expect(confirm.disabled).toBe(false);
     });
 
+    it("accepts the typed name in another Unicode normalization form", () => {
+      mockUsage({ data: 120 });
+      const composed = "Caf\u00e9";
+      render(withDialog(<DeleteGlossary itemId="g1" glossaryName={composed} onClose={vi.fn()} />));
+      fireEvent.change(screen.getByLabelText(`Type "${composed}" to confirm`), {
+        target: { value: "Cafe\u0301" },
+      });
+      expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+
     it("does not ask for the name below 50 keys", () => {
       mockUsage({ data: 49 });
       renderDialog();
@@ -241,6 +256,35 @@ describe("modals/glossary/delete-glossary", () => {
         expect.objectContaining({
           description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         }),
+      );
+    });
+
+    it("reloads the term after a version conflict and deprecates the latest version", async () => {
+      saveAsync.mockResolvedValueOnce({
+        success: false,
+        validationErrors: [{ propertyName: "Version", errorMessage: "Changed" }],
+      });
+      fetchLatest.mockResolvedValue({ ...glossary, name: "Widget v5", version: 5 });
+      const onClose = vi.fn();
+      mockUsage({ data: 3 });
+      renderWithTerm(onClose);
+      fireEvent.click(screen.getByRole("button", { name: "Deprecate instead" }));
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description:
+              "This glossary was changed by someone else. The latest version is loaded; try again.",
+          }),
+        ),
+      );
+      expect(fetchLatest).toHaveBeenCalledWith("g1");
+      expect(onClose).not.toHaveBeenCalled();
+
+      saveAsync.mockResolvedValueOnce({ success: true });
+      fireEvent.click(screen.getByRole("button", { name: "Deprecate instead" }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(saveAsync).toHaveBeenLastCalledWith(
+        expect.objectContaining({ name: "Widget v5", version: 5, status: "deprecated" }),
       );
     });
 

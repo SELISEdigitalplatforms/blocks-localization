@@ -1,7 +1,34 @@
+import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { maskPlaceholders } from "@blocks-localization/utils/glossary-placeholders";
-import { isNoSpaceCulture, isWordStart } from "@blocks-localization/utils/glossary-text";
+import { normalizeGlossaryName } from "@blocks-localization/utils/glossary-name";
+import {
+  isNoSpaceCulture,
+  isWordStart,
+  wordPrefixBefore,
+} from "@blocks-localization/utils/glossary-text";
+
+export const TRANSLATION_LENGTH_ERROR = `Translation must be ${GLOSSARY_LIMITS.value} characters or fewer`;
+export const FORBIDDEN_TRANSLATION_ERROR = "A translation can't also be forbidden";
+
+/** True when the forbidden `value` is the translation itself (case-insensitive, NFC). */
+export const isForbiddenTranslation = (value: string, translation: string | undefined) => {
+  const normalizedTranslation = normalizeGlossaryName(translation ?? "");
+  return !!normalizedTranslation && normalizeGlossaryName(value) === normalizedTranslation;
+};
+
+/** The editor's checks of one Translate-rule translation; inline edits reuse them. */
+export const getTranslationError = (
+  translation: string,
+  forbiddenValues: string[],
+): string | undefined => {
+  if (translation.trim().length > GLOSSARY_LIMITS.value) return TRANSLATION_LENGTH_ERROR;
+  if (forbiddenValues.some((value) => isForbiddenTranslation(value, translation))) {
+    return FORBIDDEN_TRANSLATION_ERROR;
+  }
+  return undefined;
+};
 
 /**
  * Whether the glossary says anything for this language: Keep and Forbidden always do; a
@@ -116,6 +143,80 @@ const findAllInTarget = (text: string, value: string, options: FindOptions): Occ
   return occurrences;
 };
 
+/**
+ * Arabic letters written onto the next word: a conjunction (و, ف), then a preposition (ب, ك, ل),
+ * then the article ال; ل followed by ال is written لل.
+ */
+const ARABIC_PROCLITICS = /^[وف]?(?:[بكل]?ال|لل|[بكل])?$/u;
+/** Hebrew prefix letters (ו, ה, ב, כ, ל, מ, ש), up to three, written onto the next word. */
+const HEBREW_PROCLITICS = /^[והבכלמש]{0,3}$/u;
+/** Languages that write compounds as one word ("Standardarbeitsbereich"). */
+const COMPOUNDING_LANGUAGES: readonly string[] = [
+  "de",
+  "nl",
+  "sv",
+  "da",
+  "nb",
+  "nn",
+  "no",
+  "is",
+  "fo",
+  "fi",
+  "et",
+  "af",
+  "lb",
+  "fy",
+];
+/** A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag". */
+export const MIN_COMPOUND_PART_LENGTH = 4;
+
+/** How the approved value may be attached to the end of a word in the target language. */
+const attachmentOf = (
+  approved: string,
+  targetCulture: string,
+): { core: string; allowsPrefix: (prefix: string) => boolean } | null => {
+  const language = targetCulture.split(/[-_]/)[0].toLowerCase();
+  if (language === "ar") {
+    // The article may be dropped or replaced by a preposition contraction: "الحساب" in "للحساب".
+    const core = approved.startsWith("ال") && approved.length > 3 ? approved.slice(2) : approved;
+    return { core, allowsPrefix: (prefix) => ARABIC_PROCLITICS.test(prefix) };
+  }
+  if (language === "he" || language === "iw") {
+    return { core: approved, allowsPrefix: (prefix) => HEBREW_PROCLITICS.test(prefix) };
+  }
+  if (
+    COMPOUNDING_LANGUAGES.includes(language) &&
+    [...approved].length >= MIN_COMPOUND_PART_LENGTH
+  ) {
+    return { core: approved, allowsPrefix: () => true };
+  }
+  return null;
+};
+
+/** `containsApprovedTranslation` on a text whose placeholders are already masked. */
+const containsApprovedIn = (searchable: string, approved: string, targetCulture: string) => {
+  const options: FindOptions = { caseInsensitive: true, targetCulture };
+  if (findAllInTarget(searchable, approved, options).length > 0) return true;
+  const attachment = attachmentOf(approved.normalize("NFC").trim(), targetCulture);
+  if (!attachment) return false;
+  return findAllInTarget(searchable, attachment.core, { ...options, anywhere: true }).some(
+    (occurrence) => attachment.allowsPrefix(wordPrefixBefore(searchable, occurrence.start)),
+  );
+};
+
+/**
+ * True when the approved translation is used in `text`: where it starts a word (inflected
+ * endings allowed, A11), or attached to the end of a word the target language builds that
+ * way — a compound ("Standardarbeitsbereich") or Arabic/Hebrew prefix letters ("بالحساب").
+ * Same rule as the server's `TranslationValidator.ContainsApprovedTranslation`.
+ */
+export const containsApprovedTranslation = (
+  text: string,
+  approved: string,
+  targetCulture: string,
+): boolean =>
+  containsApprovedIn(maskPlaceholders((text ?? "").normalize("NFC")), approved, targetCulture);
+
 const isWithin = (inner: Occurrence, outer: Occurrence) =>
   inner.start >= outer.start && inner.start + inner.length <= outer.start + outer.length;
 
@@ -134,6 +235,7 @@ const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
 type FindValue = (value: string, caseInsensitive: boolean) => Occurrence[];
+type ContainsApproved = (value: string) => boolean;
 
 type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
 
@@ -156,10 +258,10 @@ const translationViolations = (
   match: GlossaryMatch,
   targetCulture: string,
   base: ViolationBase,
-  find: FindValue,
+  containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
   const expected = match.meta.translations[targetCulture]?.trim();
-  if (!expected || find(expected, true).length > 0) return [];
+  if (!expected || containsApproved(expected)) return [];
   return [{ ...base, kind: "missing-translation", expected }];
 };
 
@@ -207,13 +309,16 @@ const glossaryViolations = (
   { matches: glossaryMatches, surfaces }: MatchedGlossaryGroup,
   targetCulture: string,
   find: FindValue,
+  containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
   const [match] = glossaryMatches;
   const { glossary, meta } = match;
   const base: ViolationBase = { glossaryId: glossary.itemId, term: glossary.name };
   if (meta.rule === "keep") return keepViolations(surfaces, base, find);
   return [
-    ...(meta.rule === "translate" ? translationViolations(match, targetCulture, base, find) : []),
+    ...(meta.rule === "translate"
+      ? translationViolations(match, targetCulture, base, containsApproved)
+      : []),
     ...forbiddenViolations(text, match, targetCulture, base, find),
   ];
 };
@@ -234,10 +339,18 @@ export const validateTranslation = (
   const searchable = maskPlaceholders(text);
   const find: FindValue = (value, caseInsensitive) =>
     findAllInTarget(searchable, value, { caseInsensitive, targetCulture });
+  const containsApproved: ContainsApproved = (value) =>
+    containsApprovedIn(searchable, value, targetCulture);
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
   for (const group of groupMatchesByGlossary(matches)) {
-    for (const violation of glossaryViolations(text, group, targetCulture, find)) {
+    for (const violation of glossaryViolations(
+      text,
+      group,
+      targetCulture,
+      find,
+      containsApproved,
+    )) {
       const id = [
         violation.glossaryId,
         violation.kind,

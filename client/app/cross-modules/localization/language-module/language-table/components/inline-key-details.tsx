@@ -23,6 +23,7 @@ import type {
 import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
+import { isMatchedGlossaryName } from "@blocks-localization/utils/glossary-name";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
 
 interface KeyActionsMenuProps {
@@ -109,6 +110,9 @@ export const InlineKeyDetails = memo(
     } = useInlineKeyEditor(keyDetails, languageListData);
     const sourceRef = useRef<HTMLTextAreaElement>(null);
     const sourceSelection = useSourceTextSelection(sourceRef);
+    // Text that already is a glossary has nothing to add.
+    const canAddSelectionToGlossary =
+      !!sourceSelection && !isMatchedGlossaryName(sourceSelection, sourceMatches);
     const [addTermName, setAddTermName] = useState<string | undefined>(undefined);
 
     return (
@@ -189,7 +193,7 @@ export const InlineKeyDetails = memo(
                       onClick={(event) => event.stopPropagation()}
                       ref={language.isDefault ? sourceRef : undefined}
                     />
-                    {language.isDefault && sourceSelection && (
+                    {language.isDefault && canAddSelectionToGlossary && (
                       <Button
                         type="button"
                         size="sm"

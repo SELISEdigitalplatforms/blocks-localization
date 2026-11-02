@@ -232,7 +232,7 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task RemoveStaleGlossaryIdsAsync_pulls_ids_not_in_the_existing_set_in_batches()
+        public async Task RemoveStaleGlossaryIdsAsync_pulls_exactly_the_stale_ids_it_found_in_batches()
         {
             SetupStaleKeys(Enumerable.Range(0, 5).Select(i => new BlocksLanguageKey { ItemId = $"k{i}", GlossaryIds = new List<string> { "gone" } }).ToList());
             var updates = new List<UpdateDefinition<BlocksLanguageKey>>();
@@ -245,7 +245,7 @@ namespace XUnitTest.Repositories
             removed.Should().Be(5);
             updates.Should().HaveCount(3);
             updates[0].Render(Args<BlocksLanguageKey>()).AsBsonDocument["$pull"].ToJson()
-                .Should().Be(BsonDocument.Parse("{ GlossaryIds: { $nin: ['live'] } }").ToJson());
+                .Should().Be(BsonDocument.Parse("{ GlossaryIds: { $in: ['gone'] } }").ToJson());
         }
     }
 }

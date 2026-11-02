@@ -376,7 +376,9 @@ namespace XUnitTest
 
             await service.TagGlossaryAsync(request);
 
-            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "g-old", "g-new" }))), Times.Once);
+            // g-old left mod-1, so mod-1's keys are re-checked too.
+            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "g-old", "g-new" })),
+                It.Is<IReadOnlyCollection<string>>(m => m.SequenceEqual(new[] { "mod-1" })), false), Times.Once);
         }
 
         [Fact]
@@ -403,6 +405,16 @@ namespace XUnitTest
 
             result.IsSuccess.Should().BeFalse();
             result.Errors.Should().ContainKey("Error");
+            result.Errors["Error"].Should().NotContain("db down", "exception text is not returned to the client");
+        }
+
+        [Fact]
+        public async Task TagGlossaryAsync_WithoutGlossaryIds_IsRejectedWithoutTouchingTheRepository()
+        {
+            var result = await _service.TagGlossaryAsync(new TagGlossaryRequest { ModuleId = "mod-1", GlossaryIds = null! });
+
+            result.IsSuccess.Should().BeFalse();
+            _glossaryRepositoryMock.Verify(r => r.GetByModuleIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         private const string ModuleHasKeysMessage =

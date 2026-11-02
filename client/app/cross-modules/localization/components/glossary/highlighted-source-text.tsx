@@ -47,8 +47,10 @@ export const HighlightedSourceText = ({
 
   const parts: ReactNode[] = [];
   let cursor = 0;
-  for (const match of matches) {
-    if (match.start < cursor) continue;
+  // Offsets come from the server: out-of-range or overlapping matches are left as plain text.
+  for (const match of [...matches].sort((a, b) => a.start - b.start)) {
+    if (match.start < cursor || match.length <= 0 || match.start + match.length > text.length)
+      continue;
     if (match.start > cursor) parts.push(text.slice(cursor, match.start));
     const inactive =
       !!targetLanguage && !hasRuleForCulture(match.meta, targetLanguage.languageCode);

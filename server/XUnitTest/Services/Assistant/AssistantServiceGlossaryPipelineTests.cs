@@ -124,6 +124,32 @@ namespace XUnitTest.Services.Assistant
         }
 
         [Fact]
+        public async Task A_glossary_without_a_German_translation_is_reported_missing_and_never_validated()
+        {
+            var workspace = Workspace();
+            workspace.Translations = new List<GlossaryTranslation> { new() { Language = "fr-FR", Value = "Espace de travail" } };
+            var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(workspace), "Öffnen Sie Ihren Werkbereich");
+
+            var result = await service.SuggestTranslation(Request());
+
+            service.Prompts.Should().ContainSingle();
+            result.Content.Should().Be("Öffnen Sie Ihren Werkbereich");
+            result.GlossaryViolations.Should().BeEmpty();
+            result.MissingGlossaryTranslations.Should().ContainSingle()
+                .Which.Should().BeEquivalentTo(new MissingGlossaryTranslation { GlossaryId = "g1", Term = "Workspace" });
+        }
+
+        [Fact]
+        public async Task A_glossary_with_the_German_translation_is_not_reported_missing()
+        {
+            var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(Workspace()), "Öffnen Sie Ihren Arbeitsbereich");
+
+            var result = await service.SuggestTranslation(Request());
+
+            result.MissingGlossaryTranslations.Should().BeEmpty();
+        }
+
+        [Fact]
         public async Task A_clean_first_answer_makes_no_correction_attempt()
         {
             var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(Workspace()), "Öffnen Sie Ihren Arbeitsbereich");
@@ -188,17 +214,16 @@ namespace XUnitTest.Services.Assistant
         }
 
         [Fact]
-        public async Task A_request_carrying_the_client_rules_uses_todays_path_with_one_call()
+        public async Task A_request_carrying_rule_lines_of_its_own_still_gets_the_server_pipeline()
         {
+            // The Phase 3 client that sent its own rules is gone; such a context must not bypass enforcement.
             var clientPrompt = "Button label\n\n" + Heading + "\n- Translate \"Workspace\" as \"Arbeitsbereich\".\n";
-            var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(Workspace()), "Öffnen Sie Ihren Werkbereich", "unused");
-            var request = Request(clientPrompt);
+            var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(Workspace()), "Öffnen Sie Ihren Arbeitsbereich");
 
-            var result = await service.SuggestTranslation(request);
+            var result = await service.SuggestTranslation(Request(clientPrompt));
 
-            service.Prompts.Should().Equal(LegacyPrompt(request));
-            result.AppliedTerms.Should().BeEmpty();
-            result.GlossaryViolations.Should().BeEmpty();
+            service.Prompts.Should().ContainSingle().Which.Should().StartWith(clientPrompt.TrimEnd());
+            result.AppliedTerms.Should().ContainSingle(t => t.GlossaryId == "g1");
         }
 
         [Fact]

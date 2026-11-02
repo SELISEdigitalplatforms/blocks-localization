@@ -152,8 +152,11 @@ const TagModuleDialog = ({
   const { data: modules } = useGetLanguageModules();
   const [moduleId, setModuleId] = useState("");
   // Tagging replaces the module's whole list, so it must start from every existing tag (C7).
-  const { data: existing, isLoading, isError } = useGetAllModuleGlossaries(moduleId);
-  const canTag = !!moduleId && !isLoading && !isError && !!existing;
+  // Only data fetched for this dialog counts: a cached list may miss tags added since.
+  const { data: existing, isLoading, isError, isFetching, isFetchedAfterMount } =
+    useGetAllModuleGlossaries(moduleId);
+  const canTag =
+    !!moduleId && !isLoading && !isError && !!existing && isFetchedAfterMount && !isFetching;
 
   return (
     <DialogContent>
@@ -173,7 +176,7 @@ const TagModuleDialog = ({
           ))}
         </SelectContent>
       </Select>
-      {moduleId && isLoading && (
+      {moduleId && !isError && (isLoading || isFetching) && (
         <p className="text-sm text-medium-emphasis">Loading the module&apos;s glossaries…</p>
       )}
       {moduleId && isError && (

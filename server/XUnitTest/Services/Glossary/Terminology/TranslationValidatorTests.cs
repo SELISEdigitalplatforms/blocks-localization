@@ -37,11 +37,66 @@ namespace XUnitTest.Terminology
             Validate(new[] { Workspace() }, "Open your Workspace", output).Should().BeEmpty();
         }
 
-        [Fact]
-        public void A_translation_only_inside_a_compound_is_reported_C21_Example_10()
+        [Theory]
+        [InlineData("Projektarbeitsbereich öffnen")]
+        [InlineData("Den Standardarbeitsbereichs öffnen")]
+        public void A_translation_at_the_end_of_a_compound_counts_in_a_compounding_language_C21_Example_10(string output)
         {
-            Validate(new[] { Workspace() }, "Open your Workspace", "Projektarbeitsbereich öffnen")
+            Validate(new[] { Workspace() }, "Open your Workspace", output).Should().BeEmpty();
+        }
+
+        [Fact]
+        public void A_translation_inside_another_word_is_still_reported_where_compounds_are_not_written_as_one_word()
+        {
+            var workspace = Glossary("g1", "Workspace", Meta(new Dictionary<string, object> { ["translations"] = Map(("en-GB", "space")) }));
+
+            Validate(new[] { workspace }, "Open your Workspace", "Open your workspace", target: "en-GB")
                 .Should().ContainSingle().Which.Kind.Should().Be(GlossaryViolationKinds.MissingTranslation);
+        }
+
+        [Fact]
+        public void A_short_translation_inside_a_compound_is_still_reported()
+        {
+            var day = Glossary("d", "Day", Meta(new Dictionary<string, object> { ["translations"] = Map(("de-DE", "Tag")) }));
+
+            Validate(new[] { day }, "Day", "Vertrag").Should().ContainSingle().Which.Expected.Should().Be("Tag");
+            Validate(new[] { day }, "Day", "Tagesansicht").Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData("الحساب")]
+        [InlineData("افتح حسابك")]
+        [InlineData("افتح الحساب")]
+        [InlineData("بالحساب")]
+        [InlineData("وبالحساب")]
+        [InlineData("للحساب")]
+        [InlineData("فالحساب")]
+        public void Arabic_prefix_letters_and_the_article_are_accepted(string output)
+        {
+            var account = Glossary("a", "Account", Meta(new Dictionary<string, object> { ["translations"] = Map(("ar-SA", "الحساب")) }));
+
+            Validate(new[] { account }, "Open your Account", output, target: "ar-SA").Should().BeEmpty();
+        }
+
+        [Fact]
+        public void An_Arabic_translation_inside_a_longer_stem_is_still_reported()
+        {
+            var account = Glossary("a", "Account", Meta(new Dictionary<string, object> { ["translations"] = Map(("ar-SA", "حساب")) }));
+
+            // "مح" is not a run of prefix letters, so this is another word, not the approved one.
+            Validate(new[] { account }, "Account", "مححساب", target: "ar-SA")
+                .Should().ContainSingle().Which.Kind.Should().Be(GlossaryViolationKinds.MissingTranslation);
+        }
+
+        [Theory]
+        [InlineData("החשבון")]
+        [InlineData("בחשבון")]
+        [InlineData("ולחשבון")]
+        public void Hebrew_prefix_letters_are_accepted(string output)
+        {
+            var account = Glossary("a", "Account", Meta(new Dictionary<string, object> { ["translations"] = Map(("he-IL", "חשבון")) }));
+
+            Validate(new[] { account }, "Account", output, target: "he-IL").Should().BeEmpty();
         }
 
         [Fact]

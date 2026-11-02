@@ -48,7 +48,7 @@ namespace XUnitTest.Repositories
             SetupJobUpdates(new UpdateResult.Acknowledged(0, 0, new BsonString(GlossaryRecheckJob.MarkerId)), 0);
             var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
 
-            var created = await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1", "g2" }, Now, TimeSpan.FromMinutes(30));
+            var created = await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1", "g2" }, null, Now, TimeSpan.FromMinutes(30));
 
             created.Should().BeTrue();
             _updates.Should().ContainSingle();
@@ -64,7 +64,7 @@ namespace XUnitTest.Repositories
             SetupJobUpdates(new UpdateResult.Acknowledged(1, 1, null), 0);
             var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
 
-            var created = await repo.TryEnqueueAsync("recheck-tenant", null, Now, TimeSpan.FromMinutes(30));
+            var created = await repo.TryEnqueueAsync("recheck-tenant", null, null, Now, TimeSpan.FromMinutes(30));
 
             created.Should().BeFalse();
             _updates[0].Update["$set"].ToJson().Should().Be(BsonDocument.Parse("{ WholeProject: true }").ToJson());
@@ -78,7 +78,7 @@ namespace XUnitTest.Repositories
             SetupJobUpdates(new UpdateResult.Acknowledged(1, 1, null), 1);
             var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
 
-            (await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1" }, Now, TimeSpan.FromMinutes(30))).Should().BeTrue();
+            (await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1" }, null, Now, TimeSpan.FromMinutes(30))).Should().BeTrue();
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace XUnitTest.Repositories
                     : Task.FromResult<UpdateResult>(new UpdateResult.Acknowledged(1, calls == 2 ? 1 : 0, null)));
             var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
 
-            (await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1" }, Now, TimeSpan.FromMinutes(30))).Should().BeFalse();
+            (await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1" }, null, Now, TimeSpan.FromMinutes(30))).Should().BeFalse();
             calls.Should().Be(3);
         }
 

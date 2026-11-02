@@ -257,6 +257,49 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
+        public async Task Schema_2_document_without_a_normalized_name_gets_one_so_the_index_can_build()
+        {
+            var missing = Migrated("g1", "Workspace");
+            missing.NormalizedName = null;
+            _stored.Add(missing);
+            _stored.Add(Migrated("g2", "Portal"));
+
+            var report = await _service.MigrateAsync(dryRun: false);
+
+            _written.Should().ContainSingle().Which.Glossary.NormalizedName.Should().Be("workspace");
+            report.UniqueIndexCreated.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task A_failing_index_build_is_reported_instead_of_thrown()
+        {
+            _stored.Add(Migrated("g1", "Workspace"));
+            _repository.Setup(r => r.CreateNormalizedNameUniqueIndexAsync()).ThrowsAsync(new InvalidOperationException("duplicate key"));
+
+            var report = await _service.MigrateAsync(dryRun: false);
+
+            report.UniqueIndexCreated.Should().BeFalse();
+            report.Notes.Should().Contain(n => n.Contains("unique name index", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task A_glossary_created_during_the_run_is_not_treated_as_stale()
+        {
+            _stored.Add(Migrated("g1", "Workspace"));
+            var reads = 0;
+            _repository.Setup(r => r.GetAllEntitiesAsync("tenant-m")).ReturnsAsync(() =>
+                ++reads == 1 ? _stored.ToList() : _stored.Append(Migrated("g-new", "Portal")).ToList());
+            IReadOnlyCollection<string>? existing = null;
+            _keyRepository.Setup(k => k.RemoveStaleGlossaryIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), false, It.IsAny<int>()))
+                .Callback<IReadOnlyCollection<string>, bool, int>((ids, _, _) => existing = ids)
+                .ReturnsAsync(0L);
+
+            await _service.MigrateAsync(dryRun: false);
+
+            existing.Should().BeEquivalentTo(new[] { "g1", "g-new" });
+        }
+
+        [Fact]
         public async Task Writes_in_batches_of_200()
         {
             _stored.AddRange(Enumerable.Range(0, 450).Select(i => TrackA($"g{i:D3}", $"Term {i}")));

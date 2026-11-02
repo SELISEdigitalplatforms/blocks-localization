@@ -2,6 +2,7 @@ using Eurolm.DomainService.Repositories;
 using System.Buffers;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Eurolm.DomainService.Services
 {
@@ -26,11 +27,12 @@ namespace Eurolm.DomainService.Services
             // Searched with placeholders and tags blanked out (same offsets); reported from the real text.
             var searchable = PlaceholderMask.Apply(text);
             List<Occurrence> Find(string value, bool caseInsensitive) => FindAll(searchable, value, caseInsensitive, culture);
+            bool ContainsApproved(string value) => ContainsApprovedTranslation(searchable, value, culture);
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var group in TerminologyPromptBuilder.GroupByGlossary(ruleMatches))
             {
-                foreach (var violation in GlossaryViolations(text, group, culture, Find))
+                foreach (var violation in GlossaryViolations(text, group, culture, Find, ContainsApproved))
                 {
                     var id = string.Join('\0', violation.GlossaryId, violation.Kind, violation.Found ?? violation.Expected ?? "");
                     if (seen.Add(id)) violations.Add(violation);
@@ -43,7 +45,8 @@ namespace Eurolm.DomainService.Services
             string text,
             TerminologyPromptBuilder.MatchedGlossaryGroup group,
             string targetCulture,
-            Func<string, bool, List<Occurrence>> find)
+            Func<string, bool, List<Occurrence>> find,
+            Func<string, bool> containsApproved)
         {
             var terminology = group.Matches[0].Terminology;
             var glossaryId = group.Glossary.ItemId ?? "";
@@ -64,7 +67,7 @@ namespace Eurolm.DomainService.Services
                 ? JsText.Trim(terminology.ActiveTranslation(targetCulture) ?? "")
                 : "";
 
-            if (approved.Length > 0 && find(approved, true).Count == 0)
+            if (approved.Length > 0 && !containsApproved(approved))
                 yield return new GlossaryViolationDto { GlossaryId = glossaryId, Term = term, Kind = GlossaryViolationKinds.MissingTranslation, Expected = approved };
 
             // Forbidden rule: the term and its variants. Translate or forbidden: the stored forbidden values.
@@ -107,15 +110,95 @@ namespace Eurolm.DomainService.Services
             return banned.OrderByDescending(b => b.Value.Length).ToList();
         }
 
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+
+        /// <summary>
+        /// Arabic letters written onto the next word: a conjunction (و, ف), then a preposition (ب, ك, ل), then
+        /// the article ال; ل followed by ال is written لل.
+        /// </summary>
+        private static readonly Regex ArabicProclitics = new("^[وف]?(?:[بكل]?ال|لل|[بكل])?$", RegexOptions.CultureInvariant, RegexTimeout);
+
+        /// <summary>Hebrew prefix letters (ו, ה, ב, כ, ל, מ, ש), up to three, written onto the next word.</summary>
+        private static readonly Regex HebrewProclitics = new("^[והבכלמש]{0,3}$", RegexOptions.CultureInvariant, RegexTimeout);
+
+        /// <summary>Languages that write compounds as one word ("Standardarbeitsbereich").</summary>
+        private static readonly string[] CompoundingLanguages = { "de", "nl", "sv", "da", "nb", "nn", "no", "is", "fo", "fi", "et", "af", "lb", "fy" };
+
+        /// <summary>A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag".</summary>
+        public const int MinCompoundPartLength = 4;
+
+        /// <summary>
+        /// True when the approved translation is used in <paramref name="text"/>: where it starts a word (inflected
+        /// endings allowed, A11), or attached to the end of a word the target language builds that way — a compound
+        /// ("Standardarbeitsbereich") or Arabic/Hebrew prefix letters ("بالحساب"). The text is searched as given;
+        /// callers pass it with placeholders masked.
+        /// </summary>
+        public static bool ContainsApprovedTranslation(string text, string approved, string? targetCulture)
+        {
+            var culture = targetCulture ?? "";
+            if (FindAll(text, approved, true, culture).Count > 0) return true;
+
+            var needle = JsText.Trim(NormalizeNfc(approved));
+            var language = culture.Split('-', '_')[0].ToLowerInvariant();
+            string core;
+            Func<string, bool> allowsPrefix;
+            switch (language)
+            {
+                case "ar":
+                    // The article may be dropped or replaced by a preposition contraction: "الحساب" in "للحساب".
+                    core = needle.StartsWith("ال", StringComparison.Ordinal) && needle.Length > 3 ? needle[2..] : needle;
+                    allowsPrefix = prefix => SafeIsMatch(ArabicProclitics, prefix);
+                    break;
+                case "he":
+                case "iw":
+                    core = needle;
+                    allowsPrefix = prefix => SafeIsMatch(HebrewProclitics, prefix);
+                    break;
+                default:
+                    if (!CompoundingLanguages.Contains(language, StringComparer.Ordinal)
+                        || needle.EnumerateRunes().Count() < MinCompoundPartLength) return false;
+                    core = needle;
+                    allowsPrefix = _ => true;
+                    break;
+            }
+
+            return FindAll(text, core, true, culture, anywhere: true)
+                .Any(occurrence => allowsPrefix(WordPrefix(text, occurrence.Start)));
+        }
+
+        private static bool SafeIsMatch(Regex regex, string value)
+        {
+            try
+            {
+                return regex.IsMatch(value);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>The letters and digits of the same word that come before <paramref name="index"/>.</summary>
+        private static string WordPrefix(string text, int index)
+        {
+            var start = index;
+            while (start > 0 && !GlossaryMatcher.IsWordStart(text, start))
+            {
+                start -= char.IsLowSurrogate(text[start - 1]) && start >= 2 && char.IsHighSurrogate(text[start - 2]) ? 2 : 1;
+            }
+            return text[start..index];
+        }
+
         /// <summary>
         /// Every occurrence of <paramref name="value"/> in <paramref name="text"/> where it starts a word; trailing
-        /// letters are allowed so inflected forms ("Arbeitsbereichs") count (A11). No-space languages: substring.
+        /// letters are allowed so inflected forms ("Arbeitsbereichs") count (A11). No-space languages, or
+        /// <paramref name="anywhere"/>: substring.
         /// </summary>
-        private static List<Occurrence> FindAll(string text, string value, bool caseInsensitive, string targetCulture)
+        private static List<Occurrence> FindAll(string text, string value, bool caseInsensitive, string targetCulture, bool anywhere = false)
         {
             var needle = NormalizeNfc(value);
             if (needle.Length == 0 || text.Length == 0) return new List<Occurrence>();
-            var substring = GlossaryMatcher.IsNoSpaceCulture(targetCulture);
+            var substring = anywhere || GlossaryMatcher.IsNoSpaceCulture(targetCulture);
 
             return caseInsensitive
                 ? FindIgnoringCase(text, needle, substring, targetCulture)

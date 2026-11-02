@@ -7,6 +7,7 @@ import { IGlossary } from "@blocks-localization/models/language";
 import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import {
+  GlossaryMissingTranslations,
   GlossaryViolationList,
   recheckViolations,
   useGlossarySuggestionRows,
@@ -211,6 +212,23 @@ describe("useGlossarySuggestionRows", () => {
     expect(result.current.getRow("de-DE").violations).toEqual([]);
   });
 
+  it("keeps the suggestion's missing glossary translations until the first edit", async () => {
+    suggestAsync.mockResolvedValue({
+      content: "Öffnen Sie das Portal",
+      missingGlossaryTranslations: [{ glossaryId: "p", term: "Portal" }],
+    });
+    const { result } = renderHook(() => useGlossarySuggestionRows());
+    await act(async () => {
+      await result.current.request(input);
+    });
+    expect(result.current.getRow("de-DE").missingTranslations).toEqual([
+      { glossaryId: "p", term: "Portal" },
+    ]);
+
+    act(() => result.current.clearViolations("de-DE"));
+    expect(result.current.getRow("de-DE").missingTranslations).toEqual([]);
+  });
+
   it("shows no violations when the server returns empty arrays (C1)", async () => {
     suggestAsync.mockResolvedValue({ content: "Öffnen", appliedTerms: [], glossaryViolations: [] });
     const { result } = renderHook(() => useGlossarySuggestionRows());
@@ -241,5 +259,30 @@ describe("recheckViolations", () => {
     ]);
     expect(recheckViolations("Mein SELISE", [missingKeep], "de-DE")).toEqual([]);
     expect(recheckViolations("Mein selise", [missingKeep], "de-DE")).toEqual([missingKeep]);
+  });
+
+  it("drops a missing translation that is now at the end of a compound", () => {
+    expect(recheckViolations("Ihr Projektarbeitsbereich", [missing], "de-DE")).toEqual([]);
+  });
+});
+
+describe("GlossaryMissingTranslations", () => {
+  it("names the glossaries without a translation for the language", () => {
+    render(
+      <GlossaryMissingTranslations
+        terms={[
+          { glossaryId: "p", term: "Portal" },
+          { glossaryId: "d", term: "Dashboard" },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText("No glossary translation for this language yet: Portal, Dashboard"),
+    ).toBeTruthy();
+  });
+
+  it("renders nothing without terms", () => {
+    const { container } = render(<GlossaryMissingTranslations />);
+    expect(container.innerHTML).toBe("");
   });
 });

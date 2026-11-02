@@ -39,13 +39,16 @@ namespace Eurolm.DomainService.Services
 
             // Group by the name each document will have after the migration.
             report.DuplicateGroups = all
-                .GroupBy(g => g.NormalizedName ?? GlossaryMapper.NormalizedName(g.Name), StringComparer.Ordinal)
+                .GroupBy(g => GlossaryMapper.NormalizedName(g.Name), StringComparer.Ordinal)
                 .Where(group => group.Count() > 1)
                 .Select(group => group.Select(g => g.ItemId).OrderBy(id => id, StringComparer.Ordinal).ToList())
                 .ToList();
 
-            report.StaleKeyRefsRemoved = await _keyRepository.RemoveStaleGlossaryIdsAsync(
-                all.Select(g => g.ItemId).ToHashSet(StringComparer.Ordinal), dryRun, BatchSize);
+            // Read the ids again right before the cleanup: a glossary created (and tagged) since the snapshot above
+            // is not stale. The repository then pulls only the stale ids it found, never "everything else".
+            var existingIds = all.Select(g => g.ItemId).ToHashSet(StringComparer.Ordinal);
+            if (!dryRun) existingIds.UnionWith((await _glossaryRepository.GetAllEntitiesAsync(tenantId)).Select(g => g.ItemId));
+            report.StaleKeyRefsRemoved = await _keyRepository.RemoveStaleGlossaryIdsAsync(existingIds, dryRun, BatchSize);
 
             var migrated = writes.Count;
             if (!dryRun)
@@ -64,7 +67,17 @@ namespace Eurolm.DomainService.Services
 
             if (canCreateIndex && !dryRun)
             {
-                await _glossaryRepository.CreateNormalizedNameUniqueIndexAsync();
+                try
+                {
+                    await _glossaryRepository.CreateNormalizedNameUniqueIndexAsync();
+                }
+                catch (Exception ex)
+                {
+                    // For example a duplicate created by a concurrent save after the snapshot; the writes above stay.
+                    _logger.LogWarning(ex, "Glossary migration could not create the unique name index");
+                    report.Notes.Add("The unique name index could not be created (a duplicate name may have been saved during the run); run the migration again.");
+                    canCreateIndex = false;
+                }
             }
             report.UniqueIndexCreated = canCreateIndex;
 
@@ -132,7 +145,9 @@ namespace Eurolm.DomainService.Services
                 // Structured fields were kept in sync by Track A saves (A12); only clean the two text fields.
                 // A corrupt or unsupported note can't be cleaned, so it alone never causes a write (idempotent).
                 var corrupt = parsed.Status is GlossaryMetaStatus.Corrupt or GlossaryMetaStatus.UnsupportedVersion;
-                if (!hasJson && !hasMarker) return new PlanOutcome(null, corrupt);
+                // A missing or outdated NormalizedName would break the unique index (every null is the same key).
+                var nameOutdated = !string.Equals(glossary.NormalizedName, GlossaryMapper.NormalizedName(glossary.Name), StringComparison.Ordinal);
+                if (!hasJson && !hasMarker && !nameOutdated) return new PlanOutcome(null, corrupt);
 
                 var cleaned = Clone(glossary);
                 cleaned.Context = RuleMarker.Strip(glossary.Context);

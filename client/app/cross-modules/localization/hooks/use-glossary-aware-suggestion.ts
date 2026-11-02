@@ -6,6 +6,7 @@ import {
   IAppliedTerm,
   IGlossaryViolationDto,
   ILanguageConfig,
+  IMissingGlossaryTranslation,
   ITranslationSuggestionResponse,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
@@ -39,6 +40,8 @@ export type GlossarySuggestionOutcome =
       appliedTerms: IAppliedTerm[];
       /** `appliedTerms` as matches: Fix uses only a Translate term's `expected` (C20). */
       matches: GlossaryMatch[];
+      /** Matched Translate glossaries without a translation for the target language. */
+      missingTranslations: IMissingGlossaryTranslation[];
     }
   | { status: "empty"; errors: unknown }
   | { status: "error"; error: unknown }
@@ -130,6 +133,7 @@ export const runGlossaryAwareSuggestion = async (
     violations: (response.glossaryViolations ?? []).map(toGlossaryViolation),
     appliedTerms,
     matches: appliedTerms.map((term) => appliedTermToMatch(term, targetCulture)),
+    missingTranslations: response.missingGlossaryTranslations ?? [],
   };
 };
 

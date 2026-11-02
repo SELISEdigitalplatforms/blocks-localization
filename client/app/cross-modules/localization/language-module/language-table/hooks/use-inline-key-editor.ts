@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
-import { useSourceGlossaryMatches } from "@blocks-localization/hooks/use-live-glossary-check";
+import {
+  NO_MATCHES,
+  useSourceGlossaryMatches,
+} from "@blocks-localization/hooks/use-live-glossary-check";
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
@@ -65,7 +68,7 @@ export const useInlineKeyEditor = (
   const defaultLanguage =
     sortedLanguages.find((language) => language.isDefault) ?? sortedLanguages[0];
   // `/Glossary/Match` 300 ms after the source stops changing, never per keystroke (C18).
-  const { matches: sourceMatches } = useSourceGlossaryMatches({
+  const { matches, isCurrent } = useSourceGlossaryMatches({
     text: draftTranslations[defaultLanguage?.languageCode ?? ""] ?? "",
     sourceCulture: defaultLanguage?.languageCode ?? "",
     keyId: keyDetails.itemId,
@@ -73,6 +76,8 @@ export const useInlineKeyEditor = (
     glossaryIds: keyDetails.glossaryIds,
     debounce: true,
   });
+  // Matches of an earlier source draft would check the targets against the wrong terms.
+  const sourceMatches = isCurrent ? matches : NO_MATCHES;
   const discardChanges = () => {
     setDraftTranslations({ ...savedTranslations });
     clearViolations();

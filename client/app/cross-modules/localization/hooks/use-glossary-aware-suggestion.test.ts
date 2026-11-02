@@ -104,6 +104,21 @@ describe("runGlossaryAwareSuggestion", () => {
     });
   });
 
+  it("returns the glossaries the server had no target translation for", async () => {
+    requestSuggestion.mockResolvedValueOnce(
+      reply("Öffnen Sie das Portal", {
+        missingGlossaryTranslations: [{ glossaryId: "p", term: "Portal" }],
+      }),
+    );
+    expect(await run()).toMatchObject({
+      status: "success",
+      missingTranslations: [{ glossaryId: "p", term: "Portal" }],
+    });
+
+    requestSuggestion.mockResolvedValueOnce(reply("Hallo"));
+    expect(await run()).toMatchObject({ status: "success", missingTranslations: [] });
+  });
+
   it("returns empty violations when the server's enforcement is off (C1)", async () => {
     requestSuggestion.mockResolvedValueOnce(
       reply("Öffnen Sie Ihren Werkbereich", { appliedTerms: [], glossaryViolations: [] }),

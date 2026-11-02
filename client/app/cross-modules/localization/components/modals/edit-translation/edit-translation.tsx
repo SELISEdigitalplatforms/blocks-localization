@@ -25,6 +25,7 @@ import { useSourceGlossaryMatches } from "@blocks-localization/hooks/use-live-gl
 import { useTargetInsertion } from "@blocks-localization/hooks/use-target-insertion";
 import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
+import { isMatchedGlossaryName } from "@blocks-localization/utils/glossary-name";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import GlossaryTermMenu, {
@@ -92,13 +93,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
       "",
   );
 
-  const { matches: sourceMatches } = useSourceGlossaryMatches({
+  const { matches, isCurrent } = useSourceGlossaryMatches({
     text: defaultLanguageText,
     sourceCulture: defaultLanguage?.languageCode ?? "",
     keyId: keyDetails.itemId,
     moduleId: keyDetails.moduleId,
     glossaryIds: keyDetails.glossaryIds,
   });
+  const sourceMatches = isCurrent ? matches : NO_MATCHES;
   /** A user edit (typing or Insert): the suggestion's list gives way to the live check. */
   const editTranslation = useCallback(
     (value: string) => {
@@ -219,6 +221,11 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
     !destinationLanguage?.isDefault &&
     hasInsertableGlossaryTerms(highlightMatches, destinationLanguageCode);
   const termShortcut = getGlossaryTermMenuShortcut();
+  // Not while editing the default language (nothing to translate), nor for text that already is a glossary.
+  const canAddSelectionToGlossary =
+    !!sourceSelection &&
+    !destinationLanguage?.isDefault &&
+    !isMatchedGlossaryName(sourceSelection, sourceMatches);
 
   return (
     <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[700px]">
@@ -260,7 +267,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               onInsert={destinationLanguage?.isDefault ? undefined : insert}
             />
           </DialogDescription>
-          {sourceSelection && (
+          {canAddSelectionToGlossary && (
             <Button
               type="button"
               size="sm"

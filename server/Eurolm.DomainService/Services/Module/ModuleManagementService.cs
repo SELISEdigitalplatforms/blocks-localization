@@ -259,6 +259,9 @@ namespace Eurolm.DomainService.Services
 
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {
+            if (request?.GlossaryIds == null || string.IsNullOrWhiteSpace(request.ModuleId))
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "ModuleId and GlossaryIds are required." } } };
+
             try
             {
                 var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
@@ -285,14 +288,19 @@ namespace Eurolm.DomainService.Services
                 // Module scope feeds the matcher's key > module > global precedence.
                 // Re-check the keys of every glossary whose module scope changed (coalesced, flag on only).
                 var changed = removeFrom.Concat(addTo).Where(id => id.Length > 0).Distinct(StringComparer.Ordinal).ToList();
-                if (_glossaryChangeNotifier != null) await _glossaryChangeNotifier.NotifyAsync(tenantId, changed);
+                // A glossary removed from the module no longer lists it, so name the module for the re-check.
+                if (_glossaryChangeNotifier != null)
+                {
+                    if (removeFrom.Count > 0) await _glossaryChangeNotifier.NotifyAsync(tenantId, changed, new[] { request.ModuleId });
+                    else await _glossaryChangeNotifier.NotifyAsync(tenantId, changed);
+                }
 
                 return new BaseMutationResponse { IsSuccess = true };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while tagging glossary for module {ErrorMessage}", ex.Message);
-                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "Could not tag the glossaries to the module." } } };
             }
         }
 

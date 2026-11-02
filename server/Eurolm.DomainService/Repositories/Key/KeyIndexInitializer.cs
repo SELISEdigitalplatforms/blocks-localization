@@ -21,7 +21,9 @@ namespace Eurolm.DomainService.Repositories
             Model("ix_keys_createdate_id", Builders<Key>.IndexKeys.Ascending(k => k.CreateDate).Ascending(k => k.ItemId)),
             Model("ix_keys_lastupdatedate_id", Builders<Key>.IndexKeys.Ascending(k => k.LastUpdateDate).Ascending(k => k.ItemId)),
             Model("ix_keys_moduleid_keyname_id", Builders<Key>.IndexKeys.Ascending(k => k.ModuleId).Ascending(k => k.KeyName).Ascending(k => k.ItemId)),
-            Model("ix_keys_glossaryids", Builders<Key>.IndexKeys.Ascending(k => k.GlossaryIds))
+            Model("ix_keys_glossaryids", Builders<Key>.IndexKeys.Ascending(k => k.GlossaryIds)),
+            // Usage, delete and the re-check match keys by a stored violation's glossary as well as by tag.
+            Model("ix_keys_glossaryviolations_glossaryid", Builders<Key>.IndexKeys.Ascending("GlossaryViolations.GlossaryId"))
         };
 
         /// <summary>

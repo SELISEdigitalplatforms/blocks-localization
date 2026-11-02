@@ -232,16 +232,17 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     });
   });
 
-  it("should warn about corrupt data, pre-fill the raw note and save it as plain text (C1)", async () => {
+  it("should warn about corrupt data, leave the note empty and save it replaced (C1)", async () => {
     const raw = `${PREFIX}{broken`;
     renderSheet(makeGlossary({ additionalNote: raw }));
     expect(
       screen.getByText("Stored terminology data could not be read. Saving will replace it."),
     ).toBeTruthy();
-    expect((screen.getByLabelText("Internal note") as HTMLTextAreaElement).value).toBe(raw);
+    expect(screen.queryByLabelText("Internal note")).toBeNull();
+    expect(screen.queryByText(raw)).toBeNull();
     save();
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
-    expect(lastPayload()).toMatchObject({ additionalNote: raw, rule: "translate" });
+    expect(lastPayload()).toMatchObject({ additionalNote: "", rule: "translate" });
   });
 
   it("should disable editing for an unsupported version (C2)", () => {
@@ -327,13 +328,13 @@ describe("modals/glossary/glossary-editor-sheet", () => {
   describe("variants and case-sensitive", () => {
     const savedMeta = () => lastPayload();
 
-    it("should add variants with Enter, comma or leaving the field as removable chips (H13)", async () => {
+    it("should add variants with Enter, pasted lines or leaving the field as removable chips (H13)", async () => {
       renderSheet(makeGlossary());
       const input = screen.getByLabelText("Variants");
       expect(input.id).toBe("glossary-variants");
-      expect(input.getAttribute("placeholder")).toBe("Plurals, synonyms… press Enter or comma");
+      expect(input.getAttribute("placeholder")).toBe("Plurals, synonyms… press Enter");
       addChip(input, "workspaces");
-      fireEvent.change(input, { target: { value: "work area,team space," } });
+      fireEvent.paste(input, { clipboardData: { getData: () => "work area\nteam space\n" } });
       fireEvent.change(input, { target: { value: "work room" } });
       fireEvent.blur(input);
       expect(screen.getByText("workspaces")).toBeTruthy();
@@ -344,6 +345,22 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       save();
       await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
       expect(savedMeta().variants).toEqual(["workspaces", "team space", "work room"]);
+    });
+
+    it("should keep commas in a chip and ignore Enter during IME composition", async () => {
+      renderSheet(makeGlossary());
+      const input = screen.getByLabelText("Variants");
+      fireEvent.change(input, { target: { value: "Inc., Ltd" } });
+      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+      fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+      fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+      expect((input as HTMLInputElement).value).toBe("Inc., Ltd");
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect((input as HTMLInputElement).value).toBe("");
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(savedMeta().variants).toEqual(["Inc., Ltd"]);
     });
 
     it("should show the Case-sensitive switch after Rule and save it (H14)", async () => {
@@ -397,8 +414,8 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       save();
       expect(await screen.findByText("Variant must be 200 characters or fewer")).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: `Remove variant ${"x".repeat(201)}` }));
-      fireEvent.change(input, {
-        target: { value: `${Array.from({ length: 21 }, (_, i) => `v${i}`).join(",")},` },
+      fireEvent.paste(input, {
+        clipboardData: { getData: () => Array.from({ length: 21 }, (_, i) => `v${i}`).join("\n") },
       });
       save();
       expect(await screen.findByText("Add at most 20 variants")).toBeTruthy();
