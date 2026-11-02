@@ -101,6 +101,8 @@ namespace Eurolm.DomainService.Services
             // Limit(0) means no limit, and a negative skip throws.
             request.PageSize = Math.Clamp(request.PageSize, 1, MaxGetsPageSize);
             request.PageNumber = Math.Max(request.PageNumber, 0);
+            // Every searched field (name, variants, translations) is at most 200 characters, so longer text never matches.
+            if ((request.SearchText?.Trim().Length ?? 0) > GlossaryValidator.MaxValueLength) return new GetGlossariesResponse();
             return await _glossaryRepository.GetAllAsync(request);
         }
 
@@ -128,12 +130,15 @@ namespace Eurolm.DomainService.Services
             if (glossary == null) return null;
 
             var usage = await _keyRepository.GetGlossaryKeyUsageAsync(request.ItemId, request.PageNumber, request.PageSize);
+            var moduleIds = glossary.IsGlobal ? new List<string>() : glossary.ModuleIds ?? new List<string>();
             return new GlossaryUsageResponse
             {
                 KeyCount = usage.KeyCount,
                 Keys = usage.Keys,
                 ModuleIds = usage.ModuleIds,
-                ViolationKeyCount = usage.ViolationKeyCount
+                ViolationKeyCount = usage.ViolationKeyCount,
+                AffectedKeyCount = await _keyRepository.CountKeysAffectedByGlossaryAsync(request.ItemId, glossary.IsGlobal, moduleIds),
+                IsGlobal = glossary.IsGlobal
             };
         }
 

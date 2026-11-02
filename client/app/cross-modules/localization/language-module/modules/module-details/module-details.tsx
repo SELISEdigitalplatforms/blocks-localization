@@ -27,6 +27,7 @@ import {
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
 import { isUnsupportedGlossaryNote, toGlossaryMeta } from "@blocks-localization/utils/glossary-display";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
@@ -83,7 +84,7 @@ export const getGlossaryCoverage = (
   if (isUnsupportedGlossaryNote(glossary) || meta.rule !== "translate" || targets.length === 0) {
     return "—";
   }
-  const translated = targets.filter(({ languageCode }) => !!meta.translations[languageCode]?.trim());
+  const translated = targets.filter(({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim());
   return `${translated.length} / ${targets.length} languages`;
 };
 

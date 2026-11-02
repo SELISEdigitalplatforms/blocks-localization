@@ -112,12 +112,12 @@ namespace Eurolm.DomainService.Repositories
 
             if (!string.IsNullOrWhiteSpace(request.MissingTranslation))
             {
-                var culture = request.MissingTranslation;
+                var culture = request.MissingTranslation.Trim();
                 filters.Add(structured);
                 filters.Add(isTranslateRule);
                 filters.Add(filterBuilder.Not(filterBuilder.ElemMatch(g => g.Translations,
                     Builders<GlossaryTranslation>.Filter.And(
-                        Builders<GlossaryTranslation>.Filter.Eq(t => t.Language, culture),
+                        Builders<GlossaryTranslation>.Filter.Regex(t => t.Language, CulturePattern(culture)),
                         Builders<GlossaryTranslation>.Filter.Ne(t => t.Value, ""),
                         Builders<GlossaryTranslation>.Filter.Ne(t => t.Value, null)))));
             }
@@ -409,6 +409,17 @@ namespace Eurolm.DomainService.Repositories
             var filter = Builders<BlocksGlossary>.Filter.Eq(g => g.ItemId, itemId);
 
             await collection.DeleteOneAsync(filter);
+        }
+
+        /// <summary>
+        /// The culture's entry as <c>EffectiveTerminology</c> finds it: the code in any case, or its bare language
+        /// ("de" for "de-DE").
+        /// </summary>
+        private static BsonRegularExpression CulturePattern(string culture)
+        {
+            var separator = culture.IndexOfAny(new[] { '-', '_' });
+            var codes = separator > 0 ? new[] { culture, culture[..separator] } : new[] { culture };
+            return new BsonRegularExpression("^(?:" + string.Join("|", codes.Select(Regex.Escape)) + ")$", "i");
         }
     }
 }

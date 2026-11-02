@@ -66,7 +66,11 @@ const useSummedUsage = (glossaries: IGlossary[], enabled: boolean) => {
       const failed = results.find((result) => result.status === "rejected");
       if (failed) throw failed.reason;
       return results.reduce(
-        (sum, result) => sum + (result.status === "fulfilled" ? (result.value.keyCount ?? 0) : 0),
+        (sum, result) =>
+          sum +
+          (result.status === "fulfilled"
+            ? (result.value.affectedKeyCount ?? result.value.keyCount ?? 0)
+            : 0),
         0,
       );
     },
@@ -112,7 +116,8 @@ const DeleteTermsDialog = ({
       )}
       {typeof keyCount === "number" && (
         <p className="text-sm text-medium-emphasis">
-          Used by {keyCount} key{keyCount === 1 ? "" : "s"} in total.
+          {/* Summed per glossary, so a key two of them apply to counts twice. */}
+          Used by up to {keyCount} key{keyCount === 1 ? "" : "s"} in total.
         </p>
       )}
       {needsTyping && (

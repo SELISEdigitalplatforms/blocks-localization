@@ -143,6 +143,40 @@ namespace XUnitTest.Terminology
             active.ForbiddenValues.Should().Equal("Werkstück");
         }
 
+        [Theory]
+        [InlineData("de-de")]
+        [InlineData("DE-DE")]
+        [InlineData("de")]
+        public void A_translation_under_another_case_or_the_bare_language_applies_to_the_culture(string stored)
+        {
+            var glossary = Glossary("g", "Workspace", Meta(new Dictionary<string, object>
+            {
+                ["translations"] = Map((stored, "Arbeitsbereich")),
+                ["forbidden"] = new Dictionary<string, string[]> { [stored] = new[] { "Werkbereich" } }
+            }));
+
+            var terminology = GlossaryTerminologyResolver.Resolve(glossary);
+
+            terminology.ActiveTranslation("de-DE").Should().Be("Arbeitsbereich");
+            terminology.ActiveForbidden("de-DE").Should().Equal("Werkbereich");
+            terminology.ActiveTranslation("de-AT").Should().Be(stored == "de" ? "Arbeitsbereich" : null);
+        }
+
+        [Fact]
+        public void The_exact_culture_wins_and_a_regional_entry_never_applies_to_the_bare_language()
+        {
+            var glossary = Glossary("g", "Workspace", Meta(new Dictionary<string, object>
+            {
+                ["translations"] = Map(("de", "Allgemein"), ("de-de", "Klein"), ("de-DE", "Exakt"), ("fr-FR", "Espace"))
+            }));
+
+            var terminology = GlossaryTerminologyResolver.Resolve(glossary);
+
+            terminology.ActiveTranslation("de-DE").Should().Be("Exakt");
+            terminology.ActiveTranslation("de-CH").Should().Be("Allgemein");
+            terminology.ActiveTranslation("fr").Should().BeNull();
+        }
+
         [Fact]
         public void A_culture_with_only_forbidden_values_gets_its_own_entry()
         {

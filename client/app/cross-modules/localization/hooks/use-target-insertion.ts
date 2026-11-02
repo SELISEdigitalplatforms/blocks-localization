@@ -13,7 +13,7 @@ interface SelectionRange {
   end: number;
 }
 
-const WORD_CHAR = /[\p{L}\p{N}]/u;
+const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
 
 /**
  * Replaces `range` of `text` with `value`. Without a range (never focused) the value is

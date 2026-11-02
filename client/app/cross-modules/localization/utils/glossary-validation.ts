@@ -4,6 +4,7 @@ import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { maskPlaceholders } from "@blocks-localization/utils/glossary-placeholders";
 import { normalizeGlossaryName } from "@blocks-localization/utils/glossary-name";
 import {
+  findCultureEntry,
   isNoSpaceCulture,
   isWordStart,
   wordLettersAfter,
@@ -38,8 +39,8 @@ export const getTranslationError = (
  */
 export const hasRuleForCulture = (meta: GlossaryMeta, culture: string): boolean =>
   meta.rule !== "translate" ||
-  !!meta.translations[culture]?.trim() ||
-  (meta.forbidden[culture]?.length ?? 0) > 0;
+  !!findCultureEntry(meta.translations, culture)?.trim() ||
+  (findCultureEntry(meta.forbidden, culture)?.length ?? 0) > 0;
 
 export type GlossaryViolationKind = "missing-translation" | "missing-keep" | "forbidden-used";
 
@@ -82,7 +83,7 @@ interface Occurrence {
 
 /**
  * Lower-cases one code point at a time. `map` gives the original index only where a lowered
- * code point starts, so a match starting or ending inside a case expansion ("İ" → "i̇") is
+ * code point starts, so a match starting or ending inside a case expansion is
  * rejected instead of covering half a character.
  */
 const lowerWithMap = (text: string, locale: string) => {
@@ -98,8 +99,12 @@ const lowerWithMap = (text: string, locale: string) => {
   return { lowered, map };
 };
 
-/** The Greek final sigma "ς" folds to "σ" (same length), as "Σ" lowers to "σ" on its own. */
+/**
+ * The Greek final sigma "ς" folds to "σ" (same length), as "Σ" lowers to "σ" on its own. "İ"
+ * lowers to "i" in every locale, as the server's culture lowering does.
+ */
 const lowerChar = (char: string, locale: string) => {
+  if (char === "İ") return "i";
   const lower = safeLower(char, locale);
   return lower === "ς" ? "σ" : lower;
 };
@@ -284,7 +289,7 @@ const translationViolations = (
   base: ViolationBase,
   containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
-  const expected = match.meta.translations[targetCulture]?.trim();
+  const expected = findCultureEntry(match.meta.translations, targetCulture)?.trim();
   if (!expected || containsApproved(expected)) return [];
   return [{ ...base, kind: "missing-translation", expected }];
 };
@@ -307,9 +312,13 @@ const forbiddenViolations = (
     ...(meta.rule === "forbidden"
       ? alternativesOf(match).map((value) => ({ value, caseInsensitive: !meta.caseSensitive }))
       : []),
-    ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
+    ...(findCultureEntry(meta.forbidden, targetCulture) ?? []).map((value) => ({
+      value,
+      caseInsensitive: true,
+    })),
   ].sort((a, b) => b.value.length - a.value.length);
-  const approved = meta.rule === "translate" ? meta.translations[targetCulture]?.trim() : "";
+  const approved =
+    meta.rule === "translate" ? findCultureEntry(meta.translations, targetCulture)?.trim() : "";
   const approvedSpans = approved ? find(approved, true) : [];
   const violations: GlossaryViolation[] = [];
   const reportedStarts = new Set<number>();
@@ -407,7 +416,7 @@ export const getFixReplacement = (
   if (violation.kind !== "forbidden-used" || !violation.found) return null;
   const match = findGlossaryMatch(matches, violation.glossaryId);
   if (match?.meta.rule !== "translate") return null;
-  return match.meta.translations[targetCulture]?.trim() || null;
+  return findCultureEntry(match.meta.translations, targetCulture)?.trim() || null;
 };
 
 export const canApplyFix = (

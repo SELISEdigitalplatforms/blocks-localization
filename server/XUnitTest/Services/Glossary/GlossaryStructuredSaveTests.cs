@@ -248,5 +248,25 @@ namespace XUnitTest.Services.Glossary
             result.ModuleIds.Should().Equal("m1");
             result.Keys.Should().ContainSingle();
         }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GetGlossaryUsage_counts_every_key_the_glossary_applies_to(bool isGlobal)
+        {
+            var stored = Structured();
+            stored.IsGlobal = isGlobal;
+            SetupStored(stored);
+            _keyRepository.Setup(k => k.GetGlossaryKeyUsageAsync("g1", It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new GlossaryKeyUsage());
+            _keyRepository.Setup(k => k.CountKeysAffectedByGlossaryAsync("g1", isGlobal, It.IsAny<IReadOnlyCollection<string>>())).ReturnsAsync(1200);
+
+            var result = await _service.GetGlossaryUsageAsync(new GlossaryUsageRequest { ItemId = "g1", PageSize = 1 });
+
+            result!.KeyCount.Should().Be(0);
+            result.AffectedKeyCount.Should().Be(1200);
+            result.IsGlobal.Should().Be(isGlobal);
+            _keyRepository.Verify(k => k.CountKeysAffectedByGlossaryAsync("g1", isGlobal,
+                It.Is<IReadOnlyCollection<string>>(m => isGlobal ? m.Count == 0 : m.SequenceEqual(new[] { "m1" }))), Times.Once);
+        }
     }
 }

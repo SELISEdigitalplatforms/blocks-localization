@@ -68,8 +68,11 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   const [latestGlossary, setLatestGlossary] = useState<IGlossary | undefined>(undefined);
   const currentGlossary = latestGlossary ?? glossary;
 
-  const usageCount = usage?.keyCount;
-  const moduleCount = usage?.moduleIds?.length ?? 0;
+  // What a delete affects: every key in a global glossary's scope, not only the tagged ones.
+  const usageCount = usage?.affectedKeyCount ?? usage?.keyCount;
+  // Modules of the tagged keys plus the modules the glossary is scoped to.
+  const moduleCount = new Set([...(usage?.moduleIds ?? []), ...(currentGlossary?.moduleIds ?? [])])
+    .size;
   const hasKnownCount = !isCountError && typeof usageCount === "number";
   const isBusy = isPending || isDeprecating;
   const needsTyping = hasKnownCount && usageCount >= DELETE_CONFIRM_THRESHOLD;
@@ -188,8 +191,14 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm text-medium-emphasis">
         <Badge variant="warning">
-          Used by {pluralizeKeys(usageCount)}
-          {moduleCount > 0 && ` in ${pluralizeModules(moduleCount)}`}.
+          {usage?.isGlobal ? (
+            <>Applies to every key in the project ({pluralizeKeys(usageCount)}).</>
+          ) : (
+            <>
+              Used by {pluralizeKeys(usageCount)}
+              {moduleCount > 0 && ` in ${pluralizeModules(moduleCount)}`}.
+            </>
+          )}
         </Badge>
         <span>Deleting removes it from those keys.</span>
       </div>

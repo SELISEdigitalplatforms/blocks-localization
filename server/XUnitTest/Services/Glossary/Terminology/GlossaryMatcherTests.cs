@@ -26,6 +26,28 @@ namespace XUnitTest.Terminology
         }
 
         [Fact]
+        public void Indic_vowel_signs_and_viramas_belong_to_the_word()
+        {
+            var namaste = Term("g1", "नमस्ते");
+            var part = Term("g2", "स्ते");
+            var stem = Term("g3", "नमस");
+
+            Match(new[] { namaste }, "नमस्ते दुनिया").Should().ContainSingle().Which.Length.Should().Be(6);
+            Match(new[] { part }, "नमस्ते दुनिया").Should().BeEmpty();
+            Match(new[] { stem }, "नमस्ते दुनिया").Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Dotted_capital_I_matches_its_lower_case()
+        {
+            var istanbul = Term("g1", "Istanbul");
+
+            Match(new[] { istanbul }, "Fly to İstanbul").Should().ContainSingle()
+                .Which.Should().Match<GlossaryMatch>(m => m.Start == 7 && m.Surface == "İstanbul");
+            Match(new[] { Term("g2", "İSTANBUL") }, "fly to istanbul").Should().ContainSingle();
+        }
+
+        [Fact]
         public void Matches_case_insensitively_unless_the_term_is_case_sensitive()
         {
             var workspace = Term("g1", "Workspace");

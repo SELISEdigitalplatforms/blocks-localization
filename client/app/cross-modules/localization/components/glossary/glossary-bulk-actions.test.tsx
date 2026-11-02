@@ -156,7 +156,7 @@ describe("components/glossary/glossary-bulk-actions", () => {
     run.mockResolvedValue({ total: 2, succeeded: 2, failed: [] });
     renderBar();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByText("Used by 50 keys in total.")).toBeTruthy();
+    expect(await screen.findByText("Used by up to 50 keys in total.")).toBeTruthy();
     expect(screen.getByText("Workspace")).toBeTruthy();
     const confirm = () =>
       screen.getAllByRole("button", { name: "Delete" }).at(-1) as HTMLButtonElement;
@@ -182,7 +182,7 @@ describe("components/glossary/glossary-bulk-actions", () => {
     });
     renderBar();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByText("Used by 2 keys in total.")).toBeTruthy();
+    expect(await screen.findByText("Used by up to 2 keys in total.")).toBeTruthy();
     expect(screen.queryByLabelText(/to confirm/)).toBeNull();
     expect(
       (screen.getAllByRole("button", { name: "Delete" }).at(-1) as HTMLButtonElement).disabled,

@@ -79,7 +79,7 @@ namespace Api.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::gets")]
         public async Task<IActionResult> Usage([FromQuery] GlossaryUsageRequest request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.ItemId))

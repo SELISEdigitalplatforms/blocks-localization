@@ -213,11 +213,12 @@ namespace Eurolm.DomainService.Services
             return NoSpaceLanguages.Contains(primary, StringComparer.Ordinal);
         }
 
-        /// <summary>Letters and numbers, as the client's <c>/[\p{L}\p{N}]/u</c>.</summary>
+        /// <summary>Letters, combining marks and numbers, as the client's <c>/[\p{L}\p{M}\p{N}]/u</c>.</summary>
         internal static bool IsWordRune(Rune rune)
         {
             var category = Rune.GetUnicodeCategory(rune);
             return Rune.IsLetter(rune)
+                || category is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark
                 || category is UnicodeCategory.DecimalDigitNumber or UnicodeCategory.LetterNumber or UnicodeCategory.OtherNumber;
         }
 
@@ -240,7 +241,7 @@ namespace Eurolm.DomainService.Services
         private static bool IsTrailingUnit(string text, int index) =>
             index > 0 && index < text.Length && char.IsLowSurrogate(text[index]) && char.IsHighSurrogate(text[index - 1]);
 
-        /// <summary>Lower-cases one code point at a time (invariant); the Greek final sigma folds to σ.</summary>
+        /// <summary>Lower-cases one code point at a time (invariant); the Greek final sigma folds to σ and "İ" to "i".</summary>
         internal static string FoldCase(string value) => FoldWithOffsets(value).Folded;
 
         private static (string Folded, int[] ToSource) FoldWithOffsets(string text)
@@ -256,6 +257,7 @@ namespace Eurolm.DomainService.Services
                 {
                     var lower = Rune.ToLowerInvariant(rune);
                     if (lower.Value == 0x03C2) lower = new Rune(0x03C3);
+                    else if (lower.Value == 0x0130) lower = new Rune('i');
                     builder.Append(lower.ToString());
                 }
                 else

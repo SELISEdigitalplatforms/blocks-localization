@@ -123,6 +123,7 @@ namespace Eurolm.DomainService.Services
                     return DeleteModuleFailure(ItemIdErrorKey, "Module has keys. Please delete or move all keys to another module before deleting it.");
 
                 await _moduleRepository.DeleteAsync(request.ItemId);
+                await DetachDeletedModuleAsync(request.ItemId, isMove ? request.TargetModuleId : null);
                 return new BaseMutationResponse { IsSuccess = true };
             }
             catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
@@ -141,6 +142,40 @@ namespace Eurolm.DomainService.Services
                 return DeleteModuleFailure("Error", "An unexpected error occurred");
             }
         }
+
+        /// <summary>
+        /// Removes a deleted module from its glossaries and, after a move, re-checks the target module's keys
+        /// against the glossaries of both modules. A failure is logged: the module is already deleted.
+        /// </summary>
+        private async Task DetachDeletedModuleAsync(string moduleId, string? targetModuleId)
+        {
+            try
+            {
+                var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+                var tagged = await GlossaryIdsOfModuleAsync(tenantId, moduleId);
+                if (tagged.Count > 0)
+                    await _glossaryRepository.UpdateModuleTagsAsync(moduleId, Array.Empty<string>(), tagged);
+
+                if (_glossaryChangeNotifier == null) return;
+                if (targetModuleId == null)
+                {
+                    await _glossaryChangeNotifier.NotifyAsync(tenantId, Array.Empty<string>());
+                    return;
+                }
+
+                var changed = tagged.Concat(await GlossaryIdsOfModuleAsync(tenantId, targetModuleId))
+                    .Distinct(StringComparer.Ordinal).ToList();
+                await _glossaryChangeNotifier.NotifyAsync(tenantId, changed, new[] { targetModuleId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Module {ModuleId} was deleted, but its glossaries were not updated", moduleId);
+            }
+        }
+
+        private async Task<List<string>> GlossaryIdsOfModuleAsync(string tenantId, string moduleId) =>
+            (await _glossaryRepository.GetByModuleIdAsync(tenantId, moduleId))
+                .Select(g => g.ItemId ?? "").Where(id => id.Length > 0).ToList();
 
         private async Task<string?> MoveAllKeysAsync(string sourceModuleId, string targetModuleId)
         {

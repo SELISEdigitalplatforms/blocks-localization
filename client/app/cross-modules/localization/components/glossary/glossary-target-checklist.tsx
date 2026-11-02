@@ -18,6 +18,7 @@ import {
   GlossaryViolation,
   hasRuleForCulture,
 } from "@blocks-localization/utils/glossary-validation";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 type TermStatus = "pending" | "followed" | "issue" | "no-value";
 
@@ -29,9 +30,9 @@ const termGuidance = (match: GlossaryMatch, targetCulture: string) => {
     case "forbidden":
       return { value: null, note: "Do not use" };
     default: {
-      const value = match.meta.translations[targetCulture]?.trim() || null;
+      const value = findCultureEntry(match.meta.translations, targetCulture)?.trim() || null;
       if (value) return { value, note: null };
-      const banned = match.meta.forbidden[targetCulture] ?? [];
+      const banned = findCultureEntry(match.meta.forbidden, targetCulture) ?? [];
       return {
         value,
         note:

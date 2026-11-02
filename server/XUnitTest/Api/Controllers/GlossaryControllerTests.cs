@@ -564,5 +564,13 @@ namespace XUnitTest
         }
 
         #endregion
+
+        [Fact]
+        public void Usage_lists_keys_so_it_needs_the_key_list_permission()
+        {
+            typeof(GlossaryController).GetMethod(nameof(GlossaryController.Usage))!.CustomAttributes
+                .Single(a => a.AttributeType.Name == "ProtectedEndPointAttribute")
+                .ConstructorArguments[0].Value.Should().Be("blocks-localization::key::gets");
+        }
     }
 }

@@ -500,7 +500,8 @@ namespace XUnitTest.Repositories
             var rendered = (await RenderGetsFilter(new GetGlossariesRequest { PageSize = 10, MissingTranslation = "de-DE" })).ToJson();
 
             rendered.Should().Contain("\"SchemaVersion\" : { \"$gte\" : 2 }");
-            rendered.Should().Contain("$not").And.Contain("\"Language\" : \"de-DE\"");
+            // Any case of the code, or its bare language, as EffectiveTerminology finds the translation.
+            rendered.Should().Contain("$not").And.Contain("\"pattern\" : \"^(?:de-DE|de)$\", \"options\" : \"i\"");
         }
 
         [Fact]

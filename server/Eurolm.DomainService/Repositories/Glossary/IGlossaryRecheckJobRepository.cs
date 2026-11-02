@@ -12,6 +12,9 @@ namespace Eurolm.DomainService.Repositories
         /// <summary>Removes and returns the pending job, or null when none is queued.</summary>
         Task<GlossaryRecheckJob?> ClaimAsync(string tenantId);
 
+        /// <summary>True when a job is queued.</summary>
+        Task<bool> HasQueuedAsync(string tenantId);
+
         /// <summary>Removes the pending job (after its event could not be published).</summary>
         Task ReleaseAsync(string tenantId);
 

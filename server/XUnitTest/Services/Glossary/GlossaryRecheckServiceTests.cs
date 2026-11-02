@@ -19,6 +19,7 @@ namespace XUnitTest.Services.Glossary
         private readonly List<BlocksGlossary> _glossaries = new();
         private readonly List<ConsumerMessage<RecheckGlossaryViolationsEvent>> _published = new();
         private readonly List<IReadOnlyList<GlossaryViolationUpdate>> _writes = new();
+        private readonly Queue<GlossaryRecheckJob> _queued = new();
         private int _matcherBuilds;
 
         public GlossaryRecheckServiceTests()
@@ -36,7 +37,15 @@ namespace XUnitTest.Services.Glossary
                 .ReturnsAsync((IEnumerable<string> ids) => _glossaries.Where(g => ids.Contains(g.ItemId)).ToList());
             _jobs.Setup(j => j.TryAcquireLeaseAsync("recheck-tenant", It.IsAny<string>(), It.IsAny<DateTime>(), GlossaryRecheckService.LeaseDuration))
                 .ReturnsAsync(true);
+            _jobs.Setup(j => j.ClaimAsync("recheck-tenant")).ReturnsAsync(() => _queued.Count > 0 ? _queued.Dequeue() : null);
         }
+
+        private void Queue(params GlossaryRecheckJob[] jobs)
+        {
+            foreach (var job in jobs) _queued.Enqueue(job);
+        }
+
+        private static GlossaryRecheckJob WholeProject => new() { WholeProject = true };
 
         private GlossaryRecheckService NewService(bool enabled = true) => new(
             _jobs.Object,
@@ -164,7 +173,7 @@ namespace XUnitTest.Services.Glossary
         public async Task Recheck_recomputes_and_sets_only_changed_violations_H29()
         {
             _glossaries.Add(Term("g1", "Workspace"));
-            _jobs.Setup(j => j.ClaimAsync("recheck-tenant")).ReturnsAsync(new GlossaryRecheckJob { GlossaryIds = new() { "g1" } });
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g1" } });
             var staleViolation = new KeyGlossaryViolation { Culture = "de-DE", GlossaryId = "g1", Term = "Workspace", Kind = "forbidden-used", Found = "Werkbereich" };
             SetupKeys(new List<BlocksLanguageKey>
             {
@@ -190,6 +199,7 @@ namespace XUnitTest.Services.Glossary
                 .Should().NotContain(p => p.ParameterType == typeof(IAssistantService));
             _glossaries.Add(Term("g1", "Workspace"));
             SetupKeys(new List<BlocksLanguageKey> { Key("k1", "Open your Workspace", "Werkbereich") });
+            Queue(WholeProject);
 
             await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
@@ -206,6 +216,7 @@ namespace XUnitTest.Services.Glossary
             var broken = Key("k-bad", "Open your Workspace", "Werkbereich");
             broken.Resources = new[] { null!, new Resource { Culture = "en-US", Value = "Workspace" } };
             SetupKeys(new List<BlocksLanguageKey> { broken, Key("k-ok", "Open your Workspace", "Werkbereich") });
+            Queue(WholeProject);
 
             var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
@@ -220,6 +231,7 @@ namespace XUnitTest.Services.Glossary
             _glossaries.Add(Term("g1", "Workspace"));
             var firstPage = Enumerable.Range(0, GlossaryRecheckService.PageSize).Select(i => Key($"k{i:D4}", "Hello", null)).ToList();
             SetupKeys(firstPage, new List<BlocksLanguageKey> { Key("k9999", "Hello", null) });
+            Queue(WholeProject);
 
             var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
@@ -232,7 +244,7 @@ namespace XUnitTest.Services.Glossary
         public async Task Recheck_scope_is_tagged_keys_modules_and_stored_violations_of_a_module_glossary()
         {
             _glossaries.Add(Term("g1", "Workspace", isGlobal: false, modules: new List<string> { "m1", "m2" }));
-            _jobs.Setup(j => j.ClaimAsync("recheck-tenant")).ReturnsAsync(new GlossaryRecheckJob { GlossaryIds = new() { "g1", "g-deleted" } });
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g1", "g-deleted" } });
             GlossaryRecheckKeyScope? scope = null;
             _keyRepository.Setup(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()))
                 .Callback<GlossaryRecheckKeyScope?, string?, int>((s, _, _) => scope = s)
@@ -251,7 +263,7 @@ namespace XUnitTest.Services.Glossary
         public async Task Recheck_checks_every_key_for_a_global_glossary_or_a_whole_project_job(bool globalGlossary, bool wholeProjectJob)
         {
             _glossaries.Add(Term("g1", "Workspace", isGlobal: globalGlossary));
-            _jobs.Setup(j => j.ClaimAsync("recheck-tenant")).ReturnsAsync(new GlossaryRecheckJob { WholeProject = wholeProjectJob, GlossaryIds = new() { "g1" } });
+            Queue(new GlossaryRecheckJob { WholeProject = wholeProjectJob, GlossaryIds = new() { "g1" } });
             SetupKeys();
 
             await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant", GlossaryId = "g1" });
@@ -266,18 +278,19 @@ namespace XUnitTest.Services.Glossary
             SetupKeys();
             var service = NewService();
 
+            Queue(WholeProject);
             await service.RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+            Queue(WholeProject);
             await service.RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
-            _jobs.Verify(j => j.ClaimAsync("recheck-tenant"), Times.Exactly(2));
+            _queued.Should().BeEmpty();
             _matcherBuilds.Should().Be(2, "another process saved the glossary, so a cached matcher may be stale");
         }
 
         [Fact]
         public async Task Recheck_scope_includes_the_modules_a_glossary_left_or_had_before_its_delete()
         {
-            _jobs.Setup(j => j.ClaimAsync("recheck-tenant"))
-                .ReturnsAsync(new GlossaryRecheckJob { GlossaryIds = new() { "g-deleted" }, ModuleIds = new() { "m-old" } });
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g-deleted" }, ModuleIds = new() { "m-old" } });
             GlossaryRecheckKeyScope? scope = null;
             _keyRepository.Setup(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()))
                 .Callback<GlossaryRecheckKeyScope?, string?, int>((s, _, _) => scope = s)
@@ -310,30 +323,79 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
-        public async Task Recheck_waits_for_a_running_job_and_leaves_its_request_queued_when_it_gives_up()
+        public async Task Recheck_that_finds_the_lease_taken_returns_at_once_and_leaves_its_request_queued()
         {
             _jobs.Setup(j => j.TryAcquireLeaseAsync("recheck-tenant", It.IsAny<string>(), It.IsAny<DateTime>(), GlossaryRecheckService.LeaseDuration))
                 .ReturnsAsync(false);
-            var waits = 0;
-            var service = new GlossaryRecheckService(_jobs.Object, _glossaryRepository.Object, _keyRepository.Object,
-                new GlossaryMatcherCache(_ => Task.FromResult(_glossaries.ToList())), _messageClient.Object,
-                new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [GlossaryEnforcement.EnabledKey] = "true" }).Build(),
-                new Mock<ILogger<GlossaryRecheckService>>().Object)
-            { Delay = _ => { waits++; return Task.CompletedTask; } };
+            Queue(WholeProject);
 
-            var result = await service.RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
             result.Ran.Should().BeFalse();
-            waits.Should().Be((int)(GlossaryRecheckService.MaxLeaseWait / GlossaryRecheckService.LeaseRetryInterval));
-            _jobs.Verify(j => j.ClaimAsync(It.IsAny<string>()), Times.Never);
+            _queued.Should().ContainSingle("the running job drains it");
+            _jobs.Verify(j => j.TryAcquireLeaseAsync("recheck-tenant", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<TimeSpan>()), Times.Once);
             _jobs.Verify(j => j.ReleaseLeaseAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Recheck_of_an_already_claimed_request_checks_no_key()
+        {
+            SetupKeys();
+
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+
+            result.Ran.Should().BeFalse();
+            _keyRepository.Verify(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()), Times.Never);
+            _jobs.Verify(j => j.ReleaseLeaseAsync("recheck-tenant", It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Recheck_drains_requests_queued_while_it_runs()
+        {
+            _glossaries.Add(Term("g1", "Workspace"));
+            SetupKeys();
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g1" } }, WholeProject);
+            var queuedAfterRelease = true;
+            _jobs.Setup(j => j.HasQueuedAsync("recheck-tenant")).ReturnsAsync(() =>
+            {
+                // A request queued between the last claim and the lease release.
+                if (!queuedAfterRelease) return false;
+                queuedAfterRelease = false;
+                Queue(WholeProject);
+                return true;
+            });
+
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant", GlossaryId = "g1" });
+
+            result.Ran.Should().BeTrue();
+            _queued.Should().BeEmpty();
+            _keyRepository.Verify(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), null, It.IsAny<int>()), Times.Exactly(3));
+            _jobs.Verify(j => j.ReleaseLeaseAsync("recheck-tenant", It.IsAny<string>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task Recheck_that_fails_queues_its_scope_again_and_rethrows()
+        {
+            _glossaries.Add(Term("g1", "Workspace", isGlobal: false, modules: new List<string> { "m1" }));
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g1" }, ModuleIds = new() { "m-old" } });
+            SetupEnqueue(created: true);
+            _keyRepository.Setup(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()))
+                .ThrowsAsync(new InvalidOperationException("db down"));
+
+            var act = () => NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant", GlossaryId = "g1" });
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            _jobs.Verify(j => j.TryEnqueueAsync("recheck-tenant", It.Is<IReadOnlyCollection<string>?>(ids => ids!.SequenceEqual(new[] { "g1" })),
+                It.Is<IReadOnlyCollection<string>?>(m => m!.SequenceEqual(new[] { "m-old" })), It.IsAny<DateTime>(), GlossaryRecheckService.StaleAfter), Times.Once);
+            _published.Should().BeEmpty("the retry or a later request runs it, not a new message");
+            _jobs.Verify(j => j.ReleaseLeaseAsync("recheck-tenant", It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
         public async Task Recheck_that_loses_its_lease_stops_writing_and_queues_its_scope_again()
         {
             _glossaries.Add(Term("g1", "Workspace", isGlobal: false, modules: new List<string> { "m1" }));
-            _jobs.Setup(j => j.ClaimAsync("recheck-tenant")).ReturnsAsync(new GlossaryRecheckJob { GlossaryIds = new() { "g1" } });
+            Queue(new GlossaryRecheckJob { GlossaryIds = new() { "g1" } });
             _jobs.SetupSequence(j => j.TryAcquireLeaseAsync("recheck-tenant", It.IsAny<string>(), It.IsAny<DateTime>(), GlossaryRecheckService.LeaseDuration))
                 .ReturnsAsync(true)
                 .ReturnsAsync(false);

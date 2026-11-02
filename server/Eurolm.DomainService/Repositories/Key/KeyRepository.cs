@@ -695,6 +695,25 @@ namespace Eurolm.DomainService.Repositories
             };
         }
 
+        public async Task<long> CountKeysAffectedByGlossaryAsync(string glossaryId, bool isGlobal, IReadOnlyCollection<string> moduleIds)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(glossaryId);
+            ArgumentNullException.ThrowIfNull(moduleIds);
+
+            var collection = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "")
+                .GetCollection<BlocksLanguageKey>(_collectionName);
+            if (isGlobal) return await collection.EstimatedDocumentCountAsync();
+
+            var filter = Builders<BlocksLanguageKey>.Filter;
+            var affected = new List<FilterDefinition<BlocksLanguageKey>>
+            {
+                filter.AnyEq(k => k.GlossaryIds, glossaryId),
+                filter.ElemMatch(k => k.GlossaryViolations, v => v.GlossaryId == glossaryId)
+            };
+            if (moduleIds.Count > 0) affected.Add(filter.In(k => k.ModuleId, moduleIds));
+            return await collection.CountDocumentsAsync(filter.Or(affected));
+        }
+
         public async Task<long> RemoveStaleGlossaryIdsAsync(IReadOnlyCollection<string> existingGlossaryIds, bool dryRun, int batchSize = 200)
         {
             ArgumentNullException.ThrowIfNull(existingGlossaryIds);

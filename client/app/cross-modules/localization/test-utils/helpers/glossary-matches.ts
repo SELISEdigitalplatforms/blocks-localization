@@ -38,7 +38,7 @@ const scopeOf = (glossary: IGlossary, options: FixtureMatchOptions): GlossarySco
   return "other";
 };
 
-const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+const LETTER_OR_DIGIT = /[\p{L}\p{M}\p{N}]/u;
 
 const isWholeWordAt = (text: string, start: number, end: number) =>
   isWordStart(text, start) && !LETTER_OR_DIGIT.test(text.charAt(end));

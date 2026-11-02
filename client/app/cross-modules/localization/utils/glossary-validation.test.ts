@@ -93,6 +93,35 @@ describe("utils/glossary-validation validateTranslation", () => {
     ]);
   });
 
+  it("applies a translation stored under another case or the bare language", () => {
+    const stored = (translations: Record<string, string>, forbidden: Record<string, string[]>) =>
+      match(
+        [
+          glossary({
+            itemId: "g1",
+            name: "Workspace",
+            additionalNote: meta({ rule: "translate", translations, forbidden }),
+          }),
+        ],
+        "Open your Workspace",
+      );
+    for (const ws2 of [
+      stored({ "de-de": "Arbeitsbereich" }, { "de-de": ["Werkbereich"] }),
+      stored({ de: "Arbeitsbereich" }, { de: ["Werkbereich"] }),
+    ]) {
+      expect(validateTranslation("Öffnen Sie Ihren Arbeitsbereich", ws2, "de-DE")).toEqual([]);
+      expect(validateTranslation("Öffnen Sie Ihren Werkbereich", ws2, "de-DE")).toEqual([
+        {
+          glossaryId: "g1",
+          term: "Workspace",
+          kind: "missing-translation",
+          expected: "Arbeitsbereich",
+        },
+        { glossaryId: "g1", term: "Workspace", kind: "forbidden-used", found: "Werkbereich" },
+      ]);
+    }
+  });
+
   it("reports a longer forbidden value with a short inflected ending only", () => {
     expect(validateTranslation("Die Werkbereichen", ws, "de-DE")).toContainEqual({
       glossaryId: "g1",
@@ -311,17 +340,22 @@ describe("utils/glossary-validation findInTarget", () => {
     expect(findInTarget("Η ΟΔΟΣ εδώ", "οδος", { ...options, caseInsensitive: false })).toBeNull();
   });
 
-  it("rejects a match that ends inside a case expansion (m4)", () => {
-    const options = { caseInsensitive: true, targetCulture: "en-US" };
-    // "İ" lower-cases to "i" + U+0307: "i" alone is only half of that character.
-    expect(findInTarget("İstanbul", "i", options)).toBeNull();
-    expect(findInTarget("İstanbul", "i", { ...options, anywhere: true })).toBeNull();
+  it.each(["en-US", "de-DE", "tr-TR"])("folds İ to i in %s, as the server does", (culture) => {
+    const options = { caseInsensitive: true, targetCulture: culture };
+    expect(findInTarget("İstanbul", "istanbul", options)).toEqual({ start: 0, length: 8 });
+    expect(findInTarget("istanbul", "İSTANBUL", options)).toEqual({ start: 0, length: 8 });
     expect(findInTarget("İi", "i", { ...options, anywhere: true })).toEqual({
-      start: 1,
+      start: 0,
       length: 1,
     });
-    expect(findInTarget("İstanbul", "istanbul", options)).toBeNull();
-    expect(findInTarget("İstanbul", "i̇stanbul", options)).toEqual({ start: 0, length: 8 });
+  });
+
+  it("treats Indic vowel signs and viramas as part of the word", () => {
+    const options = { caseInsensitive: true, targetCulture: "hi-IN" };
+    // "नमस्ते": "स्ते" follows a virama inside the word, and "नमस" is followed by one.
+    expect(findInTarget("नमस्ते दुनिया", "स्ते", options)).toBeNull();
+    expect(findInTarget("नमस्ते दुनिया", "नमस्ते", options)).toEqual({ start: 0, length: 6 });
+    expect(findInTarget("कि किताब", "किताब", options)).toEqual({ start: 3, length: 5 });
   });
 
   it("returns offsets in the original text even when lower-casing changes lengths", () => {
@@ -383,10 +417,9 @@ describe("utils/glossary-validation applyFix", () => {
     );
   });
 
-  it("never inserts at a zero-length match inside a case expansion (m4)", () => {
-    const halfI: GlossaryViolation = { ...forbiddenUsed, found: "i" };
-    expect(applyFix("İstanbul", halfI, ws, "de-DE")).toBeNull();
-    expect(applyFix("İ", halfI, ws, "de-DE")).toBeNull();
+  it("replaces the whole İ when the found value is its lower case", () => {
+    const lowerI: GlossaryViolation = { ...forbiddenUsed, found: "i" };
+    expect(applyFix("İ", lowerI, ws, "de-DE")).toBe("Arbeitsbereich");
   });
 
   it("offers no fix without a deterministic replacement (A5)", () => {

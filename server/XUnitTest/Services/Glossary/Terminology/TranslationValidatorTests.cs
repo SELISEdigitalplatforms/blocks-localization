@@ -213,6 +213,17 @@ namespace XUnitTest.Terminology
         }
 
         [Fact]
+        public void An_approved_Hindi_translation_must_start_a_word()
+        {
+            var world = Glossary("w", "world", Meta(new { translations = Map(("hi-IN", "दुनिया")) }));
+
+            Validate(new[] { world }, "Hello world", "नमस्ते दुनिया", "hi-IN").Should().BeEmpty();
+            // "को" ends in a vowel sign, so "दुनिया" after it is inside one word, not a word of its own.
+            Validate(new[] { world }, "Hello world", "नमस्ते कोदुनिया", "hi-IN").Should().ContainSingle()
+                .Which.Kind.Should().Be(GlossaryViolationKinds.MissingTranslation);
+        }
+
+        [Fact]
         public void Turkish_lowering_uses_the_target_culture()
         {
             var city = Glossary("t", "Igdir", Meta(new { translations = Map(("tr-TR", "Iğdır")) }));

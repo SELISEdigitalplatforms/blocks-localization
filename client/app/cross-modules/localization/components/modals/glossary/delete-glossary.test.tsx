@@ -38,6 +38,7 @@ const fetchLatest = vi.fn();
 const mockUsage = (
   state: { data?: number; isLoading?: boolean; isFetching?: boolean; isError?: boolean },
   moduleIds: string[] = [],
+  scope: { affectedKeyCount?: number; isGlobal?: boolean } = {},
 ) => {
   h.useGetGlossaryUsage.mockReturnValue({
     isLoading: false,
@@ -47,7 +48,7 @@ const mockUsage = (
     ...state,
     data:
       typeof state.data === "number"
-        ? { keyCount: state.data, keys: [], moduleIds, violationKeyCount: 0 }
+        ? { keyCount: state.data, keys: [], moduleIds, violationKeyCount: 0, ...scope }
         : undefined,
   } as never);
 };
@@ -76,6 +77,20 @@ describe("modals/glossary/delete-glossary", () => {
     expect(h.useGetGlossaryUsage).toHaveBeenCalledWith("g1");
     expect(screen.getByText("Used by 3 keys.")).toBeTruthy();
     expect(screen.getByText("Deleting removes it from those keys.")).toBeTruthy();
+  });
+
+  it("counts every key a global glossary applies to, not only tagged ones", () => {
+    mockUsage({ data: 0 }, [], { affectedKeyCount: 1200, isGlobal: true });
+    renderDialog();
+    expect(screen.getByText("Applies to every key in the project (1200 keys).")).toBeTruthy();
+    expect(screen.queryByText("Not used by any keys.")).toBeNull();
+    expect(screen.getByLabelText('Type "Widget" to confirm')).toBeTruthy();
+  });
+
+  it("counts the keys in a module glossary's modules", () => {
+    mockUsage({ data: 1 }, ["m1"], { affectedKeyCount: 40 });
+    renderDialog();
+    expect(screen.getByText("Used by 40 keys in 1 module.")).toBeTruthy();
   });
 
   it("should disable confirm and show 'Checking usage…' while counting", () => {

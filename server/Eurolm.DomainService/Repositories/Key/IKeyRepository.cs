@@ -44,6 +44,12 @@ namespace Eurolm.DomainService.Repositories
         Task<GlossaryKeyUsage> GetGlossaryKeyUsageAsync(string glossaryId, int pageNumber, int pageSize);
 
         /// <summary>
+        /// Keys the glossary applies to: every key for a global glossary; otherwise keys tagged with it, keys in its
+        /// modules and keys with stored violations of it.
+        /// </summary>
+        Task<long> CountKeysAffectedByGlossaryAsync(string glossaryId, bool isGlobal, IReadOnlyCollection<string> moduleIds);
+
+        /// <summary>
         /// Removes GlossaryIds entries that reference no existing glossary, in batches. Returns the number of
         /// entries removed (or that would be removed, with <paramref name="dryRun"/>).
         /// </summary>

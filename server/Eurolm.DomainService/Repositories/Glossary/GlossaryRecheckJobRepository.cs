@@ -58,6 +58,9 @@ namespace Eurolm.DomainService.Repositories
         public async Task<GlossaryRecheckJob?> ClaimAsync(string tenantId) =>
             await Collection(tenantId).FindOneAndDeleteAsync(MarkerFilter);
 
+        public async Task<bool> HasQueuedAsync(string tenantId) =>
+            await Collection(tenantId).CountDocumentsAsync(MarkerFilter, new CountOptions { Limit = 1 }) > 0;
+
         public Task ReleaseAsync(string tenantId) => Collection(tenantId).DeleteOneAsync(MarkerFilter);
 
         private IMongoCollection<GlossaryRecheckLease> LeaseCollection(string tenantId) =>

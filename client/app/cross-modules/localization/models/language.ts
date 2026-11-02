@@ -412,6 +412,9 @@ export interface IGlossaryUsageResponse {
   keys: { itemId: string; keyName: string; moduleId: string }[];
   moduleIds: string[];
   violationKeyCount: number;
+  /** Keys the glossary applies to (its scope), not only those tagged with it. */
+  affectedKeyCount?: number;
+  isGlobal?: boolean;
 }
 
 export type GlossaryMatchScope = "key" | "module" | "global" | "other";

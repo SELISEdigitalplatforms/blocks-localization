@@ -4,6 +4,7 @@ import {
   ExportHistoryFilters,
   IBlocksLanguageKeyResponse,
   IDeleteModuleRequest,
+  IGetGlossariesResponse,
   IGlossary,
   IGlossaryFilters,
   ILanguageConfig,
@@ -850,12 +851,7 @@ export const useGetGlobalGlossaries = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.glossaries.global(tenantId),
-    queryFn: () =>
-      languageManagerService.fetchGlossaries({
-        pageNumber: 0,
-        pageSize: 100,
-        isGlobal: true,
-      }),
+    queryFn: () => fetchScopedGlossaries({ isGlobal: true }),
     staleTime: 0,
     refetchOnMount: true,
   });
@@ -865,12 +861,7 @@ export const useGetModuleGlossaries = (moduleId: string) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
     queryKey: localizationQueryKeys.glossaries.module(tenantId, moduleId),
-    queryFn: () =>
-      languageManagerService.fetchGlossaries({
-        pageNumber: 0,
-        pageSize: 100,
-        moduleId,
-      }),
+    queryFn: () => fetchScopedGlossaries({ moduleId }),
     enabled: !!moduleId && !!tenantId,
     staleTime: 0,
     refetchOnMount: true,
@@ -886,23 +877,31 @@ export const MODULE_GLOSSARIES_MAX_PAGES = 50;
  * Pages until `totalCount` is reached or a page is short, de-duplicated by itemId, at most
  * 50 pages.
  */
-export const fetchAllModuleGlossaries = async (moduleId: string): Promise<IGlossary[]> => {
+export const fetchAllModuleGlossaries = async (moduleId: string): Promise<IGlossary[]> =>
+  (await fetchScopedGlossaries({ moduleId })).items;
+
+/** Every global glossary, or every glossary of one module, 100 per page up to 50 pages. */
+export const fetchScopedGlossaries = async (
+  filter: { isGlobal: true } | { moduleId: string },
+): Promise<IGetGlossariesResponse> => {
   const byId = new Map<string, IGlossary>();
   let loaded = 0;
+  let totalCount = 0;
   for (let pageNumber = 0; pageNumber < MODULE_GLOSSARIES_MAX_PAGES; pageNumber++) {
     const page = await languageManagerService.fetchGlossaries({
       pageNumber,
       pageSize: MODULE_GLOSSARIES_PAGE_SIZE,
-      moduleId,
+      ...filter,
     });
     const items = page?.items ?? [];
     for (const item of items) {
       if (!byId.has(item.itemId)) byId.set(item.itemId, item);
     }
     loaded += items.length;
-    if (items.length < MODULE_GLOSSARIES_PAGE_SIZE || loaded >= (page?.totalCount ?? 0)) break;
+    totalCount = page?.totalCount ?? 0;
+    if (items.length < MODULE_GLOSSARIES_PAGE_SIZE || loaded >= totalCount) break;
   }
-  return [...byId.values()];
+  return { items: [...byId.values()], totalCount: Math.max(totalCount, byId.size) };
 };
 
 export const useGetAllModuleGlossaries = (moduleId: string) => {

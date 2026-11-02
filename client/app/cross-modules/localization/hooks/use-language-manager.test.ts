@@ -663,6 +663,37 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.fetchGlossaries).toHaveBeenCalledWith(expect.objectContaining({ isGlobal: true }));
   });
 
+  it("useGetGlobalGlossaries and useGetModuleGlossaries load past the first 100", async () => {
+    const page = (from: number, count: number) => ({
+      items: Array.from({ length: count }, (_, index) => ({ itemId: `g${from + index}` })),
+      totalCount: 150,
+    });
+    svc.fetchGlossaries
+      .mockResolvedValueOnce(page(0, 100) as never)
+      .mockResolvedValueOnce(page(100, 50) as never)
+      .mockResolvedValueOnce(page(0, 100) as never)
+      .mockResolvedValueOnce(page(100, 50) as never);
+
+    const global = renderQ(() => hooks.useGetGlobalGlossaries());
+    await waitFor(() => expect(global.result.current.isSuccess).toBe(true));
+    expect(global.result.current.data?.items).toHaveLength(150);
+    expect(global.result.current.data?.totalCount).toBe(150);
+    expect(svc.fetchGlossaries).toHaveBeenLastCalledWith({
+      pageNumber: 1,
+      pageSize: 100,
+      isGlobal: true,
+    });
+
+    const module = renderQ(() => hooks.useGetModuleGlossaries("m1"));
+    await waitFor(() => expect(module.result.current.isSuccess).toBe(true));
+    expect(module.result.current.data?.items).toHaveLength(150);
+    expect(svc.fetchGlossaries).toHaveBeenLastCalledWith({
+      pageNumber: 1,
+      pageSize: 100,
+      moduleId: "m1",
+    });
+  });
+
   it("useGetModuleGlossaries should be disabled without a moduleId", () => {
     const { result } = renderQ(() => hooks.useGetModuleGlossaries(""));
     expect(result.current.fetchStatus).toBe("idle");

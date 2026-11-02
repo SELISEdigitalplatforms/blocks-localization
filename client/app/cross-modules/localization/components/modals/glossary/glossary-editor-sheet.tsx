@@ -4,6 +4,7 @@ import {
   KeyboardEvent,
   ReactNode,
   SyntheticEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -36,6 +37,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui-kits/sheet/sheet";
+import { Dialog } from "@/components/ui-kits/dialog/dialog";
+import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { Separator } from "@/components/ui-kits/separator/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
@@ -125,6 +128,7 @@ import {
   isForbiddenTranslation,
   TRANSLATION_LENGTH_ERROR,
 } from "@blocks-localization/utils/glossary-validation";
+import { alignCultureKeys } from "@blocks-localization/utils/glossary-text";
 import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { GLOSSARY_STATUS_LABELS } from "@blocks-localization/components/glossary/glossary-status-badge";
 
@@ -218,10 +222,14 @@ const firstForbiddenError = (
   return undefined;
 };
 
+/** At most `max` characters, unless unchanged from the stored value (the server allows that too). */
+const limitedText = (max: number, stored: string, message: string) =>
+  z.string().refine((value) => value.length <= max || value === stored, { message });
+
 /**
  * Validation only covers languages shown in the editor; other stored entries pass through.
  */
-const buildSchema = (targetCodes: string[]) =>
+const buildSchema = (targetCodes: string[], stored: { definition: string; note: string }) =>
   z
     .object({
       name: z
@@ -239,14 +247,18 @@ const buildSchema = (targetCodes: string[]) =>
       variants: z.array(z.string()),
       translations: z.record(z.string(), z.string()),
       forbidden: z.record(z.string(), z.array(z.string())),
-      definition: z.string().max(GLOSSARY_LIMITS.definition, {
-        message: "Definition must be 1,000 characters or fewer",
-      }),
+      definition: limitedText(
+        GLOSSARY_LIMITS.definition,
+        stored.definition,
+        "Definition must be 1,000 characters or fewer",
+      ),
       scope: z.enum(["project", "modules"]),
       moduleIds: z.array(z.string()),
-      note: z.string().max(GLOSSARY_LIMITS.note, {
-        message: "Note must be 2,000 characters or fewer",
-      }),
+      note: limitedText(
+        GLOSSARY_LIMITS.note,
+        stored.note,
+        "Note must be 2,000 characters or fewer",
+      ),
       partOfSpeech: z.string(),
       usageExamples: z.array(z.string()),
     })
@@ -309,12 +321,16 @@ const getInitialScope = (glossary?: IGlossary): GlossaryScope => {
   return "modules";
 };
 
+const keepTranslation = (kept: string, moved: string) => (kept.trim() ? kept : moved);
+const mergeForbidden = (kept: string[], moved: string[]) => [...new Set([...kept, ...moved])];
+
 const getInitialValues = (
   glossary: IGlossary | undefined,
   meta: GlossaryMeta,
   note: string,
   initialName = "",
   defaultLanguageCode = "",
+  cultures: readonly string[] = [],
 ): GlossaryEditorValues => ({
   name: glossary?.name ?? initialName,
   // A new term starts in the project default language; an edit keeps the stored value, even "" (H9).
@@ -325,9 +341,12 @@ const getInitialValues = (
   status: glossary ? getGlossaryStatus(glossary) : "approved",
   caseSensitive: meta.caseSensitive,
   variants: [...meta.variants],
-  translations: { ...meta.translations },
-  forbidden: Object.fromEntries(
-    Object.entries(meta.forbidden).map(([code, values]) => [code, [...values]]),
+  // A value stored under another case of a project language ("de-de") shows under that language.
+  translations: alignCultureKeys(meta.translations, cultures, keepTranslation),
+  forbidden: alignCultureKeys(
+    Object.fromEntries(Object.entries(meta.forbidden).map(([code, values]) => [code, [...values]])),
+    cultures,
+    mergeForbidden,
   ),
   definition: stripRuleMarker(glossary?.context),
   scope: getInitialScope(glossary),
@@ -343,9 +362,13 @@ const getInitialValues = (
  * under the rule are sent back as loaded (C6, Phase 2 A9), so the merge never drops them.
  */
 const buildTranslationsPayload = (
-  translations: Record<string, string>,
-  forbidden: Record<string, string[]>,
+  formTranslations: Record<string, string>,
+  formForbidden: Record<string, string[]>,
+  cultures: readonly string[],
 ): IGlossaryTranslation[] => {
+  // Saved under the project's own code, so "de-de" and "de-DE" are never sent as two languages.
+  const translations = alignCultureKeys(formTranslations, cultures, keepTranslation);
+  const forbidden = alignCultureKeys(formForbidden, cultures, mergeForbidden);
   const languages = [...new Set([...Object.keys(translations), ...Object.keys(forbidden)])];
   return languages.flatMap((language) => {
     const value = (translations[language] ?? "").trim();
@@ -543,7 +566,11 @@ const FieldError = ({ message }: Readonly<{ message?: string }>) =>
 
 interface GlossaryEditorFormProps {
   glossary?: IGlossary;
+  /** Closes at once (after a save, or when the term is gone). */
   onClose: () => void;
+  /** Cancel: the sheet asks before closing while there are unsaved changes. */
+  onRequestClose?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   /** Called with the freshly fetched term after "Reload latest"; the caller remounts the form with it. */
   onReloaded?: (glossary: IGlossary) => void;
   initialName?: string;
@@ -554,6 +581,8 @@ interface GlossaryEditorFormProps {
 const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
   glossary,
   onClose,
+  onRequestClose,
+  onDirtyChange,
   onReloaded,
   initialName,
   onSaved,
@@ -582,8 +611,12 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
 
   const targetLanguages = useMemo(() => getTargetLanguages(languageListData), [languageListData]);
   const schema = useMemo(
-    () => buildSchema(targetLanguages.map((language) => language.languageCode)),
-    [targetLanguages],
+    () =>
+      buildSchema(
+        targetLanguages.map((language) => language.languageCode),
+        { definition: stripRuleMarker(glossary?.context), note: stored.note },
+      ),
+    [targetLanguages, glossary?.context, stored.note],
   );
 
   const defaultLanguage = getDefaultLanguage(languageListData);
@@ -594,11 +627,22 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       stored.note,
       initialName,
       defaultLanguage?.languageCode,
+      targetLanguages.map((language) => language.languageCode),
     ),
     resolver: zodResolver(schema),
   });
   const { control, formState } = form;
-  const { suggest, suggestAll, pendingCodes, isSuggesting } = useGlossaryTermSuggestion();
+  const { isDirty } = formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+  const {
+    suggest,
+    suggestAll,
+    cancel: cancelSuggestions,
+    pendingCodes,
+    isSuggesting,
+  } = useGlossaryTermSuggestion();
 
   // Languages can arrive after the form mounted: preset a new term's untouched Language then.
   useEffect(() => {
@@ -714,6 +758,8 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
 
   /** Keeps Language, Rule and Scope for the next term and empties everything else (H7). */
   const resetForAnother = (data: GlossaryEditorValues) => {
+    // Suggestions still running were for the saved glossary: they must not fill the next one.
+    cancelSuggestions();
     form.reset({
       ...getInitialValues(undefined, toGlossaryMeta({}), "", "", data.language),
       language: data.language,
@@ -739,7 +785,11 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       rule: data.rule,
       caseSensitive: data.caseSensitive,
       variants: data.variants.map((variant) => variant.trim()).filter(Boolean),
-      translations: buildTranslationsPayload(data.translations, data.forbidden),
+      translations: buildTranslationsPayload(
+        data.translations,
+        data.forbidden,
+        targetLanguages.map((language) => language.languageCode),
+      ),
       status: data.status,
       // "" / [] clear the stored values; the server keeps them only when omitted (merge-on-omit).
       partOfSpeech: (data.partOfSpeech || "") as GlossaryPartOfSpeech | "",
@@ -1673,7 +1723,12 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
             )}
 
             <SheetFooter className="gap-2 border-t bg-background px-6 py-4 sm:space-x-0">
-              <Button type="button" variant="outline" onClick={onClose} className="sm:min-w-24">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRequestClose ?? onClose}
+                className="sm:min-w-24"
+              >
                 Cancel
               </Button>
               {!isEditMode && (
@@ -1746,8 +1801,9 @@ const GlossaryEditorBody: FC<Omit<GlossaryEditorFormProps, "onReloaded">> = ({
 };
 
 /**
- * Side-sheet editor for a glossary term. The form mounts only while open, so closing
- * discards unsaved changes and every open starts from the stored values.
+ * Side-sheet editor for a glossary term. The form mounts only while open, so every open starts
+ * from the stored values. Closing with unsaved changes (Escape, outside click, X or Cancel)
+ * asks first; a save or a vanished term closes at once.
  */
 const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   open,
@@ -1759,28 +1815,60 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   onSelectExisting,
   onCloseAutoFocus,
   isolateEvents,
-}) => (
-  <Sheet open={open} onOpenChange={onOpenChange}>
-    {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-    <SheetContent
-      side="right"
-      hideClose
-      className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
-      onCloseAutoFocus={onCloseAutoFocus}
-      onClick={isolateEvents ? stopPropagation : undefined}
-      onKeyDown={isolateEvents ? stopPropagation : undefined}
-    >
-      {open && (
-        <GlossaryEditorBody
-          glossary={glossary}
-          onClose={() => onOpenChange(false)}
-          initialName={initialName}
-          onSaved={onSaved}
-          onSelectExisting={onSelectExisting}
-        />
-      )}
-    </SheetContent>
-  </Sheet>
-);
+}) => {
+  const isDirtyRef = useRef(false);
+  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+  }, []);
+
+  const close = () => {
+    isDirtyRef.current = false;
+    setIsConfirmingDiscard(false);
+    onOpenChange(false);
+  };
+  const requestClose = () => {
+    if (isDirtyRef.current) setIsConfirmingDiscard(true);
+    else close();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
+      <SheetContent
+        side="right"
+        hideClose
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+        onCloseAutoFocus={onCloseAutoFocus}
+        onClick={isolateEvents ? stopPropagation : undefined}
+        onKeyDown={isolateEvents ? stopPropagation : undefined}
+      >
+        {open && (
+          <GlossaryEditorBody
+            glossary={glossary}
+            onClose={close}
+            onRequestClose={requestClose}
+            onDirtyChange={handleDirtyChange}
+            initialName={initialName}
+            onSaved={onSaved}
+            onSelectExisting={onSelectExisting}
+          />
+        )}
+        <Dialog open={isConfirmingDiscard} onOpenChange={setIsConfirmingDiscard}>
+          <ConfirmationModal
+            onCancel={() => setIsConfirmingDiscard(false)}
+            onConfirm={close}
+            data={{
+              dialogTitle: "Discard unsaved changes?",
+              dialogSubtitle: "Your changes to this glossary will be lost.",
+              confirmButton: "Discard",
+              cancelButton: "Keep editing",
+            }}
+          />
+        </Dialog>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 export default GlossaryEditorSheet;

@@ -579,6 +579,67 @@ namespace XUnitTest
             first.CurrentData.Context.Should().Be("ctx");
         }
 
+        private ModuleManagementService ServiceWithRecheck(Mock<IGlossaryRecheckService> recheck) =>
+            new(_validatorMock.Object, _moduleRepositoryMock.Object, _loggerMock.Object, _glossaryRepositoryMock.Object,
+                _keyRepositoryMock.Object, _keyTimelineRepositoryMock.Object, new GlossaryChangeNotifier(null, recheck.Object));
+
+        private void SetupModuleGlossaries(string moduleId, params string[] glossaryIds) =>
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync("mod-tenant", moduleId))
+                .ReturnsAsync(glossaryIds.Select(id => new Glossary { ItemId = id, Name = id, ModuleIds = new List<string> { moduleId } }).ToList());
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithTarget_UntagsTheModuleAndRechecksTheTargetAgainstBothModulesGlossaries()
+        {
+            var recheck = new Mock<IGlossaryRecheckService>();
+            SetupModuleExists("m1");
+            SetupModuleExists("m2");
+            SetupKeysInModule(new BlocksLanguageKey { ItemId = "k1", KeyName = "a", ModuleId = "m1" });
+            SetupNamesInTarget("m2");
+            SetupModuleHasKeys("m1", false);
+            SetupModuleGlossaries("m1", "g-source");
+            SetupModuleGlossaries("m2", "g-target", "g-source");
+
+            var result = await ServiceWithRecheck(recheck).DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", TargetModuleId = "m2" });
+
+            result.IsSuccess.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync("m1",
+                It.Is<IReadOnlyCollection<string>>(a => a.Count == 0),
+                It.Is<IReadOnlyCollection<string>>(rm => rm.SequenceEqual(new[] { "g-source" }))), Times.Once);
+            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "g-source", "g-target" })),
+                It.Is<IReadOnlyCollection<string>>(m => m.SequenceEqual(new[] { "m2" })), false), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_WithKeysDeleted_UntagsTheModuleWithoutARecheck()
+        {
+            var recheck = new Mock<IGlossaryRecheckService>();
+            SetupModuleExists("m1");
+            SetupKeysInModule();
+            SetupModuleHasKeys("m1", false);
+            SetupModuleGlossaries("m1", "g1");
+
+            var result = await ServiceWithRecheck(recheck).DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1", DeleteKeys = true });
+
+            result.IsSuccess.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.UpdateModuleTagsAsync("m1", It.IsAny<IReadOnlyCollection<string>>(),
+                It.Is<IReadOnlyCollection<string>>(rm => rm.SequenceEqual(new[] { "g1" }))), Times.Once);
+            recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
+            recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<bool>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteModuleAsync_StillSucceedsWhenUntaggingTheGlossariesFails()
+        {
+            SetupModuleExists("m1");
+            SetupModuleHasKeys("m1", false);
+            _glossaryRepositoryMock.Setup(r => r.GetByModuleIdAsync(It.IsAny<string>(), "m1")).ThrowsAsync(new InvalidOperationException("db down"));
+
+            var result = await _service.DeleteModuleAsync(new DeleteModuleRequest { ItemId = "m1" });
+
+            result.IsSuccess.Should().BeTrue();
+            _moduleRepositoryMock.Verify(r => r.DeleteAsync("m1"), Times.Once);
+        }
+
         [Fact]
         public async Task DeleteModuleAsync_WithTargetAndNoKeys_DeletesWithoutMoving()
         {

@@ -4,7 +4,49 @@ export const NO_SPACE_LANGUAGES: readonly string[] = ["zh", "ja", "th", "lo", "k
 export const isNoSpaceCulture = (culture?: string): boolean =>
   NO_SPACE_LANGUAGES.includes((culture ?? "").split(/[-_]/)[0].toLowerCase());
 
-const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+const LETTER_OR_DIGIT = /[\p{L}\p{M}\p{N}]/u;
+
+const sameCode = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The entry for `culture`: the exact code, else the same code in another case ("de-de"), else
+ * the bare language ("de" for "de-DE"). Same order as the server's `EffectiveTerminology.Find`.
+ */
+export const findCultureEntry = <T>(
+  record: Readonly<Record<string, T>>,
+  culture: string,
+): T | undefined => {
+  if (Object.hasOwn(record, culture)) return record[culture];
+  const codes = Object.keys(record);
+  const anyCase = codes.find((code) => sameCode(code, culture));
+  if (anyCase !== undefined) return record[anyCase];
+  const separator = culture.search(/[-_]/);
+  if (separator <= 0) return undefined;
+  const bare = codes.find((code) => sameCode(code, culture.slice(0, separator)));
+  return bare === undefined ? undefined : record[bare];
+};
+
+/**
+ * Moves entries stored under another case of a project culture ("de-de") onto that culture
+ * ("de-DE"), merging with `merge` when both exist; an entry under the exact code wins.
+ */
+export const alignCultureKeys = <T>(
+  record: Readonly<Record<string, T>>,
+  cultures: readonly string[],
+  merge: (kept: T, moved: T) => T,
+): Record<string, T> => {
+  const aligned: Record<string, T> = {};
+  const entries = Object.entries(record);
+  const exactFirst = [
+    ...entries.filter(([code]) => cultures.includes(code)),
+    ...entries.filter(([code]) => !cultures.includes(code)),
+  ];
+  for (const [code, value] of exactFirst) {
+    const target = cultures.find((culture) => sameCode(culture, code)) ?? code;
+    aligned[target] = Object.hasOwn(aligned, target) ? merge(aligned[target], value) : value;
+  }
+  return aligned;
+};
 
 const isLowSurrogate = (code: number | undefined) =>
   code !== undefined && code >= 0xdc00 && code <= 0xdfff;

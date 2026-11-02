@@ -9,6 +9,7 @@ import {
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 import { getTargetLanguages } from "@blocks-localization/utils/glossary-rule-marker";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 export const MAX_TRANSLATION_CHIPS = 4;
 
@@ -39,7 +40,7 @@ const GlossaryTranslationChips = ({
     <TooltipProvider>
       <div className="flex flex-wrap items-center gap-1">
         {visible.map(({ languageCode }) => {
-          const value = meta.translations[languageCode];
+          const value = findCultureEntry(meta.translations, languageCode);
           // The chip shows only the code; "is missing" is in the tooltip and read by screen readers.
           if (!value) {
             return (

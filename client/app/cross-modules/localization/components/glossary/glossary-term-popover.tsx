@@ -10,6 +10,7 @@ import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 import { containsApprovedTranslation } from "@blocks-localization/utils/glossary-validation";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 export type TermTargetLanguage = Pick<ILanguageConfig, "languageCode" | "languageName">;
 
@@ -31,12 +32,12 @@ export const getGlossaryTermValue = (
 ): GlossaryTermValue => {
   if (meta.rule === "keep") return { kind: "keep", value: surface };
   if (meta.rule === "forbidden") {
-    return { kind: "forbidden", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
+    return { kind: "forbidden", alsoAvoid: findCultureEntry(meta.forbidden, targetCulture) ?? [] };
   }
-  const value = meta.translations[targetCulture]?.trim();
+  const value = findCultureEntry(meta.translations, targetCulture)?.trim();
   return value
     ? { kind: "translate", value }
-    : { kind: "missing", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
+    : { kind: "missing", alsoAvoid: findCultureEntry(meta.forbidden, targetCulture) ?? [] };
 };
 
 const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (

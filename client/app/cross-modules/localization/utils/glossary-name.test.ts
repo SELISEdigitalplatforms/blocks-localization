@@ -25,6 +25,20 @@ describe("utils/glossary-name", () => {
       expect(normalizeGlossaryName("WorkSPACE")).toBe(normalizeGlossaryName("workspace"));
     });
 
+    it("should lower-case like the server whatever the browser locale", () => {
+      const original = String.prototype.toLocaleLowerCase;
+      String.prototype.toLocaleLowerCase = function () {
+        return original.call(this, "tr");
+      };
+      try {
+        expect(normalizeGlossaryName("INBOX")).toBe("inbox");
+      } finally {
+        String.prototype.toLocaleLowerCase = original;
+      }
+      expect(normalizeGlossaryName("ΟΔΟΣ")).toBe("οδοσ");
+      expect(normalizeGlossaryName("İstanbul")).toBe("İstanbul");
+    });
+
     it("should apply NFC normalization", () => {
       const decomposed = "Café";
       const composed = "Café";

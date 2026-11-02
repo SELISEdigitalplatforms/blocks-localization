@@ -84,6 +84,7 @@ import {
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
 import { getTranslationError } from "@blocks-localization/utils/glossary-validation";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 
@@ -162,9 +163,13 @@ const withTranslation = (
   value: string,
 ): IGlossaryTranslation[] => {
   const trimmed = value.trim();
-  const existing = translations.find((translation) => translation.language === code);
+  // An entry under another case of the code ("de-de") is the same culture; it is replaced.
+  const isCode = (translation: IGlossaryTranslation) =>
+    translation.language.toLowerCase() === code.toLowerCase();
+  const existing =
+    translations.find((translation) => translation.language === code) ?? translations.find(isCode);
   const updated = { language: code, value: trimmed, forbiddenValues: existing?.forbiddenValues ?? [] };
-  const others = translations.filter((translation) => translation.language !== code);
+  const others = translations.filter((translation) => !isCode(translation));
   return trimmed || updated.forbiddenValues.length > 0 ? [...others, updated] : others;
 };
 
@@ -194,7 +199,7 @@ const TranslationsTable = ({
   const { suggest, pendingCodes } = useGlossaryTermSuggestion();
 
   const editingError = editing
-    ? getTranslationError(editing.value, meta.forbidden[editing.code] ?? [])
+    ? getTranslationError(editing.value, findCultureEntry(meta.forbidden, editing.code) ?? [])
     : undefined;
 
   const save = async () => {
@@ -244,7 +249,7 @@ const TranslationsTable = ({
 
   const renderTranslationCell = (language: ILanguageConfig) => {
     const { languageCode, languageName } = language;
-    const value = meta.translations[languageCode];
+    const value = findCultureEntry(meta.translations, languageCode);
     if (editing?.code === languageCode) {
       return (
         <div className="flex flex-wrap items-center gap-2">
@@ -376,7 +381,7 @@ const TranslationsTable = ({
                 </TableCell>
                 {showTranslation && <TableCell>{renderTranslationCell(language)}</TableCell>}
                 <TableCell>
-                  <ForbiddenList values={meta.forbidden[language.languageCode] ?? []} />
+                  <ForbiddenList values={findCultureEntry(meta.forbidden, language.languageCode) ?? []} />
                 </TableCell>
               </TableRow>
             ))}

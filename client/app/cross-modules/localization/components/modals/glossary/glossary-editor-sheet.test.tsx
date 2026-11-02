@@ -578,6 +578,22 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(saveGlossaryAsync).not.toHaveBeenCalled();
   });
 
+  it("should save an older glossary whose unchanged definition is over the limit", async () => {
+    const longDefinition = "x".repeat(1200);
+    renderSheet(makeGlossary({ context: longDefinition }));
+    typeName("Renamed");
+    save();
+    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+    expect(lastPayload()).toMatchObject({ context: longDefinition });
+
+    fireEvent.change(screen.getByPlaceholderText("What the glossary means"), {
+      target: { value: "y".repeat(1200) },
+    });
+    save();
+    expect(await screen.findByText("Definition must be 1,000 characters or fewer")).toBeTruthy();
+    expect(saveGlossaryAsync).toHaveBeenCalledTimes(1);
+  });
+
   it("should discard changes on close and return focus to the trigger (C13)", async () => {
     const Harness = () => {
       const [open, setOpen] = useState(false);
@@ -595,12 +611,61 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     fireEvent.click(trigger);
     typeName("Changed");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
 
     fireEvent.click(trigger);
     expect((nameInput() as HTMLInputElement).value).toBe("Workspace");
     expect(saveGlossaryAsync).not.toHaveBeenCalled();
+  });
+
+  describe("unsaved changes", () => {
+    const renderControlled = () => {
+      const onOpenChange = vi.fn();
+      render(<GlossaryEditorSheet open onOpenChange={onOpenChange} glossary={makeGlossary()} />);
+      return onOpenChange;
+    };
+
+    it("closes at once when nothing changed", () => {
+      const onOpenChange = renderControlled();
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByText("Discard unsaved changes?")).toBeNull();
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it.each([
+      ["Cancel", () => fireEvent.click(screen.getByRole("button", { name: "Cancel" }))],
+      ["the X", () => fireEvent.click(screen.getByRole("button", { name: "Close" }))],
+      [
+        "Escape",
+        () => fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" }),
+      ],
+    ])("asks before %s discards a change", async (_label, close) => {
+      const onOpenChange = renderControlled();
+      typeName("Changed");
+      close();
+      expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("keeps editing with the change when the user does not discard", async () => {
+      const onOpenChange = renderControlled();
+      typeName("Changed");
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Keep editing" }));
+      await waitFor(() => expect(screen.queryByText("Discard unsaved changes?")).toBeNull());
+      expect((nameInput() as HTMLInputElement).value).toBe("Changed");
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("closes without asking after a successful save", async () => {
+      const onOpenChange = renderControlled();
+      typeName("Changed");
+      save();
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(screen.queryByText("Discard unsaved changes?")).toBeNull();
+    });
   });
 
   it("should toast a thrown save error", async () => {

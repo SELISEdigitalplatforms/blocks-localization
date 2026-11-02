@@ -19,12 +19,6 @@ namespace Eurolm.DomainService.Services
         public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
         /// <summary>How long a running job holds the tenant's lease without renewing it (renewed every page).</summary>
         public static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
-        public static readonly TimeSpan LeaseRetryInterval = TimeSpan.FromSeconds(5);
-        /// <summary>
-        /// How long a job waits for the running one to finish. After that its marker stays queued and is taken over
-        /// once stale.
-        /// </summary>
-        public static readonly TimeSpan MaxLeaseWait = TimeSpan.FromMinutes(10);
 
         private readonly IGlossaryRecheckJobRepository _jobRepository;
         private readonly IGlossaryRepository _glossaryRepository;
@@ -50,9 +44,6 @@ namespace Eurolm.DomainService.Services
             _configuration = configuration;
             _logger = logger;
         }
-
-        /// <summary>Waits between lease attempts; replaceable in tests.</summary>
-        public Func<TimeSpan, Task> Delay { get; init; } = Task.Delay;
 
         private bool IsEnabled => GlossaryEnforcement.IsEnabled(_configuration);
 
@@ -128,49 +119,65 @@ namespace Eurolm.DomainService.Services
             }
 
             // One job per tenant at a time: an older job finishing after a newer one would write back violations
-            // computed with the older glossary.
+            // computed with the older glossary. A message that finds the lease taken leaves its marker queued;
+            // the lease holder drains every queued marker before it stops, so no request waits on a message.
             var owner = Guid.NewGuid().ToString("N");
-            if (!await WaitForLeaseAsync(tenantId, owner))
+            var eventGlossaryId = @event.GlossaryId;
+            while (await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
             {
-                _logger.LogWarning("Glossary re-check for tenant {TenantId} gave up waiting for the running job; its request stays queued", tenantId);
-                return result;
+                bool keptLease;
+                try
+                {
+                    keptLease = await DrainAsync(tenantId, owner, eventGlossaryId, result);
+                }
+                finally
+                {
+                    await _jobRepository.ReleaseLeaseAsync(tenantId, owner);
+                }
+
+                // A request queued after the last claim, whose message found the lease still taken.
+                if (!keptLease || !await _jobRepository.HasQueuedAsync(tenantId)) return result;
+                eventGlossaryId = null;
             }
 
-            try
-            {
-                return await RunAsync(tenantId, owner, @event, result);
-            }
-            finally
-            {
-                await _jobRepository.ReleaseLeaseAsync(tenantId, owner);
-            }
+            _logger.LogInformation("Glossary re-check for tenant {TenantId} is running elsewhere; its request stays queued for that job", tenantId);
+            return result;
         }
 
-        private async Task<bool> WaitForLeaseAsync(string tenantId, string owner)
+        /// <summary>
+        /// Runs queued jobs until none is left. False when the lease was lost (the job's scope is queued again). A
+        /// message whose marker was already claimed (a redelivery, or drained by an earlier job) runs nothing.
+        /// </summary>
+        private async Task<bool> DrainAsync(string tenantId, string owner, string? eventGlossaryId, GlossaryRecheckResult result)
         {
-            var waited = TimeSpan.Zero;
-            while (!await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
+            // Claim after taking the lease, so glossary edits made while a job runs queue the next one.
+            for (var job = await _jobRepository.ClaimAsync(tenantId); job != null; job = await _jobRepository.ClaimAsync(tenantId))
             {
-                if (waited >= MaxLeaseWait) return false;
-                await Delay(LeaseRetryInterval);
-                waited += LeaseRetryInterval;
+                try
+                {
+                    if (!await RunAsync(tenantId, owner, job, eventGlossaryId, result)) return false;
+                }
+                catch
+                {
+                    // Put the claimed scope back so a retry (or the next request) still covers it.
+                    await _jobRepository.TryEnqueueAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow, StaleAfter);
+                    throw;
+                }
+                eventGlossaryId = null;
             }
             return true;
         }
 
-        private async Task<GlossaryRecheckResult> RunAsync(string tenantId, string owner, RecheckGlossaryViolationsEvent @event, GlossaryRecheckResult result)
+        private async Task<bool> RunAsync(string tenantId, string owner, GlossaryRecheckJob job, string? eventGlossaryId, GlossaryRecheckResult result)
         {
-            // Claim after taking the lease, so glossary edits made while this job runs queue the next one.
-            var job = await _jobRepository.ClaimAsync(tenantId);
-
             var defaultCulture = (await _keyRepository.GetLanguageSettingAsync(tenantId))?.LanguageCode;
             if (string.IsNullOrEmpty(defaultCulture))
             {
                 _logger.LogInformation("Glossary re-check skipped for tenant {TenantId}: no default language", tenantId);
-                return result;
+                return true;
             }
 
-            var scope = await ResolveScopeAsync(job, @event.GlossaryId);
+            var scope = await ResolveScopeAsync(job, eventGlossaryId);
 
             // Always rebuild: the API process invalidated its own cache, not this one.
             _matcherCache.Invalidate(tenantId);
@@ -185,7 +192,7 @@ namespace Eurolm.DomainService.Services
                     // The lease ran out and another job took over; queue this job's scope again rather than racing it.
                     _logger.LogWarning("Glossary re-check for tenant {TenantId} lost its lease after key {AfterKeyId}; scope queued again", tenantId, after);
                     await EnqueueAsync(tenantId, scope?.GlossaryIds.ToList(), scope?.ModuleIds.ToList());
-                    return result;
+                    return false;
                 }
 
                 var keys = await _keyRepository.GetKeysForGlossaryRecheckAsync(scope, after, PageSize);
@@ -201,7 +208,7 @@ namespace Eurolm.DomainService.Services
             _logger.LogInformation(
                 "Glossary re-check for tenant {TenantId} done: {Checked} keys checked, {Updated} updated, {Failed} failed (whole project {WholeProject})",
                 tenantId, result.Checked, result.Updated, result.Failed, scope == null);
-            return result;
+            return true;
         }
 
         /// <summary>

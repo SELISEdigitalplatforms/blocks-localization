@@ -26,7 +26,7 @@ namespace Eurolm.DomainService.Services
         public string? ActiveTranslation(string? culture)
         {
             if (Rule != GlossaryRule.Translate || string.IsNullOrEmpty(culture)) return null;
-            var value = Find(culture)?.Value;
+            var value = Find(culture, t => !string.IsNullOrEmpty(t.Value))?.Value;
             return string.IsNullOrEmpty(value) ? null : value;
         }
 
@@ -34,7 +34,7 @@ namespace Eurolm.DomainService.Services
         public IReadOnlyList<string> ActiveForbidden(string? culture)
         {
             if (Rule == GlossaryRule.Keep || string.IsNullOrEmpty(culture)) return Array.Empty<string>();
-            return Find(culture)?.ForbiddenValues ?? (IReadOnlyList<string>)Array.Empty<string>();
+            return Find(culture, t => t.ForbiddenValues is { Count: > 0 })?.ForbiddenValues ?? (IReadOnlyList<string>)Array.Empty<string>();
         }
 
         /// <summary>All cultures' active values, as /Match returns them.</summary>
@@ -48,7 +48,22 @@ namespace Eurolm.DomainService.Services
             .Where(t => t.Value.Length > 0 || t.ForbiddenValues.Count > 0)
             .ToList();
 
-        private GlossaryTranslation? Find(string culture) =>
-            Translations.FirstOrDefault(t => string.Equals(t.Language, culture, StringComparison.Ordinal));
+        private static readonly char[] CultureSeparators = { '-', '_' };
+
+        /// <summary>
+        /// The entry for <paramref name="culture"/> that has the wanted value: the exact code, else the same code in
+        /// another case ("de-de"), else the bare language ("de" for "de-DE"). Same order as the client's
+        /// <c>findCultureEntry</c>, whose maps only hold non-empty values.
+        /// </summary>
+        private GlossaryTranslation? Find(string culture, Func<GlossaryTranslation, bool> hasValue)
+        {
+            var candidates = Translations.Where(t => t != null && hasValue(t)).ToList();
+            var separator = culture.IndexOfAny(CultureSeparators);
+            return candidates.FirstOrDefault(t => string.Equals(t.Language, culture, StringComparison.Ordinal))
+                ?? candidates.FirstOrDefault(t => string.Equals(t.Language, culture, StringComparison.OrdinalIgnoreCase))
+                ?? (separator > 0
+                    ? candidates.FirstOrDefault(t => string.Equals(t.Language, culture[..separator], StringComparison.OrdinalIgnoreCase))
+                    : null);
+        }
     }
 }

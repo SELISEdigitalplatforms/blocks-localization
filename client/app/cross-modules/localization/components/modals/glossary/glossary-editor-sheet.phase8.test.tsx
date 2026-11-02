@@ -8,6 +8,7 @@ import GlossaryEditorSheet from "./glossary-editor-sheet";
 const saveGlossaryAsync = vi.fn();
 const suggest = vi.fn();
 const suggestAll = vi.fn();
+const cancelSuggestions = vi.fn();
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -32,6 +33,7 @@ vi.mock("@blocks-localization/hooks/use-glossary-term-suggestion", () => ({
   useGlossaryTermSuggestion: () => ({
     suggest,
     suggestAll,
+    cancel: cancelSuggestions,
     pendingCodes: new Set(),
     isSuggesting: false,
   }),
@@ -106,6 +108,8 @@ describe("glossary-editor-sheet (Phase 8)", () => {
     );
 
     await waitFor(() => expect(nameInput().value).toBe(""));
+    // Suggestions still running for "Invoice" must not fill the next glossary.
+    expect(cancelSuggestions).toHaveBeenCalledTimes(1);
     expect((screen.getByPlaceholderText("What the glossary means") as HTMLTextAreaElement).value).toBe(
       "",
     );
@@ -128,6 +132,7 @@ describe("glossary-editor-sheet (Phase 8)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save & add another" }));
     await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
     expect(nameInput().value).toBe("Invoice");
+    expect(cancelSuggestions).not.toHaveBeenCalled();
   });
 
   it("does not offer Save & add another when editing", () => {

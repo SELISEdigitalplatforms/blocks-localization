@@ -245,6 +245,16 @@ namespace XUnitTest
             request.PageSize.Should().Be(GlossaryManagementService.MaxGetsPageSize);
         }
 
+        [Fact]
+        public async Task GetGlossariesAsync_SearchLongerThanAnyValue_ReturnsNothingWithoutQuerying()
+        {
+            var result = await _service.GetGlossariesAsync(new GetGlossariesRequest { SearchText = new string('a', 201) });
+
+            result.Items.Should().BeEmpty();
+            result.TotalCount.Should().Be(0);
+            _glossaryRepositoryMock.Verify(r => r.GetAllAsync(It.IsAny<GetGlossariesRequest>()), Times.Never);
+        }
+
         #endregion
 
         #region DeleteGlossaryAsync Tests
