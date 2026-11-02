@@ -438,6 +438,53 @@ const TaggedKeyIssue = ({ glossaryKey, glossaryId }: Readonly<{ glossaryKey: IBl
   );
 };
 
+const GlossaryDetailsSkeleton = () => (
+  <div>
+    <div className="hidden md:flex">
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="ml-4 h-6 w-64" />
+      <Skeleton className="ml-4 h-6 w-64" />
+    </div>
+    <div className="mt-5 flex items-center justify-between">
+      <Skeleton className="h-8 w-48" />
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-9 w-20" />
+      </div>
+    </div>
+    <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Skeleton className="h-48 w-full rounded-sm" />
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-24 w-full rounded-sm" />
+        <Skeleton className="h-24 w-full rounded-sm" />
+      </div>
+    </div>
+  </div>
+);
+
+// A module glossary also applies to every key in its modules; a global one to every key.
+const getGlossaryModuleIds = (glossary: IGlossary | undefined) =>
+  glossary && !glossary.isGlobal ? (glossary.moduleIds ?? []) : [];
+
+const getScopeLabel = (glossary: IGlossary, moduleCount: number) => {
+  if (glossary.isGlobal) return "Whole project";
+  return `${moduleCount} module${moduleCount === 1 ? "" : "s"}`;
+};
+
+const getKeysDescription = (glossary: IGlossary, hasModuleScope: boolean) => {
+  if (glossary.isGlobal) {
+    return "This glossary applies to every key in the project. Only keys tagged with it directly are listed.";
+  }
+  if (hasModuleScope) return "Keys tagged with this glossary, and keys in its modules.";
+  return "Keys tagged with this glossary.";
+};
+
+const getNoKeysText = (glossary: IGlossary, hasModuleScope: boolean) => {
+  if (glossary.isGlobal) return "No keys are tagged with this glossary directly.";
+  if (hasModuleScope) return "No keys are tagged with this glossary or belong to its modules.";
+  return "No keys are tagged with this glossary.";
+};
+
 const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const navigate = useNavigate();
   const scoped = useScopedPath();
@@ -478,8 +525,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     {
       searchKey: keySearch,
       moduleIds: keyModuleId === ALL_MODULES ? [] : [keyModuleId],
-      // A module glossary also applies to every key in its modules; a global one to every key.
-      glossaryModuleIds: glossary && !glossary.isGlobal ? (glossary.moduleIds ?? []) : [],
+      glossaryModuleIds: getGlossaryModuleIds(glossary),
     },
     !!glossary,
   );
@@ -489,31 +535,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     BREADCRUMB_CUSTOM_TITLES[`/app/:itemId/services/glossary/${glossary.itemId}`] = glossary.name;
   }
 
-  if (isLoading) {
-    return (
-      <div>
-        <div className="hidden md:flex">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="ml-4 h-6 w-64" />
-          <Skeleton className="ml-4 h-6 w-64" />
-        </div>
-        <div className="mt-5 flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
-          </div>
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Skeleton className="h-48 w-full rounded-sm" />
-          <div className="flex flex-col gap-6">
-            <Skeleton className="h-24 w-full rounded-sm" />
-            <Skeleton className="h-24 w-full rounded-sm" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <GlossaryDetailsSkeleton />;
 
   if (!glossary) {
     return (
@@ -534,22 +556,13 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const isUnsupported = isUnsupportedGlossaryNote(glossary);
   const status = getGlossaryStatus(glossary);
   const moduleCount = glossary.moduleIds?.length ?? 0;
-  const moduleSuffix = moduleCount === 1 ? "" : "s";
-  const scopeLabel = glossary.isGlobal ? "Whole project" : `${moduleCount} module${moduleSuffix}`;
+  const scopeLabel = getScopeLabel(glossary, moduleCount);
   const definition = stripRuleMarker(glossary.context);
   const usageExamples = (glossary.usageExamples ?? []).filter(hasText);
   const isKeyFiltered = !!keySearch || keyModuleId !== ALL_MODULES;
   const hasModuleScope = !glossary.isGlobal && moduleCount > 0;
-  let keysDescription = "Keys tagged with this glossary.";
-  if (glossary.isGlobal) {
-    keysDescription =
-      "This glossary applies to every key in the project. Only keys tagged with it directly are listed.";
-  } else if (hasModuleScope) {
-    keysDescription = "Keys tagged with this glossary, and keys in its modules.";
-  }
-  let noKeysText = "No keys are tagged with this glossary.";
-  if (glossary.isGlobal) noKeysText = "No keys are tagged with this glossary directly.";
-  else if (hasModuleScope) noKeysText = "No keys are tagged with this glossary or belong to its modules.";
+  const keysDescription = getKeysDescription(glossary, hasModuleScope);
+  const noKeysText = getNoKeysText(glossary, hasModuleScope);
 
   const resolvedLanguage =
     languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ||

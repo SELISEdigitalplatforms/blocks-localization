@@ -24,6 +24,6 @@ const blank = (match: string) => " ".repeat(match.length);
 
 export const maskPlaceholders = (text: string): string => {
   if (!text || !/[{<%]/.test(text)) return text ?? "";
-  const masked = text.replace(PLACEHOLDER, blank);
-  return ICU_HEADER.test(text) ? masked.replace(ICU_SELECTOR, blank) : masked;
+  const masked = text.replaceAll(PLACEHOLDER, blank);
+  return ICU_HEADER.test(text) ? masked.replaceAll(ICU_SELECTOR, blank) : masked;
 };
