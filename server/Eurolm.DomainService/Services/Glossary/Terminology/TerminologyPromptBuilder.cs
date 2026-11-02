@@ -226,30 +226,13 @@ namespace Eurolm.DomainService.Services
         private static List<string> BuildRuleLines(MatchedGlossaryGroup group, string? target)
         {
             var terminology = group.Matches[0].Terminology;
-            var term = Sanitize(group.Glossary.Name);
-            var lines = new List<string>();
 
             // Only the values active for the rule are sent (Keep: none; Forbidden: forbidden only).
-            if (terminology.Rule == GlossaryRule.Keep)
-            {
-                foreach (var surface in group.Surfaces.Select(s => Sanitize(s)).Distinct(StringComparer.Ordinal))
-                {
-                    if (surface.Length > 0) lines.Add(KeepLine(surface));
-                }
-                return lines;
-            }
+            if (terminology.Rule == GlossaryRule.Keep) return BuildKeepLines(group);
 
-            if (terminology.Rule == GlossaryRule.Translate)
-            {
-                var value = Sanitize(terminology.ActiveTranslation(target));
-                // "Translate Portal as Portal" reads as permission to transliterate; an unchanged value is a keep.
-                if (term.Length > 0 && value.Length > 0)
-                    lines.Add(IsUnchanged(term, value) ? KeepLine(value) : $"- Translate \"{term}\" as \"{value}\".");
-            }
-            else if (term.Length > 0)
-            {
-                lines.Add($"- Do not use \"{term}\" in the translation.");
-            }
+            var lines = new List<string>();
+            var ruleLine = BuildTermRuleLine(terminology, Sanitize(group.Glossary.Name), target);
+            if (ruleLine != null) lines.Add(ruleLine);
 
             foreach (var forbidden in terminology.ActiveForbidden(target))
             {
@@ -259,7 +242,26 @@ namespace Eurolm.DomainService.Services
             return lines;
         }
 
-        private static string Render(string baseText, List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
+        private static List<string> BuildKeepLines(MatchedGlossaryGroup group) => group.Surfaces
+            .Select(s => Sanitize(s))
+            .Distinct(StringComparer.Ordinal)
+            .Where(surface => surface.Length > 0)
+            .Select(KeepLine)
+            .ToList();
+
+        /// <summary>The Translate or Forbidden line for the term itself; null when there is nothing to send.</summary>
+        private static string? BuildTermRuleLine(EffectiveTerminology terminology, string term, string? target)
+        {
+            if (term.Length == 0) return null;
+            if (terminology.Rule != GlossaryRule.Translate) return $"- Do not use \"{term}\" in the translation.";
+
+            var value = Sanitize(terminology.ActiveTranslation(target));
+            if (value.Length == 0) return null;
+            // "Translate Portal as Portal" reads as permission to transliterate; an unchanged value is a keep.
+            return IsUnchanged(term, value) ? KeepLine(value) : $"- Translate \"{term}\" as \"{value}\".";
+        }
+
+        private static string Render(string baseText,List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
         {
             var lines = new List<string> { baseText };
             if (ruleLines.Count > 0 || meaningLines.Count > 0) lines.Add("");
