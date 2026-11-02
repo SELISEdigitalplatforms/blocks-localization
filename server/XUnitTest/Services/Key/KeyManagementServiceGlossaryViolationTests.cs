@@ -187,5 +187,51 @@ namespace XUnitTest.Services.Key
             result.Success.Should().BeTrue();
             saved!.GlossaryViolations.Should().ContainSingle(v => v.GlossaryId == "g-old");
         }
+
+        [Fact]
+        public async Task A_glossary_only_save_keeps_the_stored_resources_routes_and_context()
+        {
+            _terminology.SetupGet(t => t.IsEnforcementEnabled).Returns(true);
+            BlocksLanguageKey? checkedKey = null;
+            _terminology.Setup(t => t.ComputeKeyViolationsAsync(It.IsAny<BlocksLanguageKey>()))
+                .Callback<BlocksLanguageKey>(k => checkedKey = k)
+                .ReturnsAsync(new List<KeyGlossaryViolation>());
+            var stored = KeyWithViolations();
+            stored.Resources = new[] { new Resource { Culture = "en-US", Value = "Open your Workspace" }, new Resource { Culture = "de-DE", Value = "Öffnen Sie Ihren Arbeitsbereich" } };
+            stored.Routes = new List<string> { "/home" };
+            stored.Context = "Newer context";
+            stored.GlossaryIds = new List<string> { "g-old" };
+            BlocksLanguageKey? saved = null;
+            _keyRepository.Setup(r => r.GetKeyByNameAsync("open", "m1")).ReturnsAsync(stored);
+            _keyRepository.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>())).Callback<BlocksLanguageKey>(k => saved = k).Returns(Task.CompletedTask);
+
+            var request = Save();
+            request.Routes = new List<string>();
+            request.Context = "Stale context";
+            request.GlossaryIds = new List<string> { "g1" };
+            request.GlossaryIdsOnly = true;
+            var result = await _service.SaveKeyAsync(request);
+
+            result.Success.Should().BeTrue();
+            saved!.GlossaryIds.Should().Equal("g1");
+            saved.Resources.Single(r => r.Culture == "de-DE").Value.Should().Be("Öffnen Sie Ihren Arbeitsbereich");
+            saved.Routes.Should().Equal("/home");
+            saved.Context.Should().Be("Newer context");
+            checkedKey.Should().BeSameAs(saved);
+        }
+
+        [Fact]
+        public async Task A_full_save_still_replaces_the_resources()
+        {
+            _terminology.SetupGet(t => t.IsEnforcementEnabled).Returns(false);
+            var stored = KeyWithViolations();
+            BlocksLanguageKey? saved = null;
+            _keyRepository.Setup(r => r.GetKeyByNameAsync("open", "m1")).ReturnsAsync(stored);
+            _keyRepository.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>())).Callback<BlocksLanguageKey>(k => saved = k).Returns(Task.CompletedTask);
+
+            await _service.SaveKeyAsync(Save());
+
+            saved!.Resources.Single(r => r.Culture == "de-DE").Value.Should().Be("Öffne Werkbereich");
+        }
     }
 }

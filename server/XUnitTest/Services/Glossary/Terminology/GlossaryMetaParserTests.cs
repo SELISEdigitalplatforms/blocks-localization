@@ -114,6 +114,18 @@ namespace XUnitTest.Terminology
         }
 
         [Theory]
+        [InlineData("""{"variants":["a\ud800"]}""")]
+        [InlineData("""{"note":"\udc00"}""")]
+        [InlineData("""{"translations":{"de\ud800":"x"}}""")]
+        public void Escaped_text_that_is_not_valid_UTF16_is_corrupt_instead_of_throwing(string json)
+        {
+            var parsed = GlossaryMetaParser.Parse(Prefix + json);
+
+            parsed.Status.Should().Be(GlossaryMetaStatus.Corrupt);
+            parsed.Meta.Note.Should().Be(Prefix + json);
+        }
+
+        [Theory]
         [InlineData("@@glossary-meta:v2@@{}")]
         [InlineData("@@glossary-meta:v01@@{}")]
         public void An_unsupported_version_returns_defaults_without_a_note_Example_5(string raw)

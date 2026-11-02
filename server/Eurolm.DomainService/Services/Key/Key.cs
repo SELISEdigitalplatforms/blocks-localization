@@ -19,6 +19,12 @@ namespace Eurolm.DomainService.Services
         public DateTime CreateDate { get; set; }
         public string? Context { get; set; }
         public bool? ShouldPublish { get; set; }
+        /// <summary>
+        /// When true, an existing key only takes <see cref="GlossaryIds"/> from the request; its stored resources,
+        /// routes and context are kept, so tagging from a stale copy cannot revert newer translations.
+        /// </summary>
+        [BsonIgnore]
+        public bool? GlossaryIdsOnly { get; set; }
         /// <summary>Glossary rules the stored translations break, per culture (read-only for clients).</summary>
         public List<Eurolm.DomainService.Repositories.KeyGlossaryViolation>? GlossaryViolations { get; set; }
     }

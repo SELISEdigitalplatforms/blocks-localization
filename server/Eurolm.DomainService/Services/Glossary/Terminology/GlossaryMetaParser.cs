@@ -45,24 +45,41 @@ namespace Eurolm.DomainService.Services
             using (document)
             {
                 if (document == null || document.RootElement.ValueKind != JsonValueKind.Object)
-                    return new ParsedGlossaryMeta { Meta = new GlossaryMeta { Note = raw }, Status = GlossaryMetaStatus.Corrupt, Raw = raw };
+                    return Corrupt(raw);
 
-                var data = Properties(document.RootElement);
-                var meta = new GlossaryMeta
+                try
                 {
-                    Rule = ToRule(data.GetValueOrDefault("rule")),
-                    CaseSensitive = data.TryGetValue("caseSensitive", out var caseSensitive) && caseSensitive.ValueKind == JsonValueKind.True,
-                    Variants = ToStringList(data.GetValueOrDefault("variants")),
-                    Translations = ToTranslations(data.GetValueOrDefault("translations")),
-                    Forbidden = ToForbidden(data.GetValueOrDefault("forbidden"))
-                };
-                if (data.TryGetValue("note", out var note) && note.ValueKind == JsonValueKind.String)
-                {
-                    var text = JsText.Trim(note.GetString() ?? "");
-                    if (text.Length > 0) meta.Note = text;
+                    return new ParsedGlossaryMeta { Meta = ToMeta(document.RootElement), Status = GlossaryMetaStatus.Structured, Raw = raw };
                 }
-                return new ParsedGlossaryMeta { Meta = meta, Status = GlossaryMetaStatus.Structured, Raw = raw };
+                catch (InvalidOperationException)
+                {
+                    // Escaped text that is not valid UTF-16 (a lone surrogate such as \uD800) parses but cannot be
+                    // read as a string; one such note must not break glossaries for the whole tenant.
+                    return Corrupt(raw);
+                }
             }
+        }
+
+        private static ParsedGlossaryMeta Corrupt(string raw) =>
+            new() { Meta = new GlossaryMeta { Note = raw }, Status = GlossaryMetaStatus.Corrupt, Raw = raw };
+
+        private static GlossaryMeta ToMeta(JsonElement root)
+        {
+            var data = Properties(root);
+            var meta = new GlossaryMeta
+            {
+                Rule = ToRule(data.GetValueOrDefault("rule")),
+                CaseSensitive = data.TryGetValue("caseSensitive", out var caseSensitive) && caseSensitive.ValueKind == JsonValueKind.True,
+                Variants = ToStringList(data.GetValueOrDefault("variants")),
+                Translations = ToTranslations(data.GetValueOrDefault("translations")),
+                Forbidden = ToForbidden(data.GetValueOrDefault("forbidden"))
+            };
+            if (data.TryGetValue("note", out var note) && note.ValueKind == JsonValueKind.String)
+            {
+                var text = JsText.Trim(note.GetString() ?? "");
+                if (text.Length > 0) meta.Note = text;
+            }
+            return meta;
         }
 
         /// <summary>Object properties with JavaScript semantics: a repeated key keeps its first position and its last value.</summary>

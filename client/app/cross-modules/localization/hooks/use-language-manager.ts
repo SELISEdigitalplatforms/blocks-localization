@@ -27,6 +27,7 @@ import {
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
+  savedLanguageKeyRow,
 } from "./language-key-list-cache";
 
 /** Paged lists stay fresh this long; mutations still invalidate them immediately. */
@@ -300,10 +301,11 @@ export const useSaveBlocksLanguageKey = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      const { isNewKey, ...savedKey } = payload;
       refreshLanguageKeyLists(
         queryClient,
-        allViewRefreshAfterSave(response, Boolean(isNewKey), [savedKey]),
+        allViewRefreshAfterSave(response, Boolean(payload.isNewKey), [
+          savedLanguageKeyRow(payload),
+        ]),
       );
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.timelinePrefix,
@@ -324,7 +326,7 @@ export const useSaveBlocksLanguageKeys = () => {
       queryClient.invalidateQueries({
         queryKey: localizationQueryKeys.languageKeys.detailPrefix,
       });
-      const savedKeys = payload.map(({ isNewKey: _isNewKey, ...savedKey }) => savedKey);
+      const savedKeys = payload.map(savedLanguageKeyRow);
       refreshLanguageKeyLists(
         queryClient,
         allViewRefreshAfterSave(

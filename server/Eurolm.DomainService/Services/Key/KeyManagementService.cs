@@ -308,6 +308,12 @@ namespace Eurolm.DomainService.Services
 
             if (repoKey == null)
                 repoKey = new BlocksLanguageKey { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = CurrentTenantId };
+            else if (key.GlossaryIdsOnly == true)
+            {
+                repoKey.LastUpdateDate = DateTime.UtcNow;
+                repoKey.GlossaryIds = await ExistingGlossaryIdsAsync(key.GlossaryIds);
+                return repoKey;
+            }
 
             repoKey.LastUpdateDate = DateTime.UtcNow;
             repoKey.KeyName = key.KeyName;

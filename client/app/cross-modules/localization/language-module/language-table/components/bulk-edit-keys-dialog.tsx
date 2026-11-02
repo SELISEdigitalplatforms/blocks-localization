@@ -88,6 +88,8 @@ export const buildBulkEditPayload = (
         glossaryIds: Array.from(new Set([...(key.glossaryIds ?? []), ...newDirectGlossaryIds])),
         isPartiallyTranslated: key.isPartiallyTranslated,
         context: key.context,
+        // Without a translation change only the glossaries change; stale resources must not be written back.
+        glossaryIdsOnly: !hasTranslationChange,
       },
     ];
   });

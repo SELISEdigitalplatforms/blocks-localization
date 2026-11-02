@@ -9,6 +9,7 @@ import {
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
+  savedLanguageKeyRow,
 } from "./language-key-list-cache";
 
 const pagedKey = localizationQueryKeys.languageKeys.list(
@@ -156,5 +157,39 @@ describe("refreshKeysAfterGlossaryChange", () => {
     expect(mounted.getQueryData(allViewKey)).toBeDefined();
     expect(mounted.getQueryState(allViewKey)?.isInvalidated).toBe(false);
     unsubscribe();
+  });
+});
+
+describe("savedLanguageKeyRow", () => {
+  const payload = {
+    itemId: "k1",
+    keyName: "open",
+    moduleId: "m1",
+    resources: [{ culture: "de-DE", value: "Stale" }],
+    routes: ["/old"],
+    glossaryIds: ["g1"],
+    isPartiallyTranslated: false,
+    context: "Stale context",
+  };
+
+  it("patches only the glossary ids of a glossary-only save", () => {
+    expect(savedLanguageKeyRow({ ...payload, glossaryIdsOnly: true })).toEqual({
+      itemId: "k1",
+      glossaryIds: ["g1"],
+    });
+  });
+
+  it("patches the whole saved key otherwise, without the request-only flags", () => {
+    const { itemId, keyName, resources, context } = savedLanguageKeyRow({
+      ...payload,
+      isNewKey: false,
+    }) as typeof payload & { isNewKey?: boolean };
+    expect({ itemId, keyName, resources, context }).toEqual({
+      itemId: "k1",
+      keyName: "open",
+      resources: payload.resources,
+      context: "Stale context",
+    });
+    expect(savedLanguageKeyRow({ ...payload, isNewKey: true })).not.toHaveProperty("isNewKey");
   });
 });

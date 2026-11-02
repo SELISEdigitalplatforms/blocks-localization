@@ -6,6 +6,7 @@ import { normalizeGlossaryName } from "@blocks-localization/utils/glossary-name"
 import {
   isNoSpaceCulture,
   isWordStart,
+  wordLettersAfter,
   wordPrefixBefore,
 } from "@blocks-localization/utils/glossary-text";
 
@@ -214,6 +215,32 @@ export const containsApprovedTranslation = (
 ): boolean =>
   containsApprovedIn(maskPlaceholders((text ?? "").normalize("NFC")), approved, targetCulture);
 
+/** A shorter forbidden value must be a whole word, so "App" does not flag "Application". */
+export const MIN_INFLECTED_FORBIDDEN_LENGTH = 4;
+/** Letters a longer forbidden value may take as an inflected ending ("Werkbereichs"). */
+export const MAX_FORBIDDEN_ENDING = 3;
+
+/**
+ * True when a forbidden `value` found at `occurrence` also ends there: a whole word, or (for a
+ * value of MIN_INFLECTED_FORBIDDEN_LENGTH letters or more) one followed by at most
+ * MAX_FORBIDDEN_ENDING letters. No-space languages: always. Same rule as the server's
+ * `TranslationValidator.EndsForbiddenWord`.
+ */
+const endsForbiddenWord = (
+  text: string,
+  occurrence: Occurrence,
+  value: string,
+  targetCulture: string,
+) => {
+  if (isNoSpaceCulture(targetCulture)) return true;
+  const ending = wordLettersAfter(text, occurrence.start + occurrence.length, MAX_FORBIDDEN_ENDING);
+  if (ending === 0) return true;
+  return (
+    ending <= MAX_FORBIDDEN_ENDING &&
+    [...value.normalize("NFC")].length >= MIN_INFLECTED_FORBIDDEN_LENGTH
+  );
+};
+
 const isWithin = (inner: Occurrence, outer: Occurrence) =>
   inner.start >= outer.start && inner.start + inner.length <= outer.start + outer.length;
 
@@ -273,6 +300,7 @@ const forbiddenViolations = (
   targetCulture: string,
   base: ViolationBase,
   find: FindValue,
+  findBanned: FindValue,
 ): GlossaryViolation[] => {
   const { meta } = match;
   const banned = [
@@ -286,7 +314,7 @@ const forbiddenViolations = (
   const violations: GlossaryViolation[] = [];
   const reportedStarts = new Set<number>();
   for (const { value, caseInsensitive } of banned) {
-    const occurrence = find(value, caseInsensitive).find(
+    const occurrence = findBanned(value, caseInsensitive).find(
       (candidate) => !approvedSpans.some((span) => isWithin(candidate, span)),
     );
     if (!occurrence || reportedStarts.has(occurrence.start)) continue;
@@ -306,6 +334,7 @@ const glossaryViolations = (
   { matches: glossaryMatches, surfaces }: MatchedGlossaryGroup,
   targetCulture: string,
   find: FindValue,
+  findBanned: FindValue,
   containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
   const [match] = glossaryMatches;
@@ -316,7 +345,7 @@ const glossaryViolations = (
     ...(meta.rule === "translate"
       ? translationViolations(match, targetCulture, base, containsApproved)
       : []),
-    ...forbiddenViolations(text, match, targetCulture, base, find),
+    ...forbiddenViolations(text, match, targetCulture, base, find, findBanned),
   ];
 };
 
@@ -336,6 +365,10 @@ export const validateTranslation = (
   const searchable = maskPlaceholders(text);
   const find: FindValue = (value, caseInsensitive) =>
     findAllInTarget(searchable, value, { caseInsensitive, targetCulture });
+  const findBanned: FindValue = (value, caseInsensitive) =>
+    find(value, caseInsensitive).filter((occurrence) =>
+      endsForbiddenWord(searchable, occurrence, value, targetCulture),
+    );
   const containsApproved: ContainsApproved = (value) =>
     containsApprovedIn(searchable, value, targetCulture);
   const violations: GlossaryViolation[] = [];
@@ -346,6 +379,7 @@ export const validateTranslation = (
       group,
       targetCulture,
       find,
+      findBanned,
       containsApproved,
     )) {
       const id = [

@@ -102,7 +102,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   });
   const suggestedCount = termChips.filter((chip) => chip.source === "suggested").length;
 
-  // Saves the full key without the glossary; context, routes and resources stay as they are (C20).
+  // Saves only the key's glossary ids; the server keeps its stored context, routes and resources (C20).
   const untagGlossary = async (glossaryId: string) => {
     setIsTagging(true);
     try {
@@ -117,6 +117,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           (id) => id !== glossaryId,
         ),
         isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
+        glossaryIdsOnly: true,
       });
       if (res?.success) {
         setAddedGlossaryIds((ids) => ids.filter((id) => id !== glossaryId));
@@ -134,7 +135,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     }
   };
 
-  // Saves the full current key with the glossaries added, keeping context and routes (H11).
+  // Saves only the key's glossary ids with the glossaries added; the server keeps the rest (H11).
   const tagGlossaries = async (glossaryIds: string[]) => {
     setIsTagging(true);
     try {
@@ -149,6 +150,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           ...new Set([...(keyDetails.glossaryIds ?? []), ...addedGlossaryIds, ...glossaryIds]),
         ],
         isPartiallyTranslated: keyDetails.isPartiallyTranslated ?? false,
+        glossaryIdsOnly: true,
       });
       if (res?.success) {
         setAddedGlossaryIds((ids) => [...new Set([...ids, ...glossaryIds])]);

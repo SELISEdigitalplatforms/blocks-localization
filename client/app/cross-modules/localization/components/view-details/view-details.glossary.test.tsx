@@ -100,6 +100,7 @@ const expectedSave = (glossaryIds: string[]) => ({
   context: "Formal tone.",
   glossaryIds,
   isPartiallyTranslated: false,
+  glossaryIdsOnly: true,
 });
 
 describe("view-details — glossary suggestions", () => {

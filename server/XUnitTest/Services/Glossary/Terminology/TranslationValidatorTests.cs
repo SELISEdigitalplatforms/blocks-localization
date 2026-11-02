@@ -151,6 +151,39 @@ namespace XUnitTest.Terminology
             Validate(new[] { dashboard }, "Dashboard", "Zwei Dashboards").Should().ContainSingle().Which.Found.Should().Be("Dashboards");
         }
 
+        [Theory]
+        [InlineData("Open the Application")]
+        [InlineData("Open the Appendix")]
+        [InlineData("Sign in with your Login")]
+        public void A_short_forbidden_value_must_be_a_whole_word(string output)
+        {
+            var app = Glossary("a", "App", Meta(new Dictionary<string, object>
+            {
+                ["forbidden"] = new Dictionary<string, string[]> { ["en-GB"] = new[] { "App", "log" } }
+            }));
+
+            Validate(new[] { app }, "App", output, "en-GB").Where(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed)
+                .Should().BeEmpty();
+            Validate(new[] { app }, "App", "Open the App", "en-GB").Single(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed)
+                .Found.Should().Be("App");
+        }
+
+        [Theory]
+        [InlineData("Ihres Werkbereichs", "Werkbereich")]
+        [InlineData("Die Werkbereichen", "Werkbereich")]
+        public void A_longer_forbidden_value_takes_a_short_inflected_ending(string output, string found)
+        {
+            Validate(new[] { Workspace() }, "Workspace", output)
+                .Single(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed).Found.Should().Be(found);
+        }
+
+        [Fact]
+        public void A_longer_forbidden_value_inside_a_longer_word_is_not_a_use()
+        {
+            Validate(new[] { Workspace() }, "Workspace", "Der Werkbereichsleiter")
+                .Should().NotContain(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed);
+        }
+
         [Fact]
         public void Inactive_values_are_ignored_C20()
         {

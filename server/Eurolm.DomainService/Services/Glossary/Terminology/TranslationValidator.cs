@@ -27,12 +27,14 @@ namespace Eurolm.DomainService.Services
             // Searched with placeholders and tags blanked out (same offsets); reported from the real text.
             var searchable = PlaceholderMask.Apply(text);
             List<Occurrence> Find(string value, bool caseInsensitive) => FindAll(searchable, value, caseInsensitive, culture);
+            List<Occurrence> FindBanned(string value, bool caseInsensitive) =>
+                Find(value, caseInsensitive).Where(o => EndsForbiddenWord(searchable, o, value, culture)).ToList();
             bool ContainsApproved(string value) => ContainsApprovedTranslation(searchable, value, culture);
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var group in TerminologyPromptBuilder.GroupByGlossary(ruleMatches))
             {
-                foreach (var violation in GlossaryViolations(text, group, culture, Find, ContainsApproved))
+                foreach (var violation in GlossaryViolations(text, group, culture, Find, FindBanned, ContainsApproved))
                 {
                     var id = string.Join('\0', violation.GlossaryId, violation.Kind, violation.Found ?? violation.Expected ?? "");
                     if (seen.Add(id)) violations.Add(violation);
@@ -46,6 +48,7 @@ namespace Eurolm.DomainService.Services
             TerminologyPromptBuilder.MatchedGlossaryGroup group,
             string targetCulture,
             Func<string, bool, List<Occurrence>> find,
+            Func<string, bool, List<Occurrence>> findBanned,
             Func<string, bool> containsApproved)
         {
             var terminology = group.Matches[0].Terminology;
@@ -79,7 +82,7 @@ namespace Eurolm.DomainService.Services
             var reportedStarts = new HashSet<int>();
             foreach (var (value, caseInsensitive) in banned)
             {
-                var occurrence = find(value, caseInsensitive).Cast<Occurrence?>()
+                var occurrence = findBanned(value, caseInsensitive).Cast<Occurrence?>()
                     .FirstOrDefault(c => !approvedSpans.Any(span => c!.Value.IsWithin(span)));
                 if (occurrence == null || !reportedStarts.Add(occurrence.Value.Start)) continue;
                 yield return new GlossaryViolationDto
@@ -128,6 +131,37 @@ namespace Eurolm.DomainService.Services
 
         /// <summary>A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag".</summary>
         public const int MinCompoundPartLength = 4;
+
+        /// <summary>A shorter forbidden value must be a whole word, so "App" does not flag "Application".</summary>
+        public const int MinInflectedForbiddenLength = 4;
+
+        /// <summary>Letters a longer forbidden value may take as an inflected ending ("Werkbereichs").</summary>
+        public const int MaxForbiddenEnding = 3;
+
+        /// <summary>
+        /// True when a forbidden <paramref name="value"/> found at <paramref name="occurrence"/> also ends there:
+        /// a whole word, or (for a value of <see cref="MinInflectedForbiddenLength"/> letters or more) one followed
+        /// by at most <see cref="MaxForbiddenEnding"/> letters. No-space languages: always.
+        /// </summary>
+        private static bool EndsForbiddenWord(string text, Occurrence occurrence, string value, string targetCulture)
+        {
+            if (GlossaryMatcher.IsNoSpaceCulture(targetCulture)) return true;
+            var ending = WordLettersAfter(text, occurrence.Start + occurrence.Length, MaxForbiddenEnding);
+            if (ending == 0) return true;
+            return ending <= MaxForbiddenEnding && NormalizeNfc(value).EnumerateRunes().Count() >= MinInflectedForbiddenLength;
+        }
+
+        /// <summary>Letters and numbers from <paramref name="index"/> to the end of the word, counted up to <paramref name="limit"/> + 1.</summary>
+        private static int WordLettersAfter(string text, int index, int limit)
+        {
+            var count = 0;
+            while (count <= limit && !GlossaryMatcher.IsWordEnd(text, index))
+            {
+                count++;
+                index += char.IsHighSurrogate(text[index]) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1]) ? 2 : 1;
+            }
+            return count;
+        }
 
         /// <summary>
         /// True when the approved translation is used in <paramref name="text"/>: where it starts a word (inflected
@@ -193,7 +227,8 @@ namespace Eurolm.DomainService.Services
 
         /// <summary>
         /// Every occurrence of <paramref name="value"/> in <paramref name="text"/> where it starts a word; trailing
-        /// letters are allowed so inflected forms ("Arbeitsbereichs") count (A11). No-space languages, or
+        /// letters are allowed so inflected forms ("Arbeitsbereichs") count (A11). Forbidden values are further
+        /// limited by <see cref="EndsForbiddenWord"/>. No-space languages, or
         /// <paramref name="anywhere"/>: substring.
         /// </summary>
         private static List<Occurrence> FindAll(string text, string value, bool caseInsensitive, string targetCulture, bool anywhere = false)

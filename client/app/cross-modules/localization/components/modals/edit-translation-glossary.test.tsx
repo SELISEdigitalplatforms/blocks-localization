@@ -352,6 +352,7 @@ describe("modals/edit-key-glossary", () => {
       glossaryIds: ["g2"],
       isPartiallyTranslated: true,
       context: "Formal tone.",
+      glossaryIdsOnly: true,
     });
   });
 });

@@ -3,6 +3,7 @@ import { localizationQueryKeys } from "@blocks-localization/constants/query-keys
 import type {
   IBlocksLanguageKey,
   IBlocksLanguageKeyResponse,
+  ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
 
 /** Rewrites the loaded rows of the All view, e.g. to replace an edited key or drop deleted ones. */
@@ -84,6 +85,17 @@ export const allViewRefreshAfterSave = (
   if (hasNewKey) return "reset";
   return replaceLanguageKeyRows(savedKeys);
 };
+
+/**
+ * The row a save payload stands for. A glossary-only save leaves the stored resources, routes and
+ * context alone, so only its glossaryIds are patched in.
+ */
+export const savedLanguageKeyRow = ({
+  isNewKey: _isNewKey,
+  glossaryIdsOnly,
+  ...key
+}: ISaveBlocksLanguageKeyPayload): Partial<IBlocksLanguageKey> & { itemId: string } =>
+  glossaryIdsOnly ? { itemId: key.itemId, glossaryIds: key.glossaryIds } : key;
 
 export const removeLanguageKeyRows =
   (itemIds: string[]): LanguageKeyRowsPatch =>

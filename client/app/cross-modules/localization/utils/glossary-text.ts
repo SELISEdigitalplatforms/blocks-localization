@@ -29,6 +29,19 @@ const charBefore = (text: string, index: number): string => {
 export const isWordStart = (text: string, index: number): boolean =>
   !LETTER_OR_DIGIT.test(charBefore(text, index));
 
+/** Letters and digits from `index` to the end of the word, counted up to `limit` + 1. */
+export const wordLettersAfter = (text: string, index: number, limit: number): number => {
+  let count = 0;
+  let at = index;
+  while (at < text.length && count <= limit) {
+    const char = String.fromCodePoint(text.codePointAt(at) ?? 0);
+    if (!LETTER_OR_DIGIT.test(char)) break;
+    count++;
+    at += char.length;
+  }
+  return count;
+};
+
 /** The letters and digits of the same word that come before `index`. */
 export const wordPrefixBefore = (text: string, index: number): string => {
   let start = index;

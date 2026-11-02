@@ -56,6 +56,8 @@ export interface ISaveBlocksLanguageKeyPayload {
   isPartiallyTranslated: boolean;
   isNewKey?: boolean;
   context?: string;
+  /** An existing key keeps its stored resources, routes and context; only glossaryIds is saved. */
+  glossaryIdsOnly?: boolean;
 }
 
 /** Duplicate keys (same module and key name) and duplicate module names for the tenant. */

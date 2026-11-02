@@ -93,6 +93,41 @@ describe("utils/glossary-validation validateTranslation", () => {
     ]);
   });
 
+  it("reports a longer forbidden value with a short inflected ending only", () => {
+    expect(validateTranslation("Die Werkbereichen", ws, "de-DE")).toContainEqual({
+      glossaryId: "g1",
+      term: "Workspace",
+      kind: "forbidden-used",
+      found: "Werkbereich",
+    });
+    expect(
+      validateTranslation("Der Werkbereichsleiter", ws, "de-DE").filter(
+        (v) => v.kind === "forbidden-used",
+      ),
+    ).toEqual([]);
+  });
+
+  it.each(["Open the Application", "Open the Appendix", "Sign in with your Login"])(
+    "does not flag a short forbidden value inside a longer word: %s",
+    (output) => {
+      const app = glossary({
+        itemId: "a",
+        name: "App",
+        additionalNote: meta({ forbidden: { "en-GB": ["App", "log"] } }),
+      });
+      const apps = match([app], "App");
+      expect(
+        validateTranslation(output, apps, "en-GB").filter((v) => v.kind === "forbidden-used"),
+      ).toEqual([]);
+      expect(validateTranslation("Open the App", apps, "en-GB")).toContainEqual({
+        glossaryId: "a",
+        term: "App",
+        kind: "forbidden-used",
+        found: "App",
+      });
+    },
+  );
+
   it("uses plain substring checks for no-space target languages", () => {
     const ja = glossary({
       itemId: "ja",
