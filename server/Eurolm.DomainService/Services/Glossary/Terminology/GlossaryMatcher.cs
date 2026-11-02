@@ -28,6 +28,11 @@ namespace Eurolm.DomainService.Services
         public IReadOnlyCollection<string>? KeyGlossaryIds { get; init; }
         public string? ModuleId { get; init; }
         public GlossaryScopeMode Mode { get; init; } = GlossaryScopeMode.Applicable;
+        /// <summary>
+        /// Drops non-Approved terms before overlaps are resolved, so a longer Draft cannot hide an Approved
+        /// rule. For enforcement (AI prompt, stored violations); highlighting keeps Drafts.
+        /// </summary>
+        public bool ApprovedOnly { get; init; }
     }
 
     public class GlossaryMatch
@@ -97,8 +102,9 @@ namespace Eurolm.DomainService.Services
             var wholeWord = !IsNoSpaceCulture(options.SourceCulture);
             var keyIds = options.KeyGlossaryIds is { Count: > 0 } ids ? new HashSet<string>(ids, StringComparer.Ordinal) : null;
 
-            // Offsets always refer to the original text; the normalized and folded copies are only searched.
-            var (normalized, normalizedToOriginal) = NormalizeWithOffsets(text);
+            // Offsets always refer to the original text; the masked, normalized and folded copies are only searched.
+            // Masking keeps every offset, so placeholders and tags simply never match.
+            var (normalized, normalizedToOriginal) = NormalizeWithOffsets(PlaceholderMask.Apply(text));
             var (folded, foldedToNormalized) = FoldWithOffsets(normalized);
 
             var candidates = new List<Candidate>();
@@ -142,6 +148,7 @@ namespace Eurolm.DomainService.Services
             if (context.WholeWord && (!IsWordStart(text, start) || !IsWordEnd(text, originalEnd))) return;
             foreach (Entry entry in entries)
             {
+                if (context.Options.ApprovedOnly && entry.Terminology.Status != GlossaryStatus.Approved) continue;
                 var scope = ScopeOf(entry.Glossary, context.Options, context.KeyIds);
                 if (scope.HasValue)
                     context.Candidates.Add(new Candidate(entry, start, originalEnd - start, scope.Value));

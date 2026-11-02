@@ -134,6 +134,26 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
+        public async Task Migrating_or_cleaning_keeps_part_of_speech_and_usage_examples()
+        {
+            var trackA = TrackA("a");
+            var withMarker = Migrated("b", "Beta");
+            withMarker.Context = "Beta definition ⟦rule: keep as-is in all languages⟧";
+            foreach (var glossary in new[] { trackA, withMarker })
+            {
+                glossary.PartOfSpeech = "noun";
+                glossary.UsageExamples = new List<string> { "Open the workspace." };
+            }
+            _stored.AddRange(new[] { trackA, withMarker });
+
+            await _service.MigrateAsync(dryRun: false);
+
+            _written.Should().HaveCount(2);
+            _written.Should().OnlyContain(w => w.Glossary.PartOfSpeech == "noun");
+            _written.Should().OnlyContain(w => w.Glossary.UsageExamples!.SequenceEqual(new[] { "Open the workspace." }));
+        }
+
+        [Fact]
         public async Task Duplicate_names_are_listed_and_block_the_index()
         {
             _stored.AddRange(new[] { TrackA("id1", "workspace"), TrackA("id2", "Workspace"), TrackA("id3", "Other") });
@@ -162,6 +182,34 @@ namespace XUnitTest.Services.Glossary
             _repository.Verify(r => r.CreateNormalizedNameUniqueIndexAsync(), Times.Never);
             _keyRepository.Verify(k => k.RemoveStaleGlossaryIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), false, It.IsAny<int>()), Times.Never);
             _matcherCache.Verify(c => c.Invalidate(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task A_real_run_with_nothing_to_migrate_still_rechecks_the_whole_project()
+        {
+            _stored.Add(Migrated("g1", "Workspace"));
+            var recheck = new Mock<IGlossaryRecheckService>();
+            var service = new GlossaryMigrationService(_repository.Object, _keyRepository.Object,
+                new Mock<ILogger<GlossaryMigrationService>>().Object, _matcherCache.Object, recheck.Object);
+
+            var report = await service.MigrateAsync(dryRun: false);
+
+            report.Migrated.Should().Be(0);
+            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0)), Times.Once);
+            _matcherCache.Verify(c => c.Invalidate(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task A_dry_run_never_triggers_a_recheck()
+        {
+            _stored.Add(TrackA("g1"));
+            var recheck = new Mock<IGlossaryRecheckService>();
+            var service = new GlossaryMigrationService(_repository.Object, _keyRepository.Object,
+                new Mock<ILogger<GlossaryMigrationService>>().Object, _matcherCache.Object, recheck.Object);
+
+            await service.MigrateAsync(dryRun: true);
+
+            recheck.Verify(r => r.TriggerAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
         }
 
         [Fact]

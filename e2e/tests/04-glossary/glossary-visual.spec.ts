@@ -146,10 +146,10 @@ test.describe("Glossary — visual evidence", () => {
       if (visited.at(-1) !== section) visited.push(section);
       if (section === "Save") break;
     }
-    const order = ["Term", "Translations", "Meaning", "Scope", "Internal Note"].filter((name) =>
+    const order = ["Glossary", "Translations", "Meaning", "Scope", "Internal Note"].filter((name) =>
       visited.includes(name),
     );
-    expect(order.slice(0, 1)).toEqual(["Term"]);
+    expect(order.slice(0, 1)).toEqual(["Glossary"]);
     const indexes = order.map((name) => visited.indexOf(name));
     expect([...indexes].sort((a, b) => a - b)).toEqual(indexes);
 

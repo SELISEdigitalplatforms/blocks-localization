@@ -322,7 +322,7 @@ export class GlossaryPage {
     await expect(this.page.getByRole("heading", { name: "Details" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Definition" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Internal Note" })).toBeVisible();
-    await expect(this.page.getByRole("heading", { name: "Tagged Keys" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: "Keys", exact: true })).toBeVisible();
   }
 
   async clickEditButton() {
@@ -356,7 +356,7 @@ export class GlossaryPage {
   async expectVersionConflict() {
     await expect(
       this.editorSheet.getByText(
-        "This term was changed by someone else. Reload the latest version and re-apply your changes.",
+        "This glossary was changed by someone else. Reload the latest version and re-apply your changes.",
         { exact: true },
       ),
     ).toBeVisible({ timeout: 20_000 });
@@ -418,9 +418,10 @@ export class GlossaryPage {
 
   async expectNoTaggedKeys() {
     await expect(
-      this.page.getByText("No keys are tagged with this glossary.", { exact: true }),
+      // The wording depends on the glossary's scope (only tagged, global, or module).
+      this.page.getByText(/^No keys are tagged with this glossary( directly| or belong to its modules)?\.$/),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(this.page.getByText("Failed to load tagged keys.", { exact: true })).toBeHidden();
+    await expect(this.page.getByText("Failed to load keys.", { exact: true })).toBeHidden();
   }
 
   async expectDeleteUsage(text: string | RegExp) {

@@ -19,9 +19,12 @@ namespace Eurolm.DomainService.Services
 
         public const int MaxGetByIdsCount = 100;
         public const int MaxUsagePageSize = 50;
+        public const int MaxGetsPageSize = 100;
 
         internal const string VersionConflictMessage = "This glossary was changed by someone else. Reload and try again.";
         internal const string ItemNotFoundMessage = "Glossary item not found";
+        internal const string DuplicateNameMessage = "Glossary name must be unique.";
+        internal const string SaveFailedMessage = "Could not save the glossary. Try again.";
 
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a glossary.");
@@ -78,10 +81,15 @@ namespace Eurolm.DomainService.Services
                 InvalidateMatcher();
                 await TriggerRecheckAsync(glossary.ItemId);
             }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // A concurrent save took the name between the validator's check and the write.
+                return ValidationError(nameof(Glossary.Name), DuplicateNameMessage);
+            }
             catch (Exception ex)
             {
                 _logger.LogError("Error while saving Glossary {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
-                return new ApiResponse(ex.Message);
+                return new ApiResponse(SaveFailedMessage);
             }
 
             return new ApiResponse();
@@ -89,6 +97,9 @@ namespace Eurolm.DomainService.Services
 
         public async Task<GetGlossariesResponse> GetGlossariesAsync(GetGlossariesRequest request)
         {
+            // Limit(0) means no limit, and a negative skip throws.
+            request.PageSize = Math.Clamp(request.PageSize, 1, MaxGetsPageSize);
+            request.PageNumber = Math.Max(request.PageNumber, 0);
             return await _glossaryRepository.GetAllAsync(request);
         }
 

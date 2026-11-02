@@ -1,9 +1,11 @@
-import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { localizationQueryKeys } from "../constants/query-keys";
 import {
   allViewRefreshAfterSave,
+  GLOSSARY_RECHECK_REFRESH_DELAYS_MS,
+  refreshKeysAfterGlossaryChange,
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
@@ -115,4 +117,44 @@ describe("allViewRefreshAfterSave", () => {
       ]);
     },
   );
+});
+
+describe("refreshKeysAfterGlossaryChange", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("refreshes now and again after the worker's re-check is likely done", () => {
+    vi.useFakeTimers();
+    const queryClient = seed();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    refreshKeysAfterGlossaryChange(queryClient);
+    const callsNow = invalidate.mock.calls.length;
+    expect(callsNow).toBeGreaterThan(0);
+    expect(queryClient.getQueryState(pagedKey)?.isInvalidated).toBe(true);
+
+    vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[0]);
+    expect(invalidate.mock.calls.length).toBe(callsNow * 2);
+    vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[1]);
+    expect(invalidate.mock.calls.length).toBe(callsNow * 3);
+  });
+
+  it("drops an All view that is not on screen and never refetches one that is", () => {
+    const queryClient = seed();
+    refreshKeysAfterGlossaryChange(queryClient);
+    // No observer in this test, so the All view is inactive and is dropped.
+    expect(queryClient.getQueryData(allViewKey)).toBeUndefined();
+
+    const mounted = seed();
+    const observer = new QueryObserver(mounted, {
+      queryKey: allViewKey,
+      queryFn: () => new Promise<never>(() => {}),
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    refreshKeysAfterGlossaryChange(mounted);
+    expect(mounted.getQueryData(allViewKey)).toBeDefined();
+    expect(mounted.getQueryState(allViewKey)?.isInvalidated).toBe(false);
+    unsubscribe();
+  });
 });

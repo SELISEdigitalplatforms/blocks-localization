@@ -546,27 +546,6 @@
         "OrganizationId" : "default"
     },
     {
-        "_id" : "8d3c2f7a-5b1e-4a9d-b6c4-2e7f9a1d3b58",
-        "CreatedDate" : "2026-10-29T00:00:00.000+0000",
-        "LastUpdatedDate" : "2026-10-29T00:00:00.000+0000",
-        "CreatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
-        "Language" : null,
-        "LastUpdatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
-        "OrganizationIds" : [],
-        "Tags" : [],
-        "Name" : "Re-check Glossary Violations",
-        "Type" : "Endpoint",
-        "Description" : "Queue a background re-check of the stored glossary violations of the keys a glossary term applies to, or of every key when no item id is given. Covers: POST /Glossary/Recheck?itemId={itemId}. Recomputes violations only (no AI call, translations unchanged); at most one queued re-check per project, and nothing is queued while server glossary enforcement is off.",
-        "Resource" : "blocks-localization::glossary::recheck",
-        "ResourceGroup" : "localization",
-        "IsBuiltIn" : true,
-        "IsArchived" : false,
-        "PermissionSeverity" : "Low",
-        "DependentPermissions" : [],
-        "Roles" : [],
-        "OrganizationId" : "default"
-    },
-    {
         "_id" : "268150a9-f924-45a5-95ab-9f6d8b9cbd8b",
         "CreatedDate" : "2026-07-09T11:32:25.758+0000",
         "LastUpdatedDate" : "2026-07-09T11:32:25.758+0000",

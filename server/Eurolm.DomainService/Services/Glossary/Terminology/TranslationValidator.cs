@@ -23,7 +23,9 @@ namespace Eurolm.DomainService.Services
             if (JsText.Trim(text).Length == 0 || ruleMatches == null || ruleMatches.Count == 0) return violations;
 
             var culture = targetCulture ?? "";
-            List<Occurrence> Find(string value, bool caseInsensitive) => FindAll(text, value, caseInsensitive, culture);
+            // Searched with placeholders and tags blanked out (same offsets); reported from the real text.
+            var searchable = PlaceholderMask.Apply(text);
+            List<Occurrence> Find(string value, bool caseInsensitive) => FindAll(searchable, value, caseInsensitive, culture);
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var group in TerminologyPromptBuilder.GroupByGlossary(ruleMatches))

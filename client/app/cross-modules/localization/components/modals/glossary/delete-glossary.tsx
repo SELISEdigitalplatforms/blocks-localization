@@ -18,9 +18,13 @@ import {
   useSaveGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
-import { getGlossaryStatus, toGlossarySavePayload } from "@blocks-localization/utils/glossary-display";
+import {
+  getGlossaryStatus,
+  isUnsupportedGlossaryNote,
+  toGlossarySavePayload,
+} from "@blocks-localization/utils/glossary-display";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { formatErrorMessage } from "@/lib/error";
+import { formatErrorMessage, getHttpErrorMessage } from "@/lib/error";
 
 /** From this many keys, Delete needs the term's exact name typed (Phase 8 A3). */
 export const DELETE_CONFIRM_THRESHOLD = 50;
@@ -65,6 +69,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
     !!glossary &&
     hasKnownCount &&
     usageCount > 0 &&
+    !isUnsupportedGlossaryNote(glossary) &&
     getGlossaryStatus(glossary) !== "deprecated";
 
   const deleteGlossary = async () => {
@@ -91,11 +96,12 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
         });
         void refetchUsageCount();
       }
-    } catch {
+    } catch (error) {
+      // Glossary/Delete answers a failure with 400/404, which the HTTP client throws: show its reason.
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete glossary item",
+        description: getHttpErrorMessage(error),
       });
       void refetchUsageCount();
     } finally {

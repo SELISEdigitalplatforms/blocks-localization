@@ -23,6 +23,7 @@ import {
 } from "@tanstack/react-query";
 import {
   allViewRefreshAfterSave,
+  refreshKeysAfterGlossaryChange,
   refreshLanguageKeyLists,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
@@ -825,15 +826,8 @@ export const useSaveGlossary = () => {
     mutationKey: ["save-glossary"],
     mutationFn: languageManagerService.saveGlossary,
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.glossaries.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.glossaries.suggestedPrefix,
-      });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.glossaries.detailPrefix,
-      });
+      GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      refreshKeysAfterGlossaryChange(queryClient);
     },
   });
 };
@@ -844,12 +838,8 @@ export const useDeleteGlossary = () => {
     mutationKey: ["glossary", "delete"],
     mutationFn: languageManagerService.deleteGlossary,
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.glossaries.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: localizationQueryKeys.glossaries.suggestedPrefix,
-      });
+      GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      refreshKeysAfterGlossaryChange(queryClient);
     },
   });
 };
@@ -1064,7 +1054,8 @@ export const useGetKeysByGlossaryId = (
   glossaryId: string,
   pageNumber: number,
   pageSize: number,
-  filters: { searchKey?: string; moduleIds?: string[] } = {},
+  filters: { searchKey?: string; moduleIds?: string[]; glossaryModuleIds?: string[] } = {},
+  enabled = true,
 ) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -1085,8 +1076,9 @@ export const useGetKeysByGlossaryId = (
         sortProperty: "KeyName",
         isDescending: false,
         glossaryId,
+        ...(filters.glossaryModuleIds?.length && { glossaryModuleIds: filters.glossaryModuleIds }),
       }),
-    enabled: !!glossaryId && !!tenantId,
+    enabled: enabled && !!glossaryId && !!tenantId,
     staleTime: 0,
     refetchOnMount: true,
   });
@@ -1114,13 +1106,6 @@ export const useGetGlossaryUsage = (glossaryId: string, enabled = true) => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery(glossaryUsageQuery(tenantId, glossaryId, enabled));
 };
-
-/** `Glossary/Recheck`: queues a background re-check of stored key violations. */
-export const useRecheckGlossary = () =>
-  useMutation({
-    mutationKey: ["glossary", "recheck"],
-    mutationFn: languageManagerService.recheckGlossary,
-  });
 
 /** Every glossary cache a term write can change (the delete cascade's six prefixes). */
 export const GLOSSARY_CACHE_PREFIXES = [
@@ -1170,10 +1155,14 @@ export const useDeleteGlossaryWithCascade = () => {
       if (!deleteResponse?.isSuccess) {
         return { status: "delete-failed", errors: deleteResponse?.errors };
       }
-
+      return { status: "deleted" };
+    },
+    // Also after a failure: "not found" means it is already gone, and a delete that failed after
+    // untagging has changed keys.
+    onSettled: () => {
       invalidateGlossaries();
       invalidateKeys();
-      return { status: "deleted" };
+      refreshKeysAfterGlossaryChange(queryClient);
     },
   });
 };

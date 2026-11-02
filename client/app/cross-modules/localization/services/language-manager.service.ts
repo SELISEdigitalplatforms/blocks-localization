@@ -25,7 +25,6 @@ import {
   GlossaryRuleDto,
   GlossaryStatus,
   GlossaryPartOfSpeech,
-  IRecheckGlossaryResponse,
   IGetSuggestedGlossariesResponse,
   IGetLocalizationTimelineResponse,
   IGetTimelineByOperationIdResponse,
@@ -66,6 +65,8 @@ export class LanguageManagerService {
       };
       resourceSearchFilters?: { culture: string; searchText: string }[];
       glossaryId?: string;
+      /** With `glossaryId`: also match keys in these modules (the glossary's module scope). */
+      glossaryModuleIds?: string[];
       missingLanguages?: string[];
       onlyDuplicates?: boolean;
       /** Only keys with stored glossary violations; sent only when true. */
@@ -578,12 +579,6 @@ export class LanguageManagerService {
     return this.httpClient.post(GLOSSARY_ENDPOINTS.MATCH, payload, undefined, {
       signal: options?.signal,
     });
-  };
-
-  /** Queues a background violation re-check for one term's keys, or every key without `itemId`. */
-  recheckGlossary = (request: { itemId?: string } = {}): Promise<IRecheckGlossaryResponse> => {
-    const query = request.itemId ? `?itemId=${encodeURIComponent(request.itemId)}` : "";
-    return this.httpClient.post(`${GLOSSARY_ENDPOINTS.RECHECK}${query}`, {});
   };
 
   getWebhook = (): Promise<IWebhookConfig | null> => {

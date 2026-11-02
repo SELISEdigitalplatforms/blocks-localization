@@ -257,6 +257,25 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        /// <summary>The glossary repository, when this host registers one (tests and older hosts may not).</summary>
+        private IGlossaryRepository? GlossaryRepository => _serviceProvider?.GetService<IGlossaryRepository>();
+
+        /// <summary>
+        /// The requested glossary ids that still exist, de-duplicated. A client holding a cached list cannot tag a key
+        /// with a deleted glossary (for example a save racing the delete's untagging).
+        /// </summary>
+        private async Task<List<string>?> ExistingGlossaryIdsAsync(List<string>? ids)
+        {
+            var requested = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
+            var repository = GlossaryRepository;
+            if (requested is not { Count: > 0 } || repository == null) return requested ?? ids;
+
+            var existing = (await repository.GetStoredByIdsAsync(requested))
+                .Select(g => g.ItemId)
+                .ToHashSet(StringComparer.Ordinal);
+            return requested.Where(existing.Contains).ToList();
+        }
+
         /// <summary>The terminology service, when this host registers one (tests and older hosts may not).</summary>
         private IGlossaryTerminologyService? TerminologyService => _serviceProvider?.GetService<IGlossaryTerminologyService>();
 
@@ -296,7 +315,7 @@ namespace Eurolm.DomainService.Services
             repoKey.Resources = key.Resources;
             repoKey.IsPartiallyTranslated = key.IsPartiallyTranslated;
             repoKey.Routes = key.Routes;
-            repoKey.GlossaryIds = key.GlossaryIds;
+            repoKey.GlossaryIds = await ExistingGlossaryIdsAsync(key.GlossaryIds);
             repoKey.Context = key.Context;
 
             return repoKey;

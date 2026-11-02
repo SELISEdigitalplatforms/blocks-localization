@@ -91,6 +91,24 @@ namespace XUnitTest
                 .Should().ContainSingle().Which.Should().Be("Translations: Translations are invalid.");
         }
 
+        [Theory]
+        [InlineData("forbidden", true)]
+        [InlineData("keep", true)]
+        [InlineData("translate", false)]
+        [InlineData(null, false)]
+        public async Task A_forbidden_value_equal_to_the_translation_is_only_an_error_while_the_value_is_active(string? rule, bool accepted)
+        {
+            var errors = await Errors(new Glossary
+            {
+                Name = "Workspace",
+                Rule = rule,
+                Translations = new() { new() { Language = "de-DE", Value = "Arbeitsbereich", ForbiddenValues = new() { "arbeitsbereich" } } }
+            });
+
+            if (accepted) errors.Should().BeEmpty();
+            else errors.Should().ContainSingle().Which.Should().Be("Translations: Translations are invalid.");
+        }
+
         [Fact]
         public async Task Translations_for_cultures_outside_the_project_and_forbidden_only_entries_are_accepted()
         {

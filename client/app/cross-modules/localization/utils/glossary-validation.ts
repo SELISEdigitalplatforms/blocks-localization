@@ -1,5 +1,6 @@
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+import { maskPlaceholders } from "@blocks-localization/utils/glossary-placeholders";
 import { isNoSpaceCulture, isWordStart } from "@blocks-localization/utils/glossary-text";
 
 /**
@@ -121,13 +122,13 @@ const isWithin = (inner: Occurrence, outer: Occurrence) =>
 /**
  * Finds `value` in `text` where it starts a word; trailing letters are allowed so
  * inflected forms ("Arbeitsbereichs") count (A11). No-space languages: plain substring.
- * Returns the first occurrence as offsets into `text`.
+ * Returns the first occurrence as offsets into `text`. Never inside a placeholder or tag.
  */
 export const findInTarget = (
   text: string,
   value: string,
   options: FindOptions,
-): Occurrence | null => findAllInTarget(text, value, options)[0] ?? null;
+): Occurrence | null => findAllInTarget(maskPlaceholders(text), value, options)[0] ?? null;
 
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
@@ -229,8 +230,10 @@ export const validateTranslation = (
   const text = (output ?? "").normalize("NFC");
   if (!text.trim()) return [];
 
+  // Searched with placeholders and tags blanked out (same offsets); reported from the real text.
+  const searchable = maskPlaceholders(text);
   const find: FindValue = (value, caseInsensitive) =>
-    findAllInTarget(text, value, { caseInsensitive, targetCulture });
+    findAllInTarget(searchable, value, { caseInsensitive, targetCulture });
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
   for (const group of groupMatchesByGlossary(matches)) {
@@ -286,13 +289,15 @@ export const applyFix = (
   const replacement = getFixReplacement(violation, matches, targetCulture);
   if (!replacement || !violation.found) return null;
   const normalized = (text ?? "").normalize("NFC");
+  // Placeholders and tags are never rewritten ("{user}" stays "{user}").
+  const searchable = maskPlaceholders(normalized);
   const options: FindOptions = { caseInsensitive: true, targetCulture };
-  const approvedSpans = findAllInTarget(normalized, replacement, { ...options, anywhere: true });
+  const approvedSpans = findAllInTarget(searchable, replacement, { ...options, anywhere: true });
   const replaceable = (candidate: Occurrence) =>
     !approvedSpans.some((span) => isWithin(candidate, span));
   const occurrence =
-    findAllInTarget(normalized, violation.found, options).find(replaceable) ??
-    findAllInTarget(normalized, violation.found, { ...options, anywhere: true }).find(replaceable);
+    findAllInTarget(searchable, violation.found, options).find(replaceable) ??
+    findAllInTarget(searchable, violation.found, { ...options, anywhere: true }).find(replaceable);
   if (!occurrence) return null;
   return (
     normalized.slice(0, occurrence.start) +

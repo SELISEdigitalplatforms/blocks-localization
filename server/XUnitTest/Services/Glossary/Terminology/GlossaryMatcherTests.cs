@@ -99,6 +99,20 @@ namespace XUnitTest.Terminology
         }
 
         [Fact]
+        public void ApprovedOnly_lets_a_shorter_Approved_term_win_over_a_longer_Draft()
+        {
+            var draftLonger = Term("c-long", "Customer Portal", status: GlossaryStatus.Draft);
+            var approvedShort = Term("d-short", "Portal", status: GlossaryStatus.Approved);
+
+            var match = Matcher(draftLonger, approvedShort)
+                .Match("Customer Portal", new MatchOptions { ApprovedOnly = true })
+                .Single();
+
+            match.Glossary.ItemId.Should().Be("d-short");
+            match.Start.Should().Be(9);
+        }
+
+        [Fact]
         public void Equal_status_still_falls_back_to_the_lower_id()
         {
             var first = Term("a", "Portal", status: GlossaryStatus.Draft);

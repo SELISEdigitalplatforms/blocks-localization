@@ -632,6 +632,18 @@ function GlossaryEmptyState({
   );
 }
 
+function GlossaryLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  return (
+    <div role="alert" className="flex flex-col items-center gap-2 py-4">
+      <p className="font-medium text-high-emphasis">Couldn&rsquo;t load glossaries</p>
+      <p className="text-muted-foreground">Check your connection and try again.</p>
+      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onRetry}>
+        Retry
+      </Button>
+    </div>
+  );
+}
+
 const GlossaryTable = () => {
   const navigate = useNavigate();
   const scoped = useScopedPath();
@@ -702,7 +714,7 @@ const GlossaryTable = () => {
   const isDefaultSort =
     sort.sortBy === DEFAULT_SORT.sortBy && sort.descending === DEFAULT_SORT.descending;
 
-  const { data, isLoading, refetch } = useGetGlossaries(pageNumber, pageSize, searchText, {
+  const { data, isLoading, isError, refetch } = useGetGlossaries(pageNumber, pageSize, searchText, {
     rule: ruleFilter,
     status: statusFilter,
     language: languageFilter,
@@ -806,12 +818,20 @@ const GlossaryTable = () => {
       rowSelection: Object.fromEntries([...selectedIds].map((id) => [id, true])),
     },
   });
+  // A failed refetch keeps showing the last page; only a list that never loaded shows the error.
+  const isLoadError = isError && !data;
   const isUnfilteredEmpty =
-    !isLoading && searchText.length === 0 && !isFiltered && (data?.totalCount ?? 0) === 0;
+    !isLoading &&
+    !isLoadError &&
+    searchText.length === 0 &&
+    !isFiltered &&
+    (data?.totalCount ?? 0) === 0;
   const tableRows = table.getRowModel().rows;
   const visibleColumnCount = table.getVisibleLeafColumns().length;
 
-  const emptyState = (
+  const emptyState = isLoadError ? (
+    <GlossaryLoadError onRetry={() => void refetch()} />
+  ) : (
     <GlossaryEmptyState
       searchQuery={searchText}
       isFiltered={isFiltered}

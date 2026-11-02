@@ -30,12 +30,15 @@ namespace Eurolm.DomainService.Repositories
 
         /// <summary>
         /// One page of keys for the glossary re-check, ordered by ItemId after <paramref name="afterItemId"/>, with
-        /// only ItemId, ModuleId, GlossaryIds, Resources and GlossaryViolations loaded. A null scope selects every key.
+        /// only ItemId, ModuleId, GlossaryIds, Resources, GlossaryViolations and LastUpdateDate loaded. A null scope selects every key.
         /// </summary>
         Task<List<BlocksLanguageKey>> GetKeysForGlossaryRecheckAsync(GlossaryRecheckKeyScope? scope, string? afterItemId, int pageSize);
 
-        /// <summary>Sets GlossaryViolations ($set, nothing else) of each key in one unordered bulk write. Returns the modified count.</summary>
-        Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)> updates);
+        /// <summary>
+        /// Sets GlossaryViolations ($set, nothing else) of each key in one unordered bulk write, skipping keys whose
+        /// LastUpdateDate changed since they were read. Returns the modified count.
+        /// </summary>
+        Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<GlossaryViolationUpdate> updates);
 
         /// <summary>Tagged key count, one page of tagged keys, their module ids and the count of keys with violations of the glossary.</summary>
         Task<GlossaryKeyUsage> GetGlossaryKeyUsageAsync(string glossaryId, int pageNumber, int pageSize);

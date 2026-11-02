@@ -75,7 +75,8 @@ namespace Eurolm.DomainService.Services
                 SourceCulture = defaultCulture,
                 KeyGlossaryIds = key.GlossaryIds,
                 ModuleId = key.ModuleId,
-                Mode = GlossaryScopeMode.Applicable
+                Mode = GlossaryScopeMode.Applicable,
+                ApprovedOnly = true
             });
             if (matches.Count == 0) return new List<KeyGlossaryViolation>();
 
@@ -142,6 +143,7 @@ namespace Eurolm.DomainService.Services
             Rule = match.Terminology.Rule.ToString().ToLowerInvariant(),
             Status = match.Terminology.Status.ToString().ToLowerInvariant(),
             CaseSensitive = match.Terminology.CaseSensitive,
+            Variants = match.Terminology.Variants.ToList(),
             Scope = match.Scope.ToString().ToLowerInvariant(),
             Definition = match.Terminology.Definition,
             PartOfSpeech = match.Glossary.PartOfSpeech,

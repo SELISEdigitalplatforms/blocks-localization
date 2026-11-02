@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";
 import { formatErrorMessage } from "@/lib/error";
-import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
+import { refreshKeysAfterGlossaryChange } from "@blocks-localization/hooks/language-key-list-cache";
 import { GLOSSARY_CACHE_PREFIXES } from "@blocks-localization/hooks/use-language-manager";
 import { GlossaryStatus, IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
@@ -90,8 +90,7 @@ export const useGlossaryBulk = () => {
 
   const refreshCaches = () => {
     GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
-    queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
-    queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+    refreshKeysAfterGlossaryChange(queryClient);
   };
 
   const tagModule = async (

@@ -85,6 +85,12 @@ describe("toGlossaryMatch (Phase 8)", () => {
       usageExamples: ["Open your workspace."],
     });
   });
+
+  it("carries variants into the meta so forbidden variants are checked", () => {
+    const match = toGlossaryMatch({ ...dto(), variants: [" Log-in ", ""] });
+    expect(match.meta.variants).toEqual(["Log-in"]);
+    expect(match.glossary.variants).toEqual([" Log-in ", ""]);
+  });
 });
 
 describe("useGlossaryMatch", () => {

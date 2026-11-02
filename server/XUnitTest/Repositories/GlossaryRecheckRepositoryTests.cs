@@ -142,15 +142,31 @@ namespace XUnitTest.Repositories
                 .ReturnsAsync(new BulkWriteResult<BlocksLanguageKey>.Acknowledged(2, 2, 0, 2, 2, new List<WriteModel<BlocksLanguageKey>>(), new List<BulkWriteUpsert>()));
             var repo = new KeyRepository(_dbContextProvider.Object);
 
-            await repo.SetGlossaryViolationsManyAsync(new List<(string, List<KeyGlossaryViolation>)>
+            var read = new DateTime(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc);
+            await repo.SetGlossaryViolationsManyAsync(new List<GlossaryViolationUpdate>
             {
-                ("k1", new List<KeyGlossaryViolation>()),
-                ("k2", new List<KeyGlossaryViolation> { new() { Culture = "de-DE", GlossaryId = "g1" } })
+                new("k1", new List<KeyGlossaryViolation>(), read),
+                new("k2", new List<KeyGlossaryViolation> { new() { Culture = "de-DE", GlossaryId = "g1" } }, default)
             });
 
             var updates = models!.Cast<UpdateOneModel<BlocksLanguageKey>>().ToList();
             updates.Should().HaveCount(2).And.OnlyContain(u => !u.IsUpsert);
             updates.Select(u => Render(u.Update)).Should().OnlyContain(u => u.Names.SequenceEqual(new[] { "$set" }) && u["$set"].AsBsonDocument.Names.SequenceEqual(new[] { "GlossaryViolations" }));
+        }
+
+        [Fact]
+        public void Unchanged_key_filter_requires_the_LastUpdateDate_that_was_read()
+        {
+            var read = new DateTime(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc);
+            Render(KeyRepository.BuildUnchangedKeyFilter("k1", read)).ToJson()
+                .Should().Be(BsonDocument.Parse("{ _id: 'k1', LastUpdateDate: ISODate('2026-11-01T08:00:00Z') }").ToJson());
+        }
+
+        [Fact]
+        public void Unchanged_key_filter_matches_a_missing_LastUpdateDate_when_none_was_read()
+        {
+            var rendered = Render(KeyRepository.BuildUnchangedKeyFilter("k1", default)).ToJson();
+            rendered.Should().Contain("\"$exists\" : false");
         }
     }
 }

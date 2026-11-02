@@ -234,15 +234,27 @@ describe("localization/constants/query-keys", () => {
         25,
         "",
         "[]",
+        "[]",
       ]);
     });
-    it("should include the Tagged Keys search and module filter (H4)", () => {
+    it("should include the Keys card search, module filter and glossary modules (H4)", () => {
       expect(
         localizationQueryKeys.languageKeys.byGlossary("t1", "g1", 0, 25, {
           searchKey: "e2e.ws",
           moduleIds: ["m1"],
+          glossaryModuleIds: ["m2"],
         }),
-      ).toEqual(["get-blocksLanguageKeys", "by-glossary", "t1", "g1", 0, 25, "e2e.ws", '["m1"]']);
+      ).toEqual([
+        "get-blocksLanguageKeys",
+        "by-glossary",
+        "t1",
+        "g1",
+        0,
+        25,
+        "e2e.ws",
+        '["m1"]',
+        '["m2"]',
+      ]);
     });
   });
 

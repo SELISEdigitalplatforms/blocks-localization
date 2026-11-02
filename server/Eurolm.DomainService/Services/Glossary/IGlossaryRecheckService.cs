@@ -5,12 +5,6 @@ namespace Eurolm.DomainService.Services
     public interface IGlossaryRecheckService
     {
         /// <summary>
-        /// Queues a re-check of the glossary's keys (null = the whole project). False when the flag is off or a job
-        /// for the tenant is already queued; the request's scope is then merged into that job.
-        /// </summary>
-        Task<bool> QueueAsync(string? glossaryId);
-
-        /// <summary>
         /// The automatic trigger after a glossary write: queues (coalesced) only with the flag on, and never throws.
         /// An empty <paramref name="glossaryIds"/> means the whole project.
         /// </summary>

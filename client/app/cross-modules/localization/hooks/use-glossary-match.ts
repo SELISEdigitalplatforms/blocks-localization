@@ -26,6 +26,7 @@ export const toGlossaryMatch = (dto: IGlossaryMatchDto): GlossaryMatch => {
       context: definition,
       rule: dto.rule,
       caseSensitive: dto.caseSensitive,
+      variants: dto.variants ?? [],
       translations: dto.translations ?? [],
       status,
       partOfSpeech: dto.partOfSpeech,
@@ -36,6 +37,7 @@ export const toGlossaryMatch = (dto: IGlossaryMatchDto): GlossaryMatch => {
     meta: toGlossaryMeta({
       rule: dto.rule,
       caseSensitive: dto.caseSensitive,
+      variants: dto.variants,
       translations: dto.translations,
     }),
     definition,

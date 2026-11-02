@@ -343,7 +343,11 @@ namespace Eurolm.DomainService.Repositories
         {
             if (!string.IsNullOrWhiteSpace(query.GlossaryId))
             {
-                matchFilters.Add(filterBuilder.AnyEq(x => x.GlossaryIds, query.GlossaryId));
+                var tagged = filterBuilder.AnyEq(x => x.GlossaryIds, query.GlossaryId);
+                var scopeModuleIds = query.GlossaryModuleIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray();
+                matchFilters.Add(scopeModuleIds is { Length: > 0 }
+                    ? filterBuilder.Or(tagged, filterBuilder.In(x => x.ModuleId, scopeModuleIds))
+                    : tagged);
             }
 
             if (query.HasGlossaryViolations.HasValue)
@@ -573,7 +577,8 @@ namespace Eurolm.DomainService.Repositories
                 .Include(k => k.ModuleId)
                 .Include(k => k.GlossaryIds)
                 .Include(k => k.Resources)
-                .Include(k => k.GlossaryViolations);
+                .Include(k => k.GlossaryViolations)
+                .Include(k => k.LastUpdateDate);
 
             // Keyset paging on _id: stable while the job rewrites GlossaryViolations, unlike skip/limit.
             return await collection.Find(BuildGlossaryRecheckFilter(scope, afterItemId))
@@ -607,7 +612,7 @@ namespace Eurolm.DomainService.Repositories
             return filters.Count > 0 ? filterBuilder.And(filters) : filterBuilder.Empty;
         }
 
-        public async Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)> updates)
+        public async Task<long> SetGlossaryViolationsManyAsync(IReadOnlyList<GlossaryViolationUpdate> updates)
         {
             ArgumentNullException.ThrowIfNull(updates);
             if (updates.Count == 0) return 0;
@@ -616,13 +621,23 @@ namespace Eurolm.DomainService.Repositories
             var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
             // Only GlossaryViolations is set; resources and every other field stay as stored.
             var models = updates.Select(u => (WriteModel<BlocksLanguageKey>)new UpdateOneModel<BlocksLanguageKey>(
-                    Builders<BlocksLanguageKey>.Filter.Eq(k => k.ItemId, u.KeyId),
+                    BuildUnchangedKeyFilter(u.KeyId, u.ReadLastUpdateDate),
                     Builders<BlocksLanguageKey>.Update.Set(k => k.GlossaryViolations, u.Violations))
                 { IsUpsert = false })
                 .ToList();
 
             var result = await collection.BulkWriteAsync(models, new BulkWriteOptions { IsOrdered = false });
             return result.ModifiedCount;
+        }
+
+        /// <summary>The key, only while its LastUpdateDate is still the one read (a missing field reads as default).</summary>
+        public static FilterDefinition<BlocksLanguageKey> BuildUnchangedKeyFilter(string keyId, DateTime readLastUpdateDate)
+        {
+            var filterBuilder = Builders<BlocksLanguageKey>.Filter;
+            var unchanged = readLastUpdateDate == default
+                ? filterBuilder.Or(filterBuilder.Exists(k => k.LastUpdateDate, false), filterBuilder.Eq(k => k.LastUpdateDate, default(DateTime)))
+                : filterBuilder.Eq(k => k.LastUpdateDate, readLastUpdateDate);
+            return filterBuilder.And(filterBuilder.Eq(k => k.ItemId, keyId), unchanged);
         }
 
         public async Task<GlossaryKeyUsage> GetGlossaryKeyUsageAsync(string glossaryId, int pageNumber, int pageSize)

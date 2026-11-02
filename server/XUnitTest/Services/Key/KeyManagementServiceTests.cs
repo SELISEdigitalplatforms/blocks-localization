@@ -358,6 +358,34 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task SaveKeyAsync_StoresOnlyGlossaryIdsThatStillExist()
+        {
+            var key = new KeyModel
+            {
+                KeyName = "welcome.message",
+                ModuleId = "auth-module",
+                GlossaryIds = new List<string> { "g-live", "g-deleted", "g-live", " " },
+                Resources = new[] { new Resource { Culture = "en-US", Value = "Welcome" } }
+            };
+            _validatorMock.Setup(v => v.ValidateAsync(key, default)).ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(key.KeyName, key.ModuleId)).ReturnsAsync((BlocksLanguageKey)null);
+            BlocksLanguageKey saved = null;
+            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
+                .Callback<BlocksLanguageKey>(k => saved = k)
+                .Returns(Task.CompletedTask);
+            var glossaries = new Mock<IGlossaryRepository>();
+            glossaries.Setup(g => g.GetStoredByIdsAsync(It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync(new List<BlocksGlossary> { new() { ItemId = "g-live", Name = "Live" } });
+            _serviceProviderMock.Setup(p => p.GetService(typeof(IGlossaryRepository))).Returns(glossaries.Object);
+
+            var result = await _service.SaveKeyAsync(key);
+
+            result.Success.Should().BeTrue();
+            saved.GlossaryIds.Should().Equal("g-live");
+            glossaries.Verify(g => g.GetStoredByIdsAsync(It.Is<IEnumerable<string>>(ids => ids.SequenceEqual(new[] { "g-live", "g-deleted" }))), Times.Once);
+        }
+
+        [Fact]
         public async Task SaveKeyAsync_InvalidKey_ReturnsValidationError()
         {
             // Arrange

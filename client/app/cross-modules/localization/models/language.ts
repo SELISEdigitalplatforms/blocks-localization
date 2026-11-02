@@ -395,11 +395,6 @@ export type GlossaryScopeFilter = "project" | "modules";
 
 export type GlossarySortBy = "name" | "createDate" | "lastUpdateDate";
 
-export interface IRecheckGlossaryResponse {
-  /** False when a re-check for the tenant is already queued, or the server flag is off. */
-  queued: boolean;
-}
-
 export interface IGetGlossariesByIdsResponse {
   items: IGlossary[];
 }
@@ -423,6 +418,7 @@ export interface IGlossaryMatchDto {
   rule: GlossaryRuleDto;
   status: GlossaryStatus;
   caseSensitive: boolean;
+  variants?: string[];
   scope: GlossaryMatchScope;
   definition: string;
   /** Only the values active under the term's rule. */

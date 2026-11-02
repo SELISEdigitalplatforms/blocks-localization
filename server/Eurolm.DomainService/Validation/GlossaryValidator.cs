@@ -34,7 +34,7 @@ namespace Eurolm.DomainService.Services
                 .WithMessage("Variants are invalid.");
 
             RuleFor(glossary => glossary.Translations)
-                .Must(translations => AreTranslationsValid(translations!))
+                .Must((glossary, translations) => AreTranslationsValid(translations!, IsValueActive(glossary.Rule)))
                 .When(glossary => glossary.Translations != null)
                 .WithMessage("Translations are invalid.");
 
@@ -95,7 +95,15 @@ namespace Eurolm.DomainService.Services
             examples.Count <= MaxUsageExamples
             && examples.All(example => example != null && GlossaryMapper.NormalizeValue(example).Length is > 0 and <= MaxUsageExampleLength);
 
-        private static bool AreTranslationsValid(List<GlossaryTranslationDto> translations)
+        /// <summary>
+        /// A translation value only applies under the translate rule. Under keep or forbidden it is kept but hidden in
+        /// the editor, so a forbidden value equal to it is not an error the user could see or fix. Without a rule in the
+        /// request the stored rule is kept, so the value is treated as active.
+        /// </summary>
+        private static bool IsValueActive(string? rule) =>
+            !GlossaryWireValues.TryParseRule(rule, out var parsed) || parsed == GlossaryRule.Translate;
+
+        private static bool AreTranslationsValid(List<GlossaryTranslationDto> translations, bool valueIsActive)
         {
             var languages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var translation in translations)
@@ -107,7 +115,7 @@ namespace Eurolm.DomainService.Services
                 var value = GlossaryMapper.NormalizeValue(translation.Value);
                 if (value.Length > MaxValueLength) return false;
 
-                if (!AreForbiddenValuesValid(translation.ForbiddenValues ?? new List<string>(), value)) return false;
+                if (!AreForbiddenValuesValid(translation.ForbiddenValues ?? new List<string>(), valueIsActive ? value : "")) return false;
             }
             return true;
         }

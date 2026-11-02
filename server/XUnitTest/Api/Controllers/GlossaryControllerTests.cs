@@ -20,7 +20,6 @@ namespace XUnitTest
         private readonly GlossarySuggestionController _suggestionController;
         private readonly GlossaryMigrationController _migrationController;
         private readonly GlossaryMatchController _matchController;
-        private readonly GlossaryRecheckController _recheckController;
 
         public GlossaryControllerTests()
         {
@@ -34,7 +33,6 @@ namespace XUnitTest
             _suggestionController = new GlossarySuggestionController(_keyManagementServiceMock.Object) { ControllerContext = new ControllerContext() };
             _migrationController = new GlossaryMigrationController(_migrationServiceMock.Object) { ControllerContext = new ControllerContext() };
             _matchController = new GlossaryMatchController(_terminologyServiceMock.Object) { ControllerContext = new ControllerContext() };
-            _recheckController = new GlossaryRecheckController() { ControllerContext = new ControllerContext() };
         }
 
         [Fact]
@@ -504,69 +502,6 @@ namespace XUnitTest
             entry.GetProperty("PermissionSeverity").GetString().Should().Be("High");
             entry.GetProperty("ResourceGroup").GetString().Should().Be("localization");
         }
-
-        #region Recheck (SPEC8 H28, C12, C13, C15)
-
-        private static GlossaryRecheckController ControllerWithRecheck(Mock<IGlossaryRecheckService> recheck) =>
-            new(recheck.Object) { ControllerContext = new ControllerContext() };
-
-        [Theory]
-        [InlineData("g1", true)]
-        [InlineData(null, true)]
-        [InlineData("g1", false)]
-        public async Task Recheck_returns_ok_with_queued(string? itemId, bool queued)
-        {
-            var recheck = new Mock<IGlossaryRecheckService>();
-            recheck.Setup(r => r.QueueAsync(itemId)).ReturnsAsync(queued);
-
-            var result = await ControllerWithRecheck(recheck).Recheck(itemId);
-
-            ((OkObjectResult)result).Value.Should().BeEquivalentTo(new RecheckGlossaryResponse { Queued = queued });
-            recheck.Verify(r => r.QueueAsync(itemId), Times.Once);
-        }
-
-        [Fact]
-        public async Task Recheck_without_a_registered_service_is_not_queued()
-        {
-            var result = await _recheckController.Recheck("g1");
-
-            ((OkObjectResult)result).Value.Should().BeEquivalentTo(new RecheckGlossaryResponse { Queued = false });
-        }
-
-        [Fact]
-        public void Recheck_is_a_post_protected_by_the_recheck_permission()
-        {
-            var method = typeof(GlossaryRecheckController).GetMethod(nameof(GlossaryRecheckController.Recheck))!;
-            method.GetCustomAttributesData().Single(a => a.AttributeType.Name.StartsWith("ProtectedEndPoint", StringComparison.Ordinal))
-                .ConstructorArguments.Single().Value.Should().Be("blocks-localization::glossary::recheck");
-            method.GetCustomAttributes(typeof(HttpPostAttribute), false).Should().ContainSingle();
-        }
-
-        [Fact]
-        public void RecheckGlossaryResponse_serializes_as_queued()
-        {
-            System.Text.Json.JsonSerializer.Serialize(new RecheckGlossaryResponse { Queued = true },
-                    new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))
-                .Should().Be("{\"queued\":true}");
-        }
-
-        [Fact]
-        public void PermissionSeed_ContainsTheRecheckEndpoint()
-        {
-            var path = Path.Combine(FindServerDirectory(), "seed", "localization-permissions.upsert.json");
-            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
-
-            var entries = document.RootElement.EnumerateArray().ToList();
-            var entry = entries.Single(e => e.GetProperty("Resource").GetString() == "blocks-localization::glossary::recheck");
-            entry.GetProperty("Type").GetString().Should().Be("Endpoint");
-            entry.GetProperty("PermissionSeverity").GetString().Should().Be("Low");
-            entry.GetProperty("ResourceGroup").GetString().Should().Be("localization");
-            entry.GetProperty("IsBuiltIn").GetBoolean().Should().BeTrue();
-            entry.GetProperty("Description").GetString().Should().Contain("POST /Glossary/Recheck");
-            entries.Select(e => e.GetProperty("_id").GetString()).Should().OnlyHaveUniqueItems();
-        }
-
-        #endregion
 
         private static string FindServerDirectory()
         {

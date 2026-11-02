@@ -18,7 +18,7 @@ namespace XUnitTest.Services.Glossary
         private readonly Mock<IMessageClient> _messageClient = new();
         private readonly List<BlocksGlossary> _glossaries = new();
         private readonly List<ConsumerMessage<RecheckGlossaryViolationsEvent>> _published = new();
-        private readonly List<IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)>> _writes = new();
+        private readonly List<IReadOnlyList<GlossaryViolationUpdate>> _writes = new();
         private int _matcherBuilds;
 
         public GlossaryRecheckServiceTests()
@@ -29,8 +29,8 @@ namespace XUnitTest.Services.Glossary
                 .Returns(Task.CompletedTask);
             _keyRepository.Setup(r => r.GetLanguageSettingAsync("recheck-tenant"))
                 .ReturnsAsync(new BlocksLanguage { LanguageCode = "en-US", IsDefault = true });
-            _keyRepository.Setup(r => r.SetGlossaryViolationsManyAsync(It.IsAny<IReadOnlyList<(string, List<KeyGlossaryViolation>)>>()))
-                .Callback<IReadOnlyList<(string KeyId, List<KeyGlossaryViolation> Violations)>>(u => _writes.Add(u.ToList()))
+            _keyRepository.Setup(r => r.SetGlossaryViolationsManyAsync(It.IsAny<IReadOnlyList<GlossaryViolationUpdate>>()))
+                .Callback<IReadOnlyList<GlossaryViolationUpdate>>(u => _writes.Add(u.ToList()))
                 .ReturnsAsync(1);
             _glossaryRepository.Setup(r => r.GetStoredByIdsAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync((IEnumerable<string> ids) => _glossaries.Where(g => ids.Contains(g.ItemId)).ToList());
@@ -86,13 +86,12 @@ namespace XUnitTest.Services.Glossary
         #region Queue and trigger
 
         [Fact]
-        public async Task Queue_with_the_flag_on_creates_the_marker_and_publishes_the_event()
+        public async Task Trigger_with_the_flag_on_creates_the_marker_and_publishes_the_event()
         {
             SetupEnqueue(created: true);
 
-            var queued = await NewService().QueueAsync("g1");
+            await NewService().TriggerAsync(new[] { "g1" });
 
-            queued.Should().BeTrue();
             _jobs.Verify(j => j.TryEnqueueAsync("recheck-tenant", It.Is<IReadOnlyCollection<string>?>(ids => ids!.SequenceEqual(new[] { "g1" })),
                 It.IsAny<DateTime>(), GlossaryRecheckService.StaleAfter), Times.Once);
             _published.Should().ContainSingle();
@@ -101,34 +100,23 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
-        public async Task Queue_without_an_item_id_asks_for_the_whole_project()
+        public async Task Trigger_without_glossary_ids_asks_for_the_whole_project()
         {
             SetupEnqueue(created: true);
 
-            await NewService().QueueAsync(null);
+            await NewService().TriggerAsync(Array.Empty<string>());
 
             _jobs.Verify(j => j.TryEnqueueAsync("recheck-tenant", null, It.IsAny<DateTime>(), It.IsAny<TimeSpan>()), Times.Once);
             _published.Single().Payload.GlossaryId.Should().BeNull();
         }
 
         [Fact]
-        public async Task Queue_while_a_job_is_queued_is_coalesced_C12()
+        public async Task Trigger_while_a_job_is_queued_is_coalesced_C12()
         {
             SetupEnqueue(created: false);
 
-            var queued = await NewService().QueueAsync("g1");
+            await NewService().TriggerAsync(new[] { "g1" });
 
-            queued.Should().BeFalse();
-            _published.Should().BeEmpty();
-        }
-
-        [Fact]
-        public async Task Queue_with_the_flag_off_returns_false_and_writes_nothing_C13()
-        {
-            var queued = await NewService(enabled: false).QueueAsync("g1");
-
-            queued.Should().BeFalse();
-            _jobs.VerifyNoOtherCalls();
             _published.Should().BeEmpty();
         }
 
@@ -203,7 +191,7 @@ namespace XUnitTest.Services.Glossary
 
             await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
 
-            _keyRepository.Verify(r => r.SetGlossaryViolationsManyAsync(It.IsAny<IReadOnlyList<(string, List<KeyGlossaryViolation>)>>()), Times.Once);
+            _keyRepository.Verify(r => r.SetGlossaryViolationsManyAsync(It.IsAny<IReadOnlyList<GlossaryViolationUpdate>>()), Times.Once);
             _keyRepository.Verify(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()), Times.Never);
             _keyRepository.Verify(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()), Times.Never);
             _keyRepository.Verify(r => r.SetGlossaryViolationsAsync(It.IsAny<string>(), It.IsAny<List<KeyGlossaryViolation>>()), Times.Never);

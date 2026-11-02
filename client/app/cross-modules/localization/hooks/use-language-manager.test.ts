@@ -49,7 +49,6 @@ vi.mock("@blocks-localization/services/language-manager.service", () => ({
     getGlossaryById: vi.fn(),
     getGlossariesByIds: vi.fn(),
     getGlossaryUsage: vi.fn(),
-    recheckGlossary: vi.fn(),
     getWebhook: vi.fn(),
     saveWebhook: vi.fn(),
   },
@@ -562,7 +561,7 @@ describe("localization/hooks/use-language-manager", () => {
     ).toBeDefined();
   });
 
-  it("useGetKeysByGlossaryId should send the Tagged Keys search and module filter (H4)", async () => {
+  it("useGetKeysByGlossaryId should send the Keys card search and module filter (H4)", async () => {
     svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
     const { result } = renderQ(() =>
       hooks.useGetKeysByGlossaryId("g1", 0, 10, { searchKey: "e2e.ws", moduleIds: ["m1"] }),
@@ -576,6 +575,23 @@ describe("localization/hooks/use-language-manager", () => {
         pageNumber: 0,
       }),
     );
+    expect(svc.fetchBlocksLanguageKey.mock.calls[0][0]).not.toHaveProperty("glossaryModuleIds");
+  });
+
+  it("useGetKeysByGlossaryId should send the glossary's modules so their keys are listed too", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetKeysByGlossaryId("g1", 0, 10, { glossaryModuleIds: ["m1", "m2"] }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({ glossaryId: "g1", glossaryModuleIds: ["m1", "m2"] }),
+    );
+  });
+
+  it("useGetKeysByGlossaryId should not fetch while disabled", () => {
+    renderQ(() => hooks.useGetKeysByGlossaryId("g1", 0, 10, {}, false));
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
   });
 
   it("useGetGlossaryUsage should return the module ids from the same Usage request", async () => {
@@ -589,13 +605,6 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.moduleIds).toEqual(["m1", "m2"]);
     expect(svc.getGlossaryUsage).toHaveBeenCalledWith({ itemId: "g1", pageSize: 1 });
-  });
-
-  it("useRecheckGlossary should call the Recheck service", async () => {
-    svc.recheckGlossary.mockResolvedValue({ queued: true });
-    const { result } = renderQ(() => hooks.useRecheckGlossary());
-    await expect(result.current.mutateAsync({ itemId: "g1" })).resolves.toEqual({ queued: true });
-    expect(svc.recheckGlossary).toHaveBeenCalledWith({ itemId: "g1" }, expect.anything());
   });
 
   describe("useGetGlossariesByIds / useResolveGlossariesByIds", () => {
@@ -1086,13 +1095,17 @@ describe("localization/hooks/use-language-manager", () => {
       );
     });
 
-    it("should not invalidate anything when the delete fails", async () => {
-      svc.deleteGlossary.mockResolvedValue({ isSuccess: false, errors: "nope" } as never);
+    it("should still refresh glossary and key caches when the delete fails", async () => {
+      // A 404 means it is already gone; a failure after untagging has changed keys.
+      svc.deleteGlossary.mockRejectedValue(new Error("not found"));
       const { queryClient, wrapper } = createQueryWrapper();
       const invalidate = vi.spyOn(queryClient, "invalidateQueries");
       const { result } = renderHook(() => hooks.useDeleteGlossaryWithCascade(), { wrapper });
-      await result.current.mutateAsync({ glossaryId: "g1" });
-      expect(invalidate).not.toHaveBeenCalled();
+      await expect(result.current.mutateAsync({ glossaryId: "g1" })).rejects.toThrow();
+      const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+      expect(keys).toEqual(
+        expect.arrayContaining([localizationQueryKeys.glossaries.all, localizationQueryKeys.languageKeys.all]),
+      );
     });
 
     it("should refuse to run without a tenant", async () => {

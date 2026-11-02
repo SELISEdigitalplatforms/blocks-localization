@@ -45,9 +45,6 @@ namespace Eurolm.DomainService.Services
 
         private bool IsEnabled => GlossaryEnforcement.IsEnabled(_configuration);
 
-        public Task<bool> QueueAsync(string? glossaryId) =>
-            EnqueueAsync(string.IsNullOrWhiteSpace(glossaryId) ? null : new[] { glossaryId.Trim() });
-
         public async Task TriggerAsync(IReadOnlyCollection<string> glossaryIds)
         {
             if (!IsEnabled) return;
@@ -152,11 +149,11 @@ namespace Eurolm.DomainService.Services
         /// Null (every key) when the whole project was asked for or any of the glossaries is global; otherwise
         /// the glossaries' tagged keys, keys in their modules, and keys with stored violations of them.
         /// </summary>
-        private List<(string KeyId, List<KeyGlossaryViolation> Violations)> ComputeUpdates(
+        private List<GlossaryViolationUpdate> ComputeUpdates(
             List<BlocksLanguageKey> keys, GlossaryMatcher matcher, string defaultCulture, GlossaryRecheckResult result)
         {
             var now = DateTime.UtcNow;
-            var updates = new List<(string KeyId, List<KeyGlossaryViolation> Violations)>();
+            var updates = new List<GlossaryViolationUpdate>();
             foreach (var key in keys)
             {
                 result.Checked++;
@@ -164,7 +161,7 @@ namespace Eurolm.DomainService.Services
                 {
                     var computed = GlossaryTerminologyService.ComputeKeyViolations(key, matcher, defaultCulture, now);
                     var merged = KeepDetectedAt(key.GlossaryViolations, computed);
-                    if (merged != null) updates.Add((key.ItemId, merged));
+                    if (merged != null) updates.Add(new GlossaryViolationUpdate(key.ItemId, merged, key.LastUpdateDate));
                 }
                 catch (Exception ex)
                 {
@@ -176,7 +173,7 @@ namespace Eurolm.DomainService.Services
             return updates;
         }
 
-        private async Task StoreUpdatesAsync(List<(string KeyId, List<KeyGlossaryViolation> Violations)> updates, string? after, GlossaryRecheckResult result)
+        private async Task StoreUpdatesAsync(List<GlossaryViolationUpdate> updates, string? after, GlossaryRecheckResult result)
         {
             try
             {

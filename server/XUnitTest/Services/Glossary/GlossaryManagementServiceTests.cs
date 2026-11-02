@@ -7,6 +7,7 @@ using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using XUnitTest.Shared;
 using BlocksGlossary = Eurolm.DomainService.Repositories.BlocksGlossary;
 using GlossaryModel = Eurolm.DomainService.Services.Glossary;
 
@@ -212,7 +213,36 @@ namespace XUnitTest
             var result = await _service.SaveGlossaryAsync(new GlossaryModel { Name = "API" });
 
             result.Success.Should().BeFalse();
-            result.ErrorMessage.Should().Be("Database error");
+            result.ErrorMessage.Should().Be("Could not save the glossary. Try again.");
+        }
+
+        [Fact]
+        public async Task SaveGlossaryAsync_DuplicateKeyOnInsert_ReturnsUniqueNameError()
+        {
+            _glossaryRepositoryMock.Setup(r => r.InsertAsync(It.IsAny<BlocksGlossary>()))
+                .ThrowsAsync(MongoExceptionFactory.DuplicateKeyWrite());
+
+            var result = await _service.SaveGlossaryAsync(new GlossaryModel { Name = "API" });
+
+            result.Success.Should().BeFalse();
+            result.ErrorMessage.Should().BeEmpty();
+            result.ValidationErrors.Should().ContainSingle(e =>
+                e.PropertyName == "Name" && e.ErrorMessage == "Glossary name must be unique.");
+        }
+
+        [Fact]
+        public async Task GetGlossariesAsync_ClampsPaging()
+        {
+            var request = new GetGlossariesRequest { PageNumber = -3, PageSize = 0 };
+            _glossaryRepositoryMock.Setup(r => r.GetAllAsync(request)).ReturnsAsync(new GetGlossariesResponse());
+
+            await _service.GetGlossariesAsync(request);
+
+            request.PageNumber.Should().Be(0);
+            request.PageSize.Should().Be(1);
+            request.PageSize = 5000;
+            await _service.GetGlossariesAsync(request);
+            request.PageSize.Should().Be(GlossaryManagementService.MaxGetsPageSize);
         }
 
         #endregion

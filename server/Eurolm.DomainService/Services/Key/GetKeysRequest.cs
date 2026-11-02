@@ -18,6 +18,9 @@ namespace Eurolm.DomainService.Services
         public DateRange? LastUpdateDateRange { get; set; }
         public string? GlossaryId { get; set; }
 
+        /// <summary>With <see cref="GlossaryId"/>: also match keys in these modules (the glossary's module scope).</summary>
+        public string[]? GlossaryModuleIds { get; set; }
+
         /// <summary>true: only keys with at least one stored glossary violation; false: only keys without any.</summary>
         public bool? HasGlossaryViolations { get; set; }
 

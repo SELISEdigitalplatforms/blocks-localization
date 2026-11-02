@@ -20,7 +20,6 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguages: vi.fn(),
   useGetLanguageModules: vi.fn(),
   useGetKeysByGlossaryId: vi.fn(),
-  useRecheckGlossary: vi.fn(),
   useSaveGlossary: vi.fn(),
   useFetchLatestGlossary: vi.fn(),
 }));
@@ -52,7 +51,6 @@ const setDefaults = () => {
     isLoading: false,
     isError: false,
   } as never);
-  h.useRecheckGlossary.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
   h.useSaveGlossary.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
   h.useFetchLatestGlossary.mockReturnValue(vi.fn() as never);
 };
@@ -102,8 +100,13 @@ describe("components/glossary/glossary-details", () => {
     expect(screen.getByText("a note")).toBeTruthy();
     // Tagged module badge resolves to the module name.
     expect(screen.getByText("UILM")).toBeTruthy();
-    // Empty tagged keys state.
-    expect(screen.getByText("No keys are tagged with this glossary.")).toBeTruthy();
+    // A global glossary lists only its directly tagged keys.
+    expect(
+      screen.getByText(
+        "This glossary applies to every key in the project. Only keys tagged with it directly are listed.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("No keys are tagged with this glossary directly.")).toBeTruthy();
   });
 
   it("should label empty fields instead of leaving them blank", () => {
@@ -188,10 +191,52 @@ describe("components/glossary/glossary-details", () => {
     renderWithProviders(<GlossaryDetails itemId="g1" />, {
       route: "/app/abc/services/glossary/g1",
     });
-    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith("g1", 0, 10, {
-      searchKey: "",
-      moduleIds: [],
+    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith(
+      "g1",
+      0,
+      10,
+      { searchKey: "", moduleIds: [], glossaryModuleIds: ["m1"] },
+      true,
+    );
+  });
+
+  it("should list a module glossary's tagged keys and the keys in its modules, labelled", () => {
+    h.useGetGlossaryById.mockReturnValue({
+      data: { itemId: "g1", name: "Widget", createDate: "2026-01-01", moduleIds: ["m1"] },
+      isLoading: false,
+    } as never);
+    h.useGetKeysByGlossaryId.mockReturnValue({
+      data: {
+        keys: [
+          { itemId: "k1", keyName: "tagged.key", moduleId: "m2", glossaryIds: ["g1"], resources: [] },
+          { itemId: "k2", keyName: "module.key", moduleId: "m1", resources: [] },
+        ],
+        totalCount: 2,
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />, {
+      route: "/app/abc/services/glossary/g1",
     });
+    expect(screen.getByText("Keys tagged with this glossary, and keys in its modules.")).toBeTruthy();
+    const rows = within(screen.getByText("Key Name").closest("table")!).getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Tagged")).toBeTruthy();
+    expect(within(rows[1]).getByText("Module")).toBeTruthy();
+  });
+
+  it("should not request keys before the glossary has loaded", () => {
+    h.useGetGlossaryById.mockReturnValue({ data: undefined, isLoading: true } as never);
+    renderWithProviders(<GlossaryDetails itemId="g1" />, {
+      route: "/app/abc/services/glossary/g1",
+    });
+    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith(
+      "g1",
+      0,
+      10,
+      { searchKey: "", moduleIds: [], glossaryModuleIds: [] },
+      false,
+    );
   });
 
   it("should show the empty state (not the error) for a global-only glossary", () => {
@@ -202,8 +247,8 @@ describe("components/glossary/glossary-details", () => {
     renderWithProviders(<GlossaryDetails itemId="g1" />, {
       route: "/app/abc/services/glossary/g1",
     });
-    expect(screen.getByText("No keys are tagged with this glossary.")).toBeTruthy();
-    expect(screen.queryByText("Failed to load tagged keys.")).toBeNull();
+    expect(screen.getByText("No keys are tagged with this glossary directly.")).toBeTruthy();
+    expect(screen.queryByText("Failed to load keys.")).toBeNull();
   });
 
   it("should list keys in server order and page through the shared Pagination", () => {
@@ -236,10 +281,13 @@ describe("components/glossary/glossary-details", () => {
     expect(screen.getByText("Page 1 of 3")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
-    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith("g1", 1, 10, {
-      searchKey: "",
-      moduleIds: [],
-    });
+    expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith(
+      "g1",
+      1,
+      10,
+      { searchKey: "", moduleIds: [], glossaryModuleIds: [] },
+      true,
+    );
   });
 
   it("should show an error state when tagged keys fail to load", () => {
@@ -257,7 +305,7 @@ describe("components/glossary/glossary-details", () => {
     renderWithProviders(<GlossaryDetails itemId="g1" />, {
       route: "/app/abc/services/glossary/g1",
     });
-    expect(screen.getByText("Failed to load tagged keys.")).toBeTruthy();
+    expect(screen.getByText("Failed to load keys.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalled();
     // The rest of the page stays usable.
@@ -347,7 +395,7 @@ describe("components/glossary/glossary-details", () => {
         ],
       });
       const titles = screen
-        .getAllByText(/^(Translations|Details|Definition|Internal Note|Tagged Keys)$/)
+        .getAllByText(/^(Translations|Details|Definition|Internal Note|Keys)$/)
         .map((element) => element.textContent);
       expect(titles[0]).toBe("Translations");
       expect(screen.getByText("German (de-DE)")).toBeTruthy();
@@ -448,7 +496,7 @@ describe("components/glossary/glossary-details", () => {
       });
     };
 
-    it("puts Delete, Deprecate and Re-check in a More actions menu and keeps Edit visible (H6)", async () => {
+    it("puts Delete and Deprecate in a More actions menu and keeps Edit visible (H6)", async () => {
       const user = userEvent.setup();
       renderDetails();
       expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
@@ -456,27 +504,10 @@ describe("components/glossary/glossary-details", () => {
       await user.click(screen.getByRole("button", { name: "More actions" }));
       expect(screen.getByRole("menuitem", { name: /Delete/ })).toBeTruthy();
       expect(screen.getByRole("menuitem", { name: /Deprecate/ })).toBeTruthy();
-      expect(screen.getByRole("menuitem", { name: /Re-check keys/ })).toBeTruthy();
+      expect(screen.queryByRole("menuitem", { name: /Re-check/ })).toBeNull();
     });
 
-    it("queues a re-check and hides the action after a permission error", async () => {
-      const user = userEvent.setup();
-      const mutateAsync = vi
-        .fn()
-        .mockResolvedValueOnce({ queued: true })
-        .mockRejectedValueOnce({ status: 403 });
-      h.useRecheckGlossary.mockReturnValue({ mutateAsync, isPending: false } as never);
-      renderDetails();
-      await user.click(screen.getByRole("button", { name: "More actions" }));
-      await user.click(screen.getByRole("menuitem", { name: /Re-check keys/ }));
-      expect(mutateAsync).toHaveBeenCalledWith({ itemId: "g1" });
-      await user.click(screen.getByRole("button", { name: "More actions" }));
-      await user.click(screen.getByRole("menuitem", { name: /Re-check keys/ }));
-      await user.click(screen.getByRole("button", { name: "More actions" }));
-      expect(screen.queryByRole("menuitem", { name: /Re-check keys/ })).toBeNull();
-    });
-
-    it("searches and filters Tagged Keys after a 300 ms pause, from page 0 (H4)", () => {
+    it("searches and filters the Keys card after a 300 ms pause, from page 0 (H4)", () => {
       vi.useFakeTimers();
       try {
         renderDetails();
@@ -484,15 +515,10 @@ describe("components/glossary/glossary-details", () => {
           target: { value: " e2e.ws " },
         });
         act(() => vi.advanceTimersByTime(299));
-        expect(h.useGetKeysByGlossaryId).not.toHaveBeenLastCalledWith("g1", 0, 10, {
-          searchKey: "e2e.ws",
-          moduleIds: [],
-        });
+        const debounced = { searchKey: "e2e.ws", moduleIds: [], glossaryModuleIds: [] };
+        expect(h.useGetKeysByGlossaryId).not.toHaveBeenLastCalledWith("g1", 0, 10, debounced, true);
         act(() => vi.advanceTimersByTime(1));
-        expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith("g1", 0, 10, {
-          searchKey: "e2e.ws",
-          moduleIds: [],
-        });
+        expect(h.useGetKeysByGlossaryId).toHaveBeenLastCalledWith("g1", 0, 10, debounced, true);
       } finally {
         vi.useRealTimers();
       }

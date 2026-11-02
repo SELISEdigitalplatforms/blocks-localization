@@ -68,10 +68,11 @@ namespace Eurolm.DomainService.Services
             }
             report.UniqueIndexCreated = canCreateIndex;
 
-            if (!dryRun && migrated > 0)
+            if (!dryRun)
             {
-                _matcherCache?.Invalidate(tenantId);
-                // Every term may have changed, so the whole project is re-checked (flag on only).
+                if (migrated > 0) _matcherCache?.Invalidate(tenantId);
+                // Every real run re-checks the whole project (flag on only), even with nothing migrated: a tenant
+                // migrated while the flag was off has no stored violations yet.
                 if (_recheckService != null) await _recheckService.TriggerAsync(Array.Empty<string>());
             }
 
@@ -185,7 +186,9 @@ namespace Eurolm.DomainService.Services
             Variants = g.Variants,
             Translations = g.Translations,
             Status = g.Status,
-            SchemaVersion = g.SchemaVersion
+            SchemaVersion = g.SchemaVersion,
+            PartOfSpeech = g.PartOfSpeech,
+            UsageExamples = g.UsageExamples
         };
     }
 }

@@ -70,6 +70,44 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task GlossaryId_alone_matches_only_keys_tagged_with_it()
+        {
+            await _repo.GetAllKeysAsync(new GetKeysRequest { PageSize = 20, GlossaryId = "g1" });
+
+            _countFilter!.Render(Args<Key>()).ToJson()
+                .Should().Be(BsonDocument.Parse("{ 'GlossaryIds': 'g1' }").ToJson());
+        }
+
+        [Fact]
+        public async Task GlossaryId_with_module_ids_also_matches_keys_in_those_modules()
+        {
+            await _repo.GetAllKeysAsync(new GetKeysRequest
+            {
+                PageSize = 20,
+                GlossaryId = "g1",
+                GlossaryModuleIds = new[] { "m1", " ", "m2", "m1" }
+            });
+
+            _countFilter!.Render(Args<Key>()).ToJson()
+                .Should().Be(BsonDocument.Parse("{ $or: [{ 'GlossaryIds': 'g1' }, { 'ModuleId': { $in: ['m1', 'm2'] } }] }").ToJson());
+        }
+
+        [Fact]
+        public async Task GlossaryId_with_module_ids_still_honours_the_module_filter()
+        {
+            await _repo.GetAllKeysAsync(new GetKeysRequest
+            {
+                PageSize = 20,
+                GlossaryId = "g1",
+                GlossaryModuleIds = new[] { "m1" },
+                ModuleIds = new[] { "m2" }
+            });
+
+            _countFilter!.Render(Args<Key>()).ToJson()
+                .Should().Be(BsonDocument.Parse("{ 'ModuleId': 'm2', $or: [{ 'GlossaryIds': 'g1' }, { 'ModuleId': { $in: ['m1'] } }] }").ToJson());
+        }
+
+        [Fact]
         public async Task Delete_cleanup_pulls_the_glossary_id_and_its_violations_in_one_update()
         {
             FilterDefinition<BlocksLanguageKey>? filter = null;

@@ -16,6 +16,8 @@ namespace Eurolm.DomainService.Services
         public string Rule { get; set; } = "";
         public string Status { get; set; } = "";
         public bool CaseSensitive { get; set; }
+        /// <summary>Banned along with the term under the forbidden rule.</summary>
+        public List<string> Variants { get; set; } = new();
         /// <summary>"key" | "module" | "global" | "other".</summary>
         public string Scope { get; set; } = "";
         public string Definition { get; set; } = "";

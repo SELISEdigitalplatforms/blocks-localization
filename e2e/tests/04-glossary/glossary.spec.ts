@@ -407,7 +407,7 @@ test.describe("Glossary", () => {
         // C16: a variant equal to the term (normalized) is rejected.
         await glossary.addVariant(variantName.toLowerCase());
         await glossary.clickSaveButton();
-        await glossary.expectFieldError("Variant can't be the same as the term");
+        await glossary.expectFieldError("Variant can't be the same as the glossary");
         await glossary.removeVariant(variantName.toLowerCase());
 
         // C16: two variants that differ only in case are duplicates.

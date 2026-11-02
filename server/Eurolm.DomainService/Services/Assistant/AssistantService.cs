@@ -55,7 +55,8 @@ namespace Eurolm.DomainService.Services
                     SourceCulture = query.CurrentLanguageCode,
                     KeyGlossaryIds = query.GlossaryIds,
                     ModuleId = query.ModuleId,
-                    Mode = GlossaryScopeMode.Applicable
+                    Mode = GlossaryScopeMode.Applicable,
+                    ApprovedOnly = true
                 });
                 prompt = TerminologyPromptBuilder.Build(query, matches);
             }

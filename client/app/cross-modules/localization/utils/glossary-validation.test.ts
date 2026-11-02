@@ -350,3 +350,47 @@ describe("utils/glossary-validation messages", () => {
     ]);
   });
 });
+
+describe("utils/glossary-validation placeholders", () => {
+  const USER = glossary({
+    itemId: "u",
+    name: "User",
+    additionalNote: meta({
+      rule: "translate",
+      translations: { "de-DE": "Benutzer" },
+      forbidden: { "de-DE": ["User"] },
+    }),
+  });
+  const matches = match([USER], "The user list");
+
+  it("does not report a forbidden value inside a placeholder", () => {
+    expect(validateTranslation("Die Benutzer von {user}", matches, "de-DE")).toEqual([]);
+  });
+
+  it("does not count the approved value inside a placeholder or tag as present", () => {
+    expect(
+      validateTranslation("Liste {{Benutzer}} <b title=\"Benutzer\">x</b>", matches, "de-DE"),
+    ).toEqual([
+      expect.objectContaining({ kind: "missing-translation", expected: "Benutzer" }),
+    ]);
+  });
+
+  it("Fix rewrites the text but never the placeholder", () => {
+    const violation: GlossaryViolation = {
+      glossaryId: "u",
+      term: "User",
+      kind: "forbidden-used",
+      found: "User",
+    };
+    expect(applyFix("{user}: User-Liste", violation, matches, "de-DE")).toBe(
+      "{user}: Benutzer-Liste",
+    );
+    expect(applyFix("Hallo {user}", violation, matches, "de-DE")).toBeNull();
+  });
+
+  it("findInTarget skips placeholders", () => {
+    expect(
+      findInTarget("{user} User", "user", { caseInsensitive: true, targetCulture: "de-DE" }),
+    ).toEqual({ start: 7, length: 4 });
+  });
+});

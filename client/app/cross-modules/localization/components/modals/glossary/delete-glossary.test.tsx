@@ -156,13 +156,18 @@ describe("modals/glossary/delete-glossary", () => {
     expect(refetchUsage).toHaveBeenCalled();
   });
 
-  it("should handle a thrown error", async () => {
-    cascadeAsync.mockRejectedValue(new Error("x"));
+  it("should show the server's reason when the delete request throws", async () => {
+    cascadeAsync.mockRejectedValue({
+      status: 400,
+      errors: { Error: "Could not remove the glossary from keys. Nothing was deleted." },
+    });
     renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "Failed to delete glossary item" }),
+        expect.objectContaining({
+          description: "Could not remove the glossary from keys. Nothing was deleted.",
+        }),
       ),
     );
   });
@@ -237,6 +242,21 @@ describe("modals/glossary/delete-glossary", () => {
           description: "Glossary deprecated. It no longer reaches the AI or highlights.",
         }),
       );
+    });
+
+    it("does not offer Deprecate instead for a glossary saved by a newer version", () => {
+      mockUsage({ data: 3 });
+      render(
+        withDialog(
+          <DeleteGlossary
+            itemId="g1"
+            glossaryName="Widget"
+            glossary={{ ...glossary, additionalNote: '@@glossary-meta:v9@@{"x":1}' }}
+            onClose={vi.fn()}
+          />,
+        ),
+      );
+      expect(screen.queryByRole("button", { name: "Deprecate instead" })).toBeNull();
     });
 
     it("does not offer Deprecate instead for an unused term", () => {

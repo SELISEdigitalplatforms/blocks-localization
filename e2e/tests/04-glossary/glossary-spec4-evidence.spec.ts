@@ -298,7 +298,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
       await audit("edit-translation-modal", '[role="dialog"]');
       await translations.glossaryTerm(dialog, names.translate).click();
       await expect(translations.termPopover).toBeVisible();
-      await audit("term-popover", '[role="dialog"][aria-label^="Glossary term"]');
+      await audit("term-popover", '[role="dialog"][aria-label^="Glossary "]');
       await page.keyboard.press("Escape");
       await translations.closeEditTranslation();
 

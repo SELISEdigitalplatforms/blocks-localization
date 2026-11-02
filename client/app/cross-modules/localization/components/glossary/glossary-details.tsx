@@ -43,7 +43,6 @@ import {
   LoaderCircle,
   MoreHorizontal,
   Pencil,
-  RefreshCw,
   Sparkles,
   Trash,
   TriangleAlert,
@@ -58,7 +57,6 @@ import {
   useGetKeysByGlossaryId,
   useGetLanguageModules,
   useGetLanguages,
-  useRecheckGlossary,
   useSaveGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { useGlossaryTermSuggestion } from "@blocks-localization/hooks/use-glossary-term-suggestion";
@@ -113,11 +111,6 @@ const formatDate = (value: string | null | undefined) => {
   if (!value) return undefined;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString();
-};
-
-const isPermissionError = (error: unknown) => {
-  const status = (error as { status?: unknown } | null)?.status;
-  return status === 401 || status === 403;
 };
 
 // Empty table cells show a muted dash; screen readers hear "None" instead of a stray symbol.
@@ -459,8 +452,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const [keySearch, setKeySearch] = useState("");
   const [keyModuleId, setKeyModuleId] = useState(ALL_MODULES);
   const [targetCode, setTargetCode] = useState<string | undefined>(undefined);
-  const [canRecheck, setCanRecheck] = useState(true);
-  const { mutateAsync: recheck, isPending: isRechecking } = useRecheckGlossary();
   const { mutateAsync: saveGlossary, isPending: isDeprecating } = useSaveGlossary();
 
   // One `Key/Gets` per 300 ms pause, restarting at page 0 (H4).
@@ -480,10 +471,18 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     isError: isTaggedKeysError,
     isRefetching: isTaggedKeysRefetching,
     refetch: refetchTaggedKeys,
-  } = useGetKeysByGlossaryId(itemId, keysPage, keysPageSize, {
-    searchKey: keySearch,
-    moduleIds: keyModuleId === ALL_MODULES ? [] : [keyModuleId],
-  });
+  } = useGetKeysByGlossaryId(
+    itemId,
+    keysPage,
+    keysPageSize,
+    {
+      searchKey: keySearch,
+      moduleIds: keyModuleId === ALL_MODULES ? [] : [keyModuleId],
+      // A module glossary also applies to every key in its modules; a global one to every key.
+      glossaryModuleIds: glossary && !glossary.isGlobal ? (glossary.moduleIds ?? []) : [],
+    },
+    !!glossary,
+  );
 
   if (glossary?.name) {
     // eslint-disable-next-line react-hooks/immutability -- The breadcrumb reads this registry during the same render.
@@ -540,27 +539,21 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const definition = stripRuleMarker(glossary.context);
   const usageExamples = (glossary.usageExamples ?? []).filter(hasText);
   const isKeyFiltered = !!keySearch || keyModuleId !== ALL_MODULES;
+  const hasModuleScope = !glossary.isGlobal && moduleCount > 0;
+  let keysDescription = "Keys tagged with this glossary.";
+  if (glossary.isGlobal) {
+    keysDescription =
+      "This glossary applies to every key in the project. Only keys tagged with it directly are listed.";
+  } else if (hasModuleScope) {
+    keysDescription = "Keys tagged with this glossary, and keys in its modules.";
+  }
+  let noKeysText = "No keys are tagged with this glossary.";
+  if (glossary.isGlobal) noKeysText = "No keys are tagged with this glossary directly.";
+  else if (hasModuleScope) noKeysText = "No keys are tagged with this glossary or belong to its modules.";
 
   const resolvedLanguage =
     languageListData?.find((l) => l.languageCode === glossary.language)?.languageName ||
     glossary.language;
-
-  const startRecheck = async () => {
-    try {
-      const res = await recheck({ itemId: glossary.itemId });
-      toast({
-        variant: res?.queued ? "success" : "default",
-        title: res?.queued ? "Success" : "Re-check not started",
-        description: res?.queued
-          ? "Re-check started. Issues update within a few minutes."
-          : "A re-check is already queued, or glossary checks are off for this project.",
-      });
-    } catch (error) {
-      // No `glossary::recheck` permission: hide the action from now on (Phase 8 permissions).
-      if (isPermissionError(error)) setCanRecheck(false);
-      showErrorToast({ errors: formatErrorMessage(error) });
-    }
-  };
 
   const deprecate = async () => {
     try {
@@ -638,7 +631,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     if (isTaggedKeysError || !taggedKeysData) {
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm text-medium-emphasis">Failed to load tagged keys.</p>
+          <p className="text-sm text-medium-emphasis">Failed to load keys.</p>
           <Button
             type="button"
             size="sm"
@@ -658,9 +651,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
     if (!taggedKeysData.keys?.length) {
       return (
         <p className="text-sm text-medium-emphasis">
-          {isKeyFiltered
-            ? "No tagged keys match the search or module."
-            : "No keys are tagged with this glossary."}
+          {isKeyFiltered ? "No keys match the search or module." : noKeysText}
         </p>
       );
     }
@@ -711,7 +702,14 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
                     >
                       <TableCell className="font-mono text-xs text-high-emphasis">
                         <div className="flex flex-col gap-1">
-                          {key.keyName}
+                          <span className="flex flex-wrap items-center gap-2">
+                            {key.keyName}
+                            {hasModuleScope && (
+                              <Badge variant="outline" className="w-fit px-1.5 py-0 font-sans font-medium">
+                                {key.glossaryIds?.includes(glossary.itemId) ? "Tagged" : "Module"}
+                              </Badge>
+                            )}
+                          </span>
                           <TaggedKeyIssue glossaryKey={key} glossaryId={glossary.itemId} />
                         </div>
                       </TableCell>
@@ -780,16 +778,6 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {canRecheck && (
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  disabled={isRechecking}
-                  onSelect={() => void startRecheck()}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-                  <span>{isRechecking ? "Re-checking…" : "Re-check keys"}</span>
-                </DropdownMenuItem>
-              )}
               {status !== "deprecated" && !isUnsupported && (
                 <DropdownMenuItem
                   className="cursor-pointer"
@@ -970,8 +958,9 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
       </div>
 
       <Card className="mt-6 rounded-sm shadow-none">
-        <CardHeader>
-          <CardTitle className="text-xl">Tagged Keys</CardTitle>
+        <CardHeader className="gap-1">
+          <CardTitle className="text-xl">Keys</CardTitle>
+          <p className="text-sm text-medium-emphasis">{keysDescription}</p>
         </CardHeader>
         <CardContent className="p-0">
           {renderTaggedKeysToolbar()}

@@ -66,6 +66,33 @@ describe("glossary-table (extra coverage)", () => {
     } as never);
   });
 
+  it("shows a load error with Retry instead of the empty state when the list fails", async () => {
+    const refetch = vi.fn();
+    mockGlossaries.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByRole("alert").textContent).toContain("Couldn’t load glossaries");
+    expect(screen.queryByText("No glossaries yet")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("keeps showing the last page when a refetch fails", () => {
+    mockGlossaries.mockReturnValue({
+      data: { items: [row], totalCount: 1 },
+      isLoading: false,
+      isError: true,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Acme")).toBeTruthy();
+    expect(screen.queryByText("Couldn’t load glossaries")).toBeNull();
+  });
+
   it("renders every populated column value", () => {
     setData([row]);
     renderWithProviders(<GlossaryTable />);

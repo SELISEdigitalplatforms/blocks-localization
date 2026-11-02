@@ -140,7 +140,7 @@ export const localizationQueryKeys = {
       glossaryId: string,
       pageNumber: number,
       pageSize: number,
-      filters: { searchKey?: string; moduleIds?: string[] } = {},
+      filters: { searchKey?: string; moduleIds?: string[]; glossaryModuleIds?: string[] } = {},
     ) =>
       [
         "get-blocksLanguageKeys",
@@ -151,6 +151,7 @@ export const localizationQueryKeys = {
         pageSize,
         filters.searchKey ?? "",
         JSON.stringify(filters.moduleIds ?? []),
+        JSON.stringify(filters.glossaryModuleIds ?? []),
       ] as const,
     countByModule: (tenantId: string, moduleId: string) =>
       ["get-blocksLanguageKeys", tenantId, "count-by-module", moduleId] as const,

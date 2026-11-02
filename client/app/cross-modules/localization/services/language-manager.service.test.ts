@@ -988,20 +988,6 @@ describe("LanguageManagerService", () => {
     });
   });
 
-  describe("recheckGlossary", () => {
-    it("should POST to Recheck with the item id", async () => {
-      vi.mocked(http.post).mockResolvedValue({ queued: true });
-      await expect(service.recheckGlossary({ itemId: "g 1" })).resolves.toEqual({ queued: true });
-      expect(vi.mocked(http.post).mock.calls[0][0]).toMatch(/\/Glossary\/Recheck\?itemId=g%201$/);
-    });
-
-    it("should POST without itemId for the whole project", async () => {
-      vi.mocked(http.post).mockResolvedValue({ queued: false });
-      await service.recheckGlossary();
-      expect(vi.mocked(http.post).mock.calls[0][0]).toMatch(/\/Glossary\/Recheck$/);
-    });
-  });
-
   // ─── saveGlossary ────────────────────────────────────────────────────────
   describe("saveGlossary", () => {
     it("should POST to SAVE endpoint", async () => {
