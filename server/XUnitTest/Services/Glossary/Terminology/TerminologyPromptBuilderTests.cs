@@ -269,6 +269,34 @@ namespace XUnitTest.Terminology
                 FinalLine);
         }
 
+        [Theory]
+        [InlineData("Portal")]
+        [InlineData("portal")]
+        public void A_translate_value_equal_to_the_term_is_sent_as_a_keep_line(string value)
+        {
+            var portal = Glossary("p", "Portal", Meta(new { rule = "translate", translations = Map(("de-DE", value)) }));
+
+            var prompt = Build(new[] { portal }, "Go to Customer Portal");
+
+            prompt.Context.Should().Be(Default + NL + NL + Rules + NL + $"- Keep \"{value}\" exactly as written; do not translate it." + NL);
+            prompt.AppliedTerms.Single().Should().Match<AppliedTerm>(a => a.Rule == "translate" && a.Expected == value);
+            prompt.RuleMatches.Should().ContainSingle();
+        }
+
+        [Fact]
+        public void The_correction_for_an_unchanged_translate_value_asks_to_keep_it()
+        {
+            var portal = Glossary("p", "Portal", Meta(new { rule = "translate", translations = Map(("de-DE", "Portal")) }));
+            var prompt = Build(new[] { portal }, "Go to Customer Portal");
+            var violations = new List<GlossaryViolationDto>
+            {
+                new() { GlossaryId = "p", Term = "Portal", Kind = GlossaryViolationKinds.MissingTranslation, Expected = "Portal" }
+            };
+
+            TerminologyPromptBuilder.BuildCorrection(prompt, violations).Should().Contain(
+                "CORRECTION: Your previous answer broke these rules:" + NL + "- Keep \"Portal\" exactly as written." + NL);
+        }
+
         [Fact]
         public void A_matched_translate_glossary_without_the_target_translation_is_reported_missing()
         {

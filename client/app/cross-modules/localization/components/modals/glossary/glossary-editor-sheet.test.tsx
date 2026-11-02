@@ -264,6 +264,21 @@ describe("modals/glossary/glossary-editor-sheet", () => {
     expect(lastPayload()).toMatchObject({ context: "Company name.", rule: "keep" });
   });
 
+  it("should suggest Keep when a translation equals the glossary and switch on click", async () => {
+    const hint = "This value is the same as the glossary. Did you mean Keep?";
+    renderSheet(makeGlossary({ name: "Portal" }));
+    fireEvent.change(screen.getByLabelText("German (de-DE)"), { target: { value: "Portail" } });
+    expect(screen.queryByText(hint)).toBeNull();
+    fireEvent.change(screen.getByLabelText("German (de-DE)"), { target: { value: " portal " } });
+    expect(screen.getByText(hint)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use Keep" }));
+    expect(screen.getByRole("radio", { name: "Keep" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("heading", { name: "Translations" })).toBeNull();
+    save();
+    await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+    expect(lastPayload()).toMatchObject({ rule: "keep" });
+  });
+
   it("should show only forbidden alternatives for the Forbidden rule", async () => {
     renderSheet(makeGlossary());
     fireEvent.click(screen.getByRole("radio", { name: "Forbidden" }));

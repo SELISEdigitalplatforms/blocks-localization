@@ -122,9 +122,11 @@ namespace Eurolm.DomainService.Services
             foreach (var violation in violations ?? Array.Empty<GlossaryViolationDto>())
             {
                 var term = Sanitize(violation.Term);
+                var expected = Sanitize(violation.Expected);
                 var line = violation.Kind switch
                 {
-                    GlossaryViolationKinds.MissingTranslation => $"- Use \"{Sanitize(violation.Expected)}\" for \"{term}\".",
+                    GlossaryViolationKinds.MissingTranslation when IsUnchanged(term, expected) => $"- Keep \"{expected}\" exactly as written.",
+                    GlossaryViolationKinds.MissingTranslation => $"- Use \"{expected}\" for \"{term}\".",
                     GlossaryViolationKinds.MissingKeep => $"- Keep \"{FirstNonEmpty(Sanitize(violation.Expected), term)}\" exactly as written.",
                     _ => $"- Do not use \"{Sanitize(violation.Found)}\"."
                 };
@@ -186,6 +188,12 @@ namespace Eurolm.DomainService.Services
 
         private static string FirstNonEmpty(string first, string second) => first.Length > 0 ? first : second;
 
+        private static string KeepLine(string value) => $"- Keep \"{value}\" exactly as written; do not translate it.";
+
+        /// <summary>True when an approved translation is the term itself (case aside), as the validator compares it.</summary>
+        private static bool IsUnchanged(string term, string value) =>
+            term.Length > 0 && string.Equals(term, value, StringComparison.OrdinalIgnoreCase);
+
         internal sealed class MatchedGlossaryGroup
         {
             public required BlocksGlossary Glossary { get; init; }
@@ -226,7 +234,7 @@ namespace Eurolm.DomainService.Services
             {
                 foreach (var surface in group.Surfaces.Select(s => Sanitize(s)).Distinct(StringComparer.Ordinal))
                 {
-                    if (surface.Length > 0) lines.Add($"- Keep \"{surface}\" exactly as written; do not translate it.");
+                    if (surface.Length > 0) lines.Add(KeepLine(surface));
                 }
                 return lines;
             }
@@ -234,7 +242,9 @@ namespace Eurolm.DomainService.Services
             if (terminology.Rule == GlossaryRule.Translate)
             {
                 var value = Sanitize(terminology.ActiveTranslation(target));
-                if (term.Length > 0 && value.Length > 0) lines.Add($"- Translate \"{term}\" as \"{value}\".");
+                // "Translate Portal as Portal" reads as permission to transliterate; an unchanged value is a keep.
+                if (term.Length > 0 && value.Length > 0)
+                    lines.Add(IsUnchanged(term, value) ? KeepLine(value) : $"- Translate \"{term}\" as \"{value}\".");
             }
             else if (term.Length > 0)
             {

@@ -667,6 +667,11 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       { ...form.getValues("translations"), [code]: value },
       { shouldValidate: formState.isSubmitted },
     );
+  // The server sends an unchanged value to the AI as a keep; the hint points at the matching rule.
+  const isUnchangedTranslation = (code: string) => {
+    const value = (translations?.[code] ?? "").trim();
+    return value.length > 0 && value.toLowerCase() === trimmedName.toLowerCase();
+  };
   const setForbidden = (code: string, values: string[]) =>
     form.setValue(
       "forbidden",
@@ -870,6 +875,22 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
           )}
         </div>
         <FieldError message={translationError(code)} />
+        {isUnchangedTranslation(code) && (
+          <p className="flex flex-wrap items-center gap-x-1 text-xs text-medium-emphasis">
+            This value is the same as the glossary. Did you mean {GLOSSARY_RULE_LABELS.keep}?
+            {!isReadOnly && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs font-medium"
+                onClick={() => form.setValue("rule", "keep", { shouldDirty: true })}
+              >
+                Use {GLOSSARY_RULE_LABELS.keep}
+              </Button>
+            )}
+          </p>
+        )}
         <Collapsible defaultOpen={forbiddenValues.length > 0} className="group/forbidden">
           <div className="flex items-center gap-1.5">
             <CollapsibleTrigger asChild>
