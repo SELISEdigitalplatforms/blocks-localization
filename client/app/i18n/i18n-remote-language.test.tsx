@@ -4,20 +4,21 @@ import { useAppSettingsStore } from "@seliseblocks/genesis-os/store";
 import { afterEach, describe, expect, it } from "vitest";
 import { SrOnlyText } from "@/components/sr-only-text/sr-only-text";
 
-describe("i18n German", () => {
+// Other languages come from the localization service at runtime; "xx" stands in for any of them.
+describe("i18n remote language", () => {
   afterEach(() => {
     useAppSettingsStore.getState().setSettings({ language: "en" });
   });
 
-  it("shows English by default and German after switching", () => {
+  it("shows bundled English by default and the remote dictionary after switching language", () => {
     useI18nStore
       .getState()
-      .setRemote("de", "localization.shared", { "BREADCRUMB_ELLIPSIS.MORE": "Mehr" });
+      .setRemote("xx", "localization.shared", { "BREADCRUMB_ELLIPSIS.MORE": "More (xx)" });
     const { rerender } = render(<SrOnlyText textKey="BREADCRUMB_ELLIPSIS.MORE" />);
     expect(screen.getByText("More")).toBeTruthy();
 
-    useAppSettingsStore.getState().setSettings({ language: "de" });
+    useAppSettingsStore.getState().setSettings({ language: "xx" });
     rerender(<SrOnlyText textKey="BREADCRUMB_ELLIPSIS.MORE" />);
-    expect(screen.getByText("Mehr")).toBeTruthy();
+    expect(screen.getByText("More (xx)")).toBeTruthy();
   });
 });
