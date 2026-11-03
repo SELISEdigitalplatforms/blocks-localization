@@ -110,6 +110,34 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
+        public async Task Update_sets_case_sensitivity_and_normalized_translations()
+        {
+            SetupStored(Structured());
+
+            await _service.SaveGlossaryAsync(new GlossaryModel
+            {
+                ItemId = "g1",
+                Name = "Workspace",
+                CaseSensitive = false,
+                Translations = new List<GlossaryTranslationDto>
+                {
+                    new() { Language = " fr-FR ", Value = " Espace ", ForbiddenValues = new List<string> { " Bureau ", "  " } },
+                    null!,
+                    new() { Language = "de-DE", Value = "Arbeitsbereich", ForbiddenValues = null! }
+                }
+            });
+
+            _written!.CaseSensitive.Should().BeFalse();
+            _written.Translations.Should().HaveCount(2);
+            var french = _written.Translations![0];
+            french.Language.Should().Be("fr-FR");
+            french.Value.Should().Be("Espace");
+            french.ForbiddenValues.Should().Equal("Bureau");
+            _written.Translations[1].ForbiddenValues.Should().BeEmpty();
+            _written.SchemaVersion.Should().Be(2);
+        }
+
+        [Fact]
         public async Task Empty_list_clears_and_value_sets_while_null_keeps()
         {
             SetupStored(Structured());

@@ -549,6 +549,15 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task Match_WithAnUnknownMode_ReturnsBadRequest()
+        {
+            var result = await _matchController.Match(new MatchGlossaryRequest { Text = "Open", Language = "en-US", Mode = "everything" });
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _terminologyServiceMock.Verify(s => s.MatchAsync(It.IsAny<MatchGlossaryRequest>()), Times.Never);
+        }
+
+        [Fact]
         public async Task Match_WithAValidRequest_ReturnsTheServiceMatches()
         {
             var request = new MatchGlossaryRequest { Text = new string('a', 5000), Language = "en-US", KeyId = "k1" };

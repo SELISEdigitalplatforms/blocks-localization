@@ -47,6 +47,27 @@ namespace XUnitTest.Terminology
             Match(new[] { Term("g2", "İSTANBUL") }, "fly to istanbul").Should().ContainSingle();
         }
 
+        [Theory]
+        [InlineData("\u2003Workspace\u2000")]
+        [InlineData("\u200AWorkspace\u2009")]
+        public void Names_are_trimmed_of_unicode_spaces_as_in_JavaScript(string name)
+        {
+            Match(new[] { Term("g1", name) }, "Open Workspace").Should().ContainSingle().Which.Start.Should().Be(5);
+        }
+
+        [Fact]
+        public void A_lone_surrogate_in_the_text_or_a_name_does_not_stop_matching()
+        {
+            var workspace = Term("g1", "Workspace");
+            var broken = Term("g2", "Bad\uD800name");
+
+            // Not NFC ("e" + combining acute) so the text is normalized chunk by chunk, around the lone surrogate.
+            var matches = Match(new[] { workspace, broken }, "Cafe\u0301 \uD800 Workspace");
+
+            matches.Should().ContainSingle().Which.Surface.Should().Be("Workspace");
+            Match(new[] { broken }, "Bad\uD800name here").Should().ContainSingle().Which.Start.Should().Be(0);
+        }
+
         [Fact]
         public void Matches_case_insensitively_unless_the_term_is_case_sensitive()
         {

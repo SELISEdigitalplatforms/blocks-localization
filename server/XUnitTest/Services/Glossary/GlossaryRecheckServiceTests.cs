@@ -226,6 +226,35 @@ namespace XUnitTest.Services.Glossary
         }
 
         [Fact]
+        public async Task Recheck_without_a_default_language_checks_no_key()
+        {
+            _keyRepository.Setup(r => r.GetLanguageSettingAsync("recheck-tenant")).ReturnsAsync((BlocksLanguage?)null);
+            Queue(WholeProject);
+
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+
+            result.Checked.Should().Be(0);
+            _keyRepository.Verify(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()), Times.Never);
+            _jobs.Verify(j => j.ReleaseLeaseAsync("recheck-tenant", It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Recheck_counts_keys_whose_violations_could_not_be_stored_as_failed()
+        {
+            _glossaries.Add(Term("g1", "Workspace"));
+            SetupKeys(new List<BlocksLanguageKey> { Key("k1", "Open your Workspace", "Werkbereich") });
+            _keyRepository.Setup(r => r.SetGlossaryViolationsManyAsync(It.IsAny<IReadOnlyList<GlossaryViolationUpdate>>()))
+                .ThrowsAsync(new InvalidOperationException("db down"));
+            Queue(WholeProject);
+
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+
+            result.Checked.Should().Be(1);
+            result.Updated.Should().Be(0);
+            result.Failed.Should().Be(1);
+        }
+
+        [Fact]
         public async Task Recheck_pages_by_item_id_in_pages_of_1000()
         {
             _glossaries.Add(Term("g1", "Workspace"));

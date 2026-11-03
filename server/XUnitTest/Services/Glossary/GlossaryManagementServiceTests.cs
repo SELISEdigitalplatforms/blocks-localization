@@ -278,6 +278,23 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task DeleteGlossaryAsync_SecondPullFails_StillSucceeds()
+        {
+            var request = new DeleteGlossaryRequest { ItemId = "glossary-1" };
+            _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("glossary-1"))
+                .ReturnsAsync(new GlossaryModel { ItemId = "glossary-1", Name = "API" });
+            _keyRepositoryMock.SetupSequence(r => r.RemoveGlossaryIdFromKeysAsync("glossary-1"))
+                .ReturnsAsync(3)
+                .ThrowsAsync(new InvalidOperationException("db down"));
+
+            var result = await _service.DeleteGlossaryAsync(request);
+
+            result.IsSuccess.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.DeleteAsync("glossary-1"), Times.Once);
+            _keyRepositoryMock.Verify(r => r.RemoveGlossaryIdFromKeysAsync("glossary-1"), Times.Exactly(2));
+        }
+
+        [Fact]
         public async Task DeleteGlossaryAsync_PullFails_DoesNotDelete()
         {
             var request = new DeleteGlossaryRequest { ItemId = "glossary-1" };

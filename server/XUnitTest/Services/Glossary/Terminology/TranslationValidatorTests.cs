@@ -213,6 +213,25 @@ namespace XUnitTest.Terminology
         }
 
         [Fact]
+        public void An_unknown_target_culture_lowers_with_the_invariant_culture()
+        {
+            const string culture = "not-a-culture-zz9";
+            var workspace = Glossary("w", "Workspace", Meta(new { translations = Map((culture, "Arbeitsbereich")), forbidden = new Dictionary<string, string[]> { [culture] = new[] { "Werkbereich" } } }));
+
+            Validate(new[] { workspace }, "Open Workspace", "WERKBEREICH öffnen", culture)
+                .Should().Contain(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed && v.Found == "WERKBEREICH");
+        }
+
+        [Fact]
+        public void A_lone_surrogate_in_the_output_is_compared_as_is()
+        {
+            var workspace = Glossary("w", "Workspace", Meta(new { translations = Map(("de-DE", "Arbeitsbereich")), forbidden = new Dictionary<string, string[]> { ["de-DE"] = new[] { "Werkbereich" } } }));
+
+            Validate(new[] { workspace }, "Open Workspace", "Werkbereich \uD800 öffnen")
+                .Should().Contain(v => v.Kind == GlossaryViolationKinds.ForbiddenUsed && v.Found == "Werkbereich");
+        }
+
+        [Fact]
         public void An_approved_Hindi_translation_must_start_a_word()
         {
             var world = Glossary("w", "world", Meta(new { translations = Map(("hi-IN", "दुनिया")) }));

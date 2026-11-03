@@ -148,5 +148,44 @@ namespace XUnitTest
             second.Should().BeSameAs(first);
             loads.Should().Be(1);
         }
+
+        [Fact]
+        public async Task A_build_whose_revision_read_fails_still_returns_a_matcher_and_rebuilds_on_the_next_check()
+        {
+            var loads = 0;
+            var calls = 0;
+            var cache = new GlossaryMatcherCache(
+                _ => { loads++; return Task.FromResult(new List<BlocksGlossary>()); },
+                () => _now,
+                _ => ++calls == 1 ? throw new InvalidOperationException("db down") : Task.FromResult("1:1"));
+
+            var first = await cache.GetAsync("t1");
+            _now += GlossaryMatcherCache.RevisionCheckInterval;
+            var second = await cache.GetAsync("t1");
+
+            first.Should().NotBeNull();
+            second.Should().NotBeSameAs(first, "an unknown revision never equals the stored one");
+            loads.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task A_failed_rebuild_after_a_revision_change_is_not_cached()
+        {
+            var revision = "1:1";
+            var loads = 0;
+            var cache = new GlossaryMatcherCache(
+                _ => ++loads == 2 ? throw new InvalidOperationException("db down") : Task.FromResult(new List<BlocksGlossary>()),
+                () => _now,
+                _ => Task.FromResult(revision));
+
+            await cache.GetAsync("t1");
+            revision = "2:2";
+            _now += GlossaryMatcherCache.RevisionCheckInterval;
+            var failed = () => cache.GetAsync("t1");
+
+            await failed.Should().ThrowAsync<InvalidOperationException>();
+            await cache.GetAsync("t1");
+            loads.Should().Be(3);
+        }
     }
 }

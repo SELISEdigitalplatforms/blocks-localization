@@ -147,5 +147,45 @@ namespace XUnitTest
 
             violations.Should().BeEmpty();
         }
+
+        [Fact]
+        public async Task ComputeKeyViolations_without_a_default_language_returns_none()
+        {
+            _glossaries.Add(Term("g1", "Workspace", isGlobal: true));
+            _keyRepository.Setup(r => r.GetLanguageSettingAsync(It.IsAny<string>())).ReturnsAsync((BlocksLanguage?)null);
+
+            var violations = await NewService(true).ComputeKeyViolationsAsync(new BlocksLanguageKey
+            {
+                Resources = new[] { new Resource { Culture = "en-US", Value = "Open your Workspace" }, new Resource { Culture = "de-DE", Value = "Werkbereich" } }
+            });
+
+            violations.Should().BeEmpty();
+            _loadedTenants.Should().BeEmpty("nothing is matched without a source text");
+        }
+
+        [Fact]
+        public void The_shared_violation_check_returns_none_without_a_source_text()
+        {
+            var workspace = Term("g1", "Workspace", isGlobal: true);
+            var matcher = GlossaryMatcher.Build(new[] { (workspace, GlossaryTerminologyResolver.Resolve(workspace)) });
+            var key = new BlocksLanguageKey { Resources = new[] { new Resource { Culture = "de-DE", Value = "Werkbereich" } } };
+
+            GlossaryTerminologyService.ComputeKeyViolations(key, matcher, "en-US", DateTime.UtcNow).Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public async Task SuggestGlossaryIds_with_no_room_for_results_returns_none(int maxResults)
+        {
+            _glossaries.Add(Term("g1", "Workspace", isGlobal: true));
+
+            var ids = await NewService(true).SuggestGlossaryIdsAsync(new KeyModel
+            {
+                Resources = new[] { new Resource { Culture = "en-US", Value = "Open your Workspace" } }
+            }, maxResults);
+
+            ids.Should().BeEmpty();
+        }
     }
 }

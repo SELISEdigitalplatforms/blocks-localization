@@ -279,7 +279,7 @@ namespace Eurolm.DomainService.Services
         /// </summary>
         private static (string Normalized, int[] ToOriginal) NormalizeWithOffsets(string text)
         {
-            if (text.IsNormalized(NormalizationForm.FormC))
+            if (IsNfc(text))
             {
                 var identity = new int[text.Length + 1];
                 for (var i = 0; i <= text.Length; i++) identity[i] = i;
@@ -314,6 +314,19 @@ namespace Eurolm.DomainService.Services
             }
             map.Add(text.Length);
             return (builder.ToString(), map.ToArray());
+        }
+
+        /// <summary>False for invalid UTF-16 (a lone surrogate), which is then normalized chunk by chunk.</summary>
+        private static bool IsNfc(string text)
+        {
+            try
+            {
+                return text.IsNormalized(NormalizationForm.FormC);
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
         }
 
         private static int RuneLength(string text, int index) =>
