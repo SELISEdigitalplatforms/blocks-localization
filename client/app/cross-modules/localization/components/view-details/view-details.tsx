@@ -18,6 +18,7 @@ import {
 import { IBlocksLanguageKey } from "../../models/language";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import EditRoute from "../modals/edit-route/edit-route";
 import EditTranslation from "../modals/edit-translation/edit-translation";
 import EditKeyGlossary from "../modals/edit-key-glossary/edit-key-glossary";
@@ -29,6 +30,7 @@ import { TooltipProvider } from "@/components/ui-kits/tooltip/tooltip";
 const MAX_SHOWN_SUGGESTIONS = 10;
 
 const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
+  const { t } = useT("localization.keys");
   const { mutateAsync: saveKey } = useSaveBlocksLanguageKey();
   const { data: languageModules } = useGetLanguageModules();
   const {
@@ -124,12 +126,16 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
+      toast({
+        variant: "destructive",
+        title: t("common:ERROR"),
+        description: formatErrorMessage(error),
+      });
     } finally {
       setIsTagging(false);
     }
@@ -157,12 +163,16 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
+      toast({
+        variant: "destructive",
+        title: t("common:ERROR"),
+        description: formatErrorMessage(error),
+      });
     } finally {
       setIsTagging(false);
     }
@@ -194,11 +204,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
                     <Pencil className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">{t("common:EDIT")}</span>
                   </Button>
                 </DialogTrigger>
                 <EditTranslation
-                  dialogTitle="Edit translation"
+                  dialogTitle={t("VIEW_DETAILS.EDIT_TRANSLATION")}
                   keyDetails={keyDetails}
                   destinationLanguageCode={languageListData[0].languageCode}
                   languageListData={languageListData}
@@ -210,12 +220,12 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           <CardContent className="text-base">
             {keyDetails.resources?.find(
               (resource) => resource.culture === languageListData[0].languageCode,
-            )?.value || "No translation available"}
+            )?.value || t("VIEW_DETAILS.NO_TRANSLATION")}
           </CardContent>
         </Card>
         <Card className="mb-6 mt-6 h-min rounded-sm shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Translations</CardTitle>
+            <CardTitle className="text-xl">{t("VIEW_DETAILS.TRANSLATIONS")}</CardTitle>
           </CardHeader>
           <CardContent className="text-base">
             {languageListData.slice(1).map((language, index) => (
@@ -234,11 +244,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline" className="h-9 gap-2 px-4 py-1">
                         <Pencil className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Edit</span>
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">{t("common:EDIT")}</span>
                       </Button>
                     </DialogTrigger>
                     <EditTranslation
-                      dialogTitle="Edit translation"
+                      dialogTitle={t("VIEW_DETAILS.EDIT_TRANSLATION")}
                       keyDetails={keyDetails}
                       destinationLanguageCode={language.languageCode}
                       languageListData={languageListData}
@@ -249,7 +259,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 <div className="mt-4">
                   {keyDetails.resources?.find(
                     (resource) => resource.culture === language.languageCode,
-                  )?.value || "No translation available"}
+                  )?.value || t("VIEW_DETAILS.NO_TRANSLATION")}
                 </div>
               </div>
             ))}
@@ -259,14 +269,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
       <div>
         <Card className="rounded-sm shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">About</CardTitle>
+            <CardTitle className="text-xl">{t("VIEW_DETAILS.ABOUT")}</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-10">
               <div className="grid content-start gap-1">
                 {/* <h3 className="text-sm font-medium text-low-emphasis">Type</h3>
                 <p className="text-base font-normal text-high-emphasis">Text box</p> */}
-                <h3 className="text-sm font-medium text-low-emphasis">Module</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">{t("VIEW_DETAILS.MODULE")}</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {
                     languageModules?.find((module) => module.itemId === keyDetails.moduleId)
@@ -275,7 +285,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 </p>
               </div>
               <div className="grid content-start gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Created on</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">{t("VIEW_DETAILS.CREATED_ON")}</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {!keyDetails || !keyDetails.createDate || !checkValidDate(keyDetails.createDate)
                     ? "-"
@@ -283,13 +293,13 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                 </p>
               </div>
               <div className="grid content-start gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Default Language</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">{t("VIEW_DETAILS.DEFAULT_LANGUAGE")}</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {languageListData[0].languageName}
                 </p>
               </div>
               <div className="grid content-start gap-1">
-                <h3 className="text-sm font-medium text-low-emphasis">Last modified</h3>
+                <h3 className="text-sm font-medium text-low-emphasis">{t("VIEW_DETAILS.LAST_MODIFIED")}</h3>
                 <p className="text-base font-normal text-high-emphasis">
                   {!keyDetails ||
                   !keyDetails.lastUpdateDate ||
@@ -300,9 +310,9 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
               </div>
             </div>
             <div className="col-span-2 mt-4 border-t pt-4">
-              <h3 className="mb-1 text-sm font-medium text-low-emphasis">Context</h3>
+              <h3 className="mb-1 text-sm font-medium text-low-emphasis">{t("VIEW_DETAILS.CONTEXT")}</h3>
               <p className="whitespace-pre-wrap text-base text-high-emphasis">
-                {keyDetails.context || "No context provided."}
+                {keyDetails.context || t("VIEW_DETAILS.NO_CONTEXT")}
               </p>
             </div>
           </CardContent>
@@ -311,14 +321,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
         <Card className="mt-6 rounded-sm shadow-none">
           <CardHeader>
             <div className="grid w-full grid-cols-2">
-              <h3 className="text-xl font-semibold">Routes</h3>
+              <h3 className="text-xl font-semibold">{t("VIEW_DETAILS.ROUTES")}</h3>
               <div className="flex justify-end">
                 <Dialog open={isEditRoutesDialogOpen} onOpenChange={setIsEditRoutesDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-2">
                       <RouteIcon className="h-3.5 w-3.5" />
                       <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Edit Routes
+                        {t("VIEW_DETAILS.EDIT_ROUTES")}
                       </span>
                     </Button>
                   </DialogTrigger>
@@ -343,14 +353,14 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
         <Card className="mt-6 rounded-sm shadow-none">
           <CardHeader>
             <div className="grid w-full grid-cols-2">
-              <h3 className="text-xl font-semibold">Glossary</h3>
+              <h3 className="text-xl font-semibold">{t("VIEW_DETAILS.GLOSSARY")}</h3>
               <div className="flex justify-end">
                 <Dialog open={isEditGlossaryDialogOpen} onOpenChange={setIsEditGlossaryDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-2">
                       <BookOpen className="h-3.5 w-3.5" />
                       <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Tag Glossary
+                        {t("VIEW_DETAILS.TAG_GLOSSARY")}
                       </span>
                     </Button>
                   </DialogTrigger>
@@ -366,12 +376,12 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
           <CardContent>
             <TooltipProvider delayDuration={200}>
               {termChips.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No glossary added.</p>
+                <p className="text-sm text-muted-foreground">{t("VIEW_DETAILS.NO_GLOSSARY")}</p>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      These glossaries are applied when translating this key.
+                      {t("VIEW_DETAILS.GLOSSARIES_APPLIED_HINT")}
                     </p>
                     {suggestedCount > 0 && (
                       <Button
@@ -382,11 +392,11 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                         disabled={isTagging}
                         onClick={() => void tagGlossaries(glossarySuggestions.map((g) => g.itemId))}
                       >
-                        Add all suggested
+                        {t("VIEW_DETAILS.ADD_ALL_SUGGESTED")}
                       </Button>
                     )}
                   </div>
-                  <ul className="flex flex-wrap gap-2" aria-label="Glossaries for this key">
+                  <ul className="flex flex-wrap gap-2" aria-label={t("VIEW_DETAILS.GLOSSARIES_FOR_KEY")}>
                     {termChips.map(({ glossary, source }) => (
                       <li key={glossary.itemId} className="max-w-full">
                         <GlossaryTermChip
@@ -409,7 +419,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
                   </ul>
                   {hiddenSuggestionCount > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      +{hiddenSuggestionCount} more suggested
+                      {t("VIEW_DETAILS.MORE_SUGGESTED", { count: hiddenSuggestionCount })}
                     </span>
                   )}
                 </div>

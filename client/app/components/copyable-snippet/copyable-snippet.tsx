@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 type CopyableSnippetProps = {
   id: string;
@@ -21,6 +22,7 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
   className,
   displayValue,
 }) => {
+  const { t } = useT("localization.shared");
   const isCopied = copiedField === id;
   const isAvailable = Boolean(value);
 
@@ -29,12 +31,12 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <span className="text-xs text-muted-foreground" aria-live="polite">
-          {isCopied ? "Copied" : ""}
+          {isCopied ? t("common:COPIED") : ""}
         </span>
       </div>
       <div className="flex min-w-0 items-center gap-2 rounded-md border bg-muted/60 p-2 pl-3">
         <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-xs text-foreground sm:text-sm">
-          {isAvailable ? (displayValue ?? value) : "Value is not configured"}
+          {isAvailable ? (displayValue ?? value) : t("COPYABLE_SNIPPET.NOT_CONFIGURED")}
         </code>
         <Button
           type="button"
@@ -42,8 +44,8 @@ export const CopyableSnippet: FC<CopyableSnippetProps> = ({
           size="icon"
           className="h-8 w-8 shrink-0"
           disabled={!isAvailable}
-          aria-label={`Copy ${label}`}
-          title={`Copy ${label}`}
+          aria-label={t("COPYABLE_SNIPPET.COPY_LABEL", { label })}
+          title={t("COPYABLE_SNIPPET.COPY_LABEL", { label })}
           onClick={() => onCopy(value, id)}
         >
           {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}

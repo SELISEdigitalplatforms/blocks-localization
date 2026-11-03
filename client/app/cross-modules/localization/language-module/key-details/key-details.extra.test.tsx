@@ -14,7 +14,8 @@ vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useParams: () => params,
 }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
@@ -39,6 +40,7 @@ vi.mock("@blocks-localization/components/modals/gpt-prompt/gpt-prompt", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetBlocksLanguageKeyById: vi.fn(),
   useGetLanguageKeysTimeline: vi.fn(),
+  useGetLanguages: vi.fn(),
   useTranslateKey: vi.fn(),
 }));
 
@@ -59,6 +61,9 @@ const route = "/app/abc/services/language/translations/k1";
 describe("key-details (extra coverage)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    h.useGetLanguages.mockReturnValue({
+      data: [{ itemId: "l1", languageName: "German", languageCode: "de-DE", isDefault: true }],
+    } as never);
     params = { keyId: "k1" };
     h.useGetBlocksLanguageKeyById.mockReturnValue({ data: keyData } as never);
     h.useGetLanguageKeysTimeline.mockReturnValue({
@@ -169,7 +174,11 @@ describe("key-details (extra coverage)", () => {
     await user.click(await screen.findByText("Auto-translate"));
     // The confirm dialog appears; click Yes.
     await user.click(await screen.findByRole("button", { name: "Yes" }));
-    await waitFor(() => expect(translateKeyAsync).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(translateKeyAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ keyId: "k1", defaultLanguage: "de-DE" }),
+      ),
+    );
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ description: "Key translation is in progress." }),
     );

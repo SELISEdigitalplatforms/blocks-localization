@@ -28,7 +28,8 @@ vi.mock("@blocks-localization/hooks/use-glossary-match", () => ({
   useGlossaryMatch: () => ({ matches: [], isLoading: false, isError: false }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 

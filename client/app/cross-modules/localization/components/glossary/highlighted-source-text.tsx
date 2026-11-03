@@ -1,17 +1,13 @@
 import { ReactNode } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
-import { GLOSSARY_RULE_LABELS } from "@blocks-localization/components/glossary/glossary-rule-badge";
+import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import GlossaryTermPopover, {
   TermTargetLanguage,
 } from "@blocks-localization/components/glossary/glossary-term-popover";
 import { cn } from "@/lib/utils";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validation";
-
-const termLabel = (match: GlossaryMatch, missingFor?: string) => {
-  const label = `Glossary ${match.surface}: ${GLOSSARY_RULE_LABELS[match.meta.rule]}`;
-  return missingFor ? `${label}, no ${missingFor} wording in the glossary` : label;
-};
 
 const TERM_CLASS =
   "cursor-pointer rounded-sm bg-transparent p-0 text-inherit underline decoration-dotted decoration-2 underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -43,7 +39,21 @@ export const HighlightedSourceText = ({
   targetText,
   onInsert,
 }: Readonly<HighlightedSourceTextProps>) => {
+  const { t } = useT("localization.glossary");
+  const ruleLabels = useGlossaryRuleLabels();
   if (matches.length === 0) return <>{text}</>;
+
+  const termLabel = (match: GlossaryMatch, missingFor?: string) =>
+    missingFor
+      ? t("HIGHLIGHTED_SOURCE_TEXT.ARIA_TERM_MISSING", {
+          term: match.surface,
+          rule: ruleLabels[match.meta.rule],
+          language: missingFor,
+        })
+      : t("HIGHLIGHTED_SOURCE_TEXT.ARIA_TERM", {
+          term: match.surface,
+          rule: ruleLabels[match.meta.rule],
+        });
 
   const parts: ReactNode[] = [];
   let cursor = 0;

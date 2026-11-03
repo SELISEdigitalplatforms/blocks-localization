@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
-import { useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
+import { useGetLanguages, useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import AutoTranslate from "./auto-translate";
 
@@ -13,6 +13,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
     isPending: false,
     mutateAsync: translateAllAsync,
   })),
+  useGetLanguages: vi.fn(),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 
@@ -29,6 +30,33 @@ describe("components/modals/auto-translate", () => {
       isPending: false,
       mutateAsync: translateAllAsync,
     } as never);
+    vi.mocked(useGetLanguages).mockReturnValue({
+      data: [
+        { itemId: "l1", languageName: "English", languageCode: "en-US", isDefault: false },
+        { itemId: "l2", languageName: "German", languageCode: "de-DE", isDefault: true },
+      ],
+    } as never);
+  });
+
+  it("sends the project's default language in the payload", async () => {
+    translateAllAsync.mockResolvedValue({ isSuccess: true });
+    render(withDialog(<AutoTranslate />));
+
+    fireEvent.click(screen.getByRole("button", { name: "Yes" }));
+
+    await waitFor(() => {
+      expect(translateAllAsync).toHaveBeenCalledWith({
+        messageCoRelationId: "",
+        defaultLanguage: "de-DE",
+      });
+    });
+  });
+
+  it("disables Yes until the languages have loaded", () => {
+    vi.mocked(useGetLanguages).mockReturnValue({ data: undefined } as never);
+    render(withDialog(<AutoTranslate />));
+
+    expect((screen.getByRole("button", { name: "Yes" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("renders the auto-translate dialog", () => {

@@ -1,5 +1,8 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
 type BreadcrumbRouteConfig = {
-  title?: string;
+  /** Translation key (module localization.shared) of the fixed title. */
+  titleKey?: string;
   skip?: boolean;
   dynamic?: boolean;
 };
@@ -15,39 +18,39 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
     skip: true,
   },
   "/app/:itemId/services/authentication": {
-    title: "IAM",
+    titleKey: "BREADCRUMB.IAM",
   },
   "/app/:itemId/services/language": {
-    title: "Language Translation Keys",
+    titleKey: "BREADCRUMB.LANGUAGE_TRANSLATION_KEYS",
   },
   "/app/:itemId/services/configure": {
-    title: "Configure",
+    titleKey: "BREADCRUMB.CONFIGURE",
   },
   "/app/:itemId/services/language/export-history": {
-    title: "Export history",
+    titleKey: "BREADCRUMB.EXPORT_HISTORY",
   },
   "/app/:itemId/services/modules": {
-    title: "Language module",
+    titleKey: "BREADCRUMB.LANGUAGE_MODULE",
   },
   "/app/:itemId/services/modules/:moduleId": {
-    title: "Module",
+    titleKey: "BREADCRUMB.MODULE",
     dynamic: true,
   },
   "/app/:itemId/services/language/translations": {
     skip: true,
   },
   "/app/:itemId/services/language/translations/new-key": {
-    title: "New Key",
+    titleKey: "BREADCRUMB.NEW_KEY",
   },
   "/app/:itemId/services/language/translations/:keyId": {
-    title: "Key",
+    titleKey: "BREADCRUMB.KEY",
     dynamic: true,
   },
   "/app/:itemId/services/glossary": {
-    title: "Glossaries",
+    titleKey: "BREADCRUMB.GLOSSARIES",
   },
   "/app/:itemId/services/glossary/:glossaryId": {
-    title: "Glossary",
+    titleKey: "BREADCRUMB.GLOSSARY",
     dynamic: true,
   },
 };
@@ -55,9 +58,26 @@ export const BREADCRUMB_ROUTES: Record<string, BreadcrumbRouteConfig> = {
 const BREADCRUMB_CUSTOM_TITLES: Record<string, string | null> = {};
 const BREADCRUMB_SKIP_PATHS: string[] = [];
 
+// Fixed titles are read through a getter so they follow the language at the moment they are
+// shown. Assigning a title later (a loaded key or module name) replaces the getter with that text.
+const defineTranslatedTitle = (path: string, key: string) => {
+  Object.defineProperty(BREADCRUMB_CUSTOM_TITLES, path, {
+    enumerable: true,
+    configurable: true,
+    get: () => tStatic("localization.shared", key),
+    set: (value: string | null) =>
+      Object.defineProperty(BREADCRUMB_CUSTOM_TITLES, path, {
+        value,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      }),
+  });
+};
+
 for (const [path, config] of Object.entries(BREADCRUMB_ROUTES)) {
-  if (config.title !== undefined) {
-    BREADCRUMB_CUSTOM_TITLES[path] = config.title;
+  if (config.titleKey !== undefined) {
+    defineTranslatedTitle(path, config.titleKey);
   } else if (config.dynamic) {
     BREADCRUMB_CUSTOM_TITLES[path] = null;
   }

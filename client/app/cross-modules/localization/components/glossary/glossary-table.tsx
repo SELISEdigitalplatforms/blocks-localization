@@ -1,6 +1,7 @@
 import { ReactNode, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 import {
   ChevronDown,
   ChevronUp,
@@ -72,7 +73,7 @@ import {
 import { GLOSSARY_RULES } from "@blocks-localization/models/glossary-meta";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import GlossaryRuleBadge, {
-  GLOSSARY_RULE_LABELS,
+  useGlossaryRuleLabels,
 } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import GlossaryStatusBadge, {
   GLOSSARY_STATUS_LABELS,
@@ -93,6 +94,8 @@ import {
 } from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
 
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 /** Select value for "no filter"; Radix Select items can't have an empty value. */
 const ALL_FILTER = "all";
@@ -101,15 +104,15 @@ const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 export const GLOSSARY_COLUMNS_STORAGE_KEY = "glossary-table-columns";
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = { createDate: false };
 
-const HIDEABLE_COLUMNS: { id: string; label: string }[] = [
-  { id: "rule", label: "Rule" },
-  { id: "status", label: "Status" },
-  { id: "translations", label: "Translations" },
-  { id: "language", label: "Language" },
-  { id: "type", label: "Type" },
-  { id: "context", label: "Definition" },
-  { id: "createDate", label: "Created" },
-  { id: "lastUpdateDate", label: "Last updated" },
+const HIDEABLE_COLUMNS: { id: string; labelKey: string }[] = [
+  { id: "rule", labelKey: "GLOSSARY_TABLE.COLUMN_RULE" },
+  { id: "status", labelKey: "GLOSSARY_TABLE.COLUMN_STATUS" },
+  { id: "translations", labelKey: "GLOSSARY_TABLE.COLUMN_TRANSLATIONS" },
+  { id: "language", labelKey: "GLOSSARY_TABLE.COLUMN_LANGUAGE" },
+  { id: "type", labelKey: "GLOSSARY_TABLE.COLUMN_TYPE" },
+  { id: "context", labelKey: "GLOSSARY_TABLE.COLUMN_DEFINITION" },
+  { id: "createDate", labelKey: "GLOSSARY_TABLE.COLUMN_CREATED" },
+  { id: "lastUpdateDate", labelKey: "GLOSSARY_TABLE.COLUMN_LAST_UPDATED" },
 ];
 
 const readColumnVisibility = (): VisibilityState => {
@@ -261,14 +264,17 @@ const SelectAllHeader = ({
   someSelected: boolean;
   disabled: boolean;
   onCheckedChange: CheckedChange;
-}>) => (
-  <Checkbox
-    aria-label="Select all glossaries on this page"
-    checked={allSelected || (someSelected && "indeterminate")}
-    disabled={disabled}
-    onCheckedChange={onCheckedChange}
-  />
-);
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <Checkbox
+      aria-label={t("GLOSSARY_TABLE.SELECT_ALL_ARIA")}
+      checked={allSelected || (someSelected && "indeterminate")}
+      disabled={disabled}
+      onCheckedChange={onCheckedChange}
+    />
+  );
+};
 
 const SelectRowCell = ({
   glossary,
@@ -278,16 +284,19 @@ const SelectRowCell = ({
   glossary: IGlossary;
   checked: boolean;
   onToggle: (itemId: string, checked: boolean) => void;
-}>) => (
-  <div className="flex items-center" {...{ [ROW_CLICK_IGNORE]: true }}>
-    <Checkbox
-      aria-label={`Select ${glossary.name}`}
-      checked={checked}
-      disabled={isUnsupportedGlossaryNote(glossary)}
-      onCheckedChange={(value) => onToggle(glossary.itemId, value === true)}
-    />
-  </div>
-);
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <div className="flex items-center" {...{ [ROW_CLICK_IGNORE]: true }}>
+      <Checkbox
+        aria-label={t("GLOSSARY_TABLE.SELECT_ROW_ARIA", { name: glossary.name })}
+        checked={checked}
+        disabled={isUnsupportedGlossaryNote(glossary)}
+        onCheckedChange={(value) => onToggle(glossary.itemId, value === true)}
+      />
+    </div>
+  );
+};
 
 const GlossaryActionsCell = ({
   glossary,
@@ -297,48 +306,52 @@ const GlossaryActionsCell = ({
   glossary: IGlossary;
   onEdit: (glossary: IGlossary) => void;
   onDelete: (glossary: IGlossary) => void;
-}>) => (
-  <DropdownMenu modal={false}>
-    <DropdownMenuTrigger
-      asChild
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    >
-      <Button
-        variant="ghost"
-        className="ml-auto flex h-8 w-8 p-0"
-        aria-label={`Actions for ${glossary.name}`}
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        asChild
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
-        <EllipsisVertical width={20} height={20} />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-      <DropdownMenuItem
-        className="cursor-pointer"
-        onClick={(e) => {
-          e.preventDefault();
-          onEdit(glossary);
-        }}
-      >
-        <Pencil className="mr-2 h-4 w-4" />
-        <span>Edit</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        className="cursor-pointer text-error"
-        onClick={(e) => {
-          e.preventDefault();
-          onDelete(glossary);
-        }}
-      >
-        <Trash className="mr-2 h-4 w-4" />
-        <span>Delete</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+        <Button
+          variant="ghost"
+          className="ml-auto flex h-8 w-8 p-0"
+          aria-label={t("GLOSSARY_TABLE.ACTIONS_FOR_ARIA", { name: glossary.name })}
+        >
+          <EllipsisVertical width={20} height={20} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            onEdit(glossary);
+          }}
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          <span>{t("common:EDIT")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer text-error"
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete(glossary);
+          }}
+        >
+          <Trash className="mr-2 h-4 w-4" />
+          <span>{t("common:DELETE")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 interface GlossaryColumnsOptions {
+  t: TFunction;
   sort: GlossarySort;
   onSort: (sortBy: GlossarySortBy) => void;
   selectedIds: ReadonlySet<string>;
@@ -353,6 +366,7 @@ interface GlossaryColumnsOptions {
 }
 
 const buildGlossaryColumns = ({
+  t,
   sort,
   onSort,
   selectedIds,
@@ -387,7 +401,9 @@ const buildGlossaryColumns = ({
   {
     accessorKey: "name",
     enableHiding: false,
-    header: () => <SortHeader label="Name" sortBy="name" sort={sort} onSort={onSort} />,
+    header: () => (
+      <SortHeader label={t("GLOSSARY_TABLE.COLUMN_NAME")} sortBy="name" sort={sort} onSort={onSort} />
+    ),
     cell: ({ row }) => (
       <div className="min-w-[150px] max-w-[240px] break-words font-medium text-high-emphasis">
         {row.original.name}
@@ -396,22 +412,22 @@ const buildGlossaryColumns = ({
   },
   {
     id: "rule",
-    header: () => <HeaderLabel>Rule</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_RULE")}</HeaderLabel>,
     cell: ({ row }) => renderRuleCell(row),
   },
   {
     id: "status",
-    header: () => <HeaderLabel>Status</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_STATUS")}</HeaderLabel>,
     cell: ({ row }) => <GlossaryStatusBadge status={getGlossaryStatus(row.original)} />,
   },
   {
     id: "translations",
-    header: () => <HeaderLabel>Translations</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_TRANSLATIONS")}</HeaderLabel>,
     cell: ({ row }) => renderTranslationsCell(row, languages),
   },
   {
     accessorKey: "language",
-    header: () => <HeaderLabel>Language</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_LANGUAGE")}</HeaderLabel>,
     cell: ({ row }) => (
       <span className="whitespace-nowrap">
         {getGlossaryLanguageName(row.original.language, languages)}
@@ -420,7 +436,7 @@ const buildGlossaryColumns = ({
   },
   {
     accessorKey: "type",
-    header: () => <HeaderLabel>Type</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_TYPE")}</HeaderLabel>,
     cell: ({ row }) => (
       <TruncatedText
         text={getOptionalCellText(row.original.type)}
@@ -430,7 +446,7 @@ const buildGlossaryColumns = ({
   },
   {
     accessorKey: "context",
-    header: () => <HeaderLabel>Definition</HeaderLabel>,
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_DEFINITION")}</HeaderLabel>,
     cell: ({ row }) => (
       <TruncatedText
         text={getOptionalCellText(stripRuleMarker(row.original.context))}
@@ -440,7 +456,14 @@ const buildGlossaryColumns = ({
   },
   {
     accessorKey: "createDate",
-    header: () => <SortHeader label="Created" sortBy="createDate" sort={sort} onSort={onSort} />,
+    header: () => (
+      <SortHeader
+        label={t("GLOSSARY_TABLE.COLUMN_CREATED")}
+        sortBy="createDate"
+        sort={sort}
+        onSort={onSort}
+      />
+    ),
     cell: ({ row }) => (
       <span className="whitespace-nowrap">{formatDate(row.original.createDate)}</span>
     ),
@@ -448,7 +471,12 @@ const buildGlossaryColumns = ({
   {
     accessorKey: "lastUpdateDate",
     header: () => (
-      <SortHeader label="Last updated" sortBy="lastUpdateDate" sort={sort} onSort={onSort} />
+      <SortHeader
+        label={t("GLOSSARY_TABLE.COLUMN_LAST_UPDATED")}
+        sortBy="lastUpdateDate"
+        sort={sort}
+        onSort={onSort}
+      />
     ),
     cell: ({ row }) => (
       <span className="whitespace-nowrap">{formatDate(row.original.lastUpdateDate)}</span>
@@ -459,7 +487,7 @@ const buildGlossaryColumns = ({
     enableHiding: false,
     header: () => (
       <div className="flex justify-end">
-        <HeaderLabel>Actions</HeaderLabel>
+        <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_ACTIONS")}</HeaderLabel>
       </div>
     ),
     cell: ({ row }) => (
@@ -594,17 +622,18 @@ function GlossaryEmptyState({
   isFiltered: boolean;
   onClearFilters: () => void;
 }>) {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const clearButton = (
     <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onClearFilters}>
-      Clear filters
+      {t("GLOSSARY_TABLE.CLEAR_FILTERS")}
     </Button>
   );
 
   if (!searchQuery && isFiltered) {
     return (
       <output className="flex flex-col items-center gap-2 py-4">
-        <p className="font-medium text-high-emphasis">No matching glossaries</p>
-        <p className="text-muted-foreground">No glossaries match the selected filters.</p>
+        <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.NO_MATCHING_TITLE")}</p>
+        <p className="text-muted-foreground">{t("GLOSSARY_TABLE.NO_MATCHING_FILTERS_BODY")}</p>
         {clearButton}
       </output>
     );
@@ -613,9 +642,9 @@ function GlossaryEmptyState({
   if (searchQuery) {
     return (
       <output className="flex flex-col items-center gap-2 py-4">
-        <p className="font-medium text-high-emphasis">No matching glossaries</p>
+        <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.NO_MATCHING_TITLE")}</p>
         <p className="text-muted-foreground">
-          No glossaries match &ldquo;{searchQuery}&rdquo;. Try a different search.
+          {t("GLOSSARY_TABLE.NO_MATCHING_BODY", { query: searchQuery })}
         </p>
         {clearButton}
       </output>
@@ -624,27 +653,28 @@ function GlossaryEmptyState({
 
   return (
     <output className="flex flex-col items-center gap-2 py-4">
-      <p className="font-medium text-high-emphasis">No glossaries yet</p>
-      <p className="text-muted-foreground">
-        Glossaries help keep terminology consistent across translations.
-      </p>
+      <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.EMPTY_TITLE")}</p>
+      <p className="text-muted-foreground">{t("GLOSSARY_TABLE.EMPTY_BODY")}</p>
     </output>
   );
 }
 
 function GlossaryLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   return (
     <div role="alert" className="flex flex-col items-center gap-2 py-4">
-      <p className="font-medium text-high-emphasis">Couldn&rsquo;t load glossaries</p>
-      <p className="text-muted-foreground">Check your connection and try again.</p>
+      <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.LOAD_FAILED_TITLE")}</p>
+      <p className="text-muted-foreground">{t("GLOSSARY_TABLE.LOAD_FAILED_BODY")}</p>
       <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onRetry}>
-        Retry
+        {t("common:RETRY")}
       </Button>
     </div>
   );
 }
 
 const GlossaryTable = () => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  const ruleLabels = useGlossaryRuleLabels();
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const isMobile = useIsMobile();
@@ -784,6 +814,7 @@ const GlossaryTable = () => {
   const columns = useMemo(
     () =>
       buildGlossaryColumns({
+        t,
         sort,
         onSort: handleSort,
         selectedIds,
@@ -808,6 +839,7 @@ const GlossaryTable = () => {
       selectAllDisabled,
       allSelected,
       someSelected,
+      t,
     ],
   );
 
@@ -854,7 +886,7 @@ const GlossaryTable = () => {
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold">Glossary</h1>
+        <h1 className="text-2xl font-semibold">{t("GLOSSARY_TABLE.TITLE")}</h1>
         <GlossaryEditorSheet
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
@@ -865,7 +897,7 @@ const GlossaryTable = () => {
               className="h-10 bg-primary text-sm text-primary-foreground"
             >
               <Plus className="mr-2 h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">New Glossary</span>
+              <span className="sr-only sm:not-sr-only">{t("GLOSSARY_TABLE.NEW_GLOSSARY")}</span>
             </Button>
           }
         />
@@ -874,14 +906,14 @@ const GlossaryTable = () => {
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader className="gap-2">
           <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
-            Glossaries
+            {t("GLOSSARY_TABLE.CARD_TITLE")}
           </CardTitle>
         </CardHeader>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start">
           <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
             <div className="col-span-2 sm:col-span-3 lg:w-[260px]">
               <FilterControls.SearchInput
-                placeholder="Search glossary..."
+                placeholder={t("GLOSSARY_TABLE.SEARCH_PLACEHOLDER")}
                 value={searchText}
                 onChange={handleSearchChange}
                 className="h-9 w-full"
@@ -892,14 +924,14 @@ const GlossaryTable = () => {
               value={ruleFilter ?? ALL_FILTER}
               onValueChange={selectFilter<GlossaryRuleDto>(setRuleFilter)}
             >
-              <SelectTrigger aria-label="Rule" className="h-9 w-full lg:w-[140px]">
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_RULE")} className="h-9 w-full lg:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All rules</SelectItem>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_RULES")}</SelectItem>
                 {GLOSSARY_RULES.map((rule) => (
                   <SelectItem key={rule} value={rule}>
-                    {GLOSSARY_RULE_LABELS[rule]}
+                    {ruleLabels[rule]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -908,11 +940,11 @@ const GlossaryTable = () => {
               value={statusFilter ?? ALL_FILTER}
               onValueChange={selectFilter<GlossaryStatus>(setStatusFilter)}
             >
-              <SelectTrigger aria-label="Status" className="h-9 w-full lg:w-[140px]">
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_STATUS")} className="h-9 w-full lg:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All statuses</SelectItem>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_STATUSES")}</SelectItem>
                 {GLOSSARY_STATUSES.map((status) => (
                   <SelectItem key={status} value={status}>
                     {GLOSSARY_STATUS_LABELS[status]}
@@ -924,11 +956,11 @@ const GlossaryTable = () => {
               value={languageFilter ?? ALL_FILTER}
               onValueChange={selectFilter<string>(setLanguageFilter)}
             >
-              <SelectTrigger aria-label="Language" className="h-9 w-full lg:w-[150px]">
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_LANGUAGE")} className="h-9 w-full lg:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All languages</SelectItem>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_LANGUAGES")}</SelectItem>
                 {languageListData?.map((language) => (
                   <SelectItem key={language.languageCode} value={language.languageCode}>
                     {language.languageName}
@@ -940,11 +972,11 @@ const GlossaryTable = () => {
               value={typeFilter ?? ALL_FILTER}
               onValueChange={selectFilter<string>(setTypeFilter)}
             >
-              <SelectTrigger aria-label="Type" className="h-9 w-full lg:w-[140px]">
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_TYPE")} className="h-9 w-full lg:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All types</SelectItem>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_TYPES")}</SelectItem>
                 {GLOSSARY_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -956,13 +988,13 @@ const GlossaryTable = () => {
               value={scopeFilter ?? ALL_FILTER}
               onValueChange={selectFilter<GlossaryScopeFilter>(setScopeFilter)}
             >
-              <SelectTrigger aria-label="Scope" className="h-9 w-full lg:w-[160px]">
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.FILTER_SCOPE")} className="h-9 w-full lg:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All scopes</SelectItem>
-                <SelectItem value="project">Whole project</SelectItem>
-                <SelectItem value="modules">Specific modules</SelectItem>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_SCOPES")}</SelectItem>
+                <SelectItem value="project">{t("GLOSSARY_TABLE.SCOPE_PROJECT")}</SelectItem>
+                <SelectItem value="modules">{t("GLOSSARY_TABLE.SCOPE_MODULES")}</SelectItem>
               </SelectContent>
             </Select>
             {(isFiltered || !!searchText) && (
@@ -972,7 +1004,7 @@ const GlossaryTable = () => {
                 className="h-9 gap-1 text-medium-emphasis"
                 onClick={clearFilters}
               >
-                Reset
+                {t("common:RESET")}
                 <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
@@ -982,11 +1014,11 @@ const GlossaryTable = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-9 self-end lg:shrink-0 lg:self-start">
                   <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                  Columns
+                  {t("GLOSSARY_TABLE.COLUMNS")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Columns</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("GLOSSARY_TABLE.COLUMNS")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {HIDEABLE_COLUMNS.map((column) => (
                   <DropdownMenuCheckboxItem
@@ -995,7 +1027,7 @@ const GlossaryTable = () => {
                     onCheckedChange={(checked) => handleVisibilityChange(column.id, checked)}
                     onSelect={(event) => event.preventDefault()}
                   >
-                    {column.label}
+                    {t(column.labelKey)}
                   </DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>

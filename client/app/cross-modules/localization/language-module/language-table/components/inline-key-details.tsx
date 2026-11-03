@@ -25,6 +25,7 @@ import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary
 import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
 import { isMatchedGlossaryName } from "@blocks-localization/utils/glossary-name";
 import { useInlineKeyEditor } from "../hooks/use-inline-key-editor";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 interface KeyActionsMenuProps {
   actionLabel: string;
@@ -32,45 +33,48 @@ interface KeyActionsMenuProps {
   onTranslate: () => void;
 }
 
-const KeyActionsMenu = memo(({ actionLabel, onDelete, onTranslate }: KeyActionsMenuProps) => (
-  <DropdownMenu modal={false}>
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="ghost"
-        className="h-9 w-9 p-0 text-medium-emphasis hover:text-high-emphasis"
-        aria-label={actionLabel}
-        onClick={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-      >
-        <EllipsisVertical width={20} height={20} />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-      <DropdownMenuItem
-        className="cursor-pointer"
-        onClick={(event) => {
-          event.stopPropagation();
-          onTranslate();
-        }}
-      >
-        <Languages className="mr-2 h-4 w-4" />
-        <span>Translate</span>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        className="cursor-pointer text-error focus:bg-blocks-error-50 focus:text-error"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDelete();
-        }}
-      >
-        <Trash className="mr-2 h-4 w-4" />
-        <span>Delete</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-));
+const KeyActionsMenu = memo(({ actionLabel, onDelete, onTranslate }: KeyActionsMenuProps) => {
+  const { t } = useT("localization.language-table");
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-9 w-9 p-0 text-medium-emphasis hover:text-high-emphasis"
+          aria-label={actionLabel}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <EllipsisVertical width={20} height={20} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(event) => {
+            event.stopPropagation();
+            onTranslate();
+          }}
+        >
+          <Languages className="mr-2 h-4 w-4" />
+          <span>{t("INLINE_KEY_DETAILS.TRANSLATE")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="cursor-pointer text-error focus:bg-blocks-error-50 focus:text-error"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash className="mr-2 h-4 w-4" />
+          <span>{t("common:DELETE")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+});
 KeyActionsMenu.displayName = "KeyActionsMenu";
 
 interface InlineKeyDetailsProps {
@@ -89,6 +93,7 @@ export const InlineKeyDetails = memo(
     onTranslate,
     onDelete,
   }: InlineKeyDetailsProps) => {
+    const { t } = useT("localization.language-table");
     const moduleName = languageModules.find(
       (languageModule) => languageModule.itemId === keyDetails.moduleId,
     )?.moduleName;
@@ -119,21 +124,25 @@ export const InlineKeyDetails = memo(
       <div className="space-y-5 px-4 py-5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <div className="col-start-1 row-start-1 min-w-0">
-            <p className="text-xs font-medium text-low-emphasis">Module</p>
+            <p className="text-xs font-medium text-low-emphasis">
+              {t("INLINE_KEY_DETAILS.MODULE")}
+            </p>
             <p className="mt-1 truncate text-sm text-high-emphasis">{moduleName || "-"}</p>
           </div>
           <div className="col-span-2 row-start-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-            <p className="text-xs font-medium text-low-emphasis">Context</p>
+            <p className="text-xs font-medium text-low-emphasis">
+              {t("INLINE_KEY_DETAILS.CONTEXT")}
+            </p>
             <p
               className="mt-1 truncate text-sm text-high-emphasis"
-              title={keyDetails.context || "No context provided."}
+              title={keyDetails.context || t("INLINE_KEY_DETAILS.NO_CONTEXT")}
             >
-              {keyDetails.context || "No context provided."}
+              {keyDetails.context || t("INLINE_KEY_DETAILS.NO_CONTEXT")}
             </p>
           </div>
           <div className="col-start-2 row-start-1 flex items-center justify-end self-start lg:col-start-3 lg:self-end">
             <KeyActionsMenu
-              actionLabel={`Actions for ${keyDetails.keyName}`}
+              actionLabel={t("INLINE_KEY_DETAILS.ACTIONS_FOR", { name: keyDetails.keyName })}
               onTranslate={onTranslate}
               onDelete={onDelete}
             />
@@ -141,7 +150,9 @@ export const InlineKeyDetails = memo(
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-low-emphasis">Translations</p>
+          <p className="mb-2 text-xs font-medium text-low-emphasis">
+            {t("INLINE_KEY_DETAILS.TRANSLATIONS")}
+          </p>
           <TooltipProvider delayDuration={300}>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {sortedLanguages.map((language) => {
@@ -155,7 +166,7 @@ export const InlineKeyDetails = memo(
                         className="truncate text-xs font-medium text-medium-emphasis"
                       >
                         {language.languageName}
-                        {language.isDefault ? " (Default)" : ""}
+                        {language.isDefault ? ` ${t("INLINE_KEY_DETAILS.DEFAULT_SUFFIX")}` : ""}
                       </label>
                       {!language.isDefault && (
                         <Tooltip>
@@ -165,7 +176,9 @@ export const InlineKeyDetails = memo(
                               variant="outline"
                               size="sm"
                               className="h-8 w-8 shrink-0 p-0"
-                              aria-label={`Auto-translate ${language.languageName}`}
+                              aria-label={t("INLINE_KEY_DETAILS.AUTO_TRANSLATE_LANGUAGE", {
+                                language: language.languageName,
+                              })}
                               disabled={isRowTranslating}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -176,16 +189,18 @@ export const InlineKeyDetails = memo(
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent side="top">
-                            <p>Auto-translate</p>
+                            <p>{t("INLINE_KEY_DETAILS.AUTO_TRANSLATE")}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
                     <Textarea
                       id={`translation-${keyDetails.itemId}-${language.languageCode}`}
-                      aria-label={`${language.languageName} translation`}
+                      aria-label={t("INLINE_KEY_DETAILS.LANGUAGE_TRANSLATION", {
+                        language: language.languageName,
+                      })}
                       className="min-h-[96px] resize-y border-border bg-background text-high-emphasis caret-primary shadow-none placeholder:text-low-emphasis focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
-                      placeholder="Enter translation"
+                      placeholder={t("INLINE_KEY_DETAILS.ENTER_TRANSLATION")}
                       value={draftTranslations[language.languageCode] ?? ""}
                       onChange={(event) =>
                         setTranslation(language.languageCode, event.target.value)
@@ -245,7 +260,7 @@ export const InlineKeyDetails = memo(
         <div className="sticky left-4 flex w-[calc(100cqw-2rem)] flex-col-reverse gap-2 border-t border-blocks-primary-50 pt-4 dark:border-blocks-primary-100 sm:flex-row sm:items-center sm:justify-end">
           {hasEmptyChange && (
             <p role="alert" className="mr-auto text-xs text-error">
-              A changed translation cannot be empty.
+              {t("INLINE_KEY_DETAILS.CHANGED_EMPTY")}
             </p>
           )}
           <Button
@@ -258,7 +273,7 @@ export const InlineKeyDetails = memo(
               discardChanges();
             }}
           >
-            Discard
+            {t("INLINE_KEY_DETAILS.DISCARD")}
           </Button>
           <Button
             type="button"
@@ -269,7 +284,7 @@ export const InlineKeyDetails = memo(
               void saveChanges();
             }}
           >
-            {isSaving ? "Saving..." : "Save changes"}
+            {isSaving ? t("INLINE_KEY_DETAILS.SAVING") : t("common:SAVE_CHANGES")}
           </Button>
         </div>
       </div>

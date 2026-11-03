@@ -1,4 +1,5 @@
 import { Check, TriangleAlert } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import {
   Tooltip,
@@ -28,6 +29,7 @@ const GlossaryTranslationChips = ({
   languages,
   max = MAX_TRANSLATION_CHIPS,
 }: Readonly<GlossaryTranslationChipsProps>) => {
+  const { t } = useT("localization.glossary");
   const targets = getTargetLanguages(languages);
   if (meta.rule !== "translate" || targets.length === 0) {
     return <span>—</span>;
@@ -49,11 +51,11 @@ const GlossaryTranslationChips = ({
                   <Badge variant="outline" className={MISSING_CHIP_CLASS} tabIndex={0}>
                     <TriangleAlert className="h-3 w-3" aria-hidden="true" />
                     {languageCode}
-                    <span className="sr-only"> is missing</span>
+                    <span className="sr-only"> {t("GLOSSARY_TRANSLATION_CHIPS.SR_MISSING")}</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-sm font-normal">
-                  {languageCode} is missing
+                  {t("GLOSSARY_TRANSLATION_CHIPS.MISSING", { code: languageCode })}
                 </TooltipContent>
               </Tooltip>
             );

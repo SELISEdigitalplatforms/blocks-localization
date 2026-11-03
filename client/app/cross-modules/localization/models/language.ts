@@ -1,3 +1,5 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
 /** UILM export SSE payload shape (self-contained for Vite client). */
 export interface IUilmExportNotificationMessage {
   denormalizedPayload: string | { Message?: string; FileId?: string; fileId?: string };
@@ -280,13 +282,24 @@ export interface IGetTimelineByOperationIdResponse {
 export type GlossaryType =
   "Full form" | "Acronym" | "Abbreviation" | "Short form" | "Phrase" | "Variant";
 
+// The label is read through a getter so it is translated when it is shown, not at import time.
+const glossaryTypeOption = (
+  value: GlossaryType,
+  labelKey: string,
+): { value: GlossaryType; label: string } => ({
+  value,
+  get label() {
+    return tStatic("localization.shared", labelKey);
+  },
+});
+
 export const GLOSSARY_TYPE_OPTIONS: { value: GlossaryType; label: string }[] = [
-  { value: "Full form", label: "Full form" },
-  { value: "Acronym", label: "Acronym" },
-  { value: "Abbreviation", label: "Abbreviation" },
-  { value: "Short form", label: "Short form" },
-  { value: "Phrase", label: "Phrase" },
-  { value: "Variant", label: "Variant" },
+  glossaryTypeOption("Full form", "GLOSSARY_TYPE.FULL_FORM"),
+  glossaryTypeOption("Acronym", "GLOSSARY_TYPE.ACRONYM"),
+  glossaryTypeOption("Abbreviation", "GLOSSARY_TYPE.ABBREVIATION"),
+  glossaryTypeOption("Short form", "GLOSSARY_TYPE.SHORT_FORM"),
+  glossaryTypeOption("Phrase", "GLOSSARY_TYPE.PHRASE"),
+  glossaryTypeOption("Variant", "GLOSSARY_TYPE.VARIANT"),
 ];
 
 export interface IGlossary {

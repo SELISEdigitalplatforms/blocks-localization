@@ -1,3 +1,4 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
@@ -10,6 +11,8 @@ import {
   wordLettersAfter,
   wordPrefixBefore,
 } from "@blocks-localization/utils/glossary-text";
+
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
 export const TRANSLATION_LENGTH_ERROR = `Translation must be ${GLOSSARY_LIMITS.value} characters or fewer`;
 export const FORBIDDEN_TRANSLATION_ERROR = "A translation can't also be forbidden";
@@ -25,9 +28,13 @@ export const getTranslationError = (
   translation: string,
   forbiddenValues: string[],
 ): string | undefined => {
-  if (translation.trim().length > GLOSSARY_LIMITS.value) return TRANSLATION_LENGTH_ERROR;
+  if (translation.trim().length > GLOSSARY_LIMITS.value) {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.TRANSLATION_TOO_LONG", {
+      max: GLOSSARY_LIMITS.value,
+    });
+  }
   if (forbiddenValues.some((value) => isForbiddenTranslation(value, translation))) {
-    return FORBIDDEN_TRANSLATION_ERROR;
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.TRANSLATION_FORBIDDEN");
   }
   return undefined;
 };
@@ -462,10 +469,17 @@ export const applyFix = (
 export const formatViolationMessage = (violation: GlossaryViolation): string => {
   switch (violation.kind) {
     case "missing-translation":
-      return `Expected "${violation.expected ?? ""}" for "${violation.term}"`;
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.EXPECTED", {
+        expected: violation.expected ?? "",
+        term: violation.term,
+      });
     case "missing-keep":
-      return `Keep "${violation.expected ?? violation.term}" unchanged`;
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.KEEP_UNCHANGED", {
+        value: violation.expected ?? violation.term,
+      });
     default:
-      return `"${violation.found ?? violation.term}" is not allowed`;
+      return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.NOT_ALLOWED", {
+        value: violation.found ?? violation.term,
+      });
   }
 };

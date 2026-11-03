@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogClose,
@@ -26,6 +27,7 @@ function EditKeyGlossaryBody({
   resolvedGlossaries,
   onClose,
 }: Readonly<EditKeyGlossaryProps>) {
+  const { t } = useT("localization.glossary");
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const [selectedIds, setSelectedIds] = useState<string[]>(keyDetails.glossaryIds ?? []);
 
@@ -51,33 +53,38 @@ function EditKeyGlossaryBody({
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Glossary updated successfully",
+          title: t("common:SUCCESS"),
+          description: t("EDIT_KEY_GLOSSARY.UPDATED"),
         });
         onClose();
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
     }
   }
 
+  const [descBefore, descAfter] = t("EDIT_KEY_GLOSSARY.DESCRIPTION", { name: "\u0000" }).split(
+    "\u0000",
+  );
+
   return (
     <>
       <DialogHeader className="space-y-1.5">
-        <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
+        <DialogTitle className="text-left text-xl">{t("EDIT_KEY_GLOSSARY.TITLE")}</DialogTitle>
         <DialogDescription className="text-left text-sm text-medium-emphasis">
-          Tagged glossaries guide AI translation and glossary checks for the key{" "}
-          <span className="break-all font-medium text-high-emphasis">{keyDetails.keyName}</span>.
+          {descBefore}
+          <span className="break-all font-medium text-high-emphasis">{keyDetails.keyName}</span>
+          {descAfter}
         </DialogDescription>
       </DialogHeader>
 
@@ -99,7 +106,7 @@ function EditKeyGlossaryBody({
             disabled={isPending}
             className="flex-1 sm:flex-1"
           >
-            Cancel
+            {t("common:CANCEL")}
           </Button>
         </DialogClose>
         <Button
@@ -108,7 +115,7 @@ function EditKeyGlossaryBody({
           disabled={isPending}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving…" : "Save"}
+          {isPending ? t("EDIT_KEY_GLOSSARY.SAVING") : t("common:SAVE")}
         </Button>
       </DialogFooter>
     </>

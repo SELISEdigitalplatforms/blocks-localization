@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, CircleHelp, LoaderCircle, Plus, Search, X } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Button } from "@/components/ui-kits/button/button";
@@ -31,8 +32,6 @@ import {
 
 export const PICKER_SEARCH_DEBOUNCE_MS = 300;
 const NO_RESULTS: IGlossary[] = [];
-export const CREATED_NOT_FOUND_MESSAGE =
-  "Glossary created, but it couldn't be selected. Search for it.";
 
 /**
  * `Glossary/Save` returns no id (A3): the new term is the search result whose name equals
@@ -95,34 +94,37 @@ const SelectedChip = ({
   unresolved = false,
   disabled,
   onRemove,
-}: SelectedChipProps) => (
-  <Badge
-    variant="secondary"
-    className={cn(
-      "h-7 max-w-full gap-1 rounded-full py-0 pl-2.5 pr-1 font-medium",
-      unresolved &&
-        "border-dashed border-border-medium-emphasis bg-transparent text-medium-emphasis",
-    )}
-  >
-    {unresolved && <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-    {loading ? (
-      <Skeleton className="h-3 w-16" aria-label="Loading glossary" />
-    ) : (
-      <span className="truncate">{label}</span>
-    )}
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-5 w-5 shrink-0 rounded-full p-0 hover:bg-muted-foreground/20"
-      aria-label={`Remove ${label}`}
-      disabled={disabled}
-      onClick={onRemove}
+}: SelectedChipProps) => {
+  const { t } = useT("localization.glossary");
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(
+        "h-7 max-w-full gap-1 rounded-full py-0 pl-2.5 pr-1 font-medium",
+        unresolved &&
+          "border-dashed border-border-medium-emphasis bg-transparent text-medium-emphasis",
+      )}
     >
-      <X className="h-3 w-3" aria-hidden="true" />
-    </Button>
-  </Badge>
-);
+      {unresolved && <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+      {loading ? (
+        <Skeleton className="h-3 w-16" aria-label={t("GLOSSARY_PICKER.LOADING_GLOSSARY")} />
+      ) : (
+        <span className="truncate">{label}</span>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-5 w-5 shrink-0 rounded-full p-0 hover:bg-muted-foreground/20"
+        aria-label={t("GLOSSARY_PICKER.REMOVE", { label })}
+        disabled={disabled}
+        onClick={onRemove}
+      >
+        <X className="h-3 w-3" aria-hidden="true" />
+      </Button>
+    </Badge>
+  );
+};
 
 interface GlossaryPickerProps {
   selectedIds: string[];
@@ -140,6 +142,7 @@ const GlossaryPicker = ({
   disabled = false,
   knownGlossaries,
 }: Readonly<GlossaryPickerProps>) => {
+  const { t } = useT("localization.glossary");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -220,13 +223,17 @@ const GlossaryPicker = ({
     } catch {
       // Reported below like a missing result.
     }
-    toast({ variant: "destructive", title: "Error", description: CREATED_NOT_FOUND_MESSAGE });
+    toast({
+      variant: "destructive",
+      title: t("common:ERROR"),
+      description: t("GLOSSARY_PICKER.CREATED_NOT_FOUND"),
+    });
   };
 
   const chipLabel = (id: string) =>
     known.get(id)?.name ??
     resolvedById.get(id)?.name ??
-    (failedIds.has(id) ? "Unknown glossary" : "");
+    (failedIds.has(id) ? t("GLOSSARY_PICKER.UNKNOWN_GLOSSARY") : "");
 
   const trimmedQuery = query.trim();
   // Create stays reachable when the search only finds near matches ("Work" → "Workspace").
@@ -240,9 +247,9 @@ const GlossaryPicker = ({
     if (isSearchError) {
       return (
         <div role="alert" className="flex flex-col items-center gap-2 px-3 py-6 text-center">
-          <p className="text-sm text-error">Couldn&apos;t search glossaries</p>
+          <p className="text-sm text-error">{t("GLOSSARY_PICKER.SEARCH_FAILED")}</p>
           <Button type="button" variant="outline" size="sm" onClick={() => void retrySearch()}>
-            Try again
+            {t("GLOSSARY_PICKER.TRY_AGAIN")}
           </Button>
         </div>
       );
@@ -251,14 +258,16 @@ const GlossaryPicker = ({
       return (
         <output className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-medium-emphasis">
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-          Searching…
+          {t("GLOSSARY_PICKER.SEARCHING")}
         </output>
       );
     }
     return (
       <>
         <CommandEmpty className="px-3 py-6 text-center text-sm text-medium-emphasis">
-          {trimmedQuery ? `No glossaries match "${trimmedQuery}".` : "No glossaries yet."}
+          {trimmedQuery
+            ? t("GLOSSARY_PICKER.NO_MATCH", { query: trimmedQuery })
+            : t("GLOSSARY_PICKER.NO_TERMS")}
         </CommandEmpty>
         {results.length > 0 && (
           <CommandGroup>
@@ -285,7 +294,9 @@ const GlossaryPicker = ({
               onSelect={startCreate}
             >
               <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">Create &quot;{trimmedQuery}&quot;</span>
+              <span className="truncate">
+                {t("GLOSSARY_PICKER.CREATE", { query: trimmedQuery })}
+              </span>
             </CommandItem>
           </CommandGroup>
         )}
@@ -298,7 +309,7 @@ const GlossaryPicker = ({
       {selectedIds.length > 0 && (
         <div className="grid gap-2">
           <p className="text-xs font-medium text-medium-emphasis">
-            Selected ({selectedIds.length})
+            {t("GLOSSARY_PICKER.SELECTED", { count: selectedIds.length })}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {selectedIds.map((id) => {
@@ -306,7 +317,7 @@ const GlossaryPicker = ({
               return (
                 <SelectedChip
                   key={id}
-                  label={label || "glossary"}
+                  label={label || t("GLOSSARY_PICKER.FALLBACK_LABEL")}
                   loading={!label}
                   unresolved={failedIds.has(id) && !known.has(id) && !resolvedById.has(id)}
                   disabled={disabled}
@@ -332,7 +343,9 @@ const GlossaryPicker = ({
             >
               <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">
-                {allowCreate ? "Search or create glossaries…" : "Search glossaries…"}
+                {allowCreate
+                  ? t("GLOSSARY_PICKER.SEARCH_OR_CREATE")
+                  : t("GLOSSARY_PICKER.SEARCH_TERMS")}
               </span>
               <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
             </Button>
@@ -349,7 +362,7 @@ const GlossaryPicker = ({
             <Command shouldFilter={false}>
               <CommandInput
                 ref={inputRef}
-                placeholder="Search glossary..."
+                placeholder={t("GLOSSARY_PICKER.SEARCH_PLACEHOLDER")}
                 value={query}
                 onValueChange={setQuery}
               />

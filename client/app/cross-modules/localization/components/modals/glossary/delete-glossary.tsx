@@ -24,6 +24,7 @@ import {
   isUnsupportedGlossaryNote,
   toGlossarySavePayload,
 } from "@blocks-localization/utils/glossary-display";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage, getHttpErrorMessage } from "@/lib/error";
 
@@ -32,6 +33,8 @@ export const DELETE_CONFIRM_THRESHOLD = 50;
 
 /** `validationErrors` property the server uses when the term changed since it was loaded. */
 const VERSION_ERROR_PROPERTY = "Version";
+
+const COMMON_ERROR = "common:ERROR";
 
 const normalizeName = (value: string) => value.trim().normalize("NFC");
 
@@ -43,15 +46,13 @@ interface DeleteGlossaryProps {
   onClose: () => void;
 }
 
-const pluralizeKeys = (count: number) => `${count} key${count === 1 ? "" : "s"}`;
-const pluralizeModules = (count: number) => `${count} module${count === 1 ? "" : "s"}`;
-
 const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   itemId,
   glossaryName,
   glossary,
   onClose,
 }) => {
+  const { t } = useT("localization.glossary");
   const {
     data: usage,
     isLoading: isCounting,
@@ -98,14 +99,14 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       if (res.status === "deleted") {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Glossary item deleted successfully.",
+          title: t("common:SUCCESS"),
+          description: t("DELETE_GLOSSARY.DELETED"),
         });
         onClose();
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: formatErrorMessage(res.errors),
         });
         void refetchUsageCount();
@@ -114,7 +115,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       // Glossary/Delete answers a failure with 400/404, which the HTTP client throws: show its reason.
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: getHttpErrorMessage(error),
       });
       void refetchUsageCount();
@@ -135,17 +136,16 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Glossary deprecated. It no longer reaches the AI or highlights.",
+          title: t("common:SUCCESS"),
+          description: t("DELETE_GLOSSARY.DEPRECATED"),
         });
         onClose();
       } else if (res?.validationErrors?.some((e) => e.propertyName === VERSION_ERROR_PROPERTY)) {
         setLatestGlossary(await fetchLatestGlossary(itemId));
         toast({
           variant: "destructive",
-          title: "Error",
-          description:
-            "This glossary was changed by someone else. The latest version is loaded; try again.",
+          title: t(COMMON_ERROR),
+          description: t("DELETE_GLOSSARY.VERSION_CONFLICT"),
         });
       } else {
         showErrorToast({
@@ -153,7 +153,11 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
         });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: formatErrorMessage(error) });
+      toast({
+        variant: "destructive",
+        title: t(COMMON_ERROR),
+        description: formatErrorMessage(error),
+      });
     } finally {
       runningRef.current = false;
     }
@@ -161,12 +165,12 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
 
   const renderUsage = () => {
     if (isCounting) {
-      return <p className="text-sm text-medium-emphasis">Checking usage…</p>;
+      return <p className="text-sm text-medium-emphasis">{t("DELETE_GLOSSARY.CHECKING_USAGE")}</p>;
     }
     if (isCountError) {
       return (
         <div className="flex items-center gap-2">
-          <p className="text-sm text-error">Failed to check how many keys use this glossary.</p>
+          <p className="text-sm text-error">{t("DELETE_GLOSSARY.CHECK_FAILED")}</p>
           <Button
             type="button"
             size="sm"
@@ -174,33 +178,36 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
             onClick={() => void refetchUsageCount()}
             disabled={isRecounting}
           >
-            Retry
+            {t("common:RETRY")}
           </Button>
         </div>
       );
     }
     if (isPending) {
-      return <p className="text-sm text-medium-emphasis">Deleting…</p>;
+      return <p className="text-sm text-medium-emphasis">{t("DELETE_GLOSSARY.DELETING")}</p>;
     }
     if (!hasKnownCount) {
       return null;
     }
     if (usageCount === 0) {
-      return <p className="text-sm text-medium-emphasis">Not used by any keys.</p>;
+      return <p className="text-sm text-medium-emphasis">{t("DELETE_GLOSSARY.NOT_USED")}</p>;
+    }
+    const keys = t("DELETE_GLOSSARY.KEY_COUNT", { count: usageCount });
+    let usedBy: string;
+    if (usage?.isGlobal) {
+      usedBy = t("DELETE_GLOSSARY.APPLIES_TO_ALL_KEYS", { keys });
+    } else if (moduleCount > 0) {
+      usedBy = t("DELETE_GLOSSARY.USED_BY_KEYS_IN_MODULES", {
+        keys,
+        modules: t("DELETE_GLOSSARY.MODULE_COUNT", { count: moduleCount }),
+      });
+    } else {
+      usedBy = t("DELETE_GLOSSARY.USED_BY_KEYS", { keys });
     }
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm text-medium-emphasis">
-        <Badge variant="warning">
-          {usage?.isGlobal ? (
-            <>Applies to every key in the project ({pluralizeKeys(usageCount)}).</>
-          ) : (
-            <>
-              Used by {pluralizeKeys(usageCount)}
-              {moduleCount > 0 && ` in ${pluralizeModules(moduleCount)}`}.
-            </>
-          )}
-        </Badge>
-        <span>Deleting removes it from those keys.</span>
+        <Badge variant="warning">{usedBy}</Badge>
+        <span>{t("DELETE_GLOSSARY.REMOVES_FROM_KEYS")}</span>
       </div>
     );
   };
@@ -211,15 +218,17 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       onInteractOutside={(event) => isBusy && event.preventDefault()}
     >
       <DialogHeader>
-        <DialogTitle>Delete Glossary Item</DialogTitle>
+        <DialogTitle>{t("DELETE_GLOSSARY.TITLE")}</DialogTitle>
         <DialogDescription>
-          Are you sure you want to delete &quot;{glossaryName}&quot;? This action cannot be undone.
+          {t("DELETE_GLOSSARY.CONFIRM", { name: glossaryName })}
         </DialogDescription>
       </DialogHeader>
       {renderUsage()}
       {needsTyping && (
         <div className="grid gap-2">
-          <Label htmlFor="delete-glossary-confirm">Type &quot;{glossaryName}&quot; to confirm</Label>
+          <Label htmlFor="delete-glossary-confirm">
+            {t("DELETE_GLOSSARY.TYPE_TO_CONFIRM", { name: glossaryName })}
+          </Label>
           <Input
             id="delete-glossary-confirm"
             value={confirmText}
@@ -232,17 +241,17 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       <DialogFooter className="mt-4 gap-2">
         <DialogTrigger asChild>
           <Button variant="secondary" disabled={isBusy}>
-            Cancel
+            {t("common:CANCEL")}
           </Button>
         </DialogTrigger>
         {canDeprecate && (
           <Button variant="outline" onClick={() => void deprecateInstead()} disabled={isBusy}>
             {isDeprecating && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            Deprecate instead
+            {t("DELETE_GLOSSARY.DEPRECATE_INSTEAD")}
           </Button>
         )}
         <Button variant="destructive" onClick={deleteGlossary} disabled={!canConfirm}>
-          {isCounting ? "Checking usage…" : "Delete"}
+          {isCounting ? t("DELETE_GLOSSARY.CHECKING_USAGE") : t("common:DELETE")}
         </Button>
       </DialogFooter>
     </DialogContent>

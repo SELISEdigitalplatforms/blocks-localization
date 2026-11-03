@@ -12,7 +12,6 @@ import {
 } from "@blocks-localization/utils/glossary-validation";
 
 export const LIVE_CHECK_DEBOUNCE_MS = 150;
-export const DRAFT_TERM_PREFIX = "Draft glossary:";
 
 export const NO_MATCHES: GlossaryMatch[] = [];
 const NO_VIOLATIONS: GlossaryViolation[] = [];

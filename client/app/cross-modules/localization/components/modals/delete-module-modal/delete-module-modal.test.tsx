@@ -9,7 +9,8 @@ import DeleteModuleModal from "./delete-module-modal";
 const deleteModuleMock = vi.fn();
 const toastMock = vi.fn();
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));

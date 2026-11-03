@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { TriangleAlert } from "lucide-react";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Button } from "@/components/ui-kits/button/button";
 import { cn } from "@/lib/utils";
 import {
-  DRAFT_TERM_PREFIX,
   isDraftViolation,
   useLiveGlossaryCheck,
 } from "@blocks-localization/hooks/use-live-glossary-check";
@@ -24,6 +24,8 @@ import {
   getFixReplacement,
   GlossaryViolation,
 } from "@blocks-localization/utils/glossary-validation";
+
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
 /** Glossary state of one target-language row after a suggestion. */
 export interface GlossaryRowState {
@@ -149,7 +151,7 @@ export const useGlossarySuggestionRows = () => {
 
 export const formatGlossaryIssue = (violation: GlossaryViolation, matches: GlossaryMatch[]) =>
   isDraftViolation(violation, matches)
-    ? `${DRAFT_TERM_PREFIX} ${formatViolationMessage(violation)}`
+    ? `${tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.DRAFT_PREFIX")} ${formatViolationMessage(violation)}`
     : formatViolationMessage(violation);
 
 const violationKey = (violation: GlossaryViolation) =>
@@ -181,6 +183,7 @@ export const GlossaryViolationList = ({
   onRetry,
   className,
 }: GlossaryViolationListProps) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const hasViolations = violations.length > 0;
   const count = violations.length;
   return (
@@ -197,9 +200,11 @@ export const GlossaryViolationList = ({
           <p className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning-700" aria-hidden="true" />
             <span className="font-semibold text-high-emphasis">
-              {count === 1 ? "1 glossary issue" : `${count} glossary issues`}
+              {t("GLOSSARY_VIOLATION_LIST.ISSUES", { count })}
             </span>
-            <span className="text-medium-emphasis">You can still save.</span>
+            <span className="text-medium-emphasis">
+              {t("GLOSSARY_VIOLATION_LIST.CAN_STILL_SAVE")}
+            </span>
           </p>
           <ul className="space-y-1.5">
             {violations.map((violation) => {
@@ -217,7 +222,10 @@ export const GlossaryViolationList = ({
                       {formatGlossaryIssue(violation, matches)}
                     </span>
                     {fixable && replacement && (
-                      <span className="text-sm text-medium-emphasis"> · use “{replacement}”</span>
+                      <span className="text-sm text-medium-emphasis">
+                        {" · "}
+                        {t("GLOSSARY_VIOLATION_LIST.USE_REPLACEMENT", { replacement })}
+                      </span>
                     )}
                   </p>
                   {showAction && (
@@ -233,7 +241,9 @@ export const GlossaryViolationList = ({
                         else onRetry?.();
                       }}
                     >
-                      {fixable ? "Fix" : "Retry"}
+                      {fixable
+                        ? t("GLOSSARY_VIOLATION_LIST.FIX")
+                        : t("GLOSSARY_VIOLATION_LIST.RETRY")}
                     </Button>
                   )}
                 </li>
@@ -262,27 +272,41 @@ interface GlossaryTargetChecksProps {
 
 /** "Workspace → Arbeitsbereich" under Translate, "SELISE (kept)" under Keep. */
 export const formatAppliedTerm = (term: IAppliedTerm): string => {
-  if (term.rule === "keep") return `${term.term} (kept)`;
-  if (term.rule === "forbidden") return `${term.term} (avoided)`;
+  if (term.rule === "keep") {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.APPLIED_KEPT", {
+      term: term.term,
+    });
+  }
+  if (term.rule === "forbidden") {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.APPLIED_AVOIDED", {
+      term: term.term,
+    });
+  }
   return term.expected ? `${term.term} → ${term.expected}` : term.term;
 };
 
-export const GlossaryAppliedTerms = ({ terms }: Readonly<{ terms: IAppliedTerm[] }>) =>
-  terms.length > 0 ? (
+export const GlossaryAppliedTerms = ({ terms }: Readonly<{ terms: IAppliedTerm[] }>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return terms.length > 0 ? (
     <p className="text-xs text-medium-emphasis">
-      Applied: {terms.map(formatAppliedTerm).join(", ")}
+      {t("GLOSSARY_VIOLATION_LIST.APPLIED", { terms: terms.map(formatAppliedTerm).join(", ") })}
     </p>
   ) : null;
+};
 
 /** The suggestion's glossaries the AI had no approved wording for in this language. */
 export const GlossaryMissingTranslations = ({
   terms = [],
-}: Readonly<{ terms?: IMissingGlossaryTranslation[] }>) =>
-  terms.length > 0 ? (
+}: Readonly<{ terms?: IMissingGlossaryTranslation[] }>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return terms.length > 0 ? (
     <p className="text-xs text-low-emphasis">
-      No glossary translation for this language yet: {terms.map((term) => term.term).join(", ")}
+      {t("GLOSSARY_VIOLATION_LIST.MISSING_TRANSLATIONS", {
+        terms: terms.map((term) => term.term).join(", "),
+      })}
     </p>
   ) : null;
+};
 
 /**
  * The violation list under one target field. Right after a suggestion it shows that

@@ -1,4 +1,5 @@
 import React from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { Label } from "@/components/ui-kits/label/label";
 import {
@@ -56,6 +57,7 @@ export function LanguageTableToolbar({
   languagesData: Array<{ languageCode: string; languageName: string }>;
   disabled?: boolean;
 }) {
+  const { t } = useT("localization.language-table");
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
     search: string;
@@ -119,7 +121,7 @@ export function LanguageTableToolbar({
             {
               key: "moduleIds",
               type: "MultiSelect",
-              label: "Modules",
+              label: t("LANGUAGE_TABLE_TOOLBAR.MODULES"),
               props: {
                 options: languageModulesData?.map((module) => ({
                   label: module.moduleName,
@@ -130,7 +132,7 @@ export function LanguageTableToolbar({
             {
               key: "missingLanguages",
               type: "MultiSelect",
-              label: "Missing Translations",
+              label: t("LANGUAGE_TABLE_TOOLBAR.MISSING_TRANSLATIONS"),
               props: {
                 options: languagesData?.map((lang) => ({
                   label: lang.languageName,
@@ -141,7 +143,7 @@ export function LanguageTableToolbar({
             {
               key: "createDate",
               type: "DateRange",
-              label: "Create Date",
+              label: t("LANGUAGE_TABLE_TOOLBAR.CREATE_DATE"),
               props: {
                 disableFutureDates: true,
               },
@@ -149,7 +151,7 @@ export function LanguageTableToolbar({
             {
               key: "lastUpdateDate",
               type: "DateRange",
-              label: "Last Update Date",
+              label: t("LANGUAGE_TABLE_TOOLBAR.LAST_UPDATE_DATE"),
               props: {
                 disableFutureDates: true,
               },
@@ -196,7 +198,7 @@ export function LanguageTableToolbar({
           disabled={disabled}
         />
         <Label htmlFor="language-table-glossary-issues" className="cursor-pointer">
-          Glossary issues
+          {t("LANGUAGE_TABLE_TOOLBAR.GLOSSARY_ISSUES")}
         </Label>
       </div>
     </fieldset>

@@ -6,7 +6,8 @@ import { IGlossary } from "@blocks-localization/models/language";
 import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { distinctGlossaryMatches, HighlightedSourceText } from "./highlighted-source-text";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 

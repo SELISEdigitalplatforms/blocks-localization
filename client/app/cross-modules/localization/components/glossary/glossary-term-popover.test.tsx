@@ -8,7 +8,8 @@ import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import GlossaryTermPopover, { getGlossaryTermValue } from "./glossary-term-popover";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 

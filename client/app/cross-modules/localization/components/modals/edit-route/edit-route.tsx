@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Info, Plus, Trash } from "lucide-react";
 import { z } from "zod";
@@ -17,13 +18,24 @@ import { showErrorToast, toast } from "@/hooks/use-toast";
 import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 
-const schema = z.object({
-  routes: z.array(z.string()).refine((routes) => routes.some((route) => route.trim() !== ""), {
-    message: "At least one route is required",
-  }),
-});
+const COMMON_ERROR = "common:ERROR";
 
-type FormData = z.infer<typeof schema>;
+// Puts a styled node where the marker sits in a translated sentence.
+const MARKER = "\u0001";
+const withNode = (text: string, node: ReactNode) => {
+  const [before = "", after = ""] = text.split(MARKER);
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  );
+};
+
+interface FormData {
+  routes: string[];
+}
 
 interface EditRouteProps {
   keyDetails: IBlocksLanguageKey;
@@ -32,7 +44,13 @@ interface EditRouteProps {
 }
 
 function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
+  const { t } = useT("localization.modules");
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
+  const schema = z.object({
+    routes: z.array(z.string()).refine((routes) => routes.some((route) => route.trim() !== ""), {
+      message: t("EDIT_ROUTE.ROUTE_REQUIRED"),
+    }),
+  });
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -95,18 +113,18 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Route deleted successfully",
+          title: t("common:SUCCESS"),
+          description: t("EDIT_ROUTE.ROUTE_DELETED"),
         });
       } else {
         showErrorToast({
-          title: "Error",
+          title: t(COMMON_ERROR),
           errors: res?.errorMessage,
         });
       }
     } catch (error) {
       showErrorToast({
-        title: "Error",
+        title: t(COMMON_ERROR),
         errors: error,
       });
     }
@@ -120,19 +138,19 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Routes updated successfully",
+          title: t("common:SUCCESS"),
+          description: t("EDIT_ROUTE.ROUTES_UPDATED"),
         });
         onClose();
       } else {
         showErrorToast({
-          title: "Error",
+          title: t(COMMON_ERROR),
           errors: res?.errorMessage,
         });
       }
     } catch (error) {
       showErrorToast({
-        title: "Error",
+        title: t(COMMON_ERROR),
         errors: error,
       });
     }
@@ -140,19 +158,25 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
   return (
     <DialogContent className="rounded-lg sm:max-w-[520px]">
       <DialogHeader className="space-y-3">
-        <DialogTitle className="text-left text-xl">Edit Routes</DialogTitle>
+        <DialogTitle className="text-left text-xl">{t("EDIT_ROUTE.TITLE")}</DialogTitle>
         <DialogDescription className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-left text-sm">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="space-y-1 text-xs text-muted-foreground">
             <p>
-              Add routes after <span className="font-semibold text-foreground">hostname/</span>
+              {withNode(
+                t("EDIT_ROUTE.ADD_AFTER_HOSTNAME", { hostname: MARKER }),
+                <span className="font-semibold text-foreground">hostname/</span>,
+              )}
             </p>
             <p>
-              Use <span className="font-mono text-foreground">{`{{ dynamic_routing }}`}</span> for
-              dynamic segments
+              {withNode(
+                t("EDIT_ROUTE.USE_PLACEHOLDER", { placeholder: MARKER }),
+                <span className="font-mono text-foreground">{`{{ dynamic_routing }}`}</span>,
+              )}
             </p>
             <p className="text-[11px]">
-              Example: <span className="font-mono">release-note/{`{{ dynamic_routing }}`}</span>
+              {t("EDIT_ROUTE.EXAMPLE")}{" "}
+              <span className="font-mono">release-note/{`{{ dynamic_routing }}`}</span>
             </p>
           </div>
         </DialogDescription>
@@ -170,8 +194,10 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
               <div className="mb-2 rounded-full bg-muted p-3 group-hover:bg-primary/10">
                 <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No routes added yet</p>
-              <p className="text-xs text-muted-foreground">Click here to add a route</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("EDIT_ROUTE.NO_ROUTES")}
+              </p>
+              <p className="text-xs text-muted-foreground">{t("EDIT_ROUTE.CLICK_TO_ADD")}</p>
             </button>
           ) : (
             <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
@@ -187,7 +213,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
                     <div className="flex-1 space-y-1.5">
                       <Input
                         id={`route-${index}`}
-                        placeholder="e.g., dashboard/settings"
+                        placeholder={t("EDIT_ROUTE.ROUTE_PLACEHOLDER")}
                         className="h-9 border-input bg-background shadow-none focus-visible:border-primary"
                         value={routes?.[index] ?? ""}
                         onChange={(e) => form.setValue(`routes.${index}`, e.target.value)}
@@ -218,7 +244,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
             disabled={isPending || hasEmptyRoute}
           >
             <Plus className="h-4 w-4" />
-            <span>Add Route</span>
+            <span>{t("EDIT_ROUTE.ADD_ROUTE")}</span>
           </Button>
         )}
       </div>
@@ -226,7 +252,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
       <DialogFooter className="gap-2 sm:gap-2">
         <DialogTrigger asChild>
           <Button variant="outline" size="default" className="flex-1 sm:flex-1">
-            Cancel
+            {t("common:CANCEL")}
           </Button>
         </DialogTrigger>
         <Button
@@ -235,7 +261,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
           disabled={isPending || !hasValidRoute}
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Updating..." : "Update"}
+          {isPending ? t("EDIT_ROUTE.UPDATING") : t("common:UPDATE")}
         </Button>
       </DialogFooter>
     </DialogContent>

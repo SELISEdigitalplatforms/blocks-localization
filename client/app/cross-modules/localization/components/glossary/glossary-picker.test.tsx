@@ -9,9 +9,10 @@ import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import GlossaryPicker, { CREATED_NOT_FOUND_MESSAGE, pickCreatedGlossary } from "./glossary-picker";
+import GlossaryPicker, { pickCreatedGlossary } from "./glossary-picker";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
@@ -245,7 +246,9 @@ describe("GlossaryPicker", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       await waitFor(() =>
         expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({ description: CREATED_NOT_FOUND_MESSAGE }),
+          expect.objectContaining({
+            description: "Glossary created, but it couldn't be selected. Search for it.",
+          }),
         ),
       );
       expect(onChangeSpy).not.toHaveBeenCalled();

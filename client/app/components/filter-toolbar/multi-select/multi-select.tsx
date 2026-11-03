@@ -16,6 +16,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui-kits/command/command";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 interface MultiSelectProps {
   label?: string;
@@ -32,6 +33,7 @@ export function MultiSelect({
   value: selectedValues,
   disabled = false,
 }: Readonly<MultiSelectProps>) {
+  const { t } = useT("localization.shared");
   const [buttonRef, popoverWidth] = usePopoverWidth();
 
   const onSelectHandler = (value: string) => {
@@ -96,7 +98,7 @@ export function MultiSelect({
         <Command>
           <CommandInput placeholder={label} />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>{t("MULTI_SELECT.NO_RESULTS")}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.includes(option.value);
@@ -125,7 +127,7 @@ export function MultiSelect({
                     onSelect={() => onResetHandler()}
                     className="justify-center text-center"
                   >
-                    Clear
+                    {t("common:CLEAR")}
                   </CommandItem>
                 </CommandGroup>
               </>

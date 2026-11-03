@@ -12,6 +12,9 @@ import type {
   ILanguageConfig,
   IModuleGets,
 } from "@blocks-localization/models/language";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
+
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
 
 const getModuleHue = (moduleId: string): number => {
   let hash = 2166136261;
@@ -80,22 +83,29 @@ const COMPLETENESS_BADGE_VARIANT: Record<
 };
 
 const CompletenessBadge = ({ value }: { value: string }) => {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
+  const labels: Record<string, string> = {
+    Complete: t("USE_LANGUAGE_TABLE_COLUMNS.COMPLETE"),
+    Partial: t("USE_LANGUAGE_TABLE_COLUMNS.PARTIAL"),
+    "No translation": t("USE_LANGUAGE_TABLE_COLUMNS.NO_TRANSLATION"),
+  };
   const { variant, className } = COMPLETENESS_BADGE_VARIANT[value] ?? {
     variant: "outline",
     className: "border-transparent bg-muted text-muted-foreground",
   };
   return (
     <Badge variant={variant} className={`rounded-full ${className ?? ""}`}>
-      {value}
+      {labels[value] ?? value}
     </Badge>
   );
 };
 
 const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) => {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const characterWidth = 7.5;
   const horizontalPadding = 8;
   const containerWidth = 150;
-  const displayValue = keyName ?? "(Unnamed Key)";
+  const displayValue = keyName ?? t("USE_LANGUAGE_TABLE_COLUMNS.UNNAMED_KEY");
   const shouldShowFullValue =
     displayValue.length * characterWidth + horizontalPadding > containerWidth;
 
@@ -103,7 +113,7 @@ const KeyNameCell = memo(({ keyName }: { keyName: string | null | undefined }) =
     <CopyableTableValue
       value={keyName}
       displayValue={displayValue}
-      label="key"
+      label={t("USE_LANGUAGE_TABLE_COLUMNS.KEY_LABEL")}
       className="ml-2 w-full sm:ml-0"
       valueClassName="max-w-full truncate text-primary"
       valueTooltip={shouldShowFullValue ? displayValue : undefined}
@@ -179,15 +189,17 @@ interface UseLanguageTableColumnsOptions {
 
 const buildLanguageColumns = (
   selectedLanguages: string[],
-  languageListData?: ILanguageConfig[],
-  translatingKeys?: Set<string>,
+  languageListData: ILanguageConfig[] | undefined,
+  translatingKeys: Set<string> | undefined,
+  t: TFunction,
 ): ColumnDef<IBlocksLanguageKey>[] =>
   selectedLanguages.map((languageCode) => {
     const language = languageListData?.find((candidate) => candidate.languageCode === languageCode);
     const header = (
       <div className="w-[300px] md:w-[200px]">
         <div className="font-bold text-medium-emphasis flex items-center gap-1">
-          {language?.languageName ?? languageCode} {language?.isDefault ? "(Default)" : null}
+          {language?.languageName ?? languageCode}{" "}
+          {language?.isDefault ? t("USE_LANGUAGE_TABLE_COLUMNS.DEFAULT_SUFFIX") : null}
         </div>
       </div>
     );
@@ -198,14 +210,20 @@ const buildLanguageColumns = (
       const hasValue = hasNonEmptyValue(resource);
 
       if (isTranslating && !hasValue) {
-        return <span className="text-blue-600 font-medium">Translating...</span>;
+        return (
+          <span className="text-blue-600 font-medium">
+            {t("USE_LANGUAGE_TABLE_COLUMNS.TRANSLATING")}
+          </span>
+        );
       }
 
       return (
         <CopyableTableValue
           value={hasValue ? resource?.value : null}
           displayValue={hasValue ? undefined : "_"}
-          label={`${language?.languageName ?? languageCode} value`}
+          label={t("USE_LANGUAGE_TABLE_COLUMNS.LANGUAGE_VALUE", {
+            language: language?.languageName ?? languageCode,
+          })}
           className="ml-2 sm:ml-0"
           valueClassName="line-clamp-4"
         />
@@ -232,6 +250,7 @@ export const useLanguageTableColumns = ({
   translatingKeys,
   selectAllLabel,
 }: UseLanguageTableColumnsOptions) => {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
     () => [
       {
@@ -245,7 +264,7 @@ export const useLanguageTableColumns = ({
             <Checkbox
               checked={checked}
               onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label={selectAllLabel ?? "Select all"}
+              aria-label={selectAllLabel ?? t("USE_LANGUAGE_TABLE_COLUMNS.SELECT_ALL")}
               title={selectAllLabel}
             />
           );
@@ -255,7 +274,7 @@ export const useLanguageTableColumns = ({
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
             onClick={(event) => event.stopPropagation()}
-            aria-label="Select row"
+            aria-label={t("USE_LANGUAGE_TABLE_COLUMNS.SELECT_ROW")}
           />
         ),
         enableSorting: false,
@@ -270,7 +289,11 @@ export const useLanguageTableColumns = ({
             <Button
               variant="ghost"
               className="h-8 w-8 p-0"
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${row.original.keyName}`}
+              aria-label={
+                isExpanded
+                  ? t("USE_LANGUAGE_TABLE_COLUMNS.COLLAPSE_KEY", { name: row.original.keyName })
+                  : t("USE_LANGUAGE_TABLE_COLUMNS.EXPAND_KEY", { name: row.original.keyName })
+              }
               aria-expanded={isExpanded}
               onClick={(event) => {
                 event.stopPropagation();
@@ -293,7 +316,7 @@ export const useLanguageTableColumns = ({
         header: () => (
           <div className="w-[300px] md:w-[200px]">
             <FilterControls.SortHeader
-              label="Key"
+              label={t("USE_LANGUAGE_TABLE_COLUMNS.KEY")}
               id="KeyName"
               value={sortQueryParams}
               onChange={onSortChange}
@@ -312,21 +335,23 @@ export const useLanguageTableColumns = ({
       },
       {
         accessorKey: "moduleId",
-        header: "Module",
+        header: t("USE_LANGUAGE_TABLE_COLUMNS.MODULE"),
         cell: ({ row }) => {
           const keyModule = languageModules?.find(
             (languageModule) => languageModule.itemId === row.getValue("moduleId"),
           );
           if (!keyModule) {
             return isLanguageModulesPending ? (
-              <span className="ml-2 sm:ml-0 text-xs text-low-emphasis">Loading…</span>
+              <span className="ml-2 sm:ml-0 text-xs text-low-emphasis">
+                {t("USE_LANGUAGE_TABLE_COLUMNS.LOADING")}
+              </span>
             ) : null;
           }
 
           return (
             <CopyableTableValue
               value={keyModule.moduleName}
-              label="module name"
+              label={t("USE_LANGUAGE_TABLE_COLUMNS.MODULE_NAME_LABEL")}
               className="ml-2 sm:ml-0 sm:w-[150px]"
               valueClassName="inline-block truncate rounded-full px-2 py-0.5 text-xs font-medium"
               valueStyle={getModuleBadgeStyle(keyModule.itemId)}
@@ -340,7 +365,7 @@ export const useLanguageTableColumns = ({
         ? [
             {
               accessorKey: "resources",
-              header: () => <span>Completeness</span>,
+              header: () => <span>{t("USE_LANGUAGE_TABLE_COLUMNS.COMPLETENESS")}</span>,
               cell: ({ row }: { row: Row<IBlocksLanguageKey> }) => (
                 <CompletenessBadge
                   value={getCompletenessCellValue(row.original.resources, languageListData)}
@@ -350,7 +375,7 @@ export const useLanguageTableColumns = ({
             } as ColumnDef<IBlocksLanguageKey>,
           ]
         : []),
-      ...buildLanguageColumns(selectedLanguages, languageListData, translatingKeys),
+      ...buildLanguageColumns(selectedLanguages, languageListData, translatingKeys, t),
       ...(selectedOptionalColumns.includes("createDate")
         ? [
             {
@@ -358,7 +383,7 @@ export const useLanguageTableColumns = ({
               header: () => (
                 <div className="w-[150px]">
                   <FilterControls.SortHeader
-                    label="Created Date"
+                    label={t("USE_LANGUAGE_TABLE_COLUMNS.CREATED_DATE")}
                     id="CreateDate"
                     value={sortQueryParams}
                     onChange={onSortChange}
@@ -381,7 +406,7 @@ export const useLanguageTableColumns = ({
               header: () => (
                 <div className="w-[190px] whitespace-nowrap">
                   <FilterControls.SortHeader
-                    label="Last Updated Date"
+                    label={t("USE_LANGUAGE_TABLE_COLUMNS.LAST_UPDATED_DATE")}
                     id="LastUpdateDate"
                     value={sortQueryParams}
                     onChange={onSortChange}
@@ -410,6 +435,7 @@ export const useLanguageTableColumns = ({
       sortQueryParams,
       translatingKeys,
       selectAllLabel,
+      t,
     ],
   );
 };
