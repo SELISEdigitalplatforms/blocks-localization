@@ -17,7 +17,7 @@ interface SelectionRange {
 
 const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value: string) => value.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 /**
  * The first whole-word occurrence of `word` in `text`, in any letter case, or undefined.
@@ -32,7 +32,7 @@ export const findWholeWord = (
   if (!trimmed) return undefined;
   const pattern = isNoSpaceCulture(culture)
     ? escapeRegExp(trimmed)
-    : `(?<![\\p{L}\\p{M}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{M}\\p{N}])`;
+    : String.raw`(?<![\p{L}\p{M}\p{N}])${escapeRegExp(trimmed)}(?![\p{L}\p{M}\p{N}])`;
   const found = new RegExp(pattern, "iu").exec(text);
   return found ? { start: found.index, end: found.index + found[0].length } : undefined;
 };
