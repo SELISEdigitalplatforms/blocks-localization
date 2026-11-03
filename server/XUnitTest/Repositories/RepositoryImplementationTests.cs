@@ -3,6 +3,7 @@ using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -689,7 +690,7 @@ namespace XUnitTest
             collection.Setup(x => x.InsertOneAsync(It.IsAny<KeyTimelineModel>(), It.IsAny<InsertOneOptions>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object);
+            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object, NullLogger<KeyTimelineRepository>.Instance);
             var timeline = new KeyTimelineModel
             {
                 ItemId = null!,
@@ -725,7 +726,7 @@ namespace XUnitTest
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Mock.Of<ReplaceOneResult>());
 
-            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object);
+            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object, NullLogger<KeyTimelineRepository>.Instance);
             var timeline = new KeyTimelineModel
             {
                 ItemId = "timeline-1",
@@ -755,7 +756,7 @@ namespace XUnitTest
         {
             var dbContextProvider = new Mock<IDbContextProvider>();
             var configuration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
-            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object);
+            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object, NullLogger<KeyTimelineRepository>.Instance);
 
             await repository.BulkSaveKeyTimelinesAsync(new List<KeyTimelineModel>(), "tenant-a");
 
@@ -779,7 +780,7 @@ namespace XUnitTest
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object);
+            var repository = new KeyTimelineRepository(dbContextProvider.Object, configuration.Object, NullLogger<KeyTimelineRepository>.Instance);
             var timelines = new List<KeyTimelineModel>
             {
                 new KeyTimelineModel { ItemId = null!, EntityId = "e-1", UserId = "u-1" },

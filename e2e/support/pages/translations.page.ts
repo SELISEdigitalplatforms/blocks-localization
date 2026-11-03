@@ -1076,9 +1076,10 @@ export class TranslationsPage {
   }
 
   glossaryTerm(scope: Locator | Page, surface: string) {
-    return scope.getByRole("button", {
-      name: new RegExp(`^Glossary term ${escapeRegex(surface)}:`),
-    });
+    // The term button's accessible name is its aria-label (highlighted-source-text.tsx), so a
+    // prefix match on it keeps the "^Glossary term <surface>:" check without building a RegExp.
+    const prefix = JSON.stringify(`Glossary term ${surface}:`);
+    return scope.getByRole("button").and(scope.locator(`[aria-label^=${prefix}]`));
   }
 
   /** The open term popover. */
