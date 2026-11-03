@@ -252,7 +252,9 @@ describe("edit-translation — glossary-aware suggestions", () => {
     const renderFresh = (props: Partial<React.ComponentProps<typeof EditTranslation>>) =>
       renderModal({ keyDetails: freshKey(), ...props });
     const highlight = (name: string) =>
-      screen.findByRole("button", { name: new RegExp(`^Glossary term ${name}`) });
+      screen.findByRole("button", {
+        name: (accessibleName) => accessibleName.startsWith(`Glossary term ${name}`),
+      });
 
     it("labels and highlights the isDefault source even when it is listed second (C20, H1)", async () => {
       renderFresh({ loadGlossaries: async () => [G1] });
