@@ -25,7 +25,7 @@ import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile, ILanguageImportRequest } from "@blocks-localization/models/language";
 import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 import { renderRichText } from "../../utils/rich-text-slots";
@@ -728,6 +728,10 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
   }
 };
 
+const primaryBold = (children: ReactNode) => (
+  <span className="font-semibold text-primary">{children}</span>
+);
+
 const FileSvgDraw = () => {
   const { t } = useT(MODULE);
   return (
@@ -737,7 +741,7 @@ const FileSvgDraw = () => {
       </div>
       <div className="mb-1 text-sm text-high-emphasis">
         {renderRichText(t("IMPORT_FILE_MODAL.CLICK_TO_UPLOAD"), {
-          b: (children) => <span className="font-semibold text-primary">{children}</span>,
+          b: primaryBold,
         })}
       </div>
       <div className="text-xs text-low-emphasis">{t("IMPORT_FILE_MODAL.FILE_LIMITS")}</div>

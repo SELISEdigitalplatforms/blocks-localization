@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, type ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -94,63 +94,69 @@ const KeyDetails = () => {
     isLoading: boolean;
   };
 
-  const getDescription = useCallback((logFrom: string, userName: string): string => {
-    switch (logFrom) {
-      case "TranslateAll":
-        return t("KEY_DETAILS.LOG_TRANSLATE_ALL");
-      case "TranslateKey":
-        return t("KEY_DETAILS.LOG_TRANSLATE_KEY", { userName });
-      case "KeyController.Save":
-        return t("KEY_DETAILS.LOG_SAVE", { userName });
-      case "UilmImport.Update":
-        return t("KEY_DETAILS.LOG_IMPORT_UPDATE", { userName });
-      case "UilmImport.Insert":
-        return t("KEY_DETAILS.LOG_IMPORT_INSERT", { userName });
-      case "KeyController.Delete":
-        return t("KEY_DETAILS.LOG_DELETE", { userName });
-      case "KeyController.Create":
-        return t("KEY_DETAILS.LOG_CREATE", { userName });
-      case "KeyController.BulkMove":
-        return t("KEY_DETAILS.LOG_BULK_MOVE", { userName });
-      case "Rollback":
-        return t("KEY_DETAILS.LOG_ROLLBACK", { userName });
-      case "Published":
-        return t("KEY_DETAILS.LOG_PUBLISHED", { userName });
-      case "PublishFailed":
-        return t("KEY_DETAILS.LOG_PUBLISH_FAILED");
-      case "EnvironmentDataMigration":
-        return t("KEY_DETAILS.LOG_MIGRATION", { userName });
-      default:
-        return t("KEY_DETAILS.LOG_DEFAULT");
-    }
-  }, [t]);
+  const getDescription = useCallback(
+    (logFrom: string, userName: string): string => {
+      switch (logFrom) {
+        case "TranslateAll":
+          return t("KEY_DETAILS.LOG_TRANSLATE_ALL");
+        case "TranslateKey":
+          return t("KEY_DETAILS.LOG_TRANSLATE_KEY", { userName });
+        case "KeyController.Save":
+          return t("KEY_DETAILS.LOG_SAVE", { userName });
+        case "UilmImport.Update":
+          return t("KEY_DETAILS.LOG_IMPORT_UPDATE", { userName });
+        case "UilmImport.Insert":
+          return t("KEY_DETAILS.LOG_IMPORT_INSERT", { userName });
+        case "KeyController.Delete":
+          return t("KEY_DETAILS.LOG_DELETE", { userName });
+        case "KeyController.Create":
+          return t("KEY_DETAILS.LOG_CREATE", { userName });
+        case "KeyController.BulkMove":
+          return t("KEY_DETAILS.LOG_BULK_MOVE", { userName });
+        case "Rollback":
+          return t("KEY_DETAILS.LOG_ROLLBACK", { userName });
+        case "Published":
+          return t("KEY_DETAILS.LOG_PUBLISHED", { userName });
+        case "PublishFailed":
+          return t("KEY_DETAILS.LOG_PUBLISH_FAILED");
+        case "EnvironmentDataMigration":
+          return t("KEY_DETAILS.LOG_MIGRATION", { userName });
+        default:
+          return t("KEY_DETAILS.LOG_DEFAULT");
+      }
+    },
+    [t],
+  );
 
-  const mapTimelineEvents = useCallback((response: IGetTimelineResponse): TimelineEvents[] => {
-    if (!response || !response.timelines) return [];
+  const mapTimelineEvents = useCallback(
+    (response: IGetTimelineResponse): TimelineEvents[] => {
+      if (!response || !response.timelines) return [];
 
-    return response.timelines.map((e) => {
-      const dateObj = new Date(e.createDate);
+      return response.timelines.map((e) => {
+        const dateObj = new Date(e.createDate);
 
-      return {
-        id: e.itemId,
-        date: dateObj.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        time: dateObj.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        description: getDescription(e.logFrom, e.userName),
-        previousData: e.previousData,
-        currentData: e.currentData,
-        logFrom: e.logFrom,
-        userId: e.userId,
-      };
-    });
-  }, [getDescription]);
+        return {
+          id: e.itemId,
+          date: dateObj.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+          time: dateObj.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          description: getDescription(e.logFrom, e.userName),
+          previousData: e.previousData,
+          currentData: e.currentData,
+          logFrom: e.logFrom,
+          userId: e.userId,
+        };
+      });
+    },
+    [getDescription],
+  );
 
   useEffect(() => {
     if (id) {
@@ -237,6 +243,19 @@ const KeyDetails = () => {
     );
   }
 
+  let timelineContent: ReactNode;
+  if (isLoading) {
+    timelineContent = (
+      <div className="py-10 text-sm text-muted-foreground">{t("KEY_DETAILS.LOADING_TIMELINE")}</div>
+    );
+  } else if (events.length === 0) {
+    timelineContent = (
+      <div className="py-10 text-sm text-muted-foreground">{t("KEY_DETAILS.NO_CHANGES")}</div>
+    );
+  } else {
+    timelineContent = <Timeline events={events} />;
+  }
+
   return (
     <div>
       <div className="hidden md:flex">
@@ -272,7 +291,9 @@ const KeyDetails = () => {
                       }}
                     >
                       <Wand className="h-3.5 w-3.5" />
-                      <p className="hover gap-2 border-none pl-0">{t("KEY_DETAILS.AUTO_TRANSLATE")}</p>
+                      <p className="hover gap-2 border-none pl-0">
+                        {t("KEY_DETAILS.AUTO_TRANSLATE")}
+                      </p>
                     </DropdownMenuRadioItem>
                     {/* <DropdownMenuRadioItem
                         value="autoTranslate"
@@ -373,15 +394,7 @@ const KeyDetails = () => {
             <CardContent className="space-y-4">
               {/* Scrollable timeline area */}
               <ScrollArea className="h-[calc(100vh-420px)] pr-2" ref={scrollRef as never}>
-                {isLoading ? (
-                  <div className="py-10 text-sm text-muted-foreground">{t("KEY_DETAILS.LOADING_TIMELINE")}</div>
-                ) : events.length === 0 ? (
-                  <div className="py-10 text-sm text-muted-foreground">
-                    {t("KEY_DETAILS.NO_CHANGES")}
-                  </div>
-                ) : (
-                  <Timeline events={events} />
-                )}
+                {timelineContent}
               </ScrollArea>
 
               {/* Pagination */}

@@ -145,23 +145,23 @@ export const FileUploader = forwardRef<
         onValueChange(newValues);
 
         if (rejectedFiles.length > 0) {
-          for (let i = 0; i < rejectedFiles.length; i++) {
-            if (rejectedFiles[i].errors[0]?.code === "file-too-large") {
+          for (const rejected of rejectedFiles) {
+            if (rejected.errors[0]?.code === "file-too-large") {
               showErrorToast({
                 errors: t("FILE_UPLOADER.FILE_TOO_LARGE", { size: maxSize / 1024 / 1024 }),
               });
               break;
             }
-            if (rejectedFiles[i].errors[0]?.code === "file-invalid-type") {
+            if (rejected.errors[0]?.code === "file-invalid-type") {
               showErrorToast({
                 errors: t("FILE_UPLOADER.INVALID_FILE_TYPE"),
               });
               break;
             }
-            if (rejectedFiles[i].errors[0]?.message) {
-              toast.error(rejectedFiles[i].errors[0].message);
+            if (rejected.errors[0]?.message) {
+              toast.error(rejected.errors[0].message);
               showErrorToast({
-                errors: rejectedFiles[i].errors[0].message,
+                errors: rejected.errors[0].message,
               });
               break;
             }

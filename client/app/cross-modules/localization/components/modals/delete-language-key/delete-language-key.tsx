@@ -25,6 +25,17 @@ export const getReturnSearch = (state: unknown): string => {
   return typeof returnSearch === "string" && returnSearch.startsWith("?") ? returnSearch : "";
 };
 
+/** The first readable message in a failed response's errors (array or field map), else the fallback. */
+const deleteErrorMessage = (rawErrors: unknown, fallback: string): string => {
+  if (!rawErrors || typeof rawErrors !== "object") return fallback;
+  if (Array.isArray(rawErrors)) {
+    return rawErrors.length > 0 ? (rawErrors as string[]).join(", ") : fallback;
+  }
+  if (Object.keys(rawErrors).length === 0) return fallback;
+  const firstError = Object.values(rawErrors)[0];
+  return typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+};
+
 interface DeleteLanguageKeyProps {
   itemId: string;
   onClose: () => void;
@@ -59,27 +70,18 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
         navigate(scoped("services/language") + getReturnSearch(location.state), { replace: true });
         onClose();
       } else {
-        const rawErrors = res?.errors;
-        let errorMessage = t("DELETE_LANGUAGE_KEY.DELETE_FAILED");
-        if (rawErrors && typeof rawErrors === "object") {
-          if (Array.isArray(rawErrors) && rawErrors.length > 0) {
-            errorMessage = (rawErrors as string[]).join(", ");
-          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
-            const firstError = Object.values(rawErrors)[0];
-            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
-          }
-        }
         toast({
           variant: "destructive",
           title: t(COMMON_ERROR),
-          description: errorMessage,
+          description: deleteErrorMessage(res?.errors, t("DELETE_LANGUAGE_KEY.DELETE_FAILED")),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: t(COMMON_ERROR),
-        description: error instanceof Error ? error.message : t("DELETE_LANGUAGE_KEY.UNEXPECTED_ERROR"),
+        description:
+          error instanceof Error ? error.message : t("DELETE_LANGUAGE_KEY.UNEXPECTED_ERROR"),
       });
     }
   };
