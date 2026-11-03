@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 
 import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
 import { useGetTranslationSuggestion } from "@blocks-localization/hooks/use-language-manager";
@@ -36,8 +37,8 @@ export const ALL_GLOSSARIES_PAGE_SIZE = 500;
 export const ALL_GLOSSARIES_MAX_PAGES = 20;
 export const ALL_GLOSSARIES_STALE_TIME = 5 * 60_000;
 
-export const GLOSSARY_UNAVAILABLE_MESSAGE =
-  "Glossary unavailable; suggestion made without terminology rules.";
+export const getGlossaryUnavailableMessage = () =>
+  tStatic("localization.glossary", "GLOSSARY_AWARE_SUGGESTION.UNAVAILABLE");
 
 /**
  * Pages `Glossary/Gets` until `totalCount` is reached, a page is short, or 20 pages (C13).

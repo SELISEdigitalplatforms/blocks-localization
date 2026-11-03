@@ -6,7 +6,8 @@ import { createQueryWrapper } from "@/test-utils/query-wrapper";
 import * as configHooks from "./use-storage-configuration";
 import * as fileHooks from "./use-storage-file";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
 }));
 

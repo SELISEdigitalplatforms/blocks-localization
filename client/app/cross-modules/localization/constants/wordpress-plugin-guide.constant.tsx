@@ -1,6 +1,14 @@
+import type { ReactNode } from "react";
 import { ExternalLink, Key, Shield } from "lucide-react";
 import { deriveOsBaseUrl } from "@/lib/blocks-url.util";
 import { getRuntimeEnv } from "@/lib/runtime-env";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+import { renderRichText } from "../utils/rich-text-slots";
+
+const MODULE = "localization.tools";
+
+const text = (key: string) => tStatic(MODULE, key);
+const bold = { b: (children: ReactNode) => <strong>{children}</strong> };
 
 export const BLOCKS_OS_SETUP_URL = (
   getRuntimeEnv("BLOCKS_OS_BASE_URL") || deriveOsBaseUrl()
@@ -28,62 +36,61 @@ export const getWordPressPluginGuideSteps = ({
 }: WordPressPluginGuideActions) =>
   [
     {
-      title: "Create wp-user role with permissions",
+      title: text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_1_TITLE"),
       description: (
         <>
-          In Blocks OS, create a new role called <strong>wp-user</strong> and assign the necessary
-          permissions for the Blocks Localization WordPress plugin to function correctly.{" "}
-          <button
-            type="button"
-            disabled={isRedirectingToOs}
-            onClick={onOpenRoles}
-            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-          >
-            Go to Roles management
-            <ExternalLink className="h-3 w-3" />
-          </button>
+          {renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_1_DESCRIPTION"), {
+            ...bold,
+            roles: (children) => (
+              <button
+                type="button"
+                disabled={isRedirectingToOs}
+                onClick={onOpenRoles}
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                {children}
+              </button>
+            ),
+            icon: () => <ExternalLink className="h-3 w-3" />,
+          })}
         </>
       ),
       icon: Shield,
     },
     {
-      title: "Create client credentials",
+      title: text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_2_TITLE"),
       description: (
         <>
-          Create client credentials in Blocks OS and assign the <strong>wp-user</strong> role to it.
-          This Client ID and Client Secret will be used to authenticate your WordPress instance.{" "}
-          <button
-            type="button"
-            disabled={isRedirectingToOs}
-            onClick={onOpenClientCredentials}
-            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-          >
-            Go to Create Credentials
-            <ExternalLink className="h-3 w-3" />
-          </button>
+          {renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_2_DESCRIPTION"), {
+            ...bold,
+            credentials: (children) => (
+              <button
+                type="button"
+                disabled={isRedirectingToOs}
+                onClick={onOpenClientCredentials}
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                {children}
+              </button>
+            ),
+            icon: () => <ExternalLink className="h-3 w-3" />,
+          })}
         </>
       ),
       icon: Key,
     },
     {
-      title: "Collect required credentials",
+      title: text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_TITLE"),
       description: (
         <>
-          To integrate Blocks Localization with WordPress, you need the following credentials:
+          {text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_INTRO")}
           <ul className="mt-2 list-disc pl-5">
+            <li>{renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_BLOCKS_KEY"), bold)}</li>
+            <li>{renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_CLIENT_ID"), bold)}</li>
             <li>
-              <strong>X-Blocks-Key</strong> - Found in your Blocks Localization project settings
+              {renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_CLIENT_SECRET"), bold)}
             </li>
-            <li>
-              <strong>Client Id</strong> - From the client credentials you created in Blocks OS
-            </li>
-            <li>
-              <strong>Client Secret</strong> - From the client credentials you created in Blocks OS
-            </li>
-            <li>
-              <strong>Origin</strong> - The Blocks Localization application origin shown in Setup
-              Status
-            </li>
+            <li>{renderRichText(text("WORDPRESS_PLUGIN_GUIDE_STEPS.STEP_3_ORIGIN"), bold)}</li>
           </ul>
         </>
       ),

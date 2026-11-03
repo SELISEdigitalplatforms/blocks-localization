@@ -5,6 +5,7 @@ import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import type { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { TABLE_ROW_HEIGHT_ESTIMATE } from "../language-table.utils";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 /** Ask for the next chunk once the last visible row is this close to the end of the loaded rows. */
 const LOAD_AHEAD_ROWS = 20;
@@ -53,6 +54,8 @@ export default function VirtualKeyRows({
   loadError,
 }: Readonly<VirtualKeyRowsProps>) {
   "use no memo";
+
+  const { t } = useT("localization.language-table");
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
@@ -104,7 +107,7 @@ export default function VirtualKeyRows({
           <tr>
             <td colSpan={colSpan} className="py-2 text-center">
               <Button variant="outline" size="sm" onClick={onBackToTop}>
-                Back to top
+                {t("VIRTUAL_KEY_ROWS.BACK_TO_TOP")}
               </Button>
             </td>
           </tr>
@@ -135,7 +138,7 @@ export default function VirtualKeyRows({
             <td colSpan={colSpan} className="py-3">
               <div className="flex items-center justify-center gap-2 text-sm text-medium-emphasis">
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Loading more keys…
+                {t("VIRTUAL_KEY_ROWS.LOADING_MORE")}
               </div>
             </td>
           </tr>

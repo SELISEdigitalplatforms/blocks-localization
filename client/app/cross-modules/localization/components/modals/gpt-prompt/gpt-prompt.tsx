@@ -15,6 +15,7 @@ import { IBlocksLanguageKey } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 const GptPrompt: React.FC<{
   defaultValue?: string;
@@ -24,6 +25,7 @@ const GptPrompt: React.FC<{
   const defaultValue =
     propDefaultValue ||
     "The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
+  const { t } = useT("localization.keys");
   const [text, setText] = useState(defaultValue);
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
@@ -60,21 +62,21 @@ const GptPrompt: React.FC<{
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Auto translation prompt updated successfully",
+          title: t("common:SUCCESS"),
+          description: t("GPT_PROMPT.UPDATED"),
         });
         onClose(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
     }
@@ -83,21 +85,21 @@ const GptPrompt: React.FC<{
   return (
     <DialogContent className="md:min-w-[720px]" aria-describedby="dialog-description">
       <DialogHeader className="mb-2">
-        <DialogTitle>Auto translation prompt</DialogTitle>
+        <DialogTitle>{t("GPT_PROMPT.TITLE")}</DialogTitle>
         <DialogDescription></DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between">
-          <Label>ChatGPT prompt</Label>
+          <Label>{t("GPT_PROMPT.LABEL")}</Label>
           <div className="flex items-center">
             <Button variant="secondary" onClick={restoreDefault}>
               <Undo2 className="mr-2 h-5 w-5" />
-              Restore default
+              {t("GPT_PROMPT.RESTORE_DEFAULT")}
             </Button>
             <Button variant="secondary" className="ml-[16px]" onClick={clearValue}>
               <Delete className="mr-2 h-5 w-5" />
-              Clear
+              {t("common:CLEAR")}
             </Button>
           </div>
         </div>
@@ -122,10 +124,10 @@ const GptPrompt: React.FC<{
       </div>
       <DialogFooter className="mt-2">
         <DialogTrigger asChild>
-          <Button variant="secondary">Cancel</Button>
+          <Button variant="secondary">{t("common:CANCEL")}</Button>
         </DialogTrigger>
         <Button disabled={isPending} onClick={handleSave}>
-          Save
+          {t("common:SAVE")}
         </Button>
       </DialogFooter>
     </DialogContent>

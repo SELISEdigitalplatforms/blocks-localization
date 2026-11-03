@@ -8,6 +8,7 @@ using Polly.CircuitBreaker;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Eurolm.DomainService.Services
 {
@@ -94,8 +95,32 @@ namespace Eurolm.DomainService.Services
                 return null;
             }
 
+            if (!PlaceholdersMatch(query.SourceText, output))
+            {
+                // One more try; a translation that lost or renamed a {{placeholder}} would break the text in the apps.
+                output = FormatAiTextForSuggestTranslation(await AiCompletion(aiCompletionRequest), query.SourceText);
+                if (!PlaceholdersMatch(query.SourceText, output))
+                {
+                    _logger.LogWarning("SuggestTranslation: placeholders of '{SourceText}' changed in the translation; dropped", query.SourceText);
+                    return null;
+                }
+            }
+
             return output;
         }
+
+        private static readonly Regex PlaceholderPattern = new(@"\{\{\s*(\w+)\s*\}\}", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
+        /// <summary>The <c>{{name}}</c> placeholders of a text, sorted (a name used twice appears twice).</summary>
+        public static List<string> GetPlaceholders(string? text) =>
+            string.IsNullOrEmpty(text)
+                ? new List<string>()
+                : PlaceholderPattern.Matches(text).Select(m => m.Groups[1].Value).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+        /// <summary>True when the translation keeps exactly the source's placeholders (order may change).</summary>
+        public static bool PlaceholdersMatch(string? sourceText, string? translatedText) =>
+            !string.IsNullOrWhiteSpace(translatedText) &&
+            GetPlaceholders(sourceText).SequenceEqual(GetPlaceholders(translatedText));
 
         public static string GenerateSuggestTranslationContext(SuggestLanguageRequest request, string? glossaryContext = null)
         {
@@ -104,6 +129,11 @@ namespace Eurolm.DomainService.Services
             if (!string.IsNullOrWhiteSpace(glossaryContext))
             {
                 context += $"\n{glossaryContext}\n";
+            }
+            var placeholders = GetPlaceholders(request.SourceText).Distinct().Select(n => $"{{{{{n}}}}}").ToList();
+            if (placeholders.Count > 0)
+            {
+                context += $"Keep these placeholders exactly as written, untranslated: {string.Join(", ", placeholders)}.\n";
             }
             context += $"Translate the following from {request.CurrentLanguage} to {request.DestinationLanguage}: '{request.SourceText}'";
             return context;

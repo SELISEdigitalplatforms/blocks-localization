@@ -114,6 +114,13 @@ import {
   updateResourceSearchValue,
   withRowsSelected,
 } from "./language-table.utils";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
+
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+const COMMON_DELETE = "common:DELETE";
+const COMMON_CANCEL = "common:CANCEL";
+const LANGUAGE_TABLE_TRANSLATE = "LANGUAGE_TABLE.TRANSLATE";
+const COMMON_SUCCESS = "common:SUCCESS";
 
 // The virtualizer is only needed in the All view, so it stays out of the main bundle.
 const VirtualKeyRows = lazy(() => import("./components/virtual-key-rows"));
@@ -195,7 +202,11 @@ const getRowCountTargets = (
 };
 
 const getSelectAllLabel = (isAllView: boolean, loadedCount: number) =>
-  isAllView ? `Select all loaded (${loadedCount})` : undefined;
+  isAllView
+    ? tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE.SELECT_ALL_LOADED", {
+        count: loadedCount,
+      })
+    : undefined;
 
 /** Where the paged table and the All view differ: scrolling, sticky header, row count and footer. */
 const getKeyTableLayout = ({
@@ -228,7 +239,7 @@ const getKeyTableLayout = ({
 const showErrorToast = (description: string) => {
   toast({
     variant: "destructive",
-    title: "Error",
+    title: tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "common:ERROR"),
     description,
   });
 };
@@ -289,13 +300,12 @@ function LanguageTableEmptyState({
   hasActiveFilters: boolean;
   importProgress: LanguageImportProgress | null;
 }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   if (hasActiveFilters && !importProgress) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
-        <p className="font-medium text-high-emphasis">No matching translation keys</p>
-        <p className="text-muted-foreground">
-          No keys match your current filters. Try adjusting your search criteria.
-        </p>
+        <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_MATCHING_KEYS")}</p>
+        <p className="text-muted-foreground">{t("LANGUAGE_TABLE.NO_MATCHING_KEYS_HINT")}</p>
       </div>
     );
   }
@@ -306,18 +316,19 @@ function LanguageTableEmptyState({
 
   return (
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
-      <p className="font-medium text-high-emphasis">No translation keys yet</p>
-      <p className="text-muted-foreground">Create your first translation key to get started.</p>
+      <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_KEYS_YET")}</p>
+      <p className="text-muted-foreground">{t("LANGUAGE_TABLE.NO_KEYS_YET_HINT")}</p>
     </div>
   );
 }
 
 function AllViewLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return (
     <div className="flex items-center justify-center gap-3">
-      <span className="text-sm text-medium-emphasis">Couldn&apos;t load more keys.</span>
+      <span className="text-sm text-medium-emphasis">{t("LANGUAGE_TABLE.LOAD_MORE_FAILED")}</span>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        Retry
+        {t("common:RETRY")}
       </Button>
     </div>
   );
@@ -328,25 +339,24 @@ function ImportProgressState({
 }: Readonly<{
   importProgress: LanguageImportProgress;
 }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const isFailed = importProgress.status === "failed";
   const isDelayed = importProgress.status === "delayed";
   const isFinalizing = importProgress.status === "finalizing";
   const isProcessing = !isFailed && !isDelayed;
 
   const getImportTitle = () => {
-    if (isFailed) return "Import couldn't be completed";
-    if (isDelayed) return "This import is taking longer than expected";
-    if (isFinalizing) return "Finalizing your import";
-    return "Importing translation keys";
+    if (isFailed) return t("LANGUAGE_TABLE.IMPORT_FAILED_TITLE");
+    if (isDelayed) return t("LANGUAGE_TABLE.IMPORT_DELAYED_TITLE");
+    if (isFinalizing) return t("LANGUAGE_TABLE.IMPORT_FINALIZING_TITLE");
+    return t("LANGUAGE_TABLE.IMPORT_PROCESSING_TITLE");
   };
 
   const getImportDescription = () => {
-    if (isFailed) return "The uploaded file could not be processed. Please try importing it again.";
-    if (isDelayed)
-      return "Your keys are still being processed. You can leave this page and return later.";
-    if (isFinalizing)
-      return "The import completed successfully. We're loading the new translation keys now.";
-    return "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they're ready.";
+    if (isFailed) return t("LANGUAGE_TABLE.IMPORT_FAILED_DESCRIPTION");
+    if (isDelayed) return t("LANGUAGE_TABLE.IMPORT_DELAYED_DESCRIPTION");
+    if (isFinalizing) return t("LANGUAGE_TABLE.IMPORT_FINALIZING_DESCRIPTION");
+    return t("LANGUAGE_TABLE.IMPORT_PROCESSING_DESCRIPTION");
   };
 
   const title = getImportTitle();
@@ -381,6 +391,7 @@ function ImportProgressState({
 export function LanguageTable() {
   "use no memo";
 
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const {
     selectedLanguages,
     setSelectedLanguages,
@@ -571,24 +582,24 @@ export function LanguageTable() {
   }, [tenantId, setQueryParams]);
 
   const deleteLanguageKeyModalData = {
-    dialogTitle: "Delete language key?",
-    dialogSubtitle: "Are you sure you want to delete this language key?",
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.DELETE_KEY_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.DELETE_KEY_SUBTITLE"),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const publishChangesModalData = {
-    dialogTitle: "Publish changes?",
-    dialogSubtitle: "Are you sure you want to publish the changes?",
-    confirmButton: "Publish",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.PUBLISH_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.PUBLISH_SUBTITLE"),
+    confirmButton: t("LANGUAGE_TABLE.PUBLISH"),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const translateKeyModalData = {
-    dialogTitle: "Auto-translate this key?",
-    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
-    confirmButton: "Translate",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_SUBTITLE"),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onDeleteClick = (itemId: string) => {
@@ -616,7 +627,10 @@ export function LanguageTable() {
 
     await runKeyAction({
       request: () => translateKeyAsync(payload),
-      success: { title: "Processing Translation", description: "Key translation in progress." },
+      success: {
+        title: t("LANGUAGE_TABLE.PROCESSING_TRANSLATION"),
+        description: t("LANGUAGE_TABLE.TRANSLATION_IN_PROGRESS"),
+      },
       onSuccess: () => {
         setPollingKeyId(selectedLanguageKeyId);
         setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
@@ -629,16 +643,19 @@ export function LanguageTable() {
 
   const onConfirmDelete = async () => {
     if (!tenantId || !selectedLanguageKeyId) {
-      showErrorToast("Missing project or key identifier. Please try again.");
+      showErrorToast(t("LANGUAGE_TABLE.MISSING_IDENTIFIER"));
       return;
     }
     await runKeyAction({
       request: () => deleteAsync({ itemId: selectedLanguageKeyId }),
-      success: { title: "Success", description: "Deleted successfully" },
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.DELETED_SUCCESSFULLY"),
+      },
       onSuccess: () => setIsDeleteDialogOpen(false),
       describeErrors: getDeleteKeyErrorMessage,
       describeException: (error) =>
-        error instanceof Error ? error.message : "An unexpected error occurred.",
+        error instanceof Error ? error.message : t("LANGUAGE_TABLE.UNEXPECTED_ERROR"),
     });
   };
 
@@ -817,17 +834,17 @@ export function LanguageTable() {
   const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
 
   const bulkDeleteModalData = {
-    dialogTitle: "Delete language keys?",
-    dialogSubtitle: `Are you sure you want to delete ${selectedKeys.length} selected language key(s)?`,
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.BULK_DELETE_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.BULK_DELETE_SUBTITLE", { count: selectedKeys.length }),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const bulkTranslateModalData = {
-    dialogTitle: "Auto-translate selected keys?",
-    dialogSubtitle: `Are you sure you want to automatically translate ${selectedKeys.length} selected language key(s)?`,
-    confirmButton: "Translate",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_SUBTITLE", { count: selectedKeys.length }),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onConfirmBulkDelete = async () => {
@@ -835,7 +852,10 @@ export function LanguageTable() {
 
     await runKeyAction({
       request: () => bulkDeleteAsync({ itemIds: selectedKeys }),
-      success: { title: "Success", description: "Keys deleted successfully" },
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.KEYS_DELETED_SUCCESSFULLY"),
+      },
       onSuccess: () => {
         setIsBulkDeleteDialogOpen(false);
         setRowSelection({});
@@ -862,8 +882,8 @@ export function LanguageTable() {
     await runKeyAction({
       request: () => bulkTranslateAsync(payload),
       success: {
-        title: "Processing Translation",
-        description: "Key translation in progress for selected keys.",
+        title: t("LANGUAGE_TABLE.PROCESSING_TRANSLATION"),
+        description: t("LANGUAGE_TABLE.BULK_TRANSLATION_IN_PROGRESS"),
       },
       onSuccess: () => {
         const keysToTranslate = new Set(selectedKeys);
@@ -912,7 +932,10 @@ export function LanguageTable() {
   async function generateUilmFiles() {
     await runKeyAction({
       request: () => mutateAsync({ guid: uuidv4() }),
-      success: { title: "Success", description: "File generation is in progress." },
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.FILE_GENERATION_IN_PROGRESS"),
+      },
       onSuccess: () => setIsPublishChangesDialogOpen(false),
       describeErrors: stringifyError,
       describeException: stringifyError,
@@ -986,7 +1009,9 @@ export function LanguageTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">Configure keys</h3>
+            <h3 className="text-2xl font-bold tracking-tight">
+              {t("LANGUAGE_TABLE.CONFIGURE_KEYS")}
+            </h3>
           </div>
         </div>
         <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
@@ -997,14 +1022,14 @@ export function LanguageTable() {
                 value="keys"
                 className="h-8 whitespace-nowrap"
               >
-                Translation Keys
+                {t("LANGUAGE_TABLE.TAB_TRANSLATION_KEYS")}
               </TabsTrigger>
               <TabsTrigger
                 onClick={() => setTabId("history")}
                 value="history"
                 className="h-8 whitespace-nowrap"
               >
-                History
+                {t("LANGUAGE_TABLE.TAB_HISTORY")}
               </TabsTrigger>
             </TabsList>
             {tabId === "keys" ? (
@@ -1028,7 +1053,7 @@ export function LanguageTable() {
                       }}
                     >
                       <FolderInput className="mr-2 h-4 w-4" />
-                      <span>Import keys</span>
+                      <span>{t("LANGUAGE_TABLE.IMPORT_KEYS")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
@@ -1038,21 +1063,21 @@ export function LanguageTable() {
                       }}
                     >
                       <FolderOutput className="mr-2 h-4 w-4" />
-                      <span>Export keys</span>
+                      <span>{t("LANGUAGE_TABLE.EXPORT_KEYS")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => navigate(scoped("services/language/export-history"))}
                     >
                       <History className="mr-2 h-4 w-4" />
-                      <span>Export History</span>
+                      <span>{t("LANGUAGE_TABLE.EXPORT_HISTORY")}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                   {isImportDialogOpen && (
                     <ImportFileModal
-                      dialogTitle="Import Keys"
+                      dialogTitle={t("LANGUAGE_TABLE.IMPORT_KEYS_TITLE")}
                       data={[]}
                       projectKey={tenantId}
                       onClose={() => setIsImportDialogOpen(false)}
@@ -1075,7 +1100,9 @@ export function LanguageTable() {
                   disabled={areLanguageKeyActionsDisabled}
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
-                  <span className="sr-only lg:not-sr-only">Publish Changes</span>
+                  <span className="sr-only lg:not-sr-only">
+                    {t("LANGUAGE_TABLE.PUBLISH_CHANGES")}
+                  </span>
                 </Button>
                 <Button
                   size="default"
@@ -1084,7 +1111,7 @@ export function LanguageTable() {
                   onClick={() => navigate(scoped("services/language/translations/new-key"))}
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />
-                  <span className="sr-only lg:not-sr-only">New Key</span>
+                  <span className="sr-only lg:not-sr-only">{t("LANGUAGE_TABLE.NEW_KEY")}</span>
                 </Button>
               </div>
             ) : (
@@ -1095,23 +1122,31 @@ export function LanguageTable() {
             <Card className="rounded shadow-none">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
+                  <CardTitle className="text-xl text-high-emphasis">
+                    {t("LANGUAGE_TABLE.TRANSLATIONS")}
+                  </CardTitle>
                   {!isLoading && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger
                           type="button"
                           className="inline-flex cursor-default rounded-full"
-                          aria-label={`${stableTotalCount.toLocaleString()} keys. Total keys`}
+                          aria-label={t("LANGUAGE_TABLE.TOTAL_KEYS_ARIA", {
+                            count: stableTotalCount,
+                            formatted: stableTotalCount.toLocaleString(),
+                          })}
                         >
                           <Badge
                             variant="outline"
                             className="rounded-full border-transparent bg-secondary text-secondary-foreground"
                           >
-                            {stableTotalCount.toLocaleString()} keys
+                            {t("LANGUAGE_TABLE.KEYS_COUNT", {
+                              count: stableTotalCount,
+                              formatted: stableTotalCount.toLocaleString(),
+                            })}
                           </Badge>
                         </TooltipTrigger>
-                        <TooltipContent>Total keys</TooltipContent>
+                        <TooltipContent>{t("LANGUAGE_TABLE.TOTAL_KEYS")}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
@@ -1125,13 +1160,15 @@ export function LanguageTable() {
                     disabled={areLanguageKeyActionsDisabled}
                   >
                     <Wand className="h-5 w-5 lg:mr-2" />
-                    <span className="sr-only lg:not-sr-only">Auto-translate all</span>
+                    <span className="sr-only lg:not-sr-only">
+                      {t("LANGUAGE_TABLE.AUTO_TRANSLATE_ALL")}
+                    </span>
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline">
                         <Settings2 className="h-4 w-4 lg:mr-2" />
-                        <span className="sr-only lg:not-sr-only">View</span>
+                        <span className="sr-only lg:not-sr-only">{t("common:VIEW")}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -1142,7 +1179,7 @@ export function LanguageTable() {
                             checked={selectedLanguages.length === languageListData?.length}
                             onCheckedChange={selectAll}
                           />
-                          <label htmlFor="terms">Languages</label>
+                          <label htmlFor="terms">{t("LANGUAGE_TABLE.LANGUAGES")}</label>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -1161,19 +1198,19 @@ export function LanguageTable() {
                         checked={selectedOptionalColumns.includes("completeness")}
                         onCheckedChange={() => toggleOptionalColumn("completeness")}
                       >
-                        Completeness
+                        {t("LANGUAGE_TABLE.COMPLETENESS")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={selectedOptionalColumns.includes("createDate")}
                         onCheckedChange={() => toggleOptionalColumn("createDate")}
                       >
-                        Created Date
+                        {t("LANGUAGE_TABLE.CREATED_DATE")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={selectedOptionalColumns.includes("lastUpdateDate")}
                         onCheckedChange={() => toggleOptionalColumn("lastUpdateDate")}
                       >
-                        Last Updated Date
+                        {t("LANGUAGE_TABLE.LAST_UPDATED_DATE")}
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1187,8 +1224,8 @@ export function LanguageTable() {
                       size="icon"
                       variant="ghost"
                       className="h-9 w-9 shrink-0"
-                      aria-label="Clear selection"
-                      title="Clear selection"
+                      aria-label={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
+                      title={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
                       onClick={() => setRowSelection({})}
                     >
                       <X className="h-4 w-4" />
@@ -1207,7 +1244,9 @@ export function LanguageTable() {
                       onClick={() => setIsBulkEditDialogOpen(true)}
                     >
                       <PencilLine className="h-4 w-4 lg:mr-1" />
-                      <span className="sr-only lg:not-sr-only">Bulk edit</span>
+                      <span className="sr-only lg:not-sr-only">
+                        {t("LANGUAGE_TABLE.BULK_EDIT")}
+                      </span>
                     </Button>
                     <Button
                       size="sm"
@@ -1216,7 +1255,9 @@ export function LanguageTable() {
                       className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                     >
                       <Languages className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">Translate</span>
+                      <span className="sr-only lg:not-sr-only">
+                        {t(LANGUAGE_TABLE_TRANSLATE)}
+                      </span>
                     </Button>
                     <Button
                       size="sm"
@@ -1225,7 +1266,7 @@ export function LanguageTable() {
                       className="border-error text-error hover:bg-error hover:text-primary-foreground"
                     >
                       <Trash className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">Delete</span>
+                      <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
                     </Button>
                   </div>
                 </div>
@@ -1252,7 +1293,7 @@ export function LanguageTable() {
                     className="mb-2 text-sm text-medium-emphasis"
                     data-testid="duplicates-truncated-note"
                   >
-                    Showing the first 10,000 duplicate rows.
+                    {t("LANGUAGE_TABLE.DUPLICATES_TRUNCATED")}
                   </p>
                 )}
                 <div
@@ -1305,7 +1346,7 @@ export function LanguageTable() {
                                   <FilterControls.SearchInput
                                     value={keySearch}
                                     onChange={updateKeySearch}
-                                    placeholder="Search..."
+                                    placeholder={t("LANGUAGE_TABLE.SEARCH_PLACEHOLDER")}
                                     className="h-7 w-full text-xs"
                                     disabled={areTableFiltersDisabled}
                                   />
@@ -1325,7 +1366,7 @@ export function LanguageTable() {
                                   <FilterControls.SearchInput
                                     value={resourceSearchMap[lang] ?? ""}
                                     onChange={(value) => updateResourceSearch(lang, value)}
-                                    placeholder="Search..."
+                                    placeholder={t("LANGUAGE_TABLE.SEARCH_PLACEHOLDER")}
                                     className="h-7 w-full text-xs"
                                     disabled={areTableFiltersDisabled}
                                   />

@@ -23,7 +23,8 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetTranslationSuggestion: vi.fn(),
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));

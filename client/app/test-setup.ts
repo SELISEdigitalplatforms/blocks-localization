@@ -1,4 +1,6 @@
 import { afterEach, vi } from "vitest";
+import "./test-match-media";
+import "./i18n";
 import { cleanup } from "@testing-library/react";
 
 // @seliseblocks/genesis-os is externalized by Vitest, so its bundled runtime-env fallback
@@ -51,17 +53,4 @@ if (!Element.prototype.setPointerCapture) {
 }
 if (!Element.prototype.releasePointerCapture) {
   Element.prototype.releasePointerCapture = () => {};
-}
-
-if (typeof globalThis.matchMedia === "undefined") {
-  globalThis.matchMedia = ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  })) as unknown as typeof matchMedia;
 }

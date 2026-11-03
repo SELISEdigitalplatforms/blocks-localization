@@ -11,6 +11,9 @@ import {
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
+import { useT } from "@seliseblocks/genesis-os/i18n";
+
+const COMMON_ERROR = "common:ERROR";
 
 const getTranslationValues = (
   keyDetails: IBlocksLanguageKey,
@@ -42,6 +45,7 @@ export const useInlineKeyEditor = (
     () => [...languageListData].sort((a, b) => Number(b.isDefault) - Number(a.isDefault)),
     [languageListData],
   );
+  const { t } = useT("localization.language-table");
   const [draftTranslations, setDraftTranslations] = useState<Record<string, string>>(() =>
     getTranslationValues(keyDetails, languageListData),
   );
@@ -123,21 +127,21 @@ export const useInlineKeyEditor = (
         setSavedTranslations({ ...draftTranslations });
         toast({
           variant: "success",
-          title: "Success",
-          description: "Language key updated successfully",
+          title: t("common:SUCCESS"),
+          description: t("USE_INLINE_KEY_EDITOR.KEY_UPDATED"),
         });
         return;
       }
 
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: JSON.stringify(response?.errorMessage),
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -174,14 +178,14 @@ export const useInlineKeyEditor = (
       setDraftTranslation(destinationLanguageCode, outcome.content);
       toast({
         variant: "success",
-        title: "Success",
-        description: "Translated successfully",
+        title: t("common:SUCCESS"),
+        description: t("USE_INLINE_KEY_EDITOR.TRANSLATED"),
       });
       return;
     }
     toast({
       variant: "destructive",
-      title: "Error",
+      title: t(COMMON_ERROR),
       description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   };

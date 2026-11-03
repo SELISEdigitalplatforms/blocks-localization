@@ -12,6 +12,7 @@ import {
 import { Button } from "../ui-kits/button/button";
 import { Filter } from "lucide-react";
 import { deepEqual } from "@/lib/utils";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 type FilterItem<T extends Record<string, unknown>> = {
   [K in keyof typeof FilterControls]: {
@@ -63,6 +64,7 @@ const FilterToolbarDesktopView = ({ Components, showReset, onReset, disabled }: 
 };
 
 export const FilterToolBarMobileView = ({ Components, showReset, onReset, disabled }: ViewType) => {
+  const { t } = useT("localization.shared");
   return (
     <div className={"flex items-center justify-between gap-2 md:hidden"}>
       <div className="min-w-0 max-w-72 flex-1">{Components[0]}</div>
@@ -84,13 +86,13 @@ export const FilterToolBarMobileView = ({ Components, showReset, onReset, disabl
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full" aria-describedby="filter-description">
-            <SheetTitle className="mb-4">Filter</SheetTitle>
+            <SheetTitle className="mb-4">{t("common:FILTER")}</SheetTitle>
             <SheetDescription></SheetDescription>
             <div className="flex flex-col space-y-4">
               {Components.slice(1).map((item) => item)}
               <SheetClose asChild>
                 <Button className="mt-4" size="sm">
-                  Show Results
+                  {t("FILTER_TOOLBAR.SHOW_RESULTS")}
                 </Button>
               </SheetClose>
 

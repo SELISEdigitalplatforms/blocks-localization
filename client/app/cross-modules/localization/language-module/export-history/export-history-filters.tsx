@@ -1,12 +1,16 @@
 import React from "react";
 import { FilterToolbar, type FilterChangeHandler } from "@/components/filter-toolbar";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+
+const MODULE = "localization.tools";
 
 type ExportHistoryFiltersProps = {
   onChange: (filters: { search: string; startDate: string; endDate: string }) => void;
 };
 
 export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onChange }) => {
+  const { t } = useT(MODULE);
   // Query param state handled right inside this component
   const [queryParams, setQueryParams] = useQueryStates({
     pageNumber: parseAsInteger.withDefault(0),
@@ -76,8 +80,13 @@ export const ExportHistoryFilters: React.FC<ExportHistoryFiltersProps> = ({ onCh
     <div className="mb-4">
       <FilterToolbar
         filters={[
-          { key: "search", type: "SearchInput", label: "Search" },
-          { key: "created", type: "DateRange", label: "Date", props: { disableFutureDates: true } },
+          { key: "search", type: "SearchInput", label: t("EXPORT_HISTORY_FILTERS.SEARCH") },
+          {
+            key: "created",
+            type: "DateRange",
+            label: t("EXPORT_HISTORY_FILTERS.DATE"),
+            props: { disableFutureDates: true },
+          },
         ]}
         values={{
           search: queryParams.search,

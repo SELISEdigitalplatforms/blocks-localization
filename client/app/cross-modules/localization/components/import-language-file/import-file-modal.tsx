@@ -25,8 +25,10 @@ import { isErrorWithErrors } from "@/lib/error";
 import { useImportLanguageFile } from "@blocks-localization/hooks/use-language-manager";
 import { IImportFile, ILanguageImportRequest } from "@blocks-localization/models/language";
 import { ArrowDownToLine, CloudUpload, Paperclip, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
+import { renderRichText } from "../../utils/rich-text-slots";
 import {
   useCompleteUpload,
   useGetPreSignedUrlForUpload,
@@ -40,6 +42,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui-kits/tooltip/tooltip";
+
+const MODULE = "localization.tools";
+
+const invalidFormat = () => tStatic(MODULE, "IMPORT_FILE_MODAL.INVALID_FORMAT");
 
 // Allowed file extensions for import
 const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".json"];
@@ -77,7 +83,7 @@ const getUploadToastErrors = (error: unknown): unknown => {
     return error;
   }
 
-  return "An unexpected error occurred during upload. Please try again.";
+  return tStatic(MODULE, "IMPORT_FILE_MODAL.UPLOAD_UNEXPECTED_ERROR");
 };
 
 /**
@@ -412,7 +418,7 @@ const validateJsonFileContent = (content: string): ValidationResult => {
 
   // Early validation: check for empty content
   if (!content || content.trim() === "") {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 
@@ -421,12 +427,12 @@ const validateJsonFileContent = (content: string): ValidationResult => {
 
     // Check if data is an array of objects
     if (!Array.isArray(data)) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
     if (data.length === 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -464,13 +470,13 @@ const validateJsonFileContent = (content: string): ValidationResult => {
     });
 
     if (errorCount > 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
     return { isValid: true, errors: [] };
   } catch {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 };
@@ -484,7 +490,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
 
   // Early validation: check for empty content
   if (!content || content.trim() === "") {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 
@@ -492,7 +498,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     const { headers, rows } = parseCSVContent(content);
 
     if (headers.length === 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -504,7 +510,7 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     const hasResources = normalizedHeaders.includes("resources");
 
     if (!hasKeyName) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -514,12 +520,12 @@ const validateCsvFileContent = (content: string): ValidationResult => {
 
     // resources is optional if language columns exist
     if (!hasResources && !hasLanguageColumns) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
     if (rows.length === 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -569,13 +575,13 @@ const validateCsvFileContent = (content: string): ValidationResult => {
     }
 
     if (errorCount > 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
     return { isValid: true, errors: [] };
   } catch {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 };
@@ -591,7 +597,7 @@ const validateXlsxFileContent = async (arrayBuffer: ArrayBuffer): Promise<Valida
     const { headers, rows } = await parseXlsxFirstSheet(arrayBuffer);
 
     if (headers.length === 0 || rows.length === 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -602,7 +608,7 @@ const validateXlsxFileContent = async (arrayBuffer: ArrayBuffer): Promise<Valida
     const hasResources = normalizedHeaders.includes("resources");
 
     if (!hasKeyName) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -612,7 +618,7 @@ const validateXlsxFileContent = async (arrayBuffer: ArrayBuffer): Promise<Valida
 
     // resources is optional if language columns exist
     if (!hasResources && !hasLanguageColumns) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
@@ -669,13 +675,13 @@ const validateXlsxFileContent = async (arrayBuffer: ArrayBuffer): Promise<Valida
     }
 
     if (errorCount > 0) {
-      errors.push("Invalid file format.");
+      errors.push(invalidFormat());
       return { isValid: false, errors };
     }
 
     return { isValid: true, errors: [] };
   } catch {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 };
@@ -690,7 +696,7 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
 
   // Guard check: ensure file exists and has a valid name
   if (!file || typeof file.name !== "string" || !file.name.includes(".")) {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 
@@ -698,7 +704,7 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
 
   // Check file extension
   if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 
@@ -717,22 +723,28 @@ const validateFileContent = async (file: File): Promise<ValidationResult> => {
 
     return { isValid: true, errors: [] };
   } catch {
-    errors.push("Invalid file format.");
+    errors.push(invalidFormat());
     return { isValid: false, errors };
   }
 };
 
+const primaryBold = (children: ReactNode) => (
+  <span className="font-semibold text-primary">{children}</span>
+);
+
 const FileSvgDraw = () => {
+  const { t } = useT(MODULE);
   return (
     <>
       <div className="mb-3 h-8 w-8 text-border-medium-emphasis">
         <CloudUpload />
       </div>
       <div className="mb-1 text-sm text-high-emphasis">
-        <span className="font-semibold text-primary">Click to upload</span>
-        &nbsp; or drag and drop
+        {renderRichText(t("IMPORT_FILE_MODAL.CLICK_TO_UPLOAD"), {
+          b: primaryBold,
+        })}
       </div>
-      <div className="text-xs text-low-emphasis">XLSX, CSV, JSON Maximum file 50MB</div>
+      <div className="text-xs text-low-emphasis">{t("IMPORT_FILE_MODAL.FILE_LIMITS")}</div>
     </>
   );
 };
@@ -761,6 +773,7 @@ export default function ImportCommunicationsModal({
   onImportStarted,
   onImportRequestFailed,
 }: Readonly<IImportFilesModalProps>) {
+  const { t } = useT(MODULE);
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<TemplateFormat>("json");
 
@@ -789,7 +802,7 @@ export default function ImportCommunicationsModal({
         // File format is invalid, show generic error
         toast({
           variant: "destructive",
-          title: "Invalid File",
+          title: t("IMPORT_FILE_MODAL.INVALID_FILE_TITLE"),
           description: validation.errors[0],
         });
         return;
@@ -827,7 +840,7 @@ export default function ImportCommunicationsModal({
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Failed to download template:", err);
-      showErrorToast({ errors: "Failed to download template" });
+      showErrorToast({ errors: t("IMPORT_FILE_MODAL.TEMPLATE_DOWNLOAD_FAILED") });
     }
   };
 
@@ -912,7 +925,7 @@ export default function ImportCommunicationsModal({
 
   const handleUpload = async () => {
     if (!files || files.length === 0) {
-      showErrorToast({ errors: "Please select files to upload" });
+      showErrorToast({ errors: t("IMPORT_FILE_MODAL.SELECT_FILES") });
       return;
     }
 
@@ -927,7 +940,7 @@ export default function ImportCommunicationsModal({
       if (!validation.isValid) {
         toast({
           variant: "destructive",
-          title: "Invalid File",
+          title: t("IMPORT_FILE_MODAL.INVALID_FILE_TITLE"),
           description: validation.errors[0],
         });
         setIsUploadingBatch(false);
@@ -944,7 +957,7 @@ export default function ImportCommunicationsModal({
       setFiles(null);
 
       showSuccessToast({
-        description: "Upload complete. Your translation keys are being processed.",
+        description: t("IMPORT_FILE_MODAL.UPLOAD_COMPLETE"),
       });
       onClose?.();
     } catch (error) {
@@ -960,16 +973,18 @@ export default function ImportCommunicationsModal({
         <DialogHeader>
           <DialogTitle className="text-left">{dialogTitle}</DialogTitle>
           <DialogDescription className="text-left">
-            Import language keys from a file.
+            {t("IMPORT_FILE_MODAL.DESCRIPTION")}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col bg-warning-100 px-[12px] py-[8px]">
           <div className="flex flex-row items-center">
             <TriangleAlert className="h-4 w-4 text-icon-warning" />
-            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">JSON Format</p>
+            <p className="ml-[8px] text-[14px] font-semibold text-high-emphasis">
+              {t("IMPORT_FILE_MODAL.JSON_FORMAT_TITLE")}
+            </p>
           </div>
           <p className="mt-[8px] text-[14px] text-high-emphasis">
-            Please download the JSON Template and re-upload with your data to avoid any error.
+            {t("IMPORT_FILE_MODAL.JSON_FORMAT_HINT")}
           </p>
         </div>
         <FileUploader
@@ -1002,7 +1017,7 @@ export default function ImportCommunicationsModal({
               onValueChange={(value) => setSelectedFormat(value as TemplateFormat)}
             >
               <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Format" />
+                <SelectValue placeholder={t("IMPORT_FILE_MODAL.FORMAT_PLACEHOLDER")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="xlsx">XLSX</SelectItem>
@@ -1021,7 +1036,7 @@ export default function ImportCommunicationsModal({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="border-none bg-neutral-500 text-white shadow-none">
-                    Download Template
+                    {t("IMPORT_FILE_MODAL.DOWNLOAD_TEMPLATE")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1030,7 +1045,7 @@ export default function ImportCommunicationsModal({
           <div className="flex gap-2">
             <DialogClose asChild>
               <Button variant="outline" size="default">
-                Cancel
+                {t("common:CANCEL")}
               </Button>
             </DialogClose>
             <Button
@@ -1039,7 +1054,7 @@ export default function ImportCommunicationsModal({
               onClick={handleUpload}
               disabled={!files || files.length === 0 || isBusy}
             >
-              {isBusy ? "Uploading..." : "Upload"}
+              {isBusy ? t("IMPORT_FILE_MODAL.UPLOADING") : t("common:UPLOAD")}
             </Button>
           </div>
         </DialogFooter>

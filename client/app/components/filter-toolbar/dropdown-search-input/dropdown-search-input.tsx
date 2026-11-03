@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui-kits/select/select";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 type ValueType = { selected: string; value: string };
 
@@ -27,11 +28,12 @@ interface DropdownSearchInputProps {
 
 export const DropdownSearchInput: React.FC<DropdownSearchInputProps> = ({
   onChange,
-  placeholder = "Search...",
+  placeholder,
   value,
   className = {},
   options = [],
 }) => {
+  const { t } = useT("localization.shared");
   const [state, setState] = useState<ValueType>(value);
   const [prevValue, setPrevValue] = useState<ValueType>(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +94,7 @@ export const DropdownSearchInput: React.FC<DropdownSearchInputProps> = ({
 
       <Input
         ref={inputRef}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("DROPDOWN_SEARCH_INPUT.PLACEHOLDER")}
         value={state.value}
         onChange={handleChange}
         className={cn(

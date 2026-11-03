@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui-kits/select/select";
 import { Button } from "@/components/ui-kits/button/button";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 interface PaginationProps {
   onChange: (pageIndex: number) => void;
@@ -35,6 +36,7 @@ export function Pagination({
   mode = "paged",
   loadedCount = 0,
 }: Readonly<PaginationProps>) {
+  const { t } = useT("localization.shared");
   const pageChangeHandler = (page: number) => {
     onChange(page);
   };
@@ -50,15 +52,14 @@ export function Pagination({
   const selectedPageSize =
     pageSizeOptions?.includes(pageSize) || !pageSizeOptions?.length
       ? pageSize
-      : (pageSizeOptions.find((option) => option >= Math.min(pageSize, totalCount)) ??
-        pageSize);
+      : (pageSizeOptions.find((option) => option >= Math.min(pageSize, totalCount)) ?? pageSize);
   const smallestPageSizeOption = pageSizeOptions?.length ? Math.min(...pageSizeOptions) : 0;
 
   return (
     <div className="flex flex-col gap-0 md:flex-row md:gap-8">
       {pageSizeOptions && pageSizeOptions?.length > 0 ? (
         <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
+          <p className="text-sm font-medium">{t("PAGINATION.ROWS_PER_PAGE")}</p>
           <Select value={`${selectedPageSize}`} onValueChange={onPageSizeChangeHandler}>
             <SelectTrigger className="h-8 w-auto min-w-[70px] gap-2 whitespace-nowrap">
               <SelectValue placeholder={selectedPageSize} />
@@ -67,7 +68,7 @@ export function Pagination({
               {pageSizeOptions?.map((pageSize) => (
                 <SelectItem key={pageSize} value={`${pageSize}`}>
                   {pageSize === totalCount && pageSize > smallestPageSizeOption
-                    ? `All (${totalCount})`
+                    ? t("PAGINATION.ALL_COUNT", { count: totalCount })
                     : pageSize}
                 </SelectItem>
               ))}
@@ -81,13 +82,16 @@ export function Pagination({
       {mode === "all" ? (
         <div className="mt-2 flex items-center md:mt-0">
           <p className="text-sm font-medium" aria-live="polite">
-            Showing {loadedCount.toLocaleString()} of {totalCount.toLocaleString()} keys
+            {t("PAGINATION.SHOWING_KEYS", {
+              loaded: loadedCount.toLocaleString(),
+              total: totalCount.toLocaleString(),
+            })}
           </p>
         </div>
       ) : (
         <div className="mt-2 flex items-center gap-4 md:mt-0">
           <div className="flex items-center justify-center text-sm font-medium">
-            Page {page + 1} of {totalPage}
+            {t("PAGINATION.PAGE_OF", { page: page + 1, total: totalPage })}
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -97,7 +101,7 @@ export function Pagination({
                 pageChangeHandler(0);
               }}
               disabled={!canGoPreviousPage}
-              aria-label="Go to first page"
+              aria-label={t("PAGINATION.GO_FIRST")}
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
@@ -108,7 +112,7 @@ export function Pagination({
                 pageChangeHandler(page - 1);
               }}
               disabled={!canGoPreviousPage}
-              aria-label="Go to previous page"
+              aria-label={t("PAGINATION.GO_PREVIOUS")}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -119,7 +123,7 @@ export function Pagination({
                 pageChangeHandler(page + 1);
               }}
               disabled={!canGoNextPage}
-              aria-label="Go to next page"
+              aria-label={t("PAGINATION.GO_NEXT")}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -130,7 +134,7 @@ export function Pagination({
                 pageChangeHandler(totalPage - 1);
               }}
               disabled={!canGoNextPage}
-              aria-label="Go to last page"
+              aria-label={t("PAGINATION.GO_LAST")}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

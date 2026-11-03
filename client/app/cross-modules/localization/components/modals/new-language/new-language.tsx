@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { useForm } from "react-hook-form";
 import { ArrowLeft, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { z } from "zod";
@@ -35,6 +36,8 @@ import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { ILanguageConfig } from "@blocks-localization/models/language";
 
+const COMMON_ERROR = "common:ERROR";
+
 // Same rule as the server's LanguageValidator, so a bad code fails here, not after the request.
 const CUSTOM_LANGUAGE_CODE_PATTERN = /^([a-z]{2,3}-[A-Z]{2,10}|[a-z]{2,3}-x-[A-Za-z]{1,8})$/;
 
@@ -52,10 +55,14 @@ interface NewLanguageProps {
 }
 
 const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = [] }) => {
+  const { t } = useT("localization.modules");
   const schema = z
     .object({
       isCustom: z.boolean(),
-      languageCode: z.string().trim().min(1, { message: "Language is required" }),
+      languageCode: z
+        .string()
+        .trim()
+        .min(1, { message: t("NEW_LANGUAGE.LANGUAGE_REQUIRED") }),
       languageName: z.string().trim(),
     })
     .superRefine((value, ctx) => {
@@ -64,14 +71,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
         ctx.addIssue({
           code: "custom",
           path: ["languageName"],
-          message: "Language name must be between 2 and 100 characters",
+          message: t("NEW_LANGUAGE.NAME_LENGTH"),
         });
       }
       if (!CUSTOM_LANGUAGE_CODE_PATTERN.test(value.languageCode)) {
         ctx.addIssue({
           code: "custom",
           path: ["languageCode"],
-          message: "Use a code like en-US, zho-CN or en-x-cave",
+          message: t("NEW_LANGUAGE.CODE_FORMAT"),
         });
       }
     });
@@ -131,16 +138,16 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       if (isDuplicate) {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Language is already added. You can't add this language.",
+          title: t(COMMON_ERROR),
+          description: t("NEW_LANGUAGE.ALREADY_ADDED"),
         });
         return;
       }
       if (!languageName) {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Language not found in configuration.",
+          title: t(COMMON_ERROR),
+          description: t("NEW_LANGUAGE.NOT_FOUND"),
         });
         return;
       }
@@ -148,22 +155,22 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Language added successfully.",
+          title: t("common:SUCCESS"),
+          description: t("NEW_LANGUAGE.ADDED"),
         });
         form.reset();
         onClose(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: formatErrorMessage(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: formatErrorMessage(error),
       });
     }
@@ -175,7 +182,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
   return (
     <DialogContent style={{ touchAction: "auto" }}>
       <DialogHeader className="mb-4">
-        <DialogTitle>New Language</DialogTitle>
+        <DialogTitle>{t("NEW_LANGUAGE.TITLE")}</DialogTitle>
       </DialogHeader>
       <div className="grid gap-2">
         <Form {...form}>
@@ -183,10 +190,12 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
             {isCustom ? (
               <div className="grid gap-4 rounded-md border border-border p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-high-emphasis">Custom language</span>
+                  <span className="text-sm font-medium text-high-emphasis">
+                    {t("NEW_LANGUAGE.CUSTOM_LANGUAGE")}
+                  </span>
                   <Button type="button" variant="ghost" size="sm" onClick={backToList}>
                     <ArrowLeft className="mr-1 h-4 w-4" />
-                    Back to list
+                    {t("NEW_LANGUAGE.BACK_TO_LIST")}
                   </Button>
                 </div>
                 <div className="grid gap-4">
@@ -196,10 +205,14 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-left font-medium text-high-emphasis">
-                          Language name <span className="text-destructive">*</span>
+                          {t("NEW_LANGUAGE.NAME_LABEL")} <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Swiss German" autoFocus {...field} />
+                          <Input
+                            placeholder={t("NEW_LANGUAGE.NAME_PLACEHOLDER")}
+                            autoFocus
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -211,11 +224,11 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-left font-medium text-high-emphasis">
-                          Language code <span className="text-destructive">*</span>
+                          {t("NEW_LANGUAGE.CODE_LABEL")} <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="e.g. gsw-CH"
+                            placeholder={t("NEW_LANGUAGE.CODE_PLACEHOLDER")}
                             {...field}
                             onBlur={() => {
                               field.onChange(normalizeLanguageCode(field.value));
@@ -224,8 +237,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                           />
                         </FormControl>
                         <FormDescription className="text-xs">
-                          Format: language-REGION, like de-CH or gsw-CH. Private variant:
-                          language-x-name, like en-x-cave.
+                          {t("NEW_LANGUAGE.CODE_HELP")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -240,7 +252,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                 render={() => (
                   <FormItem>
                     <FormLabel className="text-left font-medium text-high-emphasis">
-                      Language <span className="text-destructive">*</span>
+                      {t("NEW_LANGUAGE.LANGUAGE_LABEL")} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Button
@@ -249,7 +261,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                         className="w-full justify-between"
                         onClick={openPicker}
                       >
-                        {selectedName ?? "Select language"}
+                        {selectedName ?? t("NEW_LANGUAGE.SELECT_LANGUAGE")}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </FormControl>
@@ -261,7 +273,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                       onClick={() => selectCustomLanguage()}
                     >
                       <Plus className="mr-1 h-4 w-4" />
-                      Not in the list? Add a custom language
+                      {t("NEW_LANGUAGE.ADD_CUSTOM_PROMPT")}
                     </Button>
                   </FormItem>
                 )}
@@ -270,7 +282,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
 
             <CommandDialog open={open} onOpenChange={setOpen}>
               <CommandInput
-                placeholder="Search by name or code..."
+                placeholder={t("NEW_LANGUAGE.SEARCH_PLACEHOLDER")}
                 value={search}
                 onValueChange={setSearch}
               />
@@ -278,7 +290,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                 <CommandEmpty>
                   <div className="flex flex-col items-center gap-3 px-4">
                     <span className="text-medium-emphasis">
-                      No language matches &quot;{searchText}&quot;.
+                      {t("NEW_LANGUAGE.NO_MATCH", { search: searchText })}
                     </span>
                     <Button
                       type="button"
@@ -287,7 +299,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                       onClick={() => selectCustomLanguage(searchText)}
                     >
                       <Plus className="mr-1 h-4 w-4" />
-                      Add &quot;{searchText}&quot; as a custom language
+                      {t("NEW_LANGUAGE.ADD_SEARCH_AS_CUSTOM", { search: searchText })}
                     </Button>
                   </div>
                 </CommandEmpty>
@@ -306,7 +318,9 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                           {language.languageCode}
                         </span>
                         {isAdded && (
-                          <span className="ml-auto text-xs text-medium-emphasis">Added</span>
+                          <span className="ml-auto text-xs text-medium-emphasis">
+                            {t("NEW_LANGUAGE.ADDED_BADGE")}
+                          </span>
                         )}
                         {!isAdded && selectedLanguage === language.languageCode && (
                           <Check className="ml-auto h-4 w-4" />
@@ -317,7 +331,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                 </CommandGroup>
               </CommandList>
               <div className="flex items-center justify-between border-t border-border px-3 py-2">
-                <span className="text-xs text-medium-emphasis">Can&apos;t find your language?</span>
+                <span className="text-xs text-medium-emphasis">{t("NEW_LANGUAGE.CANT_FIND")}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -325,7 +339,7 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
                   onClick={() => selectCustomLanguage(searchText)}
                 >
                   <Plus className="mr-1 h-4 w-4" />
-                  Add custom language
+                  {t("NEW_LANGUAGE.ADD_CUSTOM")}
                 </Button>
               </div>
             </CommandDialog>
@@ -333,10 +347,12 @@ const NewLanguage: React.FC<NewLanguageProps> = ({ onClose, existingLanguages = 
             <DialogFooter className="mt-6">
               <DialogTrigger asChild>
                 <Button disabled={isPending} variant="secondary">
-                  Cancel
+                  {t("common:CANCEL")}
                 </Button>
               </DialogTrigger>
-              <Button disabled={isPending || (!isCustom && !selectedLanguage)}>Save</Button>
+              <Button disabled={isPending || (!isCustom && !selectedLanguage)}>
+                {t("common:SAVE")}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -8,10 +8,7 @@ import {
   useEnforceUniqueness,
   useGetDuplicateSummary,
 } from "@blocks-localization/hooks/use-language-manager";
-
-export const DUPLICATES_TOOLTIP_SUFFIX = "Click to show them.";
-export const DUPLICATE_MODULES_TOOLTIP =
-  "Some module names are used by more than one module. Keys may be split between them.";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 /**
  * sessionStorage flag: uniqueness is requested at most once per tenant per browser session for each
@@ -21,9 +18,6 @@ export const DUPLICATE_MODULES_TOOLTIP =
 export const enforceUniquenessFlag = (tenantId: string) => `loc-enforce-uniqueness:${tenantId}`;
 
 type Collection = "keys" | "modules";
-
-const plural = (count: number, one: string, many: string) =>
-  `${count.toLocaleString()} ${count === 1 ? one : many}`;
 
 const readRequested = (key: string): Collection[] => {
   try {
@@ -49,6 +43,7 @@ const writeRequested = (key: string, collections: Collection[]) => {
  * Translations header. Both stay hidden while the summary loads, if it fails, or when the count is 0.
  */
 export function DuplicateKeysChips() {
+  const { t } = useT("localization.language-table");
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const { data: summary, isError } = useGetDuplicateSummary();
@@ -83,9 +78,19 @@ export function DuplicateKeysChips() {
   const toggle = () =>
     setQueryParams((prev) => ({ ...prev, duplicates: active ? null : true, pageNumber: 0 }));
 
-  const keyText = plural(summary.extraKeyCount, "duplicate", "duplicates");
-  const keyTooltip = `${summary.keyGroupCount.toLocaleString()} keys have more than one row in the same module. ${DUPLICATES_TOOLTIP_SUFFIX}`;
-  const moduleText = plural(summary.extraModuleCount, "duplicate module", "duplicate modules");
+  const keyText = t("DUPLICATE_KEYS_CHIPS.DUPLICATES", {
+    count: summary.extraKeyCount,
+    formatted: summary.extraKeyCount.toLocaleString(),
+  });
+  const keyTooltip = t("DUPLICATE_KEYS_CHIPS.KEYS_TOOLTIP", {
+    count: summary.keyGroupCount,
+    formatted: summary.keyGroupCount.toLocaleString(),
+  });
+  const moduleText = t("DUPLICATE_KEYS_CHIPS.DUPLICATE_MODULES", {
+    count: summary.extraModuleCount,
+    formatted: summary.extraModuleCount.toLocaleString(),
+  });
+  const modulesTooltip = t("DUPLICATE_KEYS_CHIPS.MODULES_TOOLTIP");
 
   return (
     <>
@@ -120,7 +125,7 @@ export function DuplicateKeysChips() {
           <TooltipTrigger
             type="button"
             className="inline-flex cursor-default rounded-full"
-            aria-label={`${moduleText}. ${DUPLICATE_MODULES_TOOLTIP}`}
+            aria-label={`${moduleText}. ${modulesTooltip}`}
           >
             <span
               className={cn(badgeVariants({ variant: "warning" }), "rounded-full")}
@@ -129,7 +134,7 @@ export function DuplicateKeysChips() {
               {moduleText}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">{DUPLICATE_MODULES_TOOLTIP}</TooltipContent>
+          <TooltipContent className="max-w-xs">{modulesTooltip}</TooltipContent>
         </Tooltip>
       )}
     </>

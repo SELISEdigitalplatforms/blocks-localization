@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import {
   CallbackPage,
@@ -20,10 +22,16 @@ import {
   LocalizationModuleDetailPage,
   LocalizationModulesPage,
   LocalizationNewKeyPage,
-  LocalizationWordPressPluginGuidePage
+  LocalizationWordPressPluginGuidePage,
 } from "./layout/localization-page-layout/localization-page-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { navigationMenus } from "./constants/navigation-menus";
+import { getNavigationMenus } from "./constants/navigation-menus";
+
+function LocalizedDashboardRoute() {
+  const { t } = useT("localization.shared");
+  const navigationMenus = useMemo(() => getNavigationMenus(t), [t]);
+  return <DashboardRoute redirectPaths={redirectPaths} navigationMenus={navigationMenus} />;
+}
 
 const redirectPaths: Record<string, string> = {
   "/app/:itemId/services/language/translations/*": "/app/:itemId/services/language",
@@ -81,9 +89,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: ":itemId",
-                element: (
-                  <DashboardRoute redirectPaths={redirectPaths} navigationMenus={navigationMenus} />
-                ),
+                element: <LocalizedDashboardRoute />,
                 children: [
                   { index: true, element: <Navigate to="dashboard" replace /> },
                   { path: "dashboard", element: <DashboardOverview /> },

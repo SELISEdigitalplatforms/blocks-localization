@@ -1,21 +1,22 @@
 import { Ban, Languages, Lock, LucideIcon } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Badge, BadgeProps } from "@/components/ui-kits/badge/badge";
 import { cn } from "@/lib/utils";
 import { GlossaryRule } from "@blocks-localization/models/glossary-meta";
 
-const RULE_DISPLAY: Record<
-  GlossaryRule,
-  { label: string; variant: BadgeProps["variant"]; Icon: LucideIcon }
-> = {
-  translate: { label: "Translate", variant: "secondary", Icon: Languages },
-  keep: { label: "Keep", variant: "info", Icon: Lock },
-  forbidden: { label: "Forbidden", variant: "error", Icon: Ban },
+const RULE_DISPLAY: Record<GlossaryRule, { variant: BadgeProps["variant"]; Icon: LucideIcon }> = {
+  translate: { variant: "secondary", Icon: Languages },
+  keep: { variant: "info", Icon: Lock },
+  forbidden: { variant: "error", Icon: Ban },
 };
 
-export const GLOSSARY_RULE_LABELS: Record<GlossaryRule, string> = {
-  translate: RULE_DISPLAY.translate.label,
-  keep: RULE_DISPLAY.keep.label,
-  forbidden: RULE_DISPLAY.forbidden.label,
+export const useGlossaryRuleLabels = (): Record<GlossaryRule, string> => {
+  const { t } = useT("localization.glossary");
+  return {
+    translate: t("GLOSSARY_RULE_BADGE.TRANSLATE"),
+    keep: t("GLOSSARY_RULE_BADGE.KEEP"),
+    forbidden: t("GLOSSARY_RULE_BADGE.FORBIDDEN"),
+  };
 };
 
 interface GlossaryRuleBadgeProps {
@@ -24,7 +25,9 @@ interface GlossaryRuleBadgeProps {
 }
 
 const GlossaryRuleBadge = ({ rule, className }: Readonly<GlossaryRuleBadgeProps>) => {
-  const { label, variant, Icon } = RULE_DISPLAY[rule];
+  const labels = useGlossaryRuleLabels();
+  const { variant, Icon } = RULE_DISPLAY[rule];
+  const label = labels[rule];
   return (
     <Badge variant={variant} className={cn("w-fit gap-1", className)}>
       <Icon className="h-3 w-3" aria-hidden="true" />

@@ -12,7 +12,10 @@ vi.mock("@blocks-localization/services/wordpress-plugin.service", () => ({
   fetchBlocksOsRedirectUrl: redirect,
 }));
 vi.mock("@/hooks/use-toast", () => ({ showErrorToast: vi.fn() }));
-vi.mock("@seliseblocks/genesis-os", () => ({ useProjectStore: () => projectStore }));
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
+  useProjectStore: () => projectStore,
+}));
 
 it("opens Integrations in Blocks OS", async () => {
   render(<WordPressPluginGuide />);

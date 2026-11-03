@@ -8,7 +8,8 @@ import * as hooks from "./use-language-manager";
 
 const project = vi.hoisted(() => ({ tenantId: "tenant-1" }));
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: project.tenantId } }),
 }));
 

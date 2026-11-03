@@ -34,6 +34,7 @@ import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
 import {
   GlossaryUnavailableNote,
@@ -60,6 +61,8 @@ import { useNavigate } from "react-router";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+const COMMON_ERROR = "common:ERROR";
+
 interface MutationResponse {
   success?: boolean;
   errorMessage?: string;
@@ -68,37 +71,38 @@ interface MutationResponse {
   }>;
 }
 
-const schema = z.object({
+const createSchema = (t: TFunction) =>
+  z.object({
   keyName: z
     .string()
     .trim()
-    .min(1, { message: "Key name is required" })
-    .min(3, { message: "Key name must be at least 3 characters" })
-    .max(100, { message: "Key name must be 100 characters or less" }),
-  moduleId: z.string().min(1, { message: "Module is required" }),
+    .min(1, { message: t("ADD_NEW_LANGUAGE_KEY.KEY_NAME_REQUIRED") })
+    .min(3, { message: t("ADD_NEW_LANGUAGE_KEY.KEY_NAME_MIN") })
+    .max(100, { message: t("ADD_NEW_LANGUAGE_KEY.KEY_NAME_MAX") }),
+  moduleId: z.string().min(1, { message: t("ADD_NEW_LANGUAGE_KEY.MODULE_REQUIRED") }),
   resources: z
     .array(
       z.object({
         value: z.string().max(199, {
-          message: "Translation must be less than 200 characters",
+          message: t("ADD_NEW_LANGUAGE_KEY.TRANSLATION_TOO_LONG"),
         }),
-        culture: z.string().min(1, { message: "Culture is required" }),
+        culture: z.string().min(1, { message: t("ADD_NEW_LANGUAGE_KEY.CULTURE_REQUIRED") }),
       }),
     )
     .superRefine((resources, ctx) => {
       if (!resources[0]?.value) {
         ctx.addIssue({
           code: "custom",
-          message: "Default value is required",
+          message: t("ADD_NEW_LANGUAGE_KEY.DEFAULT_VALUE_REQUIRED"),
           path: [0, "value"], // Path to the first resource's value
         });
       }
     }),
-  routes: z.array(z.object({ value: z.string().min(1, { message: "Route is required" }) })),
+  routes: z.array(z.object({ value: z.string().min(1, { message: t("ADD_NEW_LANGUAGE_KEY.ROUTE_REQUIRED") }) })),
   context: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof createSchema>>;
 
 const TRANSLATION_SKELETON_COUNT = 2;
 
@@ -116,6 +120,7 @@ const FieldSkeleton = ({
 );
 
 function AddNewLanguageKeySkeleton() {
+  const { t } = useT("localization.keys");
   return (
     <div>
       <div className="hidden pl-5 md:flex">
@@ -124,12 +129,12 @@ function AddNewLanguageKeySkeleton() {
       <div className="mt-4 h-[calc(100vh-10px)] flex-1 overflow-scroll">
         <div className="flex-1 md:px-5">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-semibold">Create new key</h1>
+            <h1 className="text-3xl font-semibold">{t("ADD_NEW_LANGUAGE_KEY.CREATE_NEW_KEY")}</h1>
             <Skeleton className="h-10 w-[66px] rounded-md" />
           </div>
           <Card className="mt-6 rounded-sm border border-border shadow-none">
             <CardHeader>
-              <CardTitle>About the key</CardTitle>
+              <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.ABOUT_THE_KEY")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6">
@@ -144,7 +149,7 @@ function AddNewLanguageKeySkeleton() {
           </Card>
           <Card className="mt-4 rounded-sm border border-border shadow-none">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Translations</CardTitle>
+              <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.TRANSLATIONS")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
@@ -162,7 +167,7 @@ function AddNewLanguageKeySkeleton() {
           </Card>
           <Card className="mt-4 rounded-sm border border-border shadow-none">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Routes</CardTitle>
+              <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.ROUTES")}</CardTitle>
               <Skeleton className="h-4 w-4 rounded-full" />
             </CardHeader>
             <CardContent>
@@ -176,6 +181,8 @@ function AddNewLanguageKeySkeleton() {
 }
 
 function AddNewLanguageKey() {
+  const { t } = useT("localization.keys");
+  const schema = React.useMemo(() => createSchema(t), [t]);
   const { isLoading: isLanguageModulesLoading, data: languageModules } = useGetLanguageModules();
   const { isLoading: isLanguageListLoading, data: languageListData } = useGetLanguages();
   // Sort a copy so the React Query cached language array is never mutated in place.
@@ -203,7 +210,7 @@ function AddNewLanguageKey() {
     fix,
   } = useGlossarySuggestionRows({ loadGlossaries });
 
-  BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = "New Key";
+  BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = t("ADD_NEW_LANGUAGE_KEY.NEW_KEY_BREADCRUMB");
   const form = useForm<FormValues>({
     defaultValues: {
       keyName: "",
@@ -309,22 +316,22 @@ function AddNewLanguageKey() {
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Language key added",
+          title: t("common:SUCCESS"),
+          description: t("ADD_NEW_LANGUAGE_KEY.KEY_ADDED"),
         });
         form.reset();
         navigate(scoped("services/language"), { replace: true });
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: buildErrorMessage(res),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -332,7 +339,7 @@ function AddNewLanguageKey() {
 
   const buildErrorMessage = (response: MutationResponse | undefined) => {
     if (!response) {
-      return "Something went wrong";
+      return t("ADD_NEW_LANGUAGE_KEY.SOMETHING_WENT_WRONG");
     }
 
     const validationMessages = response.validationErrors
@@ -347,7 +354,7 @@ function AddNewLanguageKey() {
       return response.errorMessage;
     }
 
-    return "Unable to save language key";
+    return t("ADD_NEW_LANGUAGE_KEY.SAVE_FAILED");
   };
 
   async function runAutoTranslate(index: number): Promise<void> {
@@ -379,15 +386,15 @@ function AddNewLanguageKey() {
     if (outcome.status === "success") {
       toast({
         variant: "success",
-        title: "Success",
-        description: "Translated successfully",
+        title: t("common:SUCCESS"),
+        description: t("ADD_NEW_LANGUAGE_KEY.TRANSLATED"),
       });
       form.setValue(`resources.${index + 1}.value`, outcome.content);
       return;
     }
     toast({
       variant: "destructive",
-      title: "Error",
+      title: t(COMMON_ERROR),
       description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
     });
   }
@@ -426,18 +433,18 @@ function AddNewLanguageKey() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(formSubmitHandler)}>
               <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-semibold">Create new key</h1>
+                <h1 className="text-3xl font-semibold">{t("ADD_NEW_LANGUAGE_KEY.CREATE_NEW_KEY")}</h1>
                 <Button
                   variant="default"
                   type="submit"
                   disabled={isPending || !form.formState.isValid}
                 >
-                  Save
+                  {t("common:SAVE")}
                 </Button>
               </div>
               <Card className="mt-6 rounded-sm border border-border shadow-none">
                 <CardHeader>
-                  <CardTitle>About the key</CardTitle>
+                  <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.ABOUT_THE_KEY")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6">
@@ -448,14 +455,14 @@ function AddNewLanguageKey() {
                         render={({ field }) => (
                           <FormItem className="space-y-1">
                             <FormLabel htmlFor="keyName">
-                              Key name <span className="text-destructive">*</span>
+                              {t("ADD_NEW_LANGUAGE_KEY.KEY_NAME_LABEL")} <span className="text-destructive">*</span>
                             </FormLabel>
                             <FormControl>
                               <Input
                                 id="keyName"
                                 type="text"
                                 className="w-full shadow-none"
-                                placeholder="Enter key name"
+                                placeholder={t("ADD_NEW_LANGUAGE_KEY.KEY_NAME_PLACEHOLDER")}
                                 {...field}
                               />
                             </FormControl>
@@ -473,7 +480,7 @@ function AddNewLanguageKey() {
                           return (
                             <FormItem className="space-y-1">
                               <FormLabel htmlFor="moduleId">
-                                Module <span className="text-destructive">*</span>
+                                {t("ADD_NEW_LANGUAGE_KEY.MODULE_LABEL")} <span className="text-destructive">*</span>
                               </FormLabel>
                               <Popover open={open} onOpenChange={setOpen}>
                                 <PopoverTrigger asChild>
@@ -485,15 +492,15 @@ function AddNewLanguageKey() {
                                     aria-expanded={open}
                                     className="h-[37px] w-full justify-between text-low-emphasis shadow-none"
                                   >
-                                    {selectedModule?.moduleName || "Select Module..."}
+                                    {selectedModule?.moduleName || t("ADD_NEW_LANGUAGE_KEY.SELECT_MODULE")}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-0 sm:w-[475px]">
                                   <Command>
-                                    <CommandInput placeholder="Search Module..." ref={inputRef} />
+                                    <CommandInput placeholder={t("ADD_NEW_LANGUAGE_KEY.SEARCH_MODULE")} ref={inputRef} />
                                     <CommandList>
-                                      <CommandEmpty>No Module found.</CommandEmpty>
+                                      <CommandEmpty>{t("ADD_NEW_LANGUAGE_KEY.NO_MODULE_FOUND")}</CommandEmpty>
                                       <CommandGroup>
                                         <Dialog
                                           open={isNewModuleDialogOpen}
@@ -509,7 +516,7 @@ function AddNewLanguageKey() {
                                               className="ml-8 flex h-[37px] w-full cursor-pointer gap-2 py-2 text-sm text-medium-emphasis"
                                             >
                                               <Plus className="h-5 w-5 shrink-0 pl-[-6px] text-medium-emphasis" />
-                                              <div>New Module</div>
+                                              <div>{t("ADD_NEW_LANGUAGE_KEY.NEW_MODULE")}</div>
                                             </button>
                                           </DialogTrigger>
                                           <NewModule
@@ -519,7 +526,7 @@ function AddNewLanguageKey() {
                                           />
                                         </Dialog>
                                         <h3 className="py-2 pl-8 font-semibold text-high-emphasis">
-                                          Modules
+                                          {t("ADD_NEW_LANGUAGE_KEY.MODULES")}
                                         </h3>
                                         {languageModules?.map((module) => {
                                           const moduleSearchValue = [
@@ -577,13 +584,15 @@ function AddNewLanguageKey() {
                       render={({ field }) => (
                         <FormItem className="space-y-1">
                           <FormLabel htmlFor="defaultValue">
-                            Default value ({sortedLanguages?.[0]?.languageName}){" "}
+                            {t("ADD_NEW_LANGUAGE_KEY.DEFAULT_VALUE_LABEL", {
+                              language: sortedLanguages?.[0]?.languageName ?? "",
+                            })}{" "}
                             <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
                             <Textarea
                               id="defaultValue"
-                              placeholder="Enter default value"
+                              placeholder={t("ADD_NEW_LANGUAGE_KEY.DEFAULT_VALUE_PLACEHOLDER")}
                               className="min-h-20 shadow-none"
                               {...field}
                             />
@@ -597,11 +606,11 @@ function AddNewLanguageKey() {
                       name="context"
                       render={({ field }) => (
                         <FormItem className="space-y-1">
-                          <FormLabel htmlFor="context">Key Context</FormLabel>
+                          <FormLabel htmlFor="context">{t("ADD_NEW_LANGUAGE_KEY.KEY_CONTEXT")}</FormLabel>
                           <FormControl>
                             <Textarea
                               id="context"
-                              placeholder="Enter key context (optional)"
+                              placeholder={t("ADD_NEW_LANGUAGE_KEY.KEY_CONTEXT_PLACEHOLDER")}
                               className="min-h-20 shadow-none"
                               {...field}
                             />
@@ -616,7 +625,7 @@ function AddNewLanguageKey() {
 
               <Card className="mt-4 rounded-sm border border-border shadow-none">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Translations</CardTitle>
+                  <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.TRANSLATIONS")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4">
@@ -629,7 +638,11 @@ function AddNewLanguageKey() {
                       return (
                         <div key={field.id} className="grid gap-3">
                           <div className="grid grid-cols-2">
-                            <Label>{sortedLanguages?.[index + 1]?.languageName} Translation</Label>
+                            <Label>
+                              {t("ADD_NEW_LANGUAGE_KEY.TRANSLATION_LABEL", {
+                                language: sortedLanguages?.[index + 1]?.languageName ?? "",
+                              })}
+                            </Label>
                             <div className="flex justify-end gap-4">
                               <Button
                                 size="sm"
@@ -641,7 +654,7 @@ function AddNewLanguageKey() {
                               >
                                 <Wand className="h-3.5 w-3.5" />
                                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                  {isLoading ? "Loading..." : "Auto-Translate"}{" "}
+                                  {isLoading ? t("common:LOADING") : t("ADD_NEW_LANGUAGE_KEY.AUTO_TRANSLATE")}{" "}
                                   {/* Show loading text */}
                                 </span>
                               </Button>
@@ -652,7 +665,7 @@ function AddNewLanguageKey() {
                           )}
                           <FormControl>
                             <Textarea
-                              placeholder="Enter translation"
+                              placeholder={t("ADD_NEW_LANGUAGE_KEY.TRANSLATION_PLACEHOLDER")}
                               className="min-h-20 shadow-none"
                               {...translationField}
                               onChange={(event) => {
@@ -686,7 +699,7 @@ function AddNewLanguageKey() {
               {/* Routes Section using useFieldArray for routes */}
               <Card className="mt-4 rounded-sm border border-border shadow-none">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Routes</CardTitle>
+                  <CardTitle>{t("ADD_NEW_LANGUAGE_KEY.ROUTES")}</CardTitle>
                   <div className="flex h-7 items-center gap-1">
                     <TooltipProvider>
                       <Tooltip>
@@ -702,17 +715,18 @@ function AddNewLanguageKey() {
                         >
                           <ul className="list-disc pl-5">
                             <li className="text-[12px]">
-                              Add routes after <strong>hostname/</strong>
+                              {t("ADD_NEW_LANGUAGE_KEY.ROUTE_HINT_HOSTNAME")}
                             </li>
                             <li className="text-[12px]">
-                              Replace dynamic parts of the route as{" "}
-                              <strong>{"{{ dynamic_routing }}"}</strong>
+                              {t("ADD_NEW_LANGUAGE_KEY.ROUTE_HINT_DYNAMIC", {
+                                token: "{{ dynamic_routing }}",
+                              })}
                             </li>
                             <div className="max-w-[380px] overflow-hidden text-ellipsis whitespace-normal">
                               <p className="text-[12px]">
-                                For example, http://blocks.seliselocal.com/release-note/:id will be
-                                added as release-note/
-                                <strong>{"{{ dynamic_routing }}"}</strong>
+                                {t("ADD_NEW_LANGUAGE_KEY.ROUTE_HINT_EXAMPLE", {
+                                  token: "{{ dynamic_routing }}",
+                                })}
                               </p>
                             </div>
                           </ul>
@@ -726,7 +740,7 @@ function AddNewLanguageKey() {
                     {routeFields.map((field, index) => (
                       <div key={field.id} className="grid gap-1.5">
                         <Label htmlFor={`routes.${index}.value`}>
-                          Route {index + 1}{" "}
+                          {t("ADD_NEW_LANGUAGE_KEY.ROUTE_LABEL", { number: index + 1 })}{" "}
                           <span className="text-destructive" aria-hidden="true">
                             *
                           </span>
@@ -736,7 +750,7 @@ function AddNewLanguageKey() {
                             id={`routes.${index}.value`}
                             type="text"
                             className="w-full shadow-none"
-                            placeholder="Enter route"
+                            placeholder={t("ADD_NEW_LANGUAGE_KEY.ROUTE_PLACEHOLDER")}
                             aria-required="true"
                             {...form.register(`routes.${index}.value`)}
                           />
@@ -746,7 +760,7 @@ function AddNewLanguageKey() {
                             size="icon"
                             className="shrink-0"
                             onClick={() => removeRoute(index)}
-                            aria-label="Remove Route"
+                            aria-label={t("ADD_NEW_LANGUAGE_KEY.REMOVE_ROUTE")}
                           >
                             <Trash className="h-5 w-5 text-error" />
                           </Button>
@@ -764,7 +778,7 @@ function AddNewLanguageKey() {
                       onClick={() => appendRoute({ value: "" })}
                     >
                       <Plus className="h-5 w-5" />
-                      <span>Add Route</span>
+                      <span>{t("ADD_NEW_LANGUAGE_KEY.ADD_ROUTE")}</span>
                     </Button>
                   </div>
                 </CardContent>

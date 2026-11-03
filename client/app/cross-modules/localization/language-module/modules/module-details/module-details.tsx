@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 import { useParams } from "react-router";
 import { useQueryState } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
@@ -67,24 +68,34 @@ type VisibleGlossaryColumns = {
   createDate: boolean;
 };
 
-function renderGlossaryTable(items: IGlossary[], visibleColumns: VisibleGlossaryColumns) {
+function renderGlossaryTable(
+  items: IGlossary[],
+  visibleColumns: VisibleGlossaryColumns,
+  t: TFunction,
+) {
   return (
     <div className="w-full overflow-x-auto">
       <Table className="text-sm">
         <TableHeader>
           <TableRow className="border-none hover:bg-transparent">
-            <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">{t("common:NAME")}</TableHead>
             {visibleColumns.language && (
-              <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.COLUMN_LANGUAGE")}
+              </TableHead>
             )}
             {visibleColumns.type && (
-              <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">{t("common:TYPE")}</TableHead>
             )}
             {visibleColumns.context && (
-              <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.COLUMN_CONTEXT")}
+              </TableHead>
             )}
             {visibleColumns.createDate && (
-              <TableHead className="font-bold text-medium-emphasis">Created Date</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.CREATED_DATE")}
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -138,6 +149,7 @@ function ModuleDetailsContent({
     { firstName: string; lastName: string; email: string; userName: string }
   >;
 }) {
+  const { t } = useT("localization.modules");
   const [activeTab, setActiveTab] = useQueryState("moduleTab", {
     defaultValue: "details",
   });
@@ -166,10 +178,10 @@ function ModuleDetailsContent({
   };
 
   const glossaryTabContent = hasGlossaries ? (
-    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
+    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns, t)
   ) : (
     <div className="flex h-24 items-center justify-center text-muted-foreground">
-      No glossaries tagged to this module
+      {t("MODULE_DETAILS.NO_GLOSSARIES")}
     </div>
   );
 
@@ -178,31 +190,39 @@ function ModuleDetailsContent({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="w-full">
         <TabsList className="h-[42px] bg-blocks-primary-shades-300">
           <TabsTrigger value="details" className="h-8">
-            Details
+            {t("common:DETAILS")}
           </TabsTrigger>
           <TabsTrigger value="glossary" className="h-8">
-            Glossary
+            {t("MODULE_DETAILS.TAB_GLOSSARY")}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="details" className="mt-4">
           <Card className="rounded-sm border border-border shadow-none">
             <CardHeader>
-              <CardTitle className="text-lg text-high-emphasis">About</CardTitle>
+              <CardTitle className="text-lg text-high-emphasis">
+                {t("MODULE_DETAILS.ABOUT")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Module Name</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.MODULE_NAME")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">{module.moduleName}</p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created Date</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.CREATED_DATE")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last Update Date</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.LAST_UPDATE_DATE")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {module.lastUpdateDate
                       ? new Date(module.lastUpdateDate).toLocaleDateString()
@@ -212,13 +232,17 @@ function ModuleDetailsContent({
               </div>
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created By</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.CREATED_BY")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayNameById(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last Updated By</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.LAST_UPDATED_BY")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
@@ -231,7 +255,7 @@ function ModuleDetailsContent({
           <Card className="rounded-sm border border-border shadow-none">
             <CardHeader>
               <CardTitle className="text-lg text-high-emphasis">
-                Tagged Glossaries ({glossariesData?.totalCount ?? 0})
+                {t("MODULE_DETAILS.TAGGED_GLOSSARIES", { count: glossariesData?.totalCount ?? 0 })}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -253,6 +277,7 @@ function ModuleDetailsContent({
 }
 
 export function ModuleDetails() {
+  const { t } = useT("localization.modules");
   const { moduleId } = useParams<{ moduleId: string }>();
 
   const { data: modules, isLoading: isModulesLoading } = useGetLanguageModules();
@@ -284,7 +309,7 @@ export function ModuleDetails() {
   if (!moduleId) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Invalid module ID</p>
+        <p className="text-muted-foreground">{t("MODULE_DETAILS.INVALID_MODULE_ID")}</p>
       </div>
     );
   }
@@ -305,7 +330,7 @@ export function ModuleDetails() {
   if (!module) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Module not found</p>
+        <p className="text-muted-foreground">{t("MODULE_DETAILS.MODULE_NOT_FOUND")}</p>
       </div>
     );
   }

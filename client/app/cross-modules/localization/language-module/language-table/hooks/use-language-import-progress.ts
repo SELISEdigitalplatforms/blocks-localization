@@ -5,6 +5,9 @@ import { localizationQueryKeys } from "@blocks-localization/constants/query-keys
 import { refreshLanguageKeyLists } from "@blocks-localization/hooks/language-key-list-cache";
 import type { ILanguageImportRequest } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
 
 export type LanguageImportStatus = "processing" | "finalizing" | "delayed" | "failed";
 
@@ -96,9 +99,13 @@ const extractImportNotification = (notificationData: unknown) => {
 };
 
 export const getImportFileLabel = (fileNames: string[]) => {
-  if (fileNames.length === 0) return "Your file";
+  if (fileNames.length === 0)
+    return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "USE_LANGUAGE_IMPORT_PROGRESS.FILE_FALLBACK");
   if (fileNames.length === 1) return fileNames[0];
-  return `${fileNames[0]} and ${fileNames.length - 1} more`;
+  return tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "USE_LANGUAGE_IMPORT_PROGRESS.FILE_AND_MORE", {
+    name: fileNames[0],
+    count: fileNames.length - 1,
+  });
 };
 
 export const useLanguageImportProgress = ({
@@ -239,8 +246,14 @@ export const useLanguageImportProgress = ({
       if (isSuccess === false) {
         toast({
           variant: "destructive",
-          title: "Import failed",
-          description: "The uploaded file could not be processed.",
+          title: tStatic(
+            LOCALIZATION_LANGUAGE_TABLE_MODULE,
+            "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_FAILED_TITLE",
+          ),
+          description: tStatic(
+            LOCALIZATION_LANGUAGE_TABLE_MODULE,
+            "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_FAILED_DESCRIPTION",
+          ),
         });
         return;
       }
@@ -295,8 +308,14 @@ export const useLanguageImportProgress = ({
           setProgress(null);
           toast({
             variant: "success",
-            title: "Import complete",
-            description: "Your imported translation keys are ready.",
+            title: tStatic(
+              LOCALIZATION_LANGUAGE_TABLE_MODULE,
+              "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_COMPLETE_TITLE",
+            ),
+            description: tStatic(
+              LOCALIZATION_LANGUAGE_TABLE_MODULE,
+              "USE_LANGUAGE_IMPORT_PROGRESS.IMPORT_COMPLETE_DESCRIPTION",
+            ),
           });
           void syncModulesForKeys(result.data?.keys);
           return;

@@ -49,31 +49,46 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { EllipsisVertical, Plus, Star, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { toast } from "@/hooks/use-toast";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 import { cn } from "@/lib/utils";
 
-const LanguageHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Language</span>
-  </div>
-);
+const COMMON_SUCCESS = "common:SUCCESS";
+const COMMON_ERROR = "common:ERROR";
 
-const LanguageCodeHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Language Code</span>
-  </div>
-);
+const MODULE = "localization.tools";
 
-const ActionsHeader = () => (
-  <div className="flex items-center">
-    <span className="font-bold text-medium-emphasis">Actions</span>
-  </div>
-);
+const LanguageHeader = () => {
+  const { t } = useT(MODULE);
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">{t("CONFIGURE.LANGUAGE")}</span>
+    </div>
+  );
+};
+
+const LanguageCodeHeader = () => {
+  const { t } = useT(MODULE);
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">{t("CONFIGURE.LANGUAGE_CODE")}</span>
+    </div>
+  );
+};
+
+const ActionsHeader = () => {
+  const { t } = useT(MODULE);
+  return (
+    <div className="flex items-center">
+      <span className="font-bold text-medium-emphasis">{t("common:ACTIONS")}</span>
+    </div>
+  );
+};
 
 const SKELETON_LANGUAGE_ROW_KEYS = Array.from(
   { length: 5 },
@@ -170,7 +185,7 @@ const getDeleteLanguageErrorMessage = (error: unknown) => {
     if (messages.length > 0) return messages.join(", ");
     return JSON.stringify(error);
   }
-  return "Failed to delete language. Please try again.";
+  return tStatic(MODULE, "CONFIGURE.DELETE_FAILED");
 };
 
 const isValidWebhookHostname = (hostname: string) => {
@@ -205,19 +220,25 @@ const isValidWebhookUrl = (value: string) => {
   }
 };
 
-const webhookSchema = z.object({
-  url: z.string().trim().min(1, { message: "URL is required" }).refine(isValidWebhookUrl, {
-    message: "Enter a valid URL starting with http:// or https://",
-  }),
-  contentType: z.string().min(1, { message: "Content type is required" }),
-  headerKey: z.string().min(1, { message: "Header key is required" }),
-  secret: z.string().min(1, { message: "Secret is required" }),
-  isDisabled: z.boolean(),
-});
+const buildWebhookSchema = (t: (key: string) => string) =>
+  z.object({
+    url: z
+      .string()
+      .trim()
+      .min(1, { message: t("CONFIGURE.URL_REQUIRED") })
+      .refine(isValidWebhookUrl, {
+        message: t("CONFIGURE.URL_INVALID"),
+      }),
+    contentType: z.string().min(1, { message: t("CONFIGURE.CONTENT_TYPE_REQUIRED") }),
+    headerKey: z.string().min(1, { message: t("CONFIGURE.HEADER_KEY_REQUIRED") }),
+    secret: z.string().min(1, { message: t("CONFIGURE.SECRET_REQUIRED") }),
+    isDisabled: z.boolean(),
+  });
 
-type WebhookFormValues = z.infer<typeof webhookSchema>;
+type WebhookFormValues = z.infer<ReturnType<typeof buildWebhookSchema>>;
 
 function Configure() {
+  const { t } = useT(MODULE);
   const [isNewLanguageDialogOpen, setIsNewLanguageDialogOpen] = useState(false);
   const [isMakeDefaultDialogOpen, setIsMakeDefaultDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -229,6 +250,8 @@ function Configure() {
   const { isPending: isSaveWebhookPending, mutateAsync: saveWebhookAsync } = useSaveWebhook();
 
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+
+  const webhookSchema = useMemo(() => buildWebhookSchema(t), [t]);
 
   const webhookForm = useForm<WebhookFormValues>({
     resolver: zodResolver(webhookSchema),
@@ -276,37 +299,37 @@ function Configure() {
         webhookForm.reset(values);
         toast({
           variant: "success",
-          title: "Success",
-          description: "Webhook saved successfully.",
+          title: t(COMMON_SUCCESS),
+          description: t("CONFIGURE.WEBHOOK_SAVED"),
         });
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: JSON.stringify(res?.errorMessage),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
   };
 
   const makeDefaultModalData = {
-    dialogTitle: "Make default language",
-    dialogSubtitle: "Are you sure you want to set this language as default?",
-    confirmButton: "Save",
-    cancelButton: "Cancel",
+    dialogTitle: t("CONFIGURE.MAKE_DEFAULT_TITLE"),
+    dialogSubtitle: t("CONFIGURE.MAKE_DEFAULT_SUBTITLE"),
+    confirmButton: t("common:SAVE"),
+    cancelButton: t("common:CANCEL"),
   };
 
   const deleteLanguageModalData = {
-    dialogTitle: "Delete language",
-    dialogSubtitle: "Are you sure you want to delete this language?",
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
+    dialogTitle: t("CONFIGURE.DELETE_TITLE"),
+    dialogSubtitle: t("CONFIGURE.DELETE_SUBTITLE"),
+    confirmButton: t("common:DELETE"),
+    cancelButton: t("common:CANCEL"),
   };
 
   const onMakeDefaultClick = (languageName: string) => {
@@ -328,21 +351,21 @@ function Configure() {
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Language deleted successfully.",
+          title: t(COMMON_SUCCESS),
+          description: t("CONFIGURE.LANGUAGE_DELETED"),
         });
         setIsDeleteDialogOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: getDeleteLanguageErrorMessage(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: getDeleteLanguageErrorMessage(error),
       });
     }
@@ -357,21 +380,21 @@ function Configure() {
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Make default successfully.",
+          title: t(COMMON_SUCCESS),
+          description: t("CONFIGURE.DEFAULT_SET"),
         });
         setIsMakeDefaultDialogOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t(COMMON_ERROR),
           description: JSON.stringify(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t(COMMON_ERROR),
         description: JSON.stringify(error),
       });
     }
@@ -387,7 +410,7 @@ function Configure() {
             <span>{row.getValue("languageName")}</span>
             {row.original.isDefault && (
               <Badge color="bg-blocks-primary-500" className="ml-2 w-[100px] rounded-xl">
-                Default
+                {t("CONFIGURE.DEFAULT_BADGE")}
               </Badge>
             )}
           </div>
@@ -426,7 +449,7 @@ function Configure() {
                 }}
               >
                 <Star className="mr-2 h-4 w-4" />
-                <span>Make default language</span>
+                <span>{t("CONFIGURE.MAKE_DEFAULT_TITLE")}</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -437,7 +460,7 @@ function Configure() {
                 }}
               >
                 <Trash className="mr-2 h-4 w-4" />
-                <span>Delete language</span>
+                <span>{t("CONFIGURE.DELETE_TITLE")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -463,7 +486,7 @@ function Configure() {
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="mt-5 text-2xl font-semibold">Configure Languages</h1>
+        <h1 className="mt-5 text-2xl font-semibold">{t("CONFIGURE.PAGE_TITLE")}</h1>
         <Dialog open={isNewLanguageDialogOpen} onOpenChange={setIsNewLanguageDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -472,7 +495,7 @@ function Configure() {
               className="h-10 bg-primary text-sm text-primary-foreground"
             >
               <Plus className="mr-2 h-5 w-5" />
-              <span className="sr-only sm:not-sr-only">New Language</span>
+              <span className="sr-only sm:not-sr-only">{t("CONFIGURE.NEW_LANGUAGE")}</span>
             </Button>
           </DialogTrigger>
           {isNewLanguageDialogOpen && (
@@ -485,7 +508,7 @@ function Configure() {
       </div>
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader>
-          <CardTitle>Languages</CardTitle>
+          <CardTitle>{t("CONFIGURE.LANGUAGES_CARD")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table className="text-sm">
@@ -522,7 +545,7 @@ function Configure() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
+                    {t("CONFIGURE.NO_RESULTS")}
                   </TableCell>
                 </TableRow>
               )}
@@ -533,7 +556,7 @@ function Configure() {
 
       <Card className="mt-6 rounded-sm border border-border shadow-none">
         <CardHeader>
-          <CardTitle>Webhooks</CardTitle>
+          <CardTitle>{t("CONFIGURE.WEBHOOKS_CARD")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...webhookForm}>
@@ -545,7 +568,7 @@ function Configure() {
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
                       <FormLabel>
-                        URL <span className="text-error">*</span>
+                        {t("CONFIGURE.URL_LABEL")} <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="https://example.com/webhook" {...field} />
@@ -560,7 +583,7 @@ function Configure() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Content Type <span className="text-error">*</span>
+                        {t("CONFIGURE.CONTENT_TYPE_LABEL")} <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="application/json" {...field} />
@@ -575,7 +598,8 @@ function Configure() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Secret Header Key <span className="text-error">*</span>
+                        {t("CONFIGURE.SECRET_HEADER_KEY_LABEL")}{" "}
+                        <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="X-Webhook-Secret" {...field} autoComplete="off" />
@@ -590,7 +614,7 @@ function Configure() {
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
                       <FormLabel>
-                        Secret <span className="text-error">*</span>
+                        {t("CONFIGURE.SECRET_LABEL")} <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -612,7 +636,7 @@ function Configure() {
                       <FormControl>
                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="mt-0!">Disable webhook</FormLabel>
+                      <FormLabel className="mt-0!">{t("CONFIGURE.DISABLE_WEBHOOK")}</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -625,7 +649,7 @@ function Configure() {
                   className="h-10 bg-primary text-sm text-primary-foreground"
                   disabled={isSaveWebhookPending || !isWebhookFormDirty}
                 >
-                  Save Webhook
+                  {t("CONFIGURE.SAVE_WEBHOOK")}
                 </Button>
               </div>
             </form>
