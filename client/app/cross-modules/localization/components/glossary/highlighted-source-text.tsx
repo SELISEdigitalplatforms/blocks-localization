@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { Check } from "lucide-react";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
 import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
@@ -100,12 +99,6 @@ export const HighlightedSourceText = ({
           className={cn(TERM_CLASS, termStateClass(used, inactive))}
         >
           {text.slice(match.start, match.start + match.length)}
-          {used && (
-            <Check
-              className="ml-0.5 inline h-3 w-3 align-baseline text-success"
-              aria-hidden="true"
-            />
-          )}
         </button>
       </GlossaryTermPopover>,
     );
