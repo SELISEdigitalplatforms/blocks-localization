@@ -44,8 +44,8 @@ namespace Eurolm.DomainService.Repositories
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not ensure {Collection} indexes in database {Database}: {ErrorMessage}",
-                    collectionName, database.DatabaseNamespace.DatabaseName, ex.Message);
+                logger.LogWarning(ex, "Could not ensure {Collection} indexes in database {Database}",
+                    collectionName, database.DatabaseNamespace.DatabaseName);
             }
         }
     }

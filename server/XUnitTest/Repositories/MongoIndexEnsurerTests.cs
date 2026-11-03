@@ -88,18 +88,36 @@ namespace XUnitTest.Repositories
             first.IsCompletedSuccessfully.Should().BeTrue();
             VerifyCreated(indexes, Times.Once());
             VerifyWarnings(Times.Once());
+            _logger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.Is<Exception?>(e => e is InvalidOperationException),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
 
         [Fact]
         public async Task EnsureAsync_ConcurrentFirstCalls_CreateOnce()
         {
             var (database, indexes) = Database();
+            // Hold the first creation open so that every caller races while it is still running.
+            var gate = new TaskCompletionSource<IEnumerable<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            indexes.Setup(i => i.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BsonDocument>>>(), It.IsAny<CancellationToken>()))
+                .Returns(gate.Task);
+            using var start = new Barrier(20);
 
-            var tasks = Enumerable.Range(0, 20)
-                .Select(_ => Task.Run(() => MongoIndexEnsurer.EnsureAsync(database.Object, "Things", Models, _logger.Object)))
+            var callers = Enumerable.Range(0, 20)
+                .Select(_ => Task.Run<Task>(() =>
+                {
+                    start.SignalAndWait();
+                    return MongoIndexEnsurer.EnsureAsync(database.Object, "Things", Models, _logger.Object);
+                }))
                 .ToList();
-            await Task.WhenAll(tasks);
+            var ensured = await Task.WhenAll(callers.Select(c => c.WaitAsync(TimeSpan.FromSeconds(10))));
+            gate.SetResult(new[] { "ix_test" });
+            await Task.WhenAll(ensured);
 
+            ensured.Distinct().Should().ContainSingle();
             VerifyCreated(indexes, Times.Once());
         }
     }

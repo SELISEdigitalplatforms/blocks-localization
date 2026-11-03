@@ -34,7 +34,16 @@ public class LocalizationTimelineQueryTests : IDisposable
         TestBlocksContext.Set("dev");
     }
 
-    public void Dispose() => _fixture.Dispose();
+    public void Dispose()
+    {
+        // Let index builds started by the requests finish before the databases are dropped, so they cannot
+        // re-create them. These calls return the cached tasks and start no new work for databases already seen.
+        foreach (var database in new[] { _fixture.Dev, _fixture.Other })
+            MongoIndexEnsurer.EnsureAsync(database, "KeyTimelines", KeyTimelineRepository.OverviewIndexes, _logger.Object)
+                .Wait(TimeSpan.FromSeconds(10));
+        _fixture.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private IMongoCollection<KeyTimeline> DevTimelines => _fixture.Dev.GetCollection<KeyTimeline>("KeyTimelines");
 

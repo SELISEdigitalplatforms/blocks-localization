@@ -630,8 +630,13 @@ namespace XUnitTest.Repositories
         {
             var now = DateTime.UtcNow;
             SetupOverview(Facet(2,
-                Group("op1", "TranslateAll", "u1", now.AddMinutes(-1), "t1", 2),
-                Group("op2", "TranslateAll", null, now, "t2", 2)));
+                Group("op1", "TranslateAll", "u1", now.AddMinutes(-1), "t1", 1),
+                Group("op2", "TranslateAll", null, now, "t2", 1)));
+            MockCursorHelper.SetupFindAsync(_collection, new List<KeyTimeline>
+            {
+                new KeyTimeline { ItemId = "t1", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now.AddMinutes(-1) },
+                new KeyTimeline { ItemId = "t2", OperationId = "op2", LogFrom = "TranslateAll", UserId = null, CreateDate = now }
+            });
             _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
             MockCursorHelper.SetupFindAsyncEmpty(_usersCollection);
 
@@ -649,7 +654,7 @@ namespace XUnitTest.Repositories
             var result = await _repo.GetLocalizationTimelineAsync(request);
 
             result.Operations.Should().HaveCount(2);
-            // Ascending order by CreateDate.
+            // Ascending order by CreateDate (sorted by the server; the pipeline tests pin the direction).
             result.Operations[0].CreateDate.Should().BeOnOrBefore(result.Operations[1].CreateDate);
             // A null UserId op falls back to "Unknown".
             result.Operations.Should().Contain(o => o.UserName == "Unknown");
@@ -905,8 +910,10 @@ namespace XUnitTest.Repositories
             FilterDefinition<User>? userFilter = null;
             var cursor = MockCursorHelper.CreateCursor(new List<User>
             {
-                new User { ItemId = "u1", FirstName = "Ada" },
-                new User { ItemId = "u2" }
+                // Name wins over email; a last name alone is used; no name or email falls back to the ID.
+                new User { ItemId = "u1", FirstName = "Ada", Email = "ada@example.test" },
+                new User { ItemId = "u2" },
+                new User { ItemId = "u3", LastName = "Doe", Email = "doe@example.test" }
             });
             _usersCollection.Setup(x => x.FindAsync(It.IsAny<FilterDefinition<User>>(), It.IsAny<FindOptions<User, User>>(), It.IsAny<CancellationToken>()))
                 .Callback<FilterDefinition<User>, FindOptions<User, User>, CancellationToken>((f, _, _) => userFilter = f)
@@ -917,7 +924,7 @@ namespace XUnitTest.Repositories
             var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
             ((BsonValue)userFilter!.Render(new RenderArgs<User>(registry.GetSerializer<User>(), registry)))
                 .Should().Be(new BsonDocument("_id", new BsonDocument("$in", new BsonArray { "u1", "u2", "u3" })));
-            result.Operations.Select(o => o.UserName).Should().Equal("Ada", "u2", "Ada", "u3");
+            result.Operations.Select(o => o.UserName).Should().Equal("Ada", "u2", "Ada", "Doe");
         }
 
         [Fact]
@@ -980,6 +987,20 @@ namespace XUnitTest.Repositories
             ((BsonValue)KeyTimelineRepository.OverviewIndexes.Single().Keys
                 .Render(new RenderArgs<KeyTimeline>(registry.GetSerializer<KeyTimeline>(), registry)))
                 .Should().Be(new BsonDocument("CreateDate", -1));
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_DoesNotWaitForTheIndexBuild()
+        {
+            SetupOverview(Facet(0));
+            var neverCompletes = new TaskCompletionSource<IEnumerable<string>>();
+            _indexes.Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<KeyTimeline>>>(), It.IsAny<CancellationToken>()))
+                .Returns(neverCompletes.Task);
+
+            var request = _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            var result = await request.WaitAsync(TimeSpan.FromSeconds(10));
+            result.TotalCount.Should().Be(0);
         }
 
         #endregion

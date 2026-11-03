@@ -14,6 +14,11 @@ namespace Eurolm.DomainService.Repositories
         private readonly IConfiguration _configuration;
         private readonly ILogger<KeyTimelineRepository> _logger;
         private const string _collectionName = "KeyTimelines";
+        // Field names of the overview aggregation's $group and $facet output.
+        private const string FirstItemIdField = "FirstItemId";
+        private const string CountField = "Count";
+        private const string TotalField = "Total";
+        private const string DataField = "Data";
 
         /// <summary>Supports the overview's $sort on CreateDate before grouping.</summary>
         public static IReadOnlyList<CreateIndexModel<KeyTimeline>> OverviewIndexes { get; } = new[]
@@ -280,11 +285,6 @@ namespace Eurolm.DomainService.Repositories
             };
         }
 
-        private const string FirstItemIdField = "FirstItemId";
-        private const string CountField = "Count";
-        private const string TotalField = "Total";
-        private const string DataField = "Data";
-
         /// <summary>An operation summary from the aggregation, with the ItemId of its first entry.</summary>
         private sealed record OperationGroup(LocalizationTimelineEntry Entry, string? FirstItemId);
 
@@ -364,24 +364,21 @@ namespace Eurolm.DomainService.Repositories
         /// </summary>
         private static async Task PopulateSingleEntrySnapshotsAsync(IMongoCollection<KeyTimeline> collection, List<OperationGroup> page)
         {
-            var singleEntryIds = page
+            var singleEntryGroups = page
                 .Where(g => g.Entry.AffectedKeysCount == 1 && !string.IsNullOrEmpty(g.FirstItemId))
-                .Select(g => g.FirstItemId!)
                 .ToList();
-            if (singleEntryIds.Count == 0) return;
+            if (singleEntryGroups.Count == 0) return;
 
             var entries = await collection
-                .Find(Builders<KeyTimeline>.Filter.In(t => t.ItemId, singleEntryIds))
+                .Find(Builders<KeyTimeline>.Filter.In(t => t.ItemId, singleEntryGroups.Select(g => g.FirstItemId!)))
                 .ToListAsync();
             var entriesById = entries.ToDictionary(t => t.ItemId);
 
-            foreach (var group in page)
+            foreach (var group in singleEntryGroups.Where(g => entriesById.ContainsKey(g.FirstItemId!)))
             {
-                if (group.Entry.AffectedKeysCount == 1 && group.FirstItemId != null && entriesById.TryGetValue(group.FirstItemId, out var entry))
-                {
-                    group.Entry.CurrentData = entry.CurrentData;
-                    group.Entry.PreviousData = entry.PreviousData;
-                }
+                var entry = entriesById[group.FirstItemId!];
+                group.Entry.CurrentData = entry.CurrentData;
+                group.Entry.PreviousData = entry.PreviousData;
             }
         }
 
