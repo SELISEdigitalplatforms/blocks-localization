@@ -20,6 +20,9 @@ export default defineConfig({
     include: ["app/**/*.test.{ts,tsx}"],
     exclude: ["node_modules", "dist", "**/__mocks__/**"],
     setupFiles: ["app/test-setup.ts"],
+    // genesis-os 4.4.7 loads the project's languages through import.meta.env; transforming it here gives
+    // it Vite's env object in tests instead of undefined.
+    server: { deps: { inline: [/@seliseblocks\/genesis-os/] } },
     css: false,
     // The default 5000ms is tight for userEvent-driven interaction tests once
     // the full suite (90+ files) runs in parallel and workers contend for
