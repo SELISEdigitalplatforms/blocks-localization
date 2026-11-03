@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
+import { Check } from "lucide-react";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
 import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import GlossaryTermPopover, {
+  isGlossaryMatchUsed,
   TermTargetLanguage,
 } from "@blocks-localization/components/glossary/glossary-term-popover";
 import { cn } from "@/lib/utils";
@@ -14,18 +16,26 @@ const TERM_CLASS =
 /** A term the glossary can apply to the target language. */
 const ACTIVE_TERM_CLASS =
   "decoration-primary/70 hover:bg-primary/10 hover:decoration-primary data-[state=open]:bg-primary/10 data-[state=open]:decoration-primary";
+/** Already in the target text: nothing left to do for it. */
+const USED_TERM_CLASS =
+  "decoration-success/80 decoration-solid hover:bg-success/10 hover:decoration-success data-[state=open]:bg-success/10";
 /** No rule for the target language: still explorable, but visibly nothing to apply. */
 const INACTIVE_TERM_CLASS =
   "decoration-low-emphasis/50 hover:bg-muted hover:decoration-low-emphasis data-[state=open]:bg-muted";
+
+const termStateClass = (used: boolean, inactive: boolean) => {
+  if (used) return USED_TERM_CLASS;
+  return inactive ? INACTIVE_TERM_CLASS : ACTIVE_TERM_CLASS;
+};
 
 interface HighlightedSourceTextProps {
   text: string;
   /** `/Glossary/Match` matches of exactly `text`; empty while loading or after a failure (C2). */
   matches: GlossaryMatch[];
   targetLanguage?: TermTargetLanguage;
-  /** The current target text, so Insert can say "Already used". */
+  /** The current target text, so used terms are marked and Insert can say "Already used". */
   targetText?: string;
-  onInsert?: (value: string) => void;
+  onInsert?: (value: string, replacing?: string) => void;
 }
 
 /**
@@ -43,8 +53,13 @@ export const HighlightedSourceText = ({
   const ruleLabels = useGlossaryRuleLabels();
   if (matches.length === 0) return <>{text}</>;
 
-  const termLabel = (match: GlossaryMatch, missingFor?: string) =>
-    missingFor
+  const termLabel = (match: GlossaryMatch, used: boolean, missingFor?: string) => {
+    if (used)
+      return t("HIGHLIGHTED_SOURCE_TEXT.ARIA_TERM_USED", {
+        term: match.surface,
+        rule: ruleLabels[match.meta.rule],
+      });
+    return missingFor
       ? t("HIGHLIGHTED_SOURCE_TEXT.ARIA_TERM_MISSING", {
           term: match.surface,
           rule: ruleLabels[match.meta.rule],
@@ -54,6 +69,7 @@ export const HighlightedSourceText = ({
           term: match.surface,
           rule: ruleLabels[match.meta.rule],
         });
+  };
 
   const parts: ReactNode[] = [];
   let cursor = 0;
@@ -64,6 +80,8 @@ export const HighlightedSourceText = ({
     if (match.start > cursor) parts.push(text.slice(cursor, match.start));
     const inactive =
       !!targetLanguage && !hasRuleForCulture(match.meta, targetLanguage.languageCode);
+    const used =
+      !!targetLanguage && isGlossaryMatchUsed(match, targetText ?? "", targetLanguage.languageCode);
     parts.push(
       <GlossaryTermPopover
         key={`${match.start}-${match.glossary.itemId}`}
@@ -76,11 +94,18 @@ export const HighlightedSourceText = ({
           type="button"
           aria-label={termLabel(
             match,
+            used,
             inactive ? targetLanguage?.languageName || targetLanguage?.languageCode : undefined,
           )}
-          className={cn(TERM_CLASS, inactive ? INACTIVE_TERM_CLASS : ACTIVE_TERM_CLASS)}
+          className={cn(TERM_CLASS, termStateClass(used, inactive))}
         >
           {text.slice(match.start, match.start + match.length)}
+          {used && (
+            <Check
+              className="ml-0.5 inline h-3 w-3 align-baseline text-success"
+              aria-hidden="true"
+            />
+          )}
         </button>
       </GlossaryTermPopover>,
     );

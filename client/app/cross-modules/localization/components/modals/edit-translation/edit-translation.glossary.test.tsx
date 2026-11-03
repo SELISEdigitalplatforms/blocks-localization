@@ -332,10 +332,20 @@ describe("edit-translation — glossary-aware suggestions", () => {
       expect(screen.getByText(/Open your/).textContent).toBe("Open your Workspace");
     });
 
-    it("says the terms have approved wording when the glossary has it", async () => {
+    it("says how many glossaries the translation does not use yet", async () => {
       renderFresh({});
       await highlight("Workspace");
-      expect(screen.getByText("1 glossary · select to see the approved wording")).toBeTruthy();
+      expect(screen.getByText("1 glossary · 1 not used yet")).toBeTruthy();
+    });
+
+    it("says the glossary is used once the translation has its wording", async () => {
+      renderFresh({});
+      await highlight("Workspace");
+      fireEvent.change(field(), { target: { value: "Öffne deinen Arbeitsbereich" } });
+      expect(screen.getByText("1 glossary · used in the translation")).toBeTruthy();
+      expect((await highlight("Workspace")).getAttribute("aria-label")).toBe(
+        "Glossary Workspace: Translate, used in the translation",
+      );
     });
 
     it("is honest when the glossary has no wording for the target language", async () => {

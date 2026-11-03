@@ -3,6 +3,8 @@
  * its last selection is tracked through `onSelect`/`onBlur` (a collapsed selection is the
  * caret). `insert(value)` replaces that range in the last-focused target, or the first
  * target before any was focused, then focuses it with the caret after the inserted text.
+ * `insert(value, replacing)` first looks for `replacing` (the untranslated source wording)
+ * left in the target and swaps it for the value instead.
  */
 import { FocusEvent, SyntheticEvent, useCallback, useRef, useState } from "react";
 
@@ -14,6 +16,26 @@ interface SelectionRange {
 }
 
 const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The first whole-word occurrence of `word` in `text`, in any letter case, or undefined.
+ * In no-space languages any occurrence counts.
+ */
+export const findWholeWord = (
+  text: string,
+  word: string,
+  culture?: string,
+): SelectionRange | undefined => {
+  const trimmed = word.trim();
+  if (!trimmed) return undefined;
+  const pattern = isNoSpaceCulture(culture)
+    ? escapeRegExp(trimmed)
+    : `(?<![\\p{L}\\p{M}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{M}\\p{N}])`;
+  const found = new RegExp(pattern, "iu").exec(text);
+  return found ? { start: found.index, end: found.index + found[0].length } : undefined;
+};
 
 /**
  * Replaces `range` of `text` with `value`. Without a range (never focused) the value is
@@ -80,13 +102,18 @@ export const useTargetInsertion = ({ cultures, getValue, setValue }: UseTargetIn
   }, []);
 
   const insert = useCallback(
-    (value: string) => {
+    (value: string, replacing?: string) => {
       const culture = targetCulture;
       if (!culture) return;
+      const text = getValue(culture);
+      const sourceWording =
+        replacing && replacing.toLowerCase() !== value.toLowerCase()
+          ? findWholeWord(text, replacing, culture)
+          : undefined;
       const result = insertAtRange(
-        getValue(culture),
+        text,
         value,
-        rangesRef.current.get(culture),
+        sourceWording ?? rangesRef.current.get(culture),
         culture,
       );
       setValue(culture, result.text);

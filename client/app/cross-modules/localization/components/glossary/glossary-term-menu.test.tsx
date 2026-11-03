@@ -8,6 +8,7 @@ import GlossaryTermMenu, {
   getGlossaryTermMenuHint,
   getGlossaryTermMenuItems,
   getGlossaryTermMenuShortcut,
+  hasInsertableGlossaryTerms,
   isGlossaryTermMenuShortcut,
 } from "./glossary-term-menu";
 
@@ -53,10 +54,35 @@ const keyEvent = (init: Partial<KeyboardEvent<HTMLElement>>) =>
 describe("getGlossaryTermMenuItems", () => {
   it("lists each term once by rule: translate value, missing, keep surface, no forbidden (H11)", () => {
     expect(getGlossaryTermMenuItems(matches, "de-DE")).toEqual([
-      { glossaryId: "g1", name: "Workspace", value: "Arbeitsbereich" },
-      { glossaryId: "g2", name: "Invoice" },
-      { glossaryId: "g3", name: "SELISE", value: "Selise" },
+      {
+        glossaryId: "g1",
+        name: "Workspace",
+        surface: "Workspace",
+        value: "Arbeitsbereich",
+        used: false,
+      },
+      { glossaryId: "g2", name: "Invoice", surface: "Invoice", used: false },
+      { glossaryId: "g3", name: "SELISE", surface: "Selise", value: "Selise", used: false },
     ]);
+  });
+
+  it("marks the terms the target text already uses, inflected or in a compound", () => {
+    const items = getGlossaryTermMenuItems(matches, "de-DE", "Öffne den Standardarbeitsbereich");
+    expect(items.map((item) => [item.glossaryId, item.used])).toEqual([
+      ["g1", true],
+      ["g2", false],
+      ["g3", false],
+    ]);
+  });
+});
+
+describe("hasInsertableGlossaryTerms", () => {
+  it("is true while a term with wording is not in the target yet", () => {
+    expect(hasInsertableGlossaryTerms(matches, "de-DE", "Öffne den Arbeitsbereich")).toBe(true);
+  });
+
+  it("is false once every term with wording is used", () => {
+    expect(hasInsertableGlossaryTerms(matches, "de-DE", "Arbeitsbereich von Selise")).toBe(false);
   });
 });
 
@@ -99,7 +125,7 @@ describe("isGlossaryTermMenuShortcut", () => {
   });
 });
 
-const renderMenu = (menuMatches: GlossaryMatch[]) => {
+const renderMenu = (menuMatches: GlossaryMatch[], targetText = "") => {
   const onInsert = vi.fn();
   const onOpenChange = vi.fn();
   render(
@@ -108,6 +134,7 @@ const renderMenu = (menuMatches: GlossaryMatch[]) => {
       onOpenChange={onOpenChange}
       matches={menuMatches}
       targetLanguage={{ languageCode: "de-DE", languageName: "German" }}
+      targetText={targetText}
       onInsert={onInsert}
       onReturnFocus={vi.fn()}
     >
@@ -122,7 +149,7 @@ describe("components/glossary/glossary-term-menu", () => {
     const { onInsert, onOpenChange } = renderMenu(matches);
     fireEvent.click(screen.getByRole("option", { name: /Workspace/ }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
+    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich", "Workspace");
   });
 
   it("disables a term without a value for the language", () => {
@@ -137,6 +164,26 @@ describe("components/glossary/glossary-term-menu", () => {
   it("does not list forbidden terms", () => {
     renderMenu(matches);
     expect(screen.queryByRole("option", { name: /Werkbereich/ })).toBeNull();
+  });
+
+  it("lists a term the target already uses under Already used, not insertable (no duplicates)", () => {
+    const { onInsert } = renderMenu(matches, "Gehe zum Arbeitsbereich");
+    expect(screen.getByText("Already used")).toBeTruthy();
+    const option = screen.getByRole("option", { name: /Workspace/ });
+    expect(option.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(option);
+    expect(onInsert).not.toHaveBeenCalled();
+    // Terms still to insert stay under the insert group.
+    expect(screen.getByText("Insert in German")).toBeTruthy();
+    expect(screen.getByRole("option", { name: /SELISE/ }).getAttribute("aria-disabled")).toBe(
+      "false",
+    );
+  });
+
+  it("drops the insert group once every term is used", () => {
+    renderMenu([matches[0]], "Gehe zum Arbeitsbereich");
+    expect(screen.queryByText("Insert in German")).toBeNull();
+    expect(screen.getByText("Already used")).toBeTruthy();
   });
 
   it("says when the source has no glossary terms (C6)", () => {

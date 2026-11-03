@@ -118,7 +118,7 @@ describe("GlossaryTermPopover", () => {
     renderPopover(matchOf(G1), onInsert);
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
-    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
+    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich", "Workspace");
     await waitFor(() => expect(screen.queryByText("Arbeitsbereich")).toBeNull());
   });
 

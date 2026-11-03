@@ -69,6 +69,26 @@ describe("HighlightedSourceText", () => {
     ]);
   });
 
+  it("marks a term the target already uses, and leaves the others to do", () => {
+    render(
+      <HighlightedSourceText
+        text={SOURCE}
+        matches={matches(SOURCE)}
+        targetLanguage={{ languageCode: "de-DE", languageName: "German" }}
+        targetText="Öffne deinen Arbeitsbereich"
+      />,
+    );
+    const workspace = screen.getByRole("button", { name: /Glossary Workspace/ });
+    expect(workspace.getAttribute("aria-label")).toBe(
+      "Glossary Workspace: Translate, used in the translation",
+    );
+    expect(workspace.className).toContain("decoration-success");
+    expect(workspace.textContent).toBe("Workspace");
+    const selise = screen.getByRole("button", { name: /Glossary SELISE/ });
+    expect(selise.getAttribute("aria-label")).not.toContain("used in the translation");
+    expect(selise.className).not.toContain("decoration-success");
+  });
+
   it("opens the popover for the editor's target and inserts (Example 1)", async () => {
     const onInsert = vi.fn();
     render(
@@ -81,7 +101,7 @@ describe("HighlightedSourceText", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Glossary Workspace/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
-    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
+    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich", "Workspace");
   });
 });
 

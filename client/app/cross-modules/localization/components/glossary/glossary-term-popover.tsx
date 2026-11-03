@@ -43,6 +43,22 @@ export const getGlossaryTermValue = (
     : { kind: "missing", alsoAvoid: findCultureEntry(meta.forbidden, targetCulture) ?? [] };
 };
 
+/**
+ * True when the target text already has the glossary's wording: the approved value of a
+ * Translate glossary, or the source surface of a Keep one.
+ */
+export const isGlossaryMatchUsed = (
+  match: GlossaryMatch,
+  targetText: string,
+  targetCulture: string,
+): boolean => {
+  const term = getGlossaryTermValue(match.meta, match.surface, targetCulture);
+  return (
+    (term.kind === "translate" || term.kind === "keep") &&
+    containsApprovedTranslation(targetText, term.value, targetCulture)
+  );
+};
+
 const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (
   <p className="text-xs font-medium text-low-emphasis">{children}</p>
 );
@@ -115,7 +131,8 @@ interface GlossaryTermPopoverProps {
   targetLanguage?: TermTargetLanguage;
   /** The current target text: Insert is disabled when the value is already in it. */
   targetText?: string;
-  onInsert?: (value: string) => void;
+  /** `replacing` is the source wording, swapped for the value if it is left in the target. */
+  onInsert?: (value: string, replacing?: string) => void;
   /** The trigger (a highlighted term or a chip); it gets focus back on Escape. */
   children: ReactElement;
 }
@@ -137,8 +154,7 @@ const GlossaryTermPopover = ({
   const firstExample = match.glossary.usageExamples?.find((example) => example.trim())?.trim();
   // Keep terms are already right in the source wording, so there is nothing to insert.
   const insertValue = term.kind === "translate" ? term.value : null;
-  const alreadyUsed =
-    insertValue !== null && containsApprovedTranslation(targetText, insertValue, code);
+  const alreadyUsed = insertValue !== null && isGlossaryMatchUsed(match, targetText, code);
   // Only an approved value can be inserted: no greyed-out button for a missing translation.
   const showInsert = !!onInsert && term.kind === "translate";
   const isMissing = term.kind === "missing";
@@ -146,7 +162,7 @@ const GlossaryTermPopover = ({
   const handleInsert = () => {
     if (insertValue === null || !onInsert) return;
     insertedRef.current = true;
-    onInsert(insertValue);
+    onInsert(insertValue, match.surface);
     setOpen(false);
   };
 

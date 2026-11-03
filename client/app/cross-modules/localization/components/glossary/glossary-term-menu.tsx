@@ -1,4 +1,6 @@
 import { KeyboardEvent, ReactElement } from "react";
+import { Check } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui-kits/popover/popover";
 import {
   Command,
@@ -11,6 +13,7 @@ import {
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import {
   getGlossaryTermValue,
+  isGlossaryMatchUsed,
   TermTargetLanguage,
 } from "@blocks-localization/components/glossary/glossary-term-popover";
 import { distinctGlossaryMatches } from "@blocks-localization/components/glossary/highlighted-source-text";
@@ -37,8 +40,12 @@ export const isGlossaryTermMenuShortcut = (event: KeyboardEvent<HTMLElement>) =>
 export interface GlossaryTermMenuItem {
   glossaryId: string;
   name: string;
+  /** The wording in the source, replaced by the value if it is left in the target. */
+  surface: string;
   /** What Enter inserts; undefined when a Translate term has no value for the culture. */
   value?: string;
+  /** The target text already has the value: listed as done, not insertable again. */
+  used: boolean;
 }
 
 /**
@@ -48,30 +55,50 @@ export interface GlossaryTermMenuItem {
 export const getGlossaryTermMenuItems = (
   matches: GlossaryMatch[],
   targetCulture: string,
+  targetText = "",
 ): GlossaryTermMenuItem[] =>
-  distinctGlossaryMatches(matches).flatMap((match) => {
+  distinctGlossaryMatches(matches).flatMap((match): GlossaryTermMenuItem[] => {
     const term = getGlossaryTermValue(match.meta, match.surface, targetCulture);
-    const name = match.glossary.name || match.surface;
+    const item = {
+      glossaryId: match.glossary.itemId,
+      name: match.glossary.name || match.surface,
+      surface: match.surface,
+    };
     switch (term.kind) {
       case "translate":
       case "keep":
-        return [{ glossaryId: match.glossary.itemId, name, value: term.value }];
+        return [
+          {
+            ...item,
+            value: term.value,
+            used: isGlossaryMatchUsed(match, targetText, targetCulture),
+          },
+        ];
       case "missing":
-        return [{ glossaryId: match.glossary.itemId, name }];
+        return [{ ...item, used: false }];
       default:
         return [];
     }
   });
 
-export const hasInsertableGlossaryTerms = (matches: GlossaryMatch[], targetCulture: string) =>
-  getGlossaryTermMenuItems(matches, targetCulture).some((item) => !!item.value);
+/** True when some glossary has wording for the culture that the target text does not use yet. */
+export const hasInsertableGlossaryTerms = (
+  matches: GlossaryMatch[],
+  targetCulture: string,
+  targetText = "",
+) =>
+  getGlossaryTermMenuItems(matches, targetCulture, targetText).some(
+    (item) => !!item.value && !item.used,
+  );
 
 interface GlossaryTermMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   matches: GlossaryMatch[];
   targetLanguage: TermTargetLanguage;
-  onInsert: (value: string) => void;
+  /** The current target text: glossaries it already uses are listed as done. */
+  targetText: string;
+  onInsert: (value: string, replacing?: string) => void;
   /** Called on close without inserting, so focus goes back to the field (Escape). */
   onReturnFocus: () => void;
   children: ReactElement;
@@ -82,11 +109,15 @@ const GlossaryTermMenu = ({
   onOpenChange,
   matches,
   targetLanguage,
+  targetText,
   onInsert,
   onReturnFocus,
   children,
 }: Readonly<GlossaryTermMenuProps>) => {
-  const items = getGlossaryTermMenuItems(matches, targetLanguage.languageCode);
+  const { t } = useT("localization.glossary");
+  const items = getGlossaryTermMenuItems(matches, targetLanguage.languageCode, targetText);
+  const toInsert = items.filter((item) => !item.used);
+  const used = items.filter((item) => item.used);
   const languageName = targetLanguage.languageName || targetLanguage.languageCode;
 
   return (
@@ -102,15 +133,17 @@ const GlossaryTermMenu = ({
           onReturnFocus();
         }}
       >
-        <Command aria-label="Insert glossary">
-          <CommandInput placeholder="Search glossaries..." />
+        <Command aria-label={t("GLOSSARY_TERM_MENU.ARIA_LABEL")}>
+          <CommandInput placeholder={t("GLOSSARY_TERM_MENU.SEARCH")} />
           <CommandList>
             <CommandEmpty>
-              {items.length === 0 ? "No glossaries in the source" : "No matching glossaries"}
+              {items.length === 0
+                ? t("GLOSSARY_TERM_MENU.NONE_IN_SOURCE")
+                : t("GLOSSARY_TERM_MENU.NO_MATCH")}
             </CommandEmpty>
-            {items.length > 0 && (
-              <CommandGroup heading={`Insert in ${languageName}`}>
-                {items.map((item) => (
+            {toInsert.length > 0 && (
+              <CommandGroup heading={t("GLOSSARY_TERM_MENU.INSERT_IN", { language: languageName })}>
+                {toInsert.map((item) => (
                   <CommandItem
                     key={item.glossaryId}
                     value={`${item.name} ${item.value ?? ""}`}
@@ -118,7 +151,7 @@ const GlossaryTermMenu = ({
                     onSelect={() => {
                       if (!item.value) return;
                       onOpenChange(false);
-                      onInsert(item.value);
+                      onInsert(item.value, item.surface);
                     }}
                   >
                     <span className="truncate">{item.name}</span>
@@ -126,8 +159,28 @@ const GlossaryTermMenu = ({
                       →
                     </span>
                     <span className="truncate font-medium">
-                      {item.value ?? `no ${languageName} translation`}
+                      {item.value ??
+                        t("GLOSSARY_TERM_MENU.NO_TRANSLATION", { language: languageName })}
                     </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {used.length > 0 && (
+              <CommandGroup heading={t("GLOSSARY_TERM_MENU.ALREADY_USED")}>
+                {used.map((item) => (
+                  <CommandItem
+                    key={item.glossaryId}
+                    value={`${item.name} ${item.value ?? ""}`}
+                    // Inserting it again would only duplicate it.
+                    disabled
+                  >
+                    <span className="truncate">{item.name}</span>
+                    <span aria-hidden="true" className="text-low-emphasis">
+                      →
+                    </span>
+                    <span className="truncate">{item.value}</span>
+                    <Check className="ml-auto h-3.5 w-3.5 text-success" aria-hidden="true" />
                   </CommandItem>
                 ))}
               </CommandGroup>

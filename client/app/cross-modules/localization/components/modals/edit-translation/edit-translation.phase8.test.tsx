@@ -186,6 +186,55 @@ describe("edit-translation (Phase 8)", () => {
       await waitFor(() => expect(field().value).toBe("Öffne Arbeitsbereich"));
     });
 
+    it("hides Insert glossary once the translation uses every glossary (no duplicates)", async () => {
+      renderModal({
+        ...keyDetails,
+        resources: [
+          { culture: "en-US", value: "Go to Workspace" },
+          { culture: "de-DE", value: "Gehe zum Arbeitsbereich" },
+        ],
+      });
+      await screen.findByText("1 glossary · used in the translation");
+      expect(screen.queryByRole("button", { name: /Insert glossary/ })).toBeNull();
+      expect(field().getAttribute("aria-describedby")).toBeNull();
+
+      // The shortcut still opens the menu, listing it as done.
+      fireEvent.keyDown(field(), { code: "KeyG", altKey: true, shiftKey: true });
+      const option = await screen.findByRole("option", { name: /Workspace.*Arbeitsbereich/ });
+      expect(option.getAttribute("aria-disabled")).toBe("true");
+      expect(screen.getByText("Already used")).toBeTruthy();
+      fireEvent.click(option);
+      expect(field().value).toBe("Gehe zum Arbeitsbereich");
+    });
+
+    it("brings Insert glossary back when the wording is removed", async () => {
+      renderModal({
+        ...keyDetails,
+        resources: [
+          { culture: "en-US", value: "Go to Workspace" },
+          { culture: "de-DE", value: "Gehe zum Arbeitsbereich" },
+        ],
+      });
+      await screen.findByText("1 glossary · used in the translation");
+      fireEvent.change(field(), { target: { value: "Gehe zum Bereich" } });
+      expect(await screen.findByRole("button", { name: /Insert glossary/ })).toBeTruthy();
+      expect(screen.getByText("1 glossary · 1 not used yet")).toBeTruthy();
+    });
+
+    it("replaces untranslated source wording instead of appending", async () => {
+      renderModal({
+        ...keyDetails,
+        resources: [
+          { culture: "en-US", value: "Go to Workspace" },
+          { culture: "de-DE", value: "Gehe zum Workspace" },
+        ],
+      });
+      fireEvent.click(await screen.findByRole("button", { name: /Insert glossary/ }));
+      fireEvent.click(await screen.findByRole("option", { name: /Workspace.*Arbeitsbereich/ }));
+      await waitFor(() => expect(field().value).toBe("Gehe zum Arbeitsbereich"));
+      expect(screen.queryByRole("button", { name: /Insert glossary/ })).toBeNull();
+    });
+
     it("says so when the source has no glossary terms", async () => {
       renderModal({
         ...keyDetails,

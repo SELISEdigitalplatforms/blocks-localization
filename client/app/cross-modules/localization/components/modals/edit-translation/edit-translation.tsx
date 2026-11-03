@@ -10,7 +10,7 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
 import { Textarea } from "@/components/ui-kits/textarea/textarea";
-import { BookOpen, LoaderCircle, Plus, Wand } from "lucide-react";
+import { BookOpen, Check, LoaderCircle, Plus, Wand } from "lucide-react";
 import { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import {
@@ -30,8 +30,8 @@ import { hasRuleForCulture } from "@blocks-localization/utils/glossary-validatio
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import GlossaryTermMenu, {
   getGlossaryTermMenuHint,
+  getGlossaryTermMenuItems,
   getGlossaryTermMenuShortcut,
-  hasInsertableGlossaryTerms,
   isGlossaryTermMenuShortcut,
 } from "@blocks-localization/components/glossary/glossary-term-menu";
 import { useSourceTextSelection } from "@blocks-localization/hooks/use-source-text-selection";
@@ -43,16 +43,29 @@ const COMMON_ERROR = "common:ERROR";
 
 const NO_MATCHES: GlossaryMatch[] = [];
 
-/** The hint next to the source label, honest about what the glossary has for this language. */
+interface SourceTermsCounts {
+  terms: number;
+  withWording: number;
+  /** Terms with wording to write in the target (Translate with a value, or Keep). */
+  insertable: number;
+  /** Of those, the ones the target text does not use yet. */
+  pending: number;
+}
+
+/**
+ * The hint next to the source label: what is left to do for the glossaries, or that they are
+ * all used, and honest about what the glossary has for this language.
+ */
 const sourceTermsHint = (
   t: TFunction,
-  termCount: number,
-  withWording: number,
+  { terms, withWording, insertable, pending }: SourceTermsCounts,
   language: string,
 ) => {
-  if (withWording === termCount) return t("EDIT_TRANSLATION.HINT_ALL", { count: termCount });
-  if (withWording === 0) return t("EDIT_TRANSLATION.HINT_NONE", { count: termCount, language });
-  return t("EDIT_TRANSLATION.HINT_SOME", { count: termCount, withWording, language });
+  if (withWording === 0) return t("EDIT_TRANSLATION.HINT_NONE", { count: terms, language });
+  if (pending > 0) return t("EDIT_TRANSLATION.HINT_PENDING", { count: terms, pending });
+  if (insertable === terms) return t("EDIT_TRANSLATION.HINT_USED", { count: terms });
+  if (withWording === terms) return t("EDIT_TRANSLATION.HINT_ALL", { count: terms });
+  return t("EDIT_TRANSLATION.HINT_SOME", { count: terms, withWording, language });
 };
 
 interface EditTranslationProps {
@@ -222,12 +235,25 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   // Editing the default language itself: there is no target wording to look up or apply.
   const highlightMatches = destinationLanguage?.isDefault ? NO_MATCHES : sourceMatches;
   const terms = distinctGlossaryMatches(highlightMatches);
-  const termsWithWording = terms.filter((match) =>
-    hasRuleForCulture(match.meta, destinationLanguageCode),
-  ).length;
-  const canInsertTerm =
-    !destinationLanguage?.isDefault &&
-    hasInsertableGlossaryTerms(highlightMatches, destinationLanguageCode);
+  const insertableTerms = getGlossaryTermMenuItems(
+    highlightMatches,
+    destinationLanguageCode,
+    translation,
+  ).filter((item) => !!item.value);
+  const termCounts: SourceTermsCounts = {
+    terms: terms.length,
+    withWording: terms.filter((match) => hasRuleForCulture(match.meta, destinationLanguageCode))
+      .length,
+    insertable: insertableTerms.length,
+    pending: insertableTerms.filter((item) => !item.used).length,
+  };
+  // Same condition as the "used in the translation" hint.
+  const allTermsUsed =
+    termCounts.terms > 0 &&
+    termCounts.pending === 0 &&
+    termCounts.insertable === termCounts.terms;
+  // Only while some glossary is not in the translation yet: inserting a used one duplicates it.
+  const canInsertTerm = !destinationLanguage?.isDefault && termCounts.pending > 0;
   const termShortcut = getGlossaryTermMenuShortcut();
   // Not while editing the default language (nothing to translate), nor for text that already is a glossary.
   const canAddSelectionToGlossary =
@@ -251,11 +277,14 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
             </p>
             {terms.length > 0 && (
               <p className="flex items-center gap-1.5 text-xs text-low-emphasis">
-                <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {allTermsUsed ? (
+                  <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
+                ) : (
+                  <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                )}
                 {sourceTermsHint(
                   t,
-                  terms.length,
-                  termsWithWording,
+                  termCounts,
                   destinationLanguage?.languageName || destinationLanguageCode,
                 )}
               </p>
@@ -353,6 +382,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
               languageCode: destinationLanguageCode,
               languageName: destinationLanguage?.languageName ?? "",
             }}
+            targetText={translation}
             onInsert={insert}
             onReturnFocus={() => targetRef.current?.focus()}
           >
