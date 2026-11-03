@@ -118,14 +118,17 @@ describe("language-module/timeline", () => {
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 
-  it.each([["Enter"], [" "]])("should open the difference dialog when %s is pressed on a row", (key) => {
-    render(<Timeline events={events} />);
-    const row = screen.getByText("Created key").closest('[role="button"]') as HTMLElement;
+  it.each([["Enter"], [" "]])(
+    "should open the difference dialog when %s is pressed on a row",
+    (key) => {
+      render(<Timeline events={events} />);
+      const row = screen.getByText("Created key").closest('[role="button"]') as HTMLElement;
 
-    fireEvent.keyDown(row, { key });
+      fireEvent.keyDown(row, { key });
 
-    expect(screen.getByText("Language Difference")).toBeTruthy();
-  });
+      expect(screen.getByText("Language Difference")).toBeTruthy();
+    },
+  );
 
   it("should ignore other keys on a row", () => {
     render(<Timeline events={events} />);

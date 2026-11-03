@@ -95,6 +95,23 @@ describe("add-new-language-key (extra coverage)", () => {
     );
   });
 
+  it("shows the duplicate-key failure the unique index returns", async () => {
+    // The server answers a save rejected by the unique index exactly like KeyValidator.
+    const message = "KeyName and ModuleId combination must not already exist for this key.";
+    saveKeyAsync.mockResolvedValue({
+      success: false,
+      errorMessage: "",
+      validationErrors: [{ propertyName: "IsNewKey", errorMessage: message }],
+    });
+    renderWithProviders(<AddNewLanguageKey />, { route });
+    fillValidForm();
+    submitForm();
+    await waitFor(() => expect(saveKeyAsync).toHaveBeenCalled());
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "destructive", description: message }),
+    );
+  });
+
   it("falls back to the response error message when there are no validation errors", async () => {
     saveKeyAsync.mockResolvedValue({
       success: false,

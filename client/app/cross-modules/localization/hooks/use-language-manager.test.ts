@@ -15,6 +15,8 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: {
     fetchBlocksLanguageKey: vi.fn(),
+    fetchDuplicateSummary: vi.fn(),
+    enforceUniqueness: vi.fn(),
     fetchBlocksLanguageKeyById: vi.fn(),
     fetchBlocksLanguageModules: vi.fn(),
     fetchBlocksLanguages: vi.fn(),
@@ -74,7 +76,318 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
       expect.objectContaining({ pageNumber: 0, pageSize: 25, searchKey: "search" }),
+      // The query's AbortSignal, so a superseded request is cancelled.
+      { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("useGetBlocksLanguageKey prefetches the next page once the current one settles", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 30, keys: [] } as never);
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() =>
+      expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 1, pageSize: 10 }),
+        expect.anything(),
+      ),
+    );
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2);
+  });
+
+  it("useGetBlocksLanguageKey swallows a failed prefetch and keeps the current page", async () => {
+    svc.fetchBlocksLanguageKey
+      .mockResolvedValueOnce({ totalCount: 30, keys: [] } as never)
+      .mockRejectedValueOnce(new Error("next page down"));
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(2));
+    expect(result.current.isSuccess).toBe(true);
+    expect(result.current.data).toEqual({ totalCount: 30, keys: [] });
+  });
+
+  it("useGetBlocksLanguageKey does not prefetch past the last page", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 10, keys: [] } as never);
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("useGetBlocksLanguageKey stays idle while the All view is active", () => {
+    renderQ(() =>
+      hooks.useGetBlocksLanguageKey(
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+      ),
+    );
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("useGetBlocksLanguageKeysInfinite counts on the first chunk and follows the cursor after it", async () => {
+    svc.fetchBlocksLanguageKey
+      .mockResolvedValueOnce({
+        totalCount: 150,
+        keys: [{ itemId: "k1" }],
+        hasMore: true,
+        nextCursor: "cursor-1",
+      } as never)
+      .mockResolvedValueOnce({
+        totalCount: null,
+        keys: [{ itemId: "k2" }],
+        hasMore: false,
+        nextCursor: null,
+      } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "hello",
+        moduleIds: ["m1"],
+        sortProperty: "KeyName",
+        isDescending: false,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pageSize: hooks.LANGUAGE_KEY_CHUNK_SIZE,
+        includeTotalCount: true,
+        cursor: undefined,
+        searchKey: "hello",
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(result.current.hasNextPage).toBe(true);
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: "cursor-1", includeTotalCount: false }),
+      { signal: expect.any(AbortSignal) },
+    );
+    // The uncounted chunk carries the first chunk's total forward.
+    expect(result.current.data?.pages[1].totalCount).toBe(150);
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+  });
+
+  it("useGetBlocksLanguageKeysInfinite pages the duplicates filter by page number, not by cursor", async () => {
+    svc.fetchBlocksLanguageKey
+      .mockResolvedValueOnce({
+        totalCount: 150,
+        keys: [{ itemId: "k1" }],
+        nextCursor: null,
+      } as never)
+      .mockResolvedValueOnce({
+        totalCount: null,
+        keys: [{ itemId: "k2" }],
+        nextCursor: null,
+      } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+        enabled: true,
+        onlyDuplicates: true,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 0, onlyDuplicates: true, includeTotalCount: true }),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(result.current.hasNextPage).toBe(true);
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 1, cursor: undefined, includeTotalCount: false }),
+      { signal: expect.any(AbortSignal) },
+    );
+    // 150 rows fill two chunks of 100, so there is nothing after the second.
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+  });
+
+  it("useGetBlocksLanguageKeysInfinite stays idle until the All view is selected", () => {
+    renderQ(() =>
+      hooks.useGetBlocksLanguageKeysInfinite({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+        enabled: false,
+      }),
+    );
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("editing or deleting a key patches the All view in place instead of refetching it", async () => {
+    const { queryClient, wrapper } = createQueryWrapper();
+    const allViewKey = localizationQueryKeys.languageKeys.infinite("tenant-1", {
+      searchKey: "",
+      moduleIds: [],
+      sortProperty: "KeyName",
+      isDescending: false,
+      createStartDate: "",
+      createEndDate: "",
+      lastUpdateStartDate: "",
+      lastUpdateEndDate: "",
+      resourceSearchFilters: [],
+      missingLanguages: [],
+    });
+    // Seeded without an observer, so keep it from being garbage-collected mid-test.
+    queryClient.setQueryDefaults(localizationQueryKeys.languageKeys.infinitePrefix, {
+      gcTime: Infinity,
+    });
+    queryClient.setQueryData(allViewKey, {
+      pages: [
+        {
+          totalCount: 3,
+          keys: [
+            { itemId: "a", keyName: "a", resources: [] },
+            { itemId: "b", keyName: "b", resources: [] },
+            { itemId: "c", keyName: "c", resources: [] },
+          ],
+          hasMore: false,
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    });
+    svc.saveBlocksLanguageKey.mockResolvedValue({ success: true } as never);
+    svc.deleteLanguageKey.mockResolvedValue({ isSuccess: true } as never);
+
+    const save = renderHook(() => hooks.useSaveBlocksLanguageKey(), { wrapper });
+    await save.result.current.mutateAsync({
+      itemId: "b",
+      keyName: "b",
+      moduleId: "m",
+      resources: [{ culture: "de-DE", value: "Hallo" }],
+      routes: [],
+      isPartiallyTranslated: false,
+    });
+    const remove = renderHook(() => hooks.useDeleteLanguageKey(), { wrapper });
+    await remove.result.current.mutateAsync({ itemId: "a" });
+
+    const page = queryClient.getQueryData<{
+      pages: Array<{ totalCount: number; keys: Array<{ itemId: string; resources: unknown[] }> }>;
+    }>(allViewKey)!.pages[0];
+    expect(page.keys.map((key) => key.itemId)).toEqual(["b", "c"]);
+    expect(page.keys[0].resources).toEqual([{ culture: "de-DE", value: "Hallo" }]);
+    expect(page.totalCount).toBe(2);
+    expect(queryClient.getQueryState(allViewKey)?.isInvalidated).toBe(false);
+    expect(svc.fetchBlocksLanguageKey).not.toHaveBeenCalled();
+  });
+
+  it("useGetBlocksLanguageKey should ask for duplicates only when the filter is on", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 0, keys: [] } as never);
+    const off = renderQ(() => hooks.useGetBlocksLanguageKey(0, 10, "", [], false));
+    await waitFor(() => expect(off.result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey.mock.calls[0][0]).not.toHaveProperty("onlyDuplicates");
+
+    const on = renderQ(() =>
+      hooks.useGetBlocksLanguageKey(
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        [],
+        true,
+        true,
+      ),
+    );
+    await waitFor(() => expect(on.result.current.isSuccess).toBe(true));
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onlyDuplicates: true }),
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it("the duplicate filter is part of the list query key", () => {
+    const list = (onlyDuplicates: boolean) =>
+      localizationQueryKeys.languageKeys.list(
+        "t",
+        0,
+        10,
+        "",
+        [],
+        false,
+        "",
+        false,
+        "",
+        "",
+        "",
+        "",
+        [],
+        [],
+        onlyDuplicates,
+      );
+    expect(list(true)).not.toEqual(list(false));
+  });
+
+  it("useGetDuplicateSummary should load the tenant summary", async () => {
+    const summary = { keyGroupCount: 2, duplicateKeyRowCount: 5, extraKeyCount: 3 };
+    svc.fetchDuplicateSummary.mockResolvedValue(summary as never);
+    const { result } = renderQ(() => hooks.useGetDuplicateSummary());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(summary);
+  });
+
+  it("useGetDuplicateSummary should not retry a failure", async () => {
+    svc.fetchDuplicateSummary.mockRejectedValue(new Error("down"));
+    const { result } = renderQ(() => hooks.useGetDuplicateSummary());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(svc.fetchDuplicateSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a single key delete", "useDeleteLanguageKey", "deleteLanguageKey", {}],
+    ["a bulk delete", "useDeleteLanguageKeys", "deleteLanguageKeys", {}],
+    ["a key save", "useSaveBlocksLanguageKey", "saveBlocksLanguageKey", {}],
+    ["a bulk key save", "useSaveBlocksLanguageKeys", "saveBlocksLanguageKeys", []],
+  ] as const)(
+    "the duplicate summary is refreshed after %s",
+    async (_label, hook, method, payload) => {
+      vi.mocked(svc[method]).mockResolvedValue({ isSuccess: true, success: true } as never);
+      const { queryClient, wrapper } = createQueryWrapper();
+      const summaryKey = localizationQueryKeys.languageKeys.duplicateSummary("tenant-1");
+      queryClient.setQueryData(summaryKey, { extraKeyCount: 1 });
+      const { result } = renderHook(
+        () => (hooks[hook] as () => { mutateAsync: (p: unknown) => Promise<unknown> })(),
+        { wrapper },
+      );
+
+      await result.current.mutateAsync(payload as never);
+
+      await waitFor(() => expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true));
+    },
+  );
+
+  it("useEnforceUniqueness should refresh the summary even when it is refused", async () => {
+    svc.enforceUniqueness.mockRejectedValue(Object.assign(new Error("Forbidden"), { status: 403 }));
+    const { queryClient, wrapper } = createQueryWrapper();
+    const summaryKey = localizationQueryKeys.languageKeys.duplicateSummary("tenant-1");
+    queryClient.setQueryData(summaryKey, { extraKeyCount: 0 });
+    const { result } = renderHook(() => hooks.useEnforceUniqueness(), { wrapper });
+
+    await expect(result.current.mutateAsync()).rejects.toThrow("Forbidden");
+
+    await waitFor(() => expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true));
   });
 
   it("useGetBlocksLanguageKey should keep the current rows during a search refetch", async () => {
@@ -339,6 +652,77 @@ describe("localization/hooks/use-language-manager", () => {
     );
   });
 
+  it("useTagGlossary should also refresh the module glossaries prefix", async () => {
+    svc.tagGlossary.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => hooks.useTagGlossary(), { wrapper });
+    await result.current.mutateAsync({ moduleId: "m1", glossaryIds: [] } as never);
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: localizationQueryKeys.glossaries.modulePrefix,
+    });
+  });
+
+  describe("fetchAllModuleGlossaries / useGetAllModuleGlossaries (H14)", () => {
+    const page = (from: number, count: number, totalCount: number) => ({
+      items: Array.from({ length: count }, (_, index) => ({
+        itemId: `g${from + index}`,
+        name: `Term ${from + index}`,
+      })),
+      totalCount,
+    });
+
+    it("loads one page for a module with up to 100 glossaries", async () => {
+      svc.fetchGlossaries.mockResolvedValueOnce(page(0, 30, 30) as never);
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(items).toHaveLength(30);
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(1);
+      expect(svc.fetchGlossaries).toHaveBeenCalledWith({
+        pageNumber: 0,
+        pageSize: 100,
+        moduleId: "m1",
+      });
+    });
+
+    it("pages until totalCount and de-duplicates by itemId", async () => {
+      svc.fetchGlossaries
+        .mockResolvedValueOnce(page(0, 100, 130) as never)
+        // The server sort has no tie-breaker: g99 shows up again on page 2.
+        .mockResolvedValueOnce({
+          items: [{ itemId: "g99", name: "Term 99" }, ...page(100, 29, 130).items],
+          totalCount: 130,
+        } as never);
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(2);
+      expect(svc.fetchGlossaries).toHaveBeenLastCalledWith({
+        pageNumber: 1,
+        pageSize: 100,
+        moduleId: "m1",
+      });
+      expect(items).toHaveLength(129);
+      expect(new Set(items.map((item) => item.itemId)).size).toBe(129);
+    });
+
+    it("stops after 50 pages", async () => {
+      svc.fetchGlossaries.mockImplementation(
+        async ({ pageNumber }: { pageNumber: number }) =>
+          page(pageNumber * 100, 100, 1_000_000) as never,
+      );
+      const items = await hooks.fetchAllModuleGlossaries("m1");
+      expect(svc.fetchGlossaries).toHaveBeenCalledTimes(50);
+      expect(items).toHaveLength(5000);
+    });
+
+    it("keys the query under the module prefix and surfaces a failed page", async () => {
+      svc.fetchGlossaries
+        .mockResolvedValueOnce(page(0, 100, 130) as never)
+        .mockRejectedValueOnce(new Error("500"));
+      const { result } = renderQ(() => hooks.useGetAllModuleGlossaries("m1"));
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.data).toBeUndefined();
+    });
+  });
+
   it("useTranslateAll should invoke the service", async () => {
     svc.translateAll.mockResolvedValue({ isSuccess: true } as never);
     const { result } = renderQ(() => hooks.useTranslateAll());
@@ -414,7 +798,7 @@ describe("localization/hooks/use-language-manager", () => {
     );
   });
 
-  it("useDeleteLanguageModule without a target module should only refresh the modules", async () => {
+  it("useDeleteLanguageModule without a target module should only refresh the modules and the duplicate summary", async () => {
     svc.deleteLanguageModule.mockResolvedValue({ isSuccess: true } as never);
     const { queryClient, wrapper } = createQueryWrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
@@ -424,6 +808,7 @@ describe("localization/hooks/use-language-manager", () => {
 
     expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
       ["get-language-modules"],
+      ["get-blocksLanguageKeys", "duplicate-summary"],
     ]);
   });
 

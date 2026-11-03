@@ -27,7 +27,6 @@ const GptPrompt: React.FC<{
   const [text, setText] = useState(defaultValue);
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
-
   const handleWordsLimit = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textAreaText = event.target.value;
     setText(textAreaText);

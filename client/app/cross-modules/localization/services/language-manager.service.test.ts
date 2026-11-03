@@ -62,6 +62,35 @@ describe("LanguageManagerService", () => {
           pageNumber: 0,
           pageSize: 25,
         }),
+        undefined,
+        { signal: undefined },
+      );
+    });
+
+    it("should send the keyset cursor and count flag and pass the abort signal through", async () => {
+      vi.mocked(http.post).mockResolvedValue({ totalCount: null, keys: [], nextCursor: null });
+      const controller = new AbortController();
+
+      await service.fetchBlocksLanguageKey(
+        {
+          pageNumber: 0,
+          pageSize: 100,
+          searchKey: "",
+          moduleIds: [],
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          cursor: "abc",
+          includeTotalCount: false,
+        },
+        { signal: controller.signal },
+      );
+
+      expect(http.post).toHaveBeenCalledWith(
+        LANGUAGE_KEY_ENDPOINTS.GETS,
+        expect.objectContaining({ cursor: "abc", includeTotalCount: false, pageSize: 100 }),
+        undefined,
+        { signal: controller.signal },
       );
     });
 
@@ -569,6 +598,24 @@ describe("LanguageManagerService", () => {
         payload,
       );
     });
+  });
+
+  it("getTranslationSuggestion should pass elementDetailContext through unchanged", async () => {
+    vi.mocked(http.post).mockResolvedValue({ content: "Hallo", errors: null, isSuccess: true });
+    const payload = {
+      sourceText: "Hello",
+      destinationLanguage: "German",
+      currentLanguage: "English",
+      temperature: 0.1,
+      elementDetailContext: "Translate a user interface string.\n",
+      glossaryIds: [],
+      destinationLanguageCode: "de-DE",
+    };
+    await service.getTranslationSuggestion(payload);
+    expect(http.post).toHaveBeenCalledWith(
+      LANGUAGE_ASSISTANT_ENDPOINTS.GET_TRANSLATION_SUGGESTION,
+      payload,
+    );
   });
 
   // ─── translateAll ────────────────────────────────────────────────────────

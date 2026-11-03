@@ -4,12 +4,29 @@ import {
   FilterToolbar,
   useSortQueryParams,
 } from "@/components/filter-toolbar";
-import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import {
+  createParser,
+  parseAsArrayOf,
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsString,
+  useQueryStates,
+} from "nuqs";
+import {
+  DEFAULT_KEY_PAGE_SIZE,
+  parseKeyPageSize,
+  type KeyPageSize,
+} from "@blocks-localization/language-module/language-table/language-table.utils";
+
+const parseAsKeyPageSize = createParser<KeyPageSize>({
+  parse: parseKeyPageSize,
+  serialize: String,
+});
 
 export const useKeysFilterQueryParams = () => {
   const [queryParams, setQueryParams] = useQueryStates({
     pageNumber: parseAsInteger.withDefault(0),
-    pageSize: parseAsInteger.withDefault(10),
+    pageSize: parseAsKeyPageSize.withDefault(DEFAULT_KEY_PAGE_SIZE),
     search: parseAsString.withDefault(""),
     moduleIds: parseAsArrayOf(parseAsString).withDefault([]),
     missingLanguages: parseAsArrayOf(parseAsString).withDefault([]),
@@ -18,6 +35,8 @@ export const useKeysFilterQueryParams = () => {
     lastUpdateStartDate: parseAsString.withDefault(""),
     lastUpdateEndDate: parseAsString.withDefault(""),
     resourceSearch: parseAsString.withDefault(""),
+    // Set by the duplicates chip in the Translations header: show only duplicate key rows.
+    duplicates: parseAsBoolean.withDefault(false),
   });
   return { queryParams, setQueryParams };
 };

@@ -14,14 +14,17 @@ const tagGlossaryAsync = vi.fn();
 
 vi.mock("@seliseblocks/genesis-os", () => ({
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 vi.mock("@/hooks/use-toast", () => ({ showErrorToast: vi.fn(), toast: vi.fn() }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useTranslateAll: vi.fn(),
-  useGetModuleGlossaries: vi.fn(),
+  useGetAllModuleGlossaries: vi.fn(),
   useSearchGlossaries: vi.fn(),
   useTagGlossary: vi.fn(),
+  useGetLanguages: vi.fn(() => ({ data: [] })),
+  useResolveGlossariesByIds: () => ({ glossaries: [], failedIds: [] }),
 }));
 
 const withDialog = (node: React.ReactNode) => (
@@ -131,6 +134,9 @@ describe("modals/auto-translate", () => {
       isPending: false,
       mutateAsync: translateAllAsync,
     } as never);
+    vi.mocked(hooks.useGetLanguages).mockReturnValue({
+      data: [{ itemId: "l1", languageName: "English", languageCode: "en-US", isDefault: true }],
+    } as never);
   });
 
   it("should trigger translate-all on confirm", async () => {
@@ -158,8 +164,9 @@ describe("modals/tag-glossary-modal", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(hooks.useGetModuleGlossaries).mockReturnValue({
-      data: { items: [{ itemId: "g1", name: "Widget" }] },
+    vi.mocked(hooks.useGetAllModuleGlossaries).mockReturnValue({
+      data: [{ itemId: "g1", name: "Widget" }],
+      isFetchedAfterMount: true,
     } as never);
     vi.mocked(hooks.useSearchGlossaries).mockReturnValue({
       data: { items: [] },

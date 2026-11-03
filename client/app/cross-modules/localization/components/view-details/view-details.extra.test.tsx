@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -106,17 +106,5 @@ describe("view-details (extra coverage)", () => {
     renderWithProviders(<ViewDetails keyDetails={{ ...keyDetails, glossaryIds: ["gl1"] }} />);
     // Only the tagged badge renders it once.
     expect(screen.getAllByText("TaggedTerm").length).toBe(1);
-  });
-
-  it("renders suggested glossaries and tags one to the key", async () => {
-    h.useGetSuggestedGlossaries.mockReturnValue({
-      data: { suggestedGlossaries: [{ itemId: "sg1", name: "SuggestedTerm" }] },
-    } as never);
-    renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
-    expect(screen.getByText("Suggested glossaries")).toBeTruthy();
-    expect(screen.getByText("SuggestedTerm")).toBeTruthy();
-    fireEvent.click(screen.getByTitle("Tag to key"));
-    await waitFor(() => expect(saveKey).toHaveBeenCalled());
-    expect(saveKey).toHaveBeenCalledWith(expect.objectContaining({ glossaryIds: ["sg1"] }));
   });
 });

@@ -38,11 +38,13 @@ namespace Eurolm.DomainService.Shared
 
             services.AddSingleton<IKeyManagementService, KeyManagementService>();
             services.AddSingleton<IKeyRepository, KeyRepository>();
+            services.AddSingleton<ILocalizationUniquenessRepository, LocalizationUniquenessRepository>();
             services.AddSingleton<IKeyTimelineRepository, KeyTimelineRepository>();
             services.AddSingleton<ILanguageFileGenerationHistoryRepository, LanguageFileGenerationHistoryRepository>();
             services.AddSingleton<IValidator<Key>, KeyValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
+            services.AddSingleton<IValidator<GetKeysRequest>, GetKeysRequestValidator>();
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();

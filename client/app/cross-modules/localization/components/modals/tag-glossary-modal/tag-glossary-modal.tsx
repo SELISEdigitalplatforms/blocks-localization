@@ -1,30 +1,21 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui-kits/dialog/dialog";
+import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui-kits/command/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
-import { Badge } from "@/components/ui-kits/badge/badge";
-import {
-  useGetModuleGlossaries,
-  useSearchGlossaries,
+  useGetAllModuleGlossaries,
   useTagGlossary,
 } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { IGlossary, IModuleGets } from "@blocks-localization/models/language";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import GlossaryPicker from "@blocks-localization/components/glossary/glossary-picker";
 
 interface TagGlossaryModalProps {
   module: IModuleGets;
@@ -42,44 +33,29 @@ const getTagGlossaryErrorMessage = (error: unknown) => {
 };
 
 const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) => {
-  const [searchText, setSearchText] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectedGlossaries, setSelectedGlossaries] = useState<IGlossary[]>([]);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-
-  const { data: moduleGlossariesResponse } = useGetModuleGlossaries(module.itemId);
-  const { data: searchResults } = useSearchGlossaries(searchText, popoverOpen);
+  // `Module/TagGlossary` untags every module glossary missing from the request, so the
+  // selection starts from all of them and Save waits for the full seed (A8, C15).
+  const {
+    data: moduleGlossaries,
+    isError: isSeedError,
+    refetch: refetchSeed,
+    isFetching: isSeedFetching,
+    isFetchedAfterMount,
+  } = useGetAllModuleGlossaries(module.itemId);
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
+  const [seed, setSeed] = useState<IGlossary[] | undefined>(undefined);
+  // Seeded once, from a fetch made for this dialog: cached data from an earlier open may be
+  // outdated, and a background refetch must not overwrite the user's changes.
+  const isSeedReady = !!moduleGlossaries && isFetchedAfterMount && !isSeedFetching && !isSeedError;
+  if (seed === undefined && isSeedReady) {
+    setSeed(moduleGlossaries);
+    setSelectedIds(moduleGlossaries.map((glossary) => glossary.itemId));
+  }
+  const isSeeded = selectedIds !== null;
   const { isPending, mutateAsync } = useTagGlossary();
 
-  const [prevGlossariesResponse, setPrevGlossariesResponse] =
-    useState<typeof moduleGlossariesResponse>(undefined);
-  if (prevGlossariesResponse !== moduleGlossariesResponse) {
-    setPrevGlossariesResponse(moduleGlossariesResponse);
-    const moduleGlossaries = moduleGlossariesResponse?.items ?? [];
-    setSelectedIds(moduleGlossaries.map((glossary) => glossary.itemId));
-    setSelectedGlossaries(moduleGlossaries);
-  }
-
-  const handleSelect = useCallback(
-    (glossary: IGlossary) => {
-      const alreadySelected = selectedIds.includes(glossary.itemId);
-      if (alreadySelected) {
-        setSelectedIds((prev) => prev.filter((id) => id !== glossary.itemId));
-        setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossary.itemId));
-      } else {
-        setSelectedIds((prev) => [...prev, glossary.itemId]);
-        setSelectedGlossaries((prev) => [...prev, glossary]);
-      }
-    },
-    [selectedIds],
-  );
-
-  const handleRemove = useCallback((glossaryId: string) => {
-    setSelectedIds((prev) => prev.filter((id) => id !== glossaryId));
-    setSelectedGlossaries((prev) => prev.filter((g) => g.itemId !== glossaryId));
-  }, []);
-
   const handleSubmit = async () => {
+    if (!isSeeded) return;
     try {
       const res = await mutateAsync({
         moduleId: module.itemId,
@@ -108,79 +84,52 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
     }
   };
 
-  const availableGlossaries = searchResults?.items ?? [];
+  const renderSeedState = () => {
+    if (isSeeded) {
+      return (
+        <GlossaryPicker
+          selectedIds={selectedIds}
+          onChange={setSelectedIds}
+          allowCreate
+          disabled={isPending}
+          knownGlossaries={seed}
+        />
+      );
+    }
+    if (isSeedError && !isSeedFetching) {
+      return (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-error">
+          Couldn&apos;t load this module&apos;s glossaries
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetchSeed()}>
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="grid gap-3">
+        <output className="block text-sm text-medium-emphasis">Loading tagged glossaries…</output>
+        <div className="flex gap-1.5" aria-hidden="true">
+          <Skeleton className="h-7 w-24 rounded-full" />
+          <Skeleton className="h-7 w-32 rounded-full" />
+          <Skeleton className="h-7 w-20 rounded-full" />
+        </div>
+        <Skeleton className="h-10 w-full" aria-hidden="true" />
+      </div>
+    );
+  };
 
   return (
-    <DialogContent className="rounded-lg sm:max-w-[520px]">
-      <DialogHeader className="space-y-3">
+    <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[520px]">
+      <DialogHeader className="space-y-1.5">
         <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
+        <DialogDescription className="text-left text-sm text-medium-emphasis">
+          Tagged terms guide AI translation and glossary checks for every key in{" "}
+          <span className="font-medium text-high-emphasis">{module.moduleName}</span>.
+        </DialogDescription>
       </DialogHeader>
 
-      <div className="flex flex-col gap-4">
-        {selectedGlossaries.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {selectedGlossaries.map((glossary) => (
-              <Badge key={glossary.itemId} variant="secondary" className="gap-1 pr-1">
-                {glossary.name}
-                <button
-                  type="button"
-                  onClick={() => handleRemove(glossary.itemId)}
-                  disabled={isPending}
-                  className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={popoverOpen}
-              className="w-full justify-between font-normal"
-              disabled={isPending}
-            >
-              Search glossary...
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[470px] p-0" align="start" portalled={false}>
-            <Command shouldFilter={false}>
-              <CommandInput
-                placeholder="Search glossary..."
-                value={searchText}
-                onValueChange={setSearchText}
-              />
-              <CommandList>
-                <CommandEmpty>No glossary found.</CommandEmpty>
-                <CommandGroup>
-                  {availableGlossaries.map((glossary) => (
-                    <CommandItem
-                      key={glossary.itemId}
-                      value={glossary.itemId}
-                      onSelect={() => handleSelect(glossary)}
-                    >
-                      <div className="flex flex-1 items-center gap-2">
-                        <span>{glossary.name}</span>
-                        {glossary.type && (
-                          <span className="text-xs text-muted-foreground">({glossary.type})</span>
-                        )}
-                      </div>
-                      {selectedIds.includes(glossary.itemId) && (
-                        <Check className="ml-auto h-4 w-4" />
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <div className="min-w-0">{renderSeedState()}</div>
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
@@ -194,12 +143,12 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
           Cancel
         </Button>
         <Button
-          disabled={isPending}
+          disabled={isPending || !isSeeded}
           onClick={handleSubmit}
           size="default"
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotificationListener } from "@blocks-utilities/notification";
 import { localizationQueryKeys } from "@blocks-localization/constants/query-keys";
+import { refreshLanguageKeyLists } from "@blocks-localization/hooks/language-key-list-cache";
 import type { ILanguageImportRequest } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
 
@@ -15,7 +16,7 @@ export interface LanguageImportProgress {
 }
 
 interface LanguageKeysQueryResult {
-  data?: { totalCount?: number; keys?: { moduleId?: string }[] };
+  data?: { totalCount?: number | null; keys?: { moduleId?: string }[] };
 }
 
 interface LanguageModuleItem {
@@ -244,7 +245,7 @@ export const useLanguageImportProgress = ({
         return;
       }
 
-      void queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.all });
+      refreshLanguageKeyLists(queryClient, "reset");
       void queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all });
       void queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all });
     },
@@ -284,6 +285,10 @@ export const useLanguageImportProgress = ({
           await Promise.allSettled([
             queryClient.invalidateQueries({ queryKey: localizationQueryKeys.modules.all }),
             queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languages.all }),
+            // An import can add duplicates, or turn on duplicate prevention on the worker side.
+            queryClient.invalidateQueries({
+              queryKey: localizationQueryKeys.languageKeys.duplicateSummaryPrefix,
+            }),
           ]);
           if (cancelled) return;
           progressRef.current = null;

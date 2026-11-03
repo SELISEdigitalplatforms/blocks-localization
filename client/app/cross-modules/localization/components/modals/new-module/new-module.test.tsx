@@ -21,7 +21,9 @@ vi.mock("@seliseblocks/genesis-os", () => ({
 }));
 
 const withDialog = (node: React.ReactNode) => (
-  <Dialog open onOpenChange={() => {}}>{node}</Dialog>
+  <Dialog open onOpenChange={() => {}}>
+    {node}
+  </Dialog>
 );
 
 describe("components/modals/new-module", () => {

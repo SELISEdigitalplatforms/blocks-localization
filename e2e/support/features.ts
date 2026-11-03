@@ -23,6 +23,12 @@ export const FLOW_FEATURES: FlowFeature[] = [
     spec: "tests/02-translations/translations.spec.ts",
   },
   {
+    id: "duplicate-keys",
+    name: "Duplicate keys",
+    enabled: true,
+    spec: "tests/02-translations/duplicate-keys.spec.ts",
+  },
+  {
     id: "modules",
     name: "Module page",
     enabled: true,

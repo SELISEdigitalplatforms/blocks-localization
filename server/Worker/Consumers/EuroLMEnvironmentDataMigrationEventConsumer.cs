@@ -16,17 +16,20 @@ namespace Worker.Consumers
         private readonly IEnvironmentDataMigrationRepository _migrationRepository;
         private readonly ILogger<EuroLMEnvironmentDataMigrationEventConsumer> _logger;
         private readonly IMessageClient _messageClient;
+        private readonly ILocalizationUniquenessRepository _uniquenessRepository;
 
         public EuroLMEnvironmentDataMigrationEventConsumer(
             IKeyManagementService keyManagementService,
             IEnvironmentDataMigrationRepository migrationRepository,
             ILogger<EuroLMEnvironmentDataMigrationEventConsumer> logger,
-            IMessageClient messageClient)
+            IMessageClient messageClient,
+            ILocalizationUniquenessRepository uniquenessRepository)
         {
             _keyManagementService = keyManagementService;
             _migrationRepository = migrationRepository;
             _logger = logger;
             _messageClient = messageClient;
+            _uniquenessRepository = uniquenessRepository;
         }
 
         public async Task Consume(EnvironmentDataMigrationEvent @event)
@@ -36,6 +39,10 @@ namespace Worker.Consumers
 
             try
             {
+                // A clean target gets its unique indexes before anything is written, so this
+                // migration cannot add a second row for an existing key.
+                await EnsureUniqueIndexesAsync(@event.TargetedProjectKey);
+
                 // Migrate BlocksLanguageModule first (as Keys depend on Modules)
                 await MigrateModulesAsync(@event);
 
@@ -92,6 +99,19 @@ namespace Worker.Consumers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Migration report step {Step} failed for tracker {TrackerId}", step, trackerId);
+            }
+        }
+
+        private async Task EnsureUniqueIndexesAsync(string tenantId)
+        {
+            try
+            {
+                await _uniquenessRepository.EnsureUniqueIndexesAsync(tenantId);
+            }
+            catch (Exception ex)
+            {
+                // Enforcement is a safeguard; the migration continues as it did before it existed.
+                _logger.LogError(ex, "Could not ensure unique indexes for target project {TargetedProjectKey}; continuing the migration", tenantId);
             }
         }
 
@@ -163,6 +183,10 @@ namespace Worker.Consumers
                 _logger.LogInformation("No keys found in source project {ProjectKey}", @event.ProjectKey);
                 return;
             }
+
+            // Key names are matched and written trimmed, as the XLIFF import already does, so
+            // " save " in the source updates "save" in the target instead of adding a near-duplicate.
+            sourceKeys = TrimKeyNames(sourceKeys);
 
             // Get all modules from both source and target environments for ModuleName to ModuleId mapping
             var sourceModules = await _migrationRepository.GetAllModulesAsync(@event.ProjectKey);
@@ -245,6 +269,8 @@ namespace Worker.Consumers
                 _logger.LogInformation("Deduplicated {DeduplicatedCount} keys with same ModuleName+KeyName combination", deduplicatedCount);
             }
 
+            await LogUntrimmedTargetKeyNamesAsync(targetKeys, @event.TargetedProjectKey);
+
             // Bulk upsert keys using ModuleName + KeyName as the unique key
             var upsertResult = await _migrationRepository.BulkUpsertKeysByModuleNameAndKeyNameAsync(
                 targetKeys, existingTargetKeys, targetModuleNameToIdMap, @event.TargetedProjectKey, @event.ShouldOverWriteExistingData);
@@ -271,6 +297,57 @@ namespace Worker.Consumers
 
             _logger.LogInformation("BlocksLanguageKey migration completed from {ProjectKey} to {TargetedProjectKey}",
                 @event.ProjectKey, @event.TargetedProjectKey);
+        }
+
+        private List<BlocksLanguageKey> TrimKeyNames(List<BlocksLanguageKey> sourceKeys)
+        {
+            var kept = new List<BlocksLanguageKey>(sourceKeys.Count);
+            foreach (var key in sourceKeys)
+            {
+                var trimmedName = key.KeyName?.Trim();
+                if (string.IsNullOrEmpty(trimmedName))
+                {
+                    continue;
+                }
+
+                key.KeyName = trimmedName;
+                kept.Add(key);
+            }
+
+            var skipped = sourceKeys.Count - kept.Count;
+            if (skipped > 0)
+            {
+                _logger.LogWarning("Skipped {SkippedCount} source keys whose name is empty after trimming", skipped);
+            }
+
+            return kept;
+        }
+
+        /// <summary>
+        /// Rows written by earlier migrations may still carry untrimmed names. They are left as they
+        /// are; the count only tells operators they exist.
+        /// </summary>
+        private async Task LogUntrimmedTargetKeyNamesAsync(List<BlocksLanguageKey> targetKeys, string targetedProjectKey)
+        {
+            var moduleIds = targetKeys.Select(k => k.ModuleId).Distinct().ToList();
+            if (moduleIds.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var untrimmed = await _migrationRepository.CountUntrimmedKeyNamesAsync(moduleIds, targetedProjectKey);
+                if (untrimmed > 0)
+                {
+                    _logger.LogInformation("Target project {TargetedProjectKey} has {UntrimmedCount} key names with leading or trailing whitespace in the migrated modules; they are left unchanged",
+                        targetedProjectKey, untrimmed);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not count untrimmed key names in target project {TargetedProjectKey}", targetedProjectKey);
+            }
         }
 
         private async Task NotifyMigrationCompletion(string trackerId, bool isSuccess, string? errorMessage = null)

@@ -307,12 +307,14 @@ namespace XUnitTest.Repositories
         #region GetAllKeysAsync
 
         [Theory]
-        [InlineData(null, false, "{ \"KeyName\" : 1 }")]
-        [InlineData("", false, "{ \"KeyName\" : 1 }")]
-        [InlineData("   ", false, "{ \"KeyName\" : 1 }")]
-        [InlineData("", true, "{ \"KeyName\" : 1 }")]
-        [InlineData("LastUpdateDate", false, "{ \"LastUpdateDate\" : 1 }")]
-        [InlineData("LastUpdateDate", true, "{ \"LastUpdateDate\" : -1 }")]
+        [InlineData(null, false, "{ \"KeyName\" : 1, \"_id\" : 1 }")]
+        [InlineData("", false, "{ \"KeyName\" : 1, \"_id\" : 1 }")]
+        [InlineData("   ", false, "{ \"KeyName\" : 1, \"_id\" : 1 }")]
+        // A blank sort property still honours the direction (SPEC9 H11).
+        [InlineData("", true, "{ \"KeyName\" : -1, \"_id\" : -1 }")]
+        [InlineData("LastUpdateDate", false, "{ \"LastUpdateDate\" : 1, \"_id\" : 1 }")]
+        [InlineData("LastUpdateDate", true, "{ \"LastUpdateDate\" : -1, \"_id\" : -1 }")]
+        [InlineData("createdate", false, "{ \"CreateDate\" : 1, \"_id\" : 1 }")]
         public async Task GetAllKeysAsync_SortsByTheRequestedFieldAndFallsBackToKeyNameWhenBlank(string? sortProperty, bool isDescending, string expectedSort)
         {
             FindOptions<Key, Key>? capturedOptions = null;

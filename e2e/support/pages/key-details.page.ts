@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
+import { readLocalizationProject } from "../localization-project";
 
 export class KeyDetailsPage {
   readonly page: Page;
@@ -18,7 +19,12 @@ export class KeyDetailsPage {
   }
 
   async navigateTo(itemId: string | undefined, baseUrl: string) {
-    await this.page.goto(`${baseUrl}/app/${itemId}/services/language/translations/${itemId}`);
+    // The /app/ segment is the project id; the key id goes after translations/.
+    const projectId = readLocalizationProject()?.itemId;
+    if (!projectId) {
+      throw new Error("Missing fixtures/localization-project.json — run suite setup first.");
+    }
+    await this.page.goto(`${baseUrl}/app/${projectId}/services/language/translations/${itemId}`);
     await expect(this.page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
   }
 
