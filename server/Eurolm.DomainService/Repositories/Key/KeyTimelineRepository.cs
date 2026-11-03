@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Shared.Entities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -11,12 +12,22 @@ namespace Eurolm.DomainService.Repositories
     {
         private readonly IDbContextProvider _dbContextProvider;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<KeyTimelineRepository> _logger;
         private const string _collectionName = "KeyTimelines";
 
-        public KeyTimelineRepository(IDbContextProvider dbContextProvider, IConfiguration configuration)
+        /// <summary>Supports the overview's $sort on CreateDate before grouping.</summary>
+        public static IReadOnlyList<CreateIndexModel<KeyTimeline>> OverviewIndexes { get; } = new[]
+        {
+            new CreateIndexModel<KeyTimeline>(
+                Builders<KeyTimeline>.IndexKeys.Descending(t => t.CreateDate),
+                new CreateIndexOptions { Name = "ix_CreateDate_desc" })
+        };
+
+        public KeyTimelineRepository(IDbContextProvider dbContextProvider, IConfiguration configuration, ILogger<KeyTimelineRepository> logger)
         {
             _dbContextProvider = dbContextProvider;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<GetKeyTimelineQueryResponse> GetKeyTimelineAsync(GetKeyTimelineRequest query)
@@ -182,6 +193,8 @@ namespace Eurolm.DomainService.Repositories
         {
             var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
             var collection = dataBase.GetCollection<KeyTimeline>(_collectionName);
+            // Not awaited: the first request on a large tenant must not wait for the index build.
+            _ = MongoIndexEnsurer.EnsureAsync(dataBase, _collectionName, OverviewIndexes, _logger);
 
             // Build strongly-typed filters — always exclude entries without an OperationId (legacy data)
             var filterBuilder = Builders<KeyTimeline>.Filter;
@@ -223,42 +236,9 @@ namespace Eurolm.DomainService.Repositories
             }
 
             var filter = filterBuilder.And(filters);
-            var sort = query.IsDescending
-                ? Builders<KeyTimeline>.Sort.Descending(t => t.CreateDate)
-                : Builders<KeyTimeline>.Sort.Ascending(t => t.CreateDate);
-
-            // Fetch matching timeline entries sorted by CreateDate
-            var timelines = await collection
-                .Find(filter)
-                .Sort(sort)
-                .ToListAsync();
-
-            // Group by OperationId — the sort above ensures $first semantics via LINQ's First()
-            var grouped = timelines
-                .GroupBy(t => t.OperationId)
-                .Select(g =>
-                {
-                    var first = g.First();
-                    var count = g.Count();
-                    return new LocalizationTimelineEntry
-                    {
-                        OperationId = g.Key!,
-                        LogFrom = first.LogFrom,
-                        UserId = first.UserId,
-                        CreateDate = first.CreateDate,
-                        AffectedKeysCount = count,
-                        CurrentData = count == 1 ? first.CurrentData : null,
-                        PreviousData = count == 1 ? first.PreviousData : null
-                    };
-                });
-
-            var sortedGrouped = query.IsDescending
-                ? grouped.OrderByDescending(x => x.CreateDate).ToList()
-                : grouped.OrderBy(x => x.CreateDate).ToList();
-
-            var totalCount = sortedGrouped.Count;
-            var skip = (query.PageNumber - 1) * query.PageSize;
-            var pagedData = sortedGrouped.Skip(skip).Take(query.PageSize).ToList();
+            var (totalCount, groups) = await GetOperationPageAsync(collection, filter, query);
+            await PopulateSingleEntrySnapshotsAsync(collection, groups);
+            var pagedData = groups.Select(g => g.Entry).ToList();
 
             // Populate user names
             var uniqueUserIds = pagedData
@@ -298,6 +278,111 @@ namespace Eurolm.DomainService.Repositories
                 TotalCount = totalCount,
                 Operations = pagedData
             };
+        }
+
+        private const string FirstItemIdField = "FirstItemId";
+        private const string CountField = "Count";
+        private const string TotalField = "Total";
+        private const string DataField = "Data";
+
+        /// <summary>An operation summary from the aggregation, with the ItemId of its first entry.</summary>
+        private sealed record OperationGroup(LocalizationTimelineEntry Entry, string? FirstItemId);
+
+        /// <summary>
+        /// Groups the matching entries by OperationId, counts the groups and cuts the requested page in MongoDB,
+        /// so only the page's group summaries (no snapshots) reach application memory.
+        /// </summary>
+        private static async Task<(long TotalCount, List<OperationGroup> Page)> GetOperationPageAsync(
+            IMongoCollection<KeyTimeline> collection,
+            FilterDefinition<KeyTimeline> filter,
+            GetLocalizationTimelineRequest query)
+        {
+            var direction = query.IsDescending ? -1 : 1;
+            var group = new BsonDocument
+            {
+                { "_id", "$" + nameof(KeyTimeline.OperationId) },
+                { nameof(KeyTimeline.LogFrom), new BsonDocument("$first", "$" + nameof(KeyTimeline.LogFrom)) },
+                { nameof(KeyTimeline.UserId), new BsonDocument("$first", "$" + nameof(KeyTimeline.UserId)) },
+                { nameof(KeyTimeline.CreateDate), new BsonDocument("$first", "$" + nameof(KeyTimeline.CreateDate)) },
+                { FirstItemIdField, new BsonDocument("$first", "$_id") },
+                { CountField, new BsonDocument("$sum", 1) }
+            };
+
+            // Same paging as the former in-memory Skip/Take: PageNumber <= 0 is page 1 and PageSize <= 0 returns
+            // the total only (MongoDB rejects $limit: 0). The skip is a long, so large page numbers cannot overflow.
+            var facet = new BsonDocument(TotalField, new BsonArray { new BsonDocument("$count", CountField) });
+            if (query.PageSize > 0)
+            {
+                var skip = Math.Max(query.PageNumber - 1L, 0L) * query.PageSize;
+                facet.Add(DataField, new BsonArray
+                {
+                    new BsonDocument("$skip", skip),
+                    new BsonDocument("$limit", query.PageSize)
+                });
+            }
+
+            // The first $sort makes $first pick the newest (or oldest) entry of each group; the second orders
+            // the groups, with ties broken by OperationId so consecutive pages neither repeat nor skip one.
+            var results = await collection
+                .Aggregate(new AggregateOptions { AllowDiskUse = true })
+                .Match(filter)
+                .Sort(new BsonDocument(nameof(KeyTimeline.CreateDate), direction))
+                .Group(group)
+                .Sort(new BsonDocument { { nameof(KeyTimeline.CreateDate), direction }, { "_id", direction } })
+                .AppendStage<BsonDocument>(new BsonDocument("$facet", facet))
+                .ToListAsync();
+
+            var result = results.FirstOrDefault();
+            var totalCount = result?.GetValue(TotalField, BsonNull.Value) is BsonArray { Count: > 0 } total
+                ? total[0].AsBsonDocument.GetValue(CountField, 0).ToInt64()
+                : 0;
+            var page = result?.GetValue(DataField, BsonNull.Value) is BsonArray data
+                ? data.OfType<BsonDocument>().Select(ToOperationGroup).ToList()
+                : new List<OperationGroup>();
+            return (totalCount, page);
+        }
+
+        private static OperationGroup ToOperationGroup(BsonDocument group) => new(
+            new LocalizationTimelineEntry
+            {
+                OperationId = StringOrNull(group, "_id") ?? string.Empty,
+                LogFrom = StringOrNull(group, nameof(KeyTimeline.LogFrom)),
+                UserId = StringOrNull(group, nameof(KeyTimeline.UserId)),
+                CreateDate = group.GetValue(nameof(KeyTimeline.CreateDate), BsonNull.Value) is BsonDateTime createDate
+                    ? createDate.ToUniversalTime()
+                    : default,
+                AffectedKeysCount = group.GetValue(CountField, 0).ToInt32()
+            },
+            StringOrNull(group, FirstItemIdField));
+
+        private static string? StringOrNull(BsonDocument document, string name) =>
+            document.GetValue(name, BsonNull.Value) is BsonString value ? value.Value : null;
+
+        /// <summary>
+        /// Loads CurrentData/PreviousData only for the page's single-entry operations. An entry deleted since the
+        /// aggregation leaves both null. No query runs when the page has no single-entry operation.
+        /// </summary>
+        private static async Task PopulateSingleEntrySnapshotsAsync(IMongoCollection<KeyTimeline> collection, List<OperationGroup> page)
+        {
+            var singleEntryIds = page
+                .Where(g => g.Entry.AffectedKeysCount == 1 && !string.IsNullOrEmpty(g.FirstItemId))
+                .Select(g => g.FirstItemId!)
+                .ToList();
+            if (singleEntryIds.Count == 0) return;
+
+            var entries = await collection
+                .Find(Builders<KeyTimeline>.Filter.In(t => t.ItemId, singleEntryIds))
+                .ToListAsync();
+            var entriesById = entries.ToDictionary(t => t.ItemId);
+
+            foreach (var group in page)
+            {
+                if (group.Entry.AffectedKeysCount == 1 && group.FirstItemId != null && entriesById.TryGetValue(group.FirstItemId, out var entry))
+                {
+                    group.Entry.CurrentData = entry.CurrentData;
+                    group.Entry.PreviousData = entry.PreviousData;
+                }
+            }
         }
 
         public async Task<GetKeyTimelineQueryResponse> GetTimelineByOperationIdAsync(GetTimelineByOperationIdRequest query)

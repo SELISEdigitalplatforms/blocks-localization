@@ -12,6 +12,7 @@ using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using XUnitTest.Shared;
 
@@ -25,6 +26,9 @@ namespace XUnitTest.Repositories
         private readonly Mock<IMongoDatabase> _rootDatabase;
         private readonly Mock<IMongoCollection<KeyTimeline>> _collection;
         private readonly Mock<IMongoCollection<User>> _usersCollection;
+        private readonly Mock<IMongoIndexManager<KeyTimeline>> _indexes;
+        // Unique per test: MongoIndexEnsurer caches per (database name, collection) for the whole process.
+        private readonly DatabaseNamespace _databaseNamespace = new("timeline-tests-" + Guid.NewGuid().ToString("N"));
         private readonly KeyTimelineRepository _repo;
 
         public KeyTimelineRepositoryTests()
@@ -38,12 +42,15 @@ namespace XUnitTest.Repositories
 
             _dbContextProvider.Setup(x => x.GetDatabase(It.IsAny<string>())).Returns(_database.Object);
             _database.Setup(x => x.GetCollection<KeyTimeline>(It.IsAny<string>(), null)).Returns(_collection.Object);
+            _database.Setup(x => x.DatabaseNamespace).Returns(_databaseNamespace);
+            _indexes = new Mock<IMongoIndexManager<KeyTimeline>>();
+            _collection.Setup(x => x.Indexes).Returns(_indexes.Object);
 
             // Setup for root database (user lookup)
             _configuration.Setup(x => x[It.Is<string>(s => s == "RootTenantId")]).Returns("root-tenant");
             _rootDatabase.Setup(x => x.GetCollection<User>(It.IsAny<string>(), null)).Returns(_usersCollection.Object);
 
-            _repo = new KeyTimelineRepository(_dbContextProvider.Object, _configuration.Object);
+            _repo = new KeyTimelineRepository(_dbContextProvider.Object, _configuration.Object, NullLogger<KeyTimelineRepository>.Instance);
         }
 
         #region SaveKeyTimelineAsync
@@ -539,20 +546,62 @@ namespace XUnitTest.Repositories
 
         #region GetLocalizationTimelineAsync
 
+        private static BsonDocument Group(string operationId, string? logFrom, string? userId, DateTime createDate, string firstItemId, int count)
+        {
+            var group = new BsonDocument { { "_id", operationId }, { "CreateDate", createDate }, { "FirstItemId", firstItemId }, { "Count", count } };
+            if (logFrom != null) group.Add("LogFrom", logFrom);
+            if (userId != null) group.Add("UserId", userId);
+            return group;
+        }
+
+        /// <summary>The single $facet output document: Total [{Count}] and the Data page.</summary>
+        private static BsonDocument Facet(long total, params BsonDocument[] groups) => new()
+        {
+            { "Total", total > 0 ? new BsonArray { new BsonDocument("Count", total) } : new BsonArray() },
+            { "Data", new BsonArray(groups) }
+        };
+
+        private List<BsonDocument> SetupOverview(BsonDocument? facet, Action<PipelineDefinition<KeyTimeline, BsonDocument>, AggregateOptions>? callback = null)
+        {
+            var results = facet == null ? new List<BsonDocument>() : new List<BsonDocument> { facet };
+            MockCursorHelper.SetupAggregateAsync(_collection, results, callback);
+            return results;
+        }
+
+        private static List<BsonDocument> Render(PipelineDefinition<KeyTimeline, BsonDocument> pipeline)
+        {
+            var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            return pipeline.Render(new RenderArgs<KeyTimeline>(registry.GetSerializer<KeyTimeline>(), registry)).Documents.ToList();
+        }
+
+        private async Task<List<BsonDocument>> RenderedStagesFor(GetLocalizationTimelineRequest request, BsonDocument? facet = null)
+        {
+            PipelineDefinition<KeyTimeline, BsonDocument>? captured = null;
+            SetupOverview(facet ?? Facet(0), (p, _) => captured = p);
+            await _repo.GetLocalizationTimelineAsync(request);
+            captured.Should().NotBeNull();
+            return Render(captured!);
+        }
+
+        private void VerifySnapshotQuery(Times times) =>
+            _collection.Verify(x => x.FindAsync(
+                It.IsAny<FilterDefinition<KeyTimeline>>(),
+                It.IsAny<FindOptions<KeyTimeline, KeyTimeline>>(),
+                It.IsAny<CancellationToken>()), times);
+
         [Fact]
         public async Task GetLocalizationTimelineAsync_GroupsByOperationId_WithCountsAndUserNames()
         {
             var now = DateTime.UtcNow;
-            var timelines = new List<KeyTimeline>
+            // op1 has two entries -> AffectedKeysCount 2, CurrentData null; op2 has one entry -> CurrentData populated
+            SetupOverview(Facet(2,
+                Group("op1", "TranslateAll", "u1", now, "t1", 2),
+                Group("op2", "KeyController.Save", "u2", now.AddMinutes(-5), "t3", 1)));
+            MockCursorHelper.SetupFindAsync(_collection, new List<KeyTimeline>
             {
-                // op1 has two entries -> AffectedKeysCount 2, CurrentData null
-                new KeyTimeline { ItemId = "t1", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now },
-                new KeyTimeline { ItemId = "t2", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now },
-                // op2 has one entry -> CurrentData populated
                 new KeyTimeline { ItemId = "t3", OperationId = "op2", LogFrom = "KeyController.Save", UserId = "u2", CreateDate = now.AddMinutes(-5),
                     CurrentData = new BlocksLanguageKey { ItemId = "k1", KeyName = "welcome", ModuleId = "m1" } }
-            };
-            MockCursorHelper.SetupFindAsync(_collection, timelines);
+            });
             _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
             MockCursorHelper.SetupFindAsync(_usersCollection, new List<User>
             {
@@ -572,6 +621,7 @@ namespace XUnitTest.Repositories
             var op2 = result.Operations.First(o => o.OperationId == "op2");
             op2.AffectedKeysCount.Should().Be(1);
             op2.CurrentData.Should().NotBeNull();
+            op2.CurrentData!.KeyName.Should().Be("welcome");
             op2.UserName.Should().Be("u2@test.com");
         }
 
@@ -579,12 +629,9 @@ namespace XUnitTest.Repositories
         public async Task GetLocalizationTimelineAsync_AscendingWithFilters_ReturnsOperations()
         {
             var now = DateTime.UtcNow;
-            var timelines = new List<KeyTimeline>
-            {
-                new KeyTimeline { ItemId = "t1", OperationId = "op1", LogFrom = "TranslateAll", UserId = "u1", CreateDate = now.AddMinutes(-1) },
-                new KeyTimeline { ItemId = "t2", OperationId = "op2", LogFrom = "TranslateAll", UserId = null, CreateDate = now }
-            };
-            MockCursorHelper.SetupFindAsync(_collection, timelines);
+            SetupOverview(Facet(2,
+                Group("op1", "TranslateAll", "u1", now.AddMinutes(-1), "t1", 2),
+                Group("op2", "TranslateAll", null, now, "t2", 2)));
             _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
             MockCursorHelper.SetupFindAsyncEmpty(_usersCollection);
 
@@ -611,13 +658,328 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetLocalizationTimelineAsync_EmptyResult_ReturnsEmpty()
         {
-            MockCursorHelper.SetupFindAsyncEmpty(_collection);
+            SetupOverview(Facet(0));
 
             var request = new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = 10 };
             var result = await _repo.GetLocalizationTimelineAsync(request);
 
             result.TotalCount.Should().Be(0);
             result.Operations.Should().BeEmpty();
+            VerifySnapshotQuery(Times.Never());
+            _dbContextProvider.Verify(x => x.GetDatabase("root-tenant"), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_NoFacetDocument_ReturnsEmpty()
+        {
+            SetupOverview(null);
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            result.TotalCount.Should().Be(0);
+            result.Operations.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData(true, -1)]
+        [InlineData(false, 1)]
+        public async Task GetLocalizationTimelineAsync_Pipeline_SortsGroupsAndPagesOnServer(bool isDescending, int direction)
+        {
+            AggregateOptions? options = null;
+            PipelineDefinition<KeyTimeline, BsonDocument>? captured = null;
+            SetupOverview(Facet(0), (p, o) => { captured = p; options = o; });
+
+            await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest { PageNumber = 3, PageSize = 10, IsDescending = isDescending });
+
+            options!.AllowDiskUse.Should().BeTrue();
+            var stages = Render(captured!);
+            stages.Select(s => s.GetElement(0).Name).Should().Equal("$match", "$sort", "$group", "$sort", "$facet");
+            stages[1]["$sort"].Should().Be(new BsonDocument("CreateDate", direction));
+            stages[2]["$group"].Should().Be(new BsonDocument
+            {
+                { "_id", "$OperationId" },
+                { "LogFrom", new BsonDocument("$first", "$LogFrom") },
+                { "UserId", new BsonDocument("$first", "$UserId") },
+                { "CreateDate", new BsonDocument("$first", "$CreateDate") },
+                { "FirstItemId", new BsonDocument("$first", "$_id") },
+                { "Count", new BsonDocument("$sum", 1) }
+            });
+            stages[3]["$sort"].Should().Be(new BsonDocument { { "CreateDate", direction }, { "_id", direction } });
+            stages[4]["$facet"].Should().Be(new BsonDocument
+            {
+                { "Total", new BsonArray { new BsonDocument("$count", "Count") } },
+                { "Data", new BsonArray { new BsonDocument("$skip", 20L), new BsonDocument("$limit", 10) } }
+            });
+        }
+
+        [Theory]
+        [InlineData(1, 10, 0L)]
+        [InlineData(2, 10, 10L)]
+        [InlineData(5, 3, 12L)]
+        [InlineData(0, 1, 0L)]
+        [InlineData(-4, 10, 0L)]
+        [InlineData(int.MaxValue, 10, 21474836460L)]
+        public async Task GetLocalizationTimelineAsync_Paging_SkipIsComputedAsLongWithoutOverflow(int pageNumber, int pageSize, long expectedSkip)
+        {
+            var stages = await RenderedStagesFor(new GetLocalizationTimelineRequest { PageNumber = pageNumber, PageSize = pageSize });
+
+            var data = stages[4]["$facet"]["Data"].AsBsonArray;
+            data[0]["$skip"].Should().Be(new BsonInt64(expectedSkip));
+            data[1]["$limit"].Should().Be(new BsonInt32(pageSize));
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_PageNumberMaxValue_ReturnsTotalWithEmptyPage()
+        {
+            SetupOverview(Facet(2));
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest { PageNumber = int.MaxValue, PageSize = 10 });
+
+            result.TotalCount.Should().Be(2);
+            result.Operations.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public async Task GetLocalizationTimelineAsync_NonPositivePageSize_ReturnsTotalOnly_WithoutLimitStage(int pageSize)
+        {
+            PipelineDefinition<KeyTimeline, BsonDocument>? captured = null;
+            var facet = new BsonDocument("Total", new BsonArray { new BsonDocument("Count", 2) });
+            SetupOverview(facet, (p, _) => captured = p);
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = pageSize });
+
+            result.TotalCount.Should().Be(2);
+            result.Operations.Should().BeEmpty();
+            Render(captured!)[4]["$facet"].Should().Be(new BsonDocument("Total", new BsonArray { new BsonDocument("$count", "Count") }));
+            VerifySnapshotQuery(Times.Never());
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_Filters_UseTheSameOperatorsAsBefore()
+        {
+            var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var end = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+            var stages = await RenderedStagesFor(new GetLocalizationTimelineRequest
+            {
+                UserId = "u1",
+                LogFrom = "TranslateAll",
+                LogFromValues = new List<string> { "TranslateAll", "Published" },
+                ExcludeLogFromValues = new List<string> { "Rollback" },
+                CreateDateRange = new DateRange { StartDate = start, EndDate = end }
+            });
+
+            stages[0]["$match"].Should().Be(new BsonDocument("$and", new BsonArray
+            {
+                new BsonDocument("OperationId", new BsonDocument("$ne", BsonNull.Value)),
+                new BsonDocument("OperationId", new BsonDocument("$ne", "")),
+                new BsonDocument("UserId", "u1"),
+                new BsonDocument("LogFrom", "TranslateAll"),
+                new BsonDocument("LogFrom", new BsonDocument("$in", new BsonArray { "TranslateAll", "Published" })),
+                new BsonDocument("LogFrom", new BsonDocument("$nin", new BsonArray { "Rollback" })),
+                new BsonDocument("CreateDate", new BsonDocument("$gte", start)),
+                new BsonDocument("CreateDate", new BsonDocument("$lte", end))
+            }));
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_NoFilters_MatchesOnlyEntriesWithAnOperationId()
+        {
+            var stages = await RenderedStagesFor(new GetLocalizationTimelineRequest());
+
+            stages[0]["$match"].Should().Be(new BsonDocument("$and", new BsonArray
+            {
+                new BsonDocument("OperationId", new BsonDocument("$ne", BsonNull.Value)),
+                new BsonDocument("OperationId", new BsonDocument("$ne", ""))
+            }));
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_KeepsServerOrder()
+        {
+            var now = DateTime.UtcNow;
+            // Deliberately not in CreateDate order: the repository must not re-sort the page in memory.
+            SetupOverview(Facet(3,
+                Group("b", "Published", null, now.AddMinutes(-10), "t-b", 2),
+                Group("c", "Published", null, now, "t-c", 2),
+                Group("a", "Published", null, now.AddMinutes(-5), "t-a", 2)));
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            result.Operations.Select(o => o.OperationId).Should().Equal("b", "c", "a");
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_MissingGroupFields_ReturnNullAndUnknown()
+        {
+            var now = DateTime.UtcNow;
+            var nullFields = Group("op-null", null, null, now, "t1", 2);
+            nullFields.Add("LogFrom", BsonNull.Value).Add("UserId", BsonNull.Value);
+            SetupOverview(Facet(3,
+                Group("op-missing", null, null, now, "t0", 2),
+                nullFields,
+                Group("op-empty-user", "Published", "", now, "t2", 2)));
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            result.Operations.Should().HaveCount(3);
+            result.Operations[0].LogFrom.Should().BeNull();
+            result.Operations[0].UserId.Should().BeNull();
+            result.Operations[0].UserName.Should().Be("Unknown");
+            result.Operations[1].LogFrom.Should().BeNull();
+            result.Operations[1].UserName.Should().Be("Unknown");
+            // Unchanged rule (Q3): an empty UserId stays empty.
+            result.Operations[2].UserName.Should().Be("");
+            _dbContextProvider.Verify(x => x.GetDatabase("root-tenant"), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_SingleEntryDeletedBeforeSnapshotFetch_ReturnsNullSnapshots()
+        {
+            SetupOverview(Facet(1, Group("op-c", "KeyController.Save", null, DateTime.UtcNow, "t-c", 1)));
+            MockCursorHelper.SetupFindAsyncEmpty(_collection);
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            var op = result.Operations.Should().ContainSingle().Subject;
+            op.OperationId.Should().Be("op-c");
+            op.AffectedKeysCount.Should().Be(1);
+            op.CurrentData.Should().BeNull();
+            op.PreviousData.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_SingleEntrySnapshots_FetchedOnlyForThePagesSingleEntryOperations()
+        {
+            var now = DateTime.UtcNow;
+            SetupOverview(Facet(5,
+                Group("single-1", "KeyController.Save", null, now, "t-1", 1),
+                Group("multi", "Published", null, now, "t-m", 4),
+                Group("single-2", "KeyController.Save", null, now, "t-2", 1)));
+            FilterDefinition<KeyTimeline>? snapshotFilter = null;
+            var cursor = MockCursorHelper.CreateCursor(new List<KeyTimeline>
+            {
+                new KeyTimeline { ItemId = "t-2", CurrentData = new BlocksLanguageKey { KeyName = "two" }, PreviousData = new BlocksLanguageKey { KeyName = "two-before" } },
+                new KeyTimeline { ItemId = "t-1", CurrentData = new BlocksLanguageKey { KeyName = "one" } }
+            });
+            _collection.Setup(x => x.FindAsync(It.IsAny<FilterDefinition<KeyTimeline>>(), It.IsAny<FindOptions<KeyTimeline, KeyTimeline>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<KeyTimeline>, FindOptions<KeyTimeline, KeyTimeline>, CancellationToken>((f, _, _) => snapshotFilter = f)
+                .ReturnsAsync(cursor.Object);
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            VerifySnapshotQuery(Times.Once());
+            var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            ((BsonValue)snapshotFilter!.Render(new RenderArgs<KeyTimeline>(registry.GetSerializer<KeyTimeline>(), registry)))
+                .Should().Be(new BsonDocument("_id", new BsonDocument("$in", new BsonArray { "t-1", "t-2" })));
+            result.Operations[0].CurrentData!.KeyName.Should().Be("one");
+            result.Operations[0].PreviousData.Should().BeNull();
+            result.Operations[1].CurrentData.Should().BeNull();
+            result.Operations[2].CurrentData!.KeyName.Should().Be("two");
+            result.Operations[2].PreviousData!.KeyName.Should().Be("two-before");
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_OnlyMultiEntryOperations_SkipsSnapshotQuery()
+        {
+            SetupOverview(Facet(2,
+                Group("a", "Published", null, DateTime.UtcNow, "t-a", 2),
+                Group("b", "Published", null, DateTime.UtcNow, "t-b", 9225)));
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            result.Operations.Should().OnlyContain(o => o.CurrentData == null && o.PreviousData == null);
+            VerifySnapshotQuery(Times.Never());
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_LooksUpUsersOnlyForThePage()
+        {
+            SetupOverview(Facet(40,
+                Group("a", "Published", "u1", DateTime.UtcNow, "t-a", 2),
+                Group("b", "Published", "u2", DateTime.UtcNow, "t-b", 2),
+                Group("c", "Published", "u1", DateTime.UtcNow, "t-c", 2),
+                Group("d", "Published", "u3", DateTime.UtcNow, "t-d", 2)));
+            _dbContextProvider.Setup(x => x.GetDatabase("root-tenant")).Returns(_rootDatabase.Object);
+            FilterDefinition<User>? userFilter = null;
+            var cursor = MockCursorHelper.CreateCursor(new List<User>
+            {
+                new User { ItemId = "u1", FirstName = "Ada" },
+                new User { ItemId = "u2" }
+            });
+            _usersCollection.Setup(x => x.FindAsync(It.IsAny<FilterDefinition<User>>(), It.IsAny<FindOptions<User, User>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<User>, FindOptions<User, User>, CancellationToken>((f, _, _) => userFilter = f)
+                .ReturnsAsync(cursor.Object);
+
+            var result = await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            ((BsonValue)userFilter!.Render(new RenderArgs<User>(registry.GetSerializer<User>(), registry)))
+                .Should().Be(new BsonDocument("_id", new BsonDocument("$in", new BsonArray { "u1", "u2", "u3" })));
+            result.Operations.Select(o => o.UserName).Should().Equal("Ada", "u2", "Ada", "u3");
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_RunsOnlyAgainstTheRequestTenantsDatabase()
+        {
+            TestBlocksContext.Set("tenant-a");
+            var tenantDb = new Mock<IMongoDatabase>();
+            tenantDb.Setup(x => x.GetCollection<KeyTimeline>("KeyTimelines", null)).Returns(_collection.Object);
+            tenantDb.Setup(x => x.DatabaseNamespace).Returns(new DatabaseNamespace("tenant-a-" + Guid.NewGuid().ToString("N")));
+            _dbContextProvider.Setup(x => x.GetDatabase("tenant-a")).Returns(tenantDb.Object);
+            SetupOverview(Facet(1, Group("op", "KeyController.Save", null, DateTime.UtcNow, "t1", 1)));
+            MockCursorHelper.SetupFindAsyncEmpty(_collection);
+
+            try
+            {
+                await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+            }
+            finally
+            {
+                BlocksContext.ClearContext();
+            }
+
+            _dbContextProvider.Verify(x => x.GetDatabase("tenant-a"), Times.Once);
+            _dbContextProvider.Verify(x => x.GetDatabase(It.Is<string>(t => t != "tenant-a")), Times.Never);
+            _database.Verify(x => x.GetCollection<KeyTimeline>(It.IsAny<string>(), null), Times.Never);
+            VerifySnapshotQuery(Times.Once());
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_MongoUnavailable_Throws()
+        {
+            _collection.Setup(x => x.AggregateAsync(It.IsAny<PipelineDefinition<KeyTimeline, BsonDocument>>(), It.IsAny<AggregateOptions>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new TimeoutException("server selection timed out"));
+
+            var act = () => _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+
+            await act.Should().ThrowAsync<TimeoutException>();
+        }
+
+        [Fact]
+        public async Task GetLocalizationTimelineAsync_EnsuresTheCreateDateIndexOncePerDatabase()
+        {
+            SetupOverview(Facet(0));
+            var created = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _indexes.Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<KeyTimeline>>>(), It.IsAny<CancellationToken>()))
+                .Callback(() => created.TrySetResult())
+                .ReturnsAsync(new List<string> { "ix_CreateDate_desc" });
+
+            await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+            // The request does not await the creation; wait for the background task it started.
+            await created.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await _repo.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
+            // Returns the cached task (no new creation when the cache works) and waits for it.
+            await MongoIndexEnsurer.EnsureAsync(_database.Object, "KeyTimelines", KeyTimelineRepository.OverviewIndexes, NullLogger.Instance);
+
+            _indexes.Verify(x => x.CreateManyAsync(
+                It.Is<IEnumerable<CreateIndexModel<KeyTimeline>>>(m => m.Single().Options.Name == "ix_CreateDate_desc"),
+                It.IsAny<CancellationToken>()), Times.Once);
+            var registry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            ((BsonValue)KeyTimelineRepository.OverviewIndexes.Single().Keys
+                .Render(new RenderArgs<KeyTimeline>(registry.GetSerializer<KeyTimeline>(), registry)))
+                .Should().Be(new BsonDocument("CreateDate", -1));
         }
 
         #endregion
