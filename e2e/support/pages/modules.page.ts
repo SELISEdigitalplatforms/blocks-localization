@@ -127,7 +127,7 @@ export class ModulesPage {
   /** Opens the picker's search and types a query (the search is debounced by 300 ms). */
   async searchInTagPicker(query: string) {
     const dialog = this.tagGlossaryDialog;
-    const search = dialog.getByPlaceholder("Search glossary...");
+    const search = dialog.getByPlaceholder("Search glossaries…");
     if (!(await search.isVisible())) await dialog.getByRole("combobox").click();
     await search.fill(query);
     return search;

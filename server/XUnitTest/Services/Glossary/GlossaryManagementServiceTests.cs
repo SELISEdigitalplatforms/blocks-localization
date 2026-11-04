@@ -379,5 +379,95 @@ namespace XUnitTest
         }
 
         #endregion
+
+        #region SPEC15 delete failure, not-found text and consumer contracts
+
+        private GlossaryManagementService ServiceWithRecheck(Mock<IGlossaryRecheckService> recheck) =>
+            new(_validatorMock.Object, _loggerMock.Object, _glossaryRepositoryMock.Object, _keyRepositoryMock.Object, null, recheck.Object);
+
+        [Fact]
+        public async Task C17_a_delete_that_fails_after_untagging_returns_the_retry_error_and_queues_a_recheck()
+        {
+            var recheck = new Mock<IGlossaryRecheckService>();
+            _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("g1"))
+                .ReturnsAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace", ModuleIds = new List<string> { "m1" } });
+            _keyRepositoryMock.Setup(r => r.RemoveGlossaryIdFromKeysAsync("g1")).ReturnsAsync(4);
+            _glossaryRepositoryMock.Setup(r => r.DeleteAsync("g1")).ThrowsAsync(new TimeoutException("Workspace timed out"));
+
+            var result = await ServiceWithRecheck(recheck).DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "g1" });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors.Should().Equal(new Dictionary<string, string> { { "Error", "Could not delete the glossary. Try again." } });
+            recheck.Verify(r => r.TriggerAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "g1" })),
+                It.Is<IReadOnlyCollection<string>>(m => m.SequenceEqual(new[] { "m1" })), true), Times.Once);
+            _loggerMock.VerifyLog(LogLevel.Error, "Deleting glossary end -- could not delete it after removing it from 4 keys: Workspace timed out");
+        }
+
+        [Fact]
+        public async Task C18_a_retried_delete_succeeds()
+        {
+            _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("g1")).ReturnsAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace" });
+            _keyRepositoryMock.Setup(r => r.RemoveGlossaryIdFromKeysAsync("g1")).ReturnsAsync(0);
+            _glossaryRepositoryMock.SetupSequence(r => r.DeleteAsync("g1"))
+                .ThrowsAsync(new TimeoutException("timeout"))
+                .Returns(Task.CompletedTask);
+
+            var failed = await _service.DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "g1" });
+            var retried = await _service.DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "g1" });
+
+            failed.IsSuccess.Should().BeFalse();
+            retried.IsSuccess.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task H12_delete_of_a_missing_glossary_uses_the_shared_not_found_text()
+        {
+            _glossaryRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((GlossaryModel)null!);
+
+            var result = await _service.DeleteGlossaryAsync(new DeleteGlossaryRequest { ItemId = "missing" });
+
+            result.Errors.Should().Equal(new Dictionary<string, string> { { "itemId", GlossaryManagementService.ItemNotFoundMessage } });
+            GlossaryManagementService.ItemNotFoundMessage.Should().Be("Glossary item not found");
+        }
+
+        [Theory]
+        [InlineData(20, 20)]
+        [InlineData(50, 50)]
+        [InlineData(100, 100)]
+        [InlineData(150, 100)]
+        public async Task H20_C23_glossary_gets_keeps_the_cli_and_extension_page_sizes_and_caps_at_100(int requested, int expected)
+        {
+            var request = new GetGlossariesRequest { PageSize = requested };
+            _glossaryRepositoryMock.Setup(r => r.GetAllAsync(request)).ReturnsAsync(new GetGlossariesResponse());
+
+            await _service.GetGlossariesAsync(request);
+
+            request.PageSize.Should().Be(expected);
+        }
+
+        [Fact]
+        public async Task H20_creating_without_an_item_id_inserts_a_new_glossary()
+        {
+            _glossaryRepositoryMock.Setup(r => r.GetByNameInsensitiveAsync(It.IsAny<string>())).ReturnsAsync(new List<GlossaryModel>());
+
+            var result = await _service.SaveGlossaryAsync(new GlossaryModel { Name = "Workspace" });
+
+            result.Success.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.InsertAsync(It.Is<BlocksGlossary>(g => !string.IsNullOrEmpty(g.ItemId))), Times.Once);
+        }
+
+        [Fact]
+        public async Task H20_editing_with_a_stored_item_id_and_no_version_replaces_it()
+        {
+            SetupStored(new BlocksGlossary { ItemId = "g1", Name = "Workspace", Version = 3 });
+
+            var result = await _service.SaveGlossaryAsync(new GlossaryModel { ItemId = "g1", Name = "Workspace" });
+
+            result.Success.Should().BeTrue();
+            _glossaryRepositoryMock.Verify(r => r.ReplaceAsync(It.Is<BlocksGlossary>(g => g.ItemId == "g1"), null), Times.Once);
+        }
+
+        #endregion
+
     }
 }

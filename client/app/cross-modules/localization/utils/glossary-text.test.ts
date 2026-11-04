@@ -55,4 +55,30 @@ describe("utils/glossary-text culture entries", () => {
       "de-DE": "old",
     });
   });
+
+  it("moves a bare-language entry onto the one project culture of that language (SPEC15 H27)", () => {
+    const keep = (kept: string, moved: string) => (kept ? kept : moved);
+    expect(alignCultureKeys({ de: "Arbeitsbereich" }, ["en-US", "de-DE"], keep)).toEqual({
+      "de-DE": "Arbeitsbereich",
+    });
+  });
+
+  it("lets the exact entry win over the bare one, and keeps a bare project language (SPEC15 C31)", () => {
+    const keep = (kept: string, moved: string) => (kept ? kept : moved);
+    expect(alignCultureKeys({ de: "Bare", "de-DE": "Exact" }, ["de-DE"], keep)).toEqual({
+      "de-DE": "Exact",
+    });
+    expect(alignCultureKeys({ de: "Bare", "de-de": "Case" }, ["de-DE"], keep)).toEqual({
+      "de-DE": "Case",
+    });
+    expect(alignCultureKeys({ de: "Bare", "de-DE": "Exact" }, ["de", "de-DE"], keep)).toEqual({
+      de: "Bare",
+      "de-DE": "Exact",
+    });
+  });
+
+  it("leaves a bare entry alone when several project cultures share its language", () => {
+    const keep = (kept: string, moved: string) => (kept ? kept : moved);
+    expect(alignCultureKeys({ de: "x" }, ["de-DE", "de-AT"], keep)).toEqual({ de: "x" });
+  });
 });

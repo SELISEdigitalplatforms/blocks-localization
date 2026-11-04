@@ -1,6 +1,9 @@
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using XUnitTest.Shared;
 using Xunit;
 
 namespace XUnitTest
@@ -187,5 +190,69 @@ namespace XUnitTest
             await cache.GetAsync("t1");
             loads.Should().Be(3);
         }
+
+        private GlossaryMatcherCache NewLoggedCache(Mock<ILogger<GlossaryMatcherCache>> logger) =>
+            new(tenant =>
+            {
+                lock (_loads) _loads[tenant] = _loads.GetValueOrDefault(tenant) + 1;
+                return Task.FromResult(new List<BlocksGlossary>());
+            }, () => _now, logger: logger.Object);
+
+        [Fact]
+        public async Task H6_the_sweep_evicts_other_tenants_older_than_the_TTL_and_the_evicted_tenant_rebuilds_once()
+        {
+            var logger = new Mock<ILogger<GlossaryMatcherCache>>();
+            var cache = NewLoggedCache(logger);
+            await cache.GetAsync("t1");
+            await cache.GetAsync("t2");
+            _now += TimeSpan.FromSeconds(30);
+            var fresh = await cache.GetAsync("t3");
+
+            _now += TimeSpan.FromSeconds(31);
+            var requesting = await cache.GetAsync("t1");
+
+            logger.VerifyLog(LogLevel.Debug, "Glossary matcher cache evicted 1 tenants");
+            (await cache.GetAsync("t2")).Should().NotBeNull();
+            (await cache.GetAsync("t2")).Should().BeSameAs(await cache.GetAsync("t2"));
+            _loads["t2"].Should().Be(2, "the evicted tenant builds once on its next request");
+            (await cache.GetAsync("t1")).Should().BeSameAs(requesting);
+            (await cache.GetAsync("t3")).Should().BeSameAs(fresh, "an entry younger than the TTL is kept");
+            _loads["t3"].Should().Be(1);
+        }
+
+        [Fact]
+        public async Task The_sweep_runs_at_most_once_per_interval()
+        {
+            var logger = new Mock<ILogger<GlossaryMatcherCache>>();
+            var cache = NewLoggedCache(logger);
+            await cache.GetAsync("t1");
+            await cache.GetAsync("t2");
+            _now += GlossaryMatcherCache.SweepInterval;
+            await cache.GetAsync("t3");
+            await cache.GetAsync("t3");
+            await cache.GetAsync("t4");
+
+            logger.VerifyLog(LogLevel.Debug, "Glossary matcher cache evicted 2 tenants");
+            logger.LoggedMessages().Should().ContainSingle(m => m.StartsWith("Glossary matcher cache evicted"));
+        }
+
+        [Fact]
+        public async Task C9_the_requesting_tenant_is_never_dropped_by_its_own_sweep()
+        {
+            var release = new TaskCompletionSource<List<BlocksGlossary>>();
+            var loads = 0;
+            var cache = new GlossaryMatcherCache(_ => { Interlocked.Increment(ref loads); return loads == 1 ? Task.FromResult(new List<BlocksGlossary>()) : release.Task; }, () => _now);
+            await cache.GetAsync("t1");
+            _now += GlossaryMatcherCache.Ttl + TimeSpan.FromSeconds(1);
+
+            var rebuilding = cache.GetAsync("t1");
+            var concurrent = cache.GetAsync("t1");
+            release.SetResult(new List<BlocksGlossary>());
+
+            (await rebuilding).Should().BeSameAs(await concurrent);
+            loads.Should().Be(2);
+            (await cache.GetAsync("t1")).Should().BeSameAs(await rebuilding);
+        }
+
     }
 }

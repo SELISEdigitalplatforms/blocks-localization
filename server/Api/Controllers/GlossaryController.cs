@@ -104,7 +104,7 @@ namespace Api.Controllers
                 return NotFound(new BaseMutationResponse
                 {
                     IsSuccess = false,
-                    Errors = new Dictionary<string, string> { { ItemIdField, "Glossary not found" } }
+                    Errors = new Dictionary<string, string> { { ItemIdField, GlossaryManagementService.ItemNotFoundMessage } }
                 });
 
             return Ok(usage);

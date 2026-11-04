@@ -24,17 +24,7 @@ namespace Eurolm.DomainService.Repositories
         public async Task<bool> TryEnqueueAsync(string tenantId, IReadOnlyCollection<string>? glossaryIds, IReadOnlyCollection<string>? moduleIds, DateTime now, TimeSpan staleAfter)
         {
             var collection = Collection(tenantId);
-            var updates = new List<UpdateDefinition<GlossaryRecheckJob>> { Builders<GlossaryRecheckJob>.Update.SetOnInsert(j => j.QueuedAt, now) };
-            if (glossaryIds == null)
-            {
-                updates.Add(Builders<GlossaryRecheckJob>.Update.Set(j => j.WholeProject, true));
-            }
-            else
-            {
-                updates.Add(Builders<GlossaryRecheckJob>.Update.AddToSetEach(j => j.GlossaryIds, glossaryIds));
-                if (moduleIds is { Count: > 0 }) updates.Add(Builders<GlossaryRecheckJob>.Update.AddToSetEach(j => j.ModuleIds, moduleIds));
-            }
-            var update = Builders<GlossaryRecheckJob>.Update.Combine(updates);
+            var update = ScopeUpdate(glossaryIds, moduleIds, now);
 
             try
             {
@@ -47,12 +37,44 @@ namespace Eurolm.DomainService.Repositories
                 await collection.UpdateOneAsync(MarkerFilter, update);
             }
 
-            // A marker this old means its message was lost (or its worker died): take it over and publish again.
-            var stale = Builders<GlossaryRecheckJob>.Filter.And(
+            // A failed run, or a marker this old (its message was lost or its worker died): take it over and publish again.
+            var filter = Builders<GlossaryRecheckJob>.Filter;
+            var takeOver = filter.And(
                 MarkerFilter,
-                Builders<GlossaryRecheckJob>.Filter.Lt(j => j.QueuedAt, now - staleAfter));
-            var takenOver = await collection.UpdateOneAsync(stale, Builders<GlossaryRecheckJob>.Update.Set(j => j.QueuedAt, now));
+                filter.Or(filter.Eq(j => j.Failed, true), filter.Lt(j => j.QueuedAt, now - staleAfter)));
+            var takenOver = await collection.UpdateOneAsync(takeOver,
+                Builders<GlossaryRecheckJob>.Update.Set(j => j.QueuedAt, now).Set(j => j.Failed, false));
             return takenOver.ModifiedCount > 0;
+        }
+
+        public async Task RequeueFailedAsync(string tenantId, IReadOnlyCollection<string>? glossaryIds, IReadOnlyCollection<string>? moduleIds, DateTime now)
+        {
+            var collection = Collection(tenantId);
+            var update = Builders<GlossaryRecheckJob>.Update.Combine(ScopeUpdate(glossaryIds, moduleIds, now), Builders<GlossaryRecheckJob>.Update.Set(j => j.Failed, true));
+
+            try
+            {
+                await collection.UpdateOneAsync(MarkerFilter, update, new UpdateOptions { IsUpsert = true });
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                await collection.UpdateOneAsync(MarkerFilter, update);
+            }
+        }
+
+        private static UpdateDefinition<GlossaryRecheckJob> ScopeUpdate(IReadOnlyCollection<string>? glossaryIds, IReadOnlyCollection<string>? moduleIds, DateTime now)
+        {
+            var updates = new List<UpdateDefinition<GlossaryRecheckJob>> { Builders<GlossaryRecheckJob>.Update.SetOnInsert(j => j.QueuedAt, now) };
+            if (glossaryIds == null)
+            {
+                updates.Add(Builders<GlossaryRecheckJob>.Update.Set(j => j.WholeProject, true));
+            }
+            else
+            {
+                updates.Add(Builders<GlossaryRecheckJob>.Update.AddToSetEach(j => j.GlossaryIds, glossaryIds));
+                if (moduleIds is { Count: > 0 }) updates.Add(Builders<GlossaryRecheckJob>.Update.AddToSetEach(j => j.ModuleIds, moduleIds));
+            }
+            return Builders<GlossaryRecheckJob>.Update.Combine(updates);
         }
 
         public async Task<GlossaryRecheckJob?> ClaimAsync(string tenantId) =>

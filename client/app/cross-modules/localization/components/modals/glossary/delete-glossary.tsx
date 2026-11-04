@@ -26,7 +26,7 @@ import {
 } from "@blocks-localization/utils/glossary-display";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { formatErrorMessage, getHttpErrorMessage } from "@/lib/error";
+import { formatErrorMessage, getForbiddenErrorMessage, getHttpErrorMessage } from "@/lib/error";
 
 /** From this many keys, Delete needs the term's exact name typed (Phase 8 A3). */
 export const DELETE_CONFIRM_THRESHOLD = 50;
@@ -58,6 +58,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
     isLoading: isCounting,
     isFetching: isRecounting,
     isError: isCountError,
+    error: countError,
     refetch: refetchUsageCount,
   } = useGetGlossaryUsage(itemId);
   const { isPending, mutateAsync } = useDeleteGlossaryWithCascade();
@@ -75,11 +76,14 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   const moduleCount = new Set([...(usage?.moduleIds ?? []), ...(currentGlossary?.moduleIds ?? [])])
     .size;
   const hasKnownCount = !isCountError && typeof usageCount === "number";
+  const isCountForbidden = isCountError && getForbiddenErrorMessage(countError) !== null;
+  const canDelete = hasKnownCount || isCountForbidden;
   const isBusy = isPending || isDeprecating;
-  const needsTyping = hasKnownCount && usageCount >= DELETE_CONFIRM_THRESHOLD;
+  const needsTyping =
+    isCountForbidden || (hasKnownCount && usageCount >= DELETE_CONFIRM_THRESHOLD);
   const isTypedNameValid =
     !needsTyping || normalizeName(confirmText) === normalizeName(glossaryName ?? "");
-  const canConfirm = hasKnownCount && !isCounting && !isRecounting && !isBusy && isTypedNameValid;
+  const canConfirm = canDelete && !isCounting && !isRecounting && !isBusy && isTypedNameValid;
   const canDeprecate =
     !!currentGlossary &&
     hasKnownCount &&
@@ -88,7 +92,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
     getGlossaryStatus(currentGlossary) !== "deprecated";
 
   const deleteGlossary = async () => {
-    if (runningRef.current || !hasKnownCount || !isTypedNameValid) {
+    if (runningRef.current || !canDelete || !isTypedNameValid) {
       return;
     }
     runningRef.current = true;
@@ -156,7 +160,7 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
       toast({
         variant: "destructive",
         title: t(COMMON_ERROR),
-        description: formatErrorMessage(error),
+        description: getHttpErrorMessage(error),
       });
     } finally {
       runningRef.current = false;
@@ -166,6 +170,13 @@ const DeleteGlossary: React.FC<DeleteGlossaryProps> = ({
   const renderUsage = () => {
     if (isCounting) {
       return <p className="text-sm text-medium-emphasis">{t("DELETE_GLOSSARY.CHECKING_USAGE")}</p>;
+    }
+    if (isCountForbidden) {
+      return (
+        <p className="text-sm text-medium-emphasis">
+          {isPending ? t("DELETE_GLOSSARY.DELETING") : t("DELETE_GLOSSARY.COUNT_UNAVAILABLE")}
+        </p>
+      );
     }
     if (isCountError) {
       return (

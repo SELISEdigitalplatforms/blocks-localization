@@ -1468,7 +1468,7 @@ export function LanguageTable() {
               )}
             </Card>
             <Dialog open={isAutoTranslateDialogOpen} onOpenChange={setIsAutoTranslateDialogOpen}>
-              <AutoTranslate />
+              <AutoTranslate onClose={() => setIsAutoTranslateDialogOpen(false)} />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">

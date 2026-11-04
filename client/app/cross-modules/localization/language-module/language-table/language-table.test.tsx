@@ -51,9 +51,19 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
     reset: vi.fn(),
   }),
 }));
-vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", () => ({
-  default: () => null,
-}));
+vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", async () => {
+  const { DialogContent, DialogTitle } = await import("@/components/ui-kits/dialog/dialog");
+  return {
+    default: ({ onClose }: { onClose?: () => void }) => (
+      <DialogContent>
+        <DialogTitle>Auto-translate stub</DialogTitle>
+        <button type="button" onClick={() => onClose?.()}>
+          Translate all succeeded
+        </button>
+      </DialogContent>
+    ),
+  };
+});
 vi.mock("@blocks-localization/components/modals/export-key/export-key", () => ({
   default: () => null,
 }));
@@ -452,6 +462,18 @@ describe("language-module/language-table", () => {
     expect((autoTranslateButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(autoTranslateButton);
     expect(screen.getByText("Translations")).toBeTruthy();
+  });
+
+  it("closes the auto-translate dialog through onClose once it succeeds (SPEC15 H24)", async () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByRole("button", { name: "Auto-translate all" }));
+    expect(screen.getByText("Auto-translate stub")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Translate all succeeded" }));
+    await waitFor(() => expect(screen.queryByText("Auto-translate stub")).toBeNull());
   });
 
   it("should bulk-delete selected keys through the confirmation dialog", async () => {

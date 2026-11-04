@@ -5,6 +5,8 @@ import {
   LocalizationApi,
   TranslationsPage,
   guardFullGlossaryLoads,
+  isGlossaryMatchUrl,
+  mockTranslationSuggestions,
   trackGlossaryMatches,
   type ApiGlossaryMatch,
   type ProjectLanguage,
@@ -136,7 +138,7 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
       await test.step("Create fixtures", () => fixtures.create(source, target));
       const { names, ids } = fixtures;
 
-      await test.step("H3: a legacy term opens with its structured values and its note", async () => {
+      await test.step("H3: a legacy glossary opens with its structured values and its note", async () => {
         await openGlossary(page);
         await glossary.expectPageLoaded();
         await glossary.openEditFromList(names.legacy);
@@ -162,7 +164,7 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
         expect(String(payload.context ?? "")).not.toContain("⟦rule:");
       });
 
-      await test.step("H2, H15: a new term shows Variants and Case-sensitive and defaults to Approved", async () => {
+      await test.step("H2, H15: a new glossary shows Variants and Case-sensitive and defaults to Approved", async () => {
         const name = `E2E New ${fixtures.tag}`;
         await glossary.openNewGlossaryDialog();
         await expect(glossary.variantsInput).toBeVisible();
@@ -198,7 +200,7 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
         expect(edited.status).toBe("draft");
       });
 
-      await test.step("H7, C12: a Draft term is highlighted with its notice; a Deprecated one is not", async () => {
+      await test.step("H7, C12: a Draft glossary is highlighted with its notice; a Deprecated one is not", async () => {
         const matches = await trackGlossaryMatches(page, fixtures.isOwnMatch);
         try {
           await translations.openKeyDetails(ids.key);
@@ -274,12 +276,24 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
           await glossary.expectPageLoaded();
           await glossary.searchGlossaries(names.g1);
           await glossary.openDeleteGlossaryDialog(names.g1);
-          await glossary.expectDeleteUsage("Used by 1 key");
+          // G1 is global: the count is every key in the project.
+          await glossary.expectDeleteUsage(
+            /^Applies to every key in the project \(\d+ keys?\)\.$/,
+          );
           expect(usage).toHaveLength(1);
           const url = new URL(usage[0]);
           expect(url.searchParams.get("itemId")).toBe(ids.g1);
           expect(url.searchParams.get("pageSize")).toBe("1");
           await glossary.deleteGlossaryDialog.getByRole("button", { name: "Cancel" }).click();
+
+          // The legacy glossary is tagged on the fixture key and scoped to M2.
+          usage.length = 0;
+          await glossary.searchGlossaries(names.legacy);
+          await glossary.openDeleteGlossaryDialog(names.legacy);
+          await glossary.expectDeleteUsage("Used by 1 key in 2 modules.");
+          expect(usage).toHaveLength(1);
+          await glossary.deleteGlossaryDialog.getByRole("button", { name: "Cancel" }).click();
+          await glossary.searchGlossaries(names.g1);
         } finally {
           page.off("request", onRequest);
         }
@@ -308,6 +322,244 @@ test.describe("Glossary — frontend on the new backend (SPEC7)", () => {
       });
     } finally {
       fullLoads.stop();
+      await test.step("Clean up fixtures", () => fixtures.cleanup());
+    }
+  });
+
+  test("Edit translation, migrated table, conflicts and refreshes (steps 2-4, 10-13)", async ({
+    page,
+  }) => {
+    test.setTimeout(480_000);
+    const glossary = new GlossaryPage(page);
+    const translations = new TranslationsPage(page);
+    const { fixtures, source, target } = await setUp(page);
+
+    try {
+      await test.step("Create fixtures", () => fixtures.create(source, target));
+      const { names, ids } = fixtures;
+      const dialog = translations.editTranslationDialog;
+      const textarea = translations.editTranslationTextarea;
+      const matches = await trackGlossaryMatches(page, fixtures.isOwnMatch);
+      const ai = await mockTranslationSuggestions(page);
+      const applied = {
+        glossaryId: ids.g1,
+        term: names.g1,
+        rule: "translate" as const,
+        expected: "Arbeitsbereich",
+      };
+
+      try {
+        await test.step("Step 2: one /Match per text; reopening sends none (H6, C11)", async () => {
+          await translations.openKeyDetails(ids.key);
+          await translations.openEditTranslation(target.languageName);
+          await expect(translations.glossaryTerm(dialog, names.g1)).toBeVisible({
+            timeout: 15_000,
+          });
+          await expect(translations.glossaryTerm(dialog, names.g6)).toHaveCount(0);
+          await translations.closeEditTranslation();
+          await translations.openEditTranslation(target.languageName);
+          await expect(translations.glossaryTerm(dialog, names.g1)).toBeVisible();
+          await page.waitForTimeout(1_000);
+          expect(matches.forText(fixtures.source)).toHaveLength(1);
+          await translations.closeEditTranslation();
+        });
+
+        await test.step("Step 3: one suggestion request; Fix sends nothing; empty arrays show no list (H4, H5, C1, C3)", async () => {
+          ai.script({
+            content: "Öffnen Sie Ihren Werkbereich",
+            appliedTerms: [applied],
+            glossaryViolations: [
+              { glossaryId: ids.g1, term: names.g1, kind: "forbidden-used", found: "Werkbereich" },
+            ],
+          });
+          await translations.openEditTranslation(target.languageName);
+          await translations.clickAutoTranslateInDialog();
+          await expect(textarea).toHaveValue("Öffnen Sie Ihren Werkbereich");
+          expect(ai.requests).toHaveLength(1);
+          expect(ai.requests[0]).toMatchObject({
+            sourceText: fixtures.source,
+            currentLanguageCode: source.languageCode,
+            destinationLanguageCode: target.languageCode,
+            moduleId: ids.m,
+          });
+          expect([...(ai.requests[0].glossaryIds as string[])].sort()).toEqual(
+            [ids.g1, ids.g5, ids.legacy].sort(),
+          );
+          const forbidden = translations.violationItem(dialog, '"Werkbereich" is not allowed');
+          await expect(forbidden).toBeVisible();
+          await forbidden.getByRole("button", { name: "Fix" }).click();
+          await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
+          await expect(translations.violationList(dialog)).toHaveCount(0);
+          expect(ai.requests).toHaveLength(1);
+          await translations.closeEditTranslation();
+
+          ai.script({ content: "Öffnen Sie Ihren Werkbereich" });
+          await translations.openEditTranslation(target.languageName);
+          await translations.clickAutoTranslateInDialog();
+          await expect(textarea).toHaveValue("Öffnen Sie Ihren Werkbereich");
+          await page.waitForTimeout(1_000);
+          await expect(translations.violationList(dialog)).toHaveCount(0);
+          await translations.closeEditTranslation();
+        });
+
+        await test.step("Step 4: a failing /Match shows plain text and no toast (C2)", async () => {
+          const fail = (route: Route) =>
+            route.fulfill({ status: 500, json: { errors: "scripted failure" } });
+          await page.route(isGlossaryMatchUrl, fail);
+          try {
+            await page.reload();
+            await expect(page.getByRole("button", { name: "Tag Glossary" })).toBeVisible({
+              timeout: 15_000,
+            });
+            const failed = page.waitForResponse((response) =>
+              isGlossaryMatchUrl(new URL(response.url())),
+            );
+            await translations.openEditTranslation(target.languageName);
+            await failed;
+            await page.waitForTimeout(500);
+            await expect(translations.glossaryTerm(dialog, names.g1)).toHaveCount(0);
+            await expect(dialog.getByText(fixtures.source, { exact: true })).toBeVisible();
+            await expect(page.locator(OPEN_TOAST)).toHaveCount(0);
+            await translations.closeEditTranslation();
+          } finally {
+            await page.unroute(isGlossaryMatchUrl, fail);
+          }
+        });
+
+        await test.step("Step 10: the table shows G1's rule and its translation chip; details show the Internal Note (H14, C15)", async () => {
+          await openGlossary(page);
+          await glossary.expectPageLoaded();
+          await glossary.searchGlossaries(names.g1);
+          const row = page.getByRole("row").filter({ hasText: names.g1 });
+          await expect(row.getByText("Translate", { exact: true })).toBeVisible({
+            timeout: 15_000,
+          });
+          await expect(row.getByText(target.languageCode, { exact: true })).toBeVisible();
+          await expect(row.getByText(`${target.languageCode} is missing`)).toHaveCount(0);
+          await glossary.searchGlossaries(names.legacy);
+          await glossary.openGlossaryDetail(names.legacy);
+          await expect(page.getByRole("heading", { name: "Internal Note" })).toBeVisible();
+          await expect(page.getByText("legacy brand", { exact: true })).toBeVisible();
+          await expect(page.getByText(/@@glossary-meta/)).toHaveCount(0);
+          await glossary.goBackToList();
+        });
+
+        await test.step("Step 11: a stale save conflicts; Reload latest shows the other tab's variant; a save refreshes /Match (H15, C5, C19)", async () => {
+          await glossary.searchGlossaries(names.g1);
+          await glossary.openGlossaryDetail(names.g1);
+          await glossary.clickEditButton();
+          await expect(glossary.variantsInput).toBeVisible();
+          await expect(glossary.caseSensitiveSwitch).toBeVisible();
+          const variant = `${names.g1}s`;
+          const otherPage = await page.context().newPage();
+          try {
+            await openGlossary(otherPage);
+            const other = new GlossaryPage(otherPage);
+            await other.expectPageLoaded();
+            await other.openEditFromList(names.g1);
+            await other.addVariant(variant);
+            await other.clickUpdateButton();
+            await expect(
+              otherPage.getByText("Glossary item updated successfully.", { exact: true }),
+            ).toBeVisible({ timeout: 20_000 });
+          } finally {
+            await otherPage.close();
+          }
+          await glossary.fillDefinition("Stale tab edit");
+          await glossary.clickUpdateButton();
+          await glossary.expectVersionConflict();
+          await glossary.reloadLatest();
+          await expect(
+            glossary.editorSheet.getByRole("button", { name: `Remove variant ${variant}`, exact: true }),
+          ).toBeVisible({ timeout: 15_000 });
+          await glossary.clickUpdateButton();
+          await glossary.expectEditSuccess(names.g1);
+
+          const before = matches.forText(fixtures.source).length;
+          await translations.openKeyDetails(ids.key);
+          await translations.openEditTranslation(target.languageName);
+          await expect.poll(() => matches.forText(fixtures.source).length).toBeGreaterThan(before);
+          await translations.closeEditTranslation();
+        });
+
+        await test.step("Step 12: typing in the source sends at most one /Match after typing stops (C18)", async () => {
+          await openTranslations(page);
+          await translations.openTranslationKeysTab();
+          await translations.expandKey(names.key);
+          const sourceField = translations.inlineTranslation(source.languageName);
+          await expect(sourceField).toBeVisible({ timeout: 15_000 });
+          const before = matches.requests.length;
+          await sourceField.click();
+          await sourceField.press("End");
+          await sourceField.pressSequentially("abcdefghij", { delay: 50 });
+          await page.waitForTimeout(1_500);
+          expect(matches.requests.length - before).toBeLessThanOrEqual(1);
+          await page.getByRole("button", { name: "Discard" }).click();
+        });
+
+        await test.step("Step 13: missing translations line, used state and refreshes after a save (H16, C21, C23)", async () => {
+          ai.script({
+            content: "Öffnen Sie Ihren Arbeitsbereich",
+            appliedTerms: [applied],
+            missingGlossaryTranslations: [{ glossaryId: ids.g5, term: names.g5 }],
+          });
+          await translations.openKeyDetails(ids.key);
+          await translations.openEditTranslation(target.languageName);
+          await textarea.fill("");
+          await translations.clickAutoTranslateInDialog();
+          await expect(
+            dialog.getByText(`No glossary translation for this language yet: ${names.g5}`),
+          ).toBeVisible();
+          const used = dialog.getByRole("button", {
+            name: `Glossary ${names.g1}: Translate, used in the translation`,
+          });
+          await expect(used).toBeVisible();
+          await used.click();
+          await expect(translations.termPopover.getByText("Already used")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await translations.closeEditTranslation();
+
+          await openGlossary(page);
+          await glossary.expectPageLoaded();
+          await glossary.searchGlossaries(names.g1);
+          await glossary.openGlossaryDetail(names.g1);
+          await expect(page.getByRole("row").filter({ hasText: names.key })).toBeVisible({
+            timeout: 15_000,
+          });
+          const keyGets: number[] = [];
+          let savedAt = 0;
+          const onRequest = (request: Request) => {
+            if (request.method() !== "POST" || !/\/Key\/Gets/.test(request.url())) return;
+            if ((request.postDataJSON() as Record<string, unknown>)?.glossaryId !== ids.g1) return;
+            if (savedAt) keyGets.push(Date.now() - savedAt);
+          };
+          page.on("request", onRequest);
+          try {
+            await glossary.clickEditButton();
+            await glossary.fillDefinition("Refresh check");
+            savedAt = Date.now();
+            await glossary.clickUpdateButton();
+            await glossary.expectEditSuccess(names.g1);
+            await page.waitForTimeout(66_000);
+          } finally {
+            page.off("request", onRequest);
+          }
+          for (const [from, to] of [
+            [3_000, 9_000],
+            [14_000, 20_000],
+            [59_000, 66_000],
+          ]) {
+            expect(
+              keyGets.some((at) => at >= from && at <= to),
+              `Key/Gets between ${from} and ${to} ms after the save (${keyGets.join(", ")})`,
+            ).toBe(true);
+          }
+        });
+      } finally {
+        await ai.stop();
+        await matches.stop();
+      }
+    } finally {
       await test.step("Clean up fixtures", () => fixtures.cleanup());
     }
   });

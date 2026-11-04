@@ -32,6 +32,7 @@ import {
 } from "@/components/ui-kits/tooltip/tooltip";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
+import { getHttpErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
@@ -380,7 +381,10 @@ function AddNewLanguageKey() {
     toast({
       variant: "destructive",
       title: t(COMMON_ERROR),
-      description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
+      description:
+        outcome.status === "error"
+          ? getHttpErrorMessage(outcome.error)
+          : t("ADD_NEW_LANGUAGE_KEY.NO_SUGGESTION"),
     });
   }
 

@@ -222,7 +222,7 @@ export const InlineKeyDetails = memo(
                         }}
                       >
                         <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                        Add to glossary
+                        {t("localization.keys:EDIT_TRANSLATION.ADD_TO_GLOSSARY")}
                       </Button>
                     )}
                     {!language.isDefault && (

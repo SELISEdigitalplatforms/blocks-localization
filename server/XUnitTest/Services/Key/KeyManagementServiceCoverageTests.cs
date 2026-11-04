@@ -811,7 +811,7 @@ namespace XUnitTest
             _languageManagementServiceMock.Setup(m => m.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language> { new Language { LanguageCode = "en-US", LanguageName = "English" } });
 
-            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeysWithPage(0, 1000))
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeysWithPage(0, 1000, It.IsAny<string?>()))
                 .ReturnsAsync(new List<BlocksLanguageKey>().AsQueryable());
 
             var request = new TranslateAllEvent { DefaultLanguage = "en-US", ProjectKey = "proj" };
@@ -848,7 +848,7 @@ namespace XUnitTest
             _languageManagementServiceMock.Setup(m => m.GetLanguagesAsync())
                 .ReturnsAsync(languages);
 
-            _keyRepositoryMock.SetupSequence(r => r.GetUilmResourceKeysWithPage(It.IsAny<int>(), 1000))
+            _keyRepositoryMock.SetupSequence(r => r.GetUilmResourceKeysWithPage(It.IsAny<int>(), 1000, It.IsAny<string?>()))
                 .ReturnsAsync(resourceKeys.AsQueryable())
                 .ReturnsAsync(new List<BlocksLanguageKey>().AsQueryable());
 
@@ -918,12 +918,10 @@ namespace XUnitTest
             _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<KeyModel>(), default))
                 .ReturnsAsync(new FluentValidation.Results.ValidationResult());
 
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("key1", "mod-1"))
-                .ThrowsAsync(new Exception("Timeout"));
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("key2", "mod-1"))
-                .ReturnsAsync((BlocksLanguageKey)null);
-            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+            _keyRepositoryMock.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync(new[] { new KeyBulkSaveError(0, false, "Timeout") });
             _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 
@@ -931,6 +929,8 @@ namespace XUnitTest
 
             result.Success.Should().BeFalse();
             result.ErrorMessage.Should().Contain("1 errors");
+            result.ErrorMessage.Should().Contain("Key 'key1' in Module 'mod-1': Timeout");
+            _keyTimelineRepositoryMock.Verify(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Once);
         }
 
         [Fact]
@@ -951,10 +951,10 @@ namespace XUnitTest
 
             _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<KeyModel>(), default))
                 .ReturnsAsync(new FluentValidation.Results.ValidationResult());
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("key1", "mod-1"))
-                .ReturnsAsync((BlocksLanguageKey)null);
-            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+            _keyRepositoryMock.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync(Array.Empty<KeyBulkSaveError>());
             _messageClientMock.Setup(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<GenerateUilmFilesEvent>>()))
                 .Returns(Task.CompletedTask);
             _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
@@ -990,10 +990,10 @@ namespace XUnitTest
 
             _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<KeyModel>(), default))
                 .ReturnsAsync(new FluentValidation.Results.ValidationResult());
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("key1", "mod-1"))
-                .ReturnsAsync(existingKey);
-            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey> { existingKey });
+            _keyRepositoryMock.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync(Array.Empty<KeyBulkSaveError>());
             _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
 

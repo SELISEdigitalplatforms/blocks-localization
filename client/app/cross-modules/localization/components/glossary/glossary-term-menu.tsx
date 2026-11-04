@@ -1,6 +1,6 @@
 import { KeyboardEvent, ReactElement } from "react";
 import { Check } from "lucide-react";
-import { useT } from "@seliseblocks/genesis-os/i18n";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui-kits/popover/popover";
 import {
   Command,
@@ -27,8 +27,8 @@ export const getGlossaryTermMenuShortcut = () =>
     ? { keys: "⌥⇧G", label: "Option+Shift+G" }
     : { keys: "Alt+Shift+G", label: "Alt+Shift+G" };
 
-export const getGlossaryTermMenuHint = () =>
-  `Press ${getGlossaryTermMenuShortcut().label} to insert a glossary at the cursor.`;
+export const getGlossaryTermMenuHint = (t: TFunction) =>
+  t("GLOSSARY_TERM_MENU.SHORTCUT_HINT", { shortcut: getGlossaryTermMenuShortcut().label });
 
 /**
  * True for Alt+Shift+G (Option+Shift+G on macOS). Reads `code`, not `key`: on macOS

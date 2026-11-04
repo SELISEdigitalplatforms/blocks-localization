@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import { toast } from "@/hooks/use-toast";
+import { FORBIDDEN_ERROR_MESSAGE } from "@/lib/error";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import DeleteGlossary from "./delete-glossary";
 
@@ -37,7 +38,13 @@ const fetchLatest = vi.fn();
 
 /** `data` is the key count; `moduleIds` the Usage response's modules. */
 const mockUsage = (
-  state: { data?: number; isLoading?: boolean; isFetching?: boolean; isError?: boolean },
+  state: {
+    data?: number;
+    isLoading?: boolean;
+    isFetching?: boolean;
+    isError?: boolean;
+    error?: unknown;
+  },
   moduleIds: string[] = [],
   scope: { affectedKeyCount?: number; isGlobal?: boolean } = {},
 ) => {
@@ -323,6 +330,107 @@ describe("modals/glossary/delete-glossary", () => {
       mockUsage({ data: 0 });
       renderWithTerm();
       expect(screen.queryByRole("button", { name: "Deprecate instead" })).toBeNull();
+    });
+  });
+
+  describe("SPEC15 count unavailable (CL01)", () => {
+    const forbidden = { status: 403, errors: {} };
+    const unavailable =
+      "You can't see how many keys use this glossary. Deleting removes it from every key that uses it.";
+    const glossary = {
+      itemId: "g1",
+      name: "Widget",
+      createDate: "2026-01-01",
+      lastUpdateDate: "2026-01-01",
+      version: 4,
+      rule: "translate" as const,
+      status: "approved" as const,
+      isGlobal: true,
+      moduleIds: [],
+      translations: [],
+    };
+
+    it("explains the missing count and enables Delete once the name is typed (H21)", async () => {
+      cascadeAsync.mockResolvedValue({ status: "deleted" });
+      mockUsage({ isError: true, error: forbidden });
+      const onClose = vi.fn();
+      renderDialog(onClose);
+
+      expect(screen.getByText(unavailable)).toBeTruthy();
+      expect(screen.queryByText("Failed to check how many keys use this glossary.")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      const confirm = screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement;
+      expect(confirm.disabled).toBe(true);
+      fireEvent.change(screen.getByLabelText('Type "Widget" to confirm'), {
+        target: { value: "widget" },
+      });
+      expect(confirm.disabled).toBe(true);
+      fireEvent.change(screen.getByLabelText('Type "Widget" to confirm'), {
+        target: { value: "Widget" },
+      });
+      expect(confirm.disabled).toBe(false);
+      fireEvent.click(confirm);
+      await waitFor(() => expect(cascadeAsync).toHaveBeenCalledWith({ glossaryId: "g1" }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
+    it("keeps Delete disabled and hides Deprecate instead until the name matches (C25)", () => {
+      mockUsage({ isError: true, error: forbidden });
+      render(
+        withDialog(
+          <DeleteGlossary itemId="g1" glossaryName="Widget" glossary={glossary} onClose={vi.fn()} />,
+        ),
+      );
+      fireEvent.change(screen.getByLabelText('Type "Widget" to confirm'), {
+        target: { value: "Widge" },
+      });
+      expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      expect(screen.queryByRole("button", { name: "Deprecate instead" })).toBeNull();
+    });
+
+    it("keeps the failure text and Retry for any other Usage error (C24)", () => {
+      mockUsage({ isError: true, error: { status: 500, errors: {} } });
+      renderDialog();
+      expect(screen.getByText("Failed to check how many keys use this glossary.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+      expect(screen.queryByText(unavailable)).toBeNull();
+      expect(screen.queryByLabelText('Type "Widget" to confirm')).toBeNull();
+      expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+    });
+
+    it("asks for the name at 50 keys but not at 49 (C37)", () => {
+      mockUsage({ data: 49 });
+      const { unmount } = renderDialog();
+      expect(screen.queryByLabelText('Type "Widget" to confirm')).toBeNull();
+      unmount();
+      mockUsage({ data: 50 });
+      renderDialog();
+      expect(screen.getByLabelText('Type "Widget" to confirm')).toBeTruthy();
+    });
+
+    it("shows the shared permission message when Deprecate instead is forbidden (C30)", async () => {
+      saveAsync.mockRejectedValue({ status: 403, errors: {} });
+      mockUsage({ data: 3 });
+      render(
+        withDialog(
+          <DeleteGlossary
+            itemId="g1"
+            glossaryName="Widget"
+            glossary={{ ...glossary, isGlobal: false, moduleIds: ["m1"] }}
+            onClose={vi.fn()}
+          />,
+        ),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Deprecate instead" }));
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", description: FORBIDDEN_ERROR_MESSAGE }),
+        ),
+      );
     });
   });
 });

@@ -8,6 +8,15 @@ namespace Eurolm.DomainService.Repositories
     {
         Task SaveKeyAsync(BlocksLanguageKey key);
         Task<BlocksLanguageKey> GetKeyByNameAsync(string KeyName, string moduleId);
+        /// <summary>The stored keys among the requested KeyName + ModuleId pairs, in one query.</summary>
+        Task<List<BlocksLanguageKey>> GetKeysByNameAndModuleAsync(IReadOnlyCollection<(string KeyName, string ModuleId)> keys);
+        /// <summary>
+        /// Sets only GlossaryIds, LastUpdateDate and (with <paramref name="setGlossaryViolations"/>) GlossaryViolations
+        /// on the stored key with the same KeyName + ModuleId. False when no key matched.
+        /// </summary>
+        Task<bool> SetGlossaryIdsAsync(BlocksLanguageKey key, bool setGlossaryViolations);
+        /// <summary>One unordered bulk write; returns the entries the database rejected (the others are stored).</summary>
+        Task<IReadOnlyList<KeyBulkSaveError>> BulkSaveKeysAsync(IReadOnlyList<KeyBulkSave> saves);
         Task<GetKeysQueryResponse> GetAllKeysAsync(GetKeysRequest request);
         Task<List<Key>> GetAllKeysByModuleAsync(string moduleId);
         Task<bool> SaveNewUilmFiles(List<UilmFile> uilmfiles);
@@ -55,7 +64,13 @@ namespace Eurolm.DomainService.Repositories
         /// </summary>
         Task<long> RemoveStaleGlossaryIdsAsync(IReadOnlyCollection<string> existingGlossaryIds, bool dryRun, int batchSize = 200);
 
-        Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size);
+        /// <summary>
+        /// Removes GlossaryViolations entries whose glossary no longer exists, in batches. Returns the number of
+        /// entries removed (or that would be removed, with <paramref name="dryRun"/>).
+        /// </summary>
+        Task<long> RemoveStaleGlossaryViolationsAsync(IReadOnlyCollection<string> existingGlossaryIds, bool dryRun, int batchSize = 200);
+
+        Task<IQueryable<BlocksLanguageKey>> GetUilmResourceKeysWithPage(int page, int size, string? moduleId);
         Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys);
         Task<T> GetUilmResourceKey<T>(Expression<Func<BlocksLanguageKey, bool>> expression);
         Task<BlocksLanguageKey> GetUilmResourceKey(Expression<Func<BlocksLanguageKey, bool>> expression, string tenantId);

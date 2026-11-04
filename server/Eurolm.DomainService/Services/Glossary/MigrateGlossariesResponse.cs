@@ -13,6 +13,8 @@ namespace Eurolm.DomainService.Services
         public List<List<string>> DuplicateGroups { get; set; } = new();
         /// <summary>Key GlossaryIds entries that referenced no existing glossary (removed, or that would be).</summary>
         public long StaleKeyRefsRemoved { get; set; }
+        /// <summary>Key GlossaryViolations entries whose glossary no longer exists (removed, or that would be).</summary>
+        public long StaleViolationsRemoved { get; set; }
         /// <summary>Whether ux_normalizedname was created (on a dry run: whether it would be).</summary>
         public bool UniqueIndexCreated { get; set; }
         /// <summary>Why the unique index was not created, and other operator notes.</summary>

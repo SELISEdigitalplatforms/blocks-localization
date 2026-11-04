@@ -26,9 +26,21 @@ export const findCultureEntry = <T>(
   return bare === undefined ? undefined : record[bare];
 };
 
+const languageOf = (code: string) => code.split(/[-_]/)[0];
+
+const projectCultureFor = (code: string, cultures: readonly string[]): string | undefined => {
+  const anyCase = cultures.find((culture) => sameCode(culture, code));
+  if (anyCase !== undefined || /[-_]/.test(code)) return anyCase;
+  const sameLanguage = cultures.filter(
+    (culture) => /[-_]/.test(culture) && sameCode(languageOf(culture), code),
+  );
+  return sameLanguage.length === 1 ? sameLanguage[0] : undefined;
+};
+
 /**
- * Moves entries stored under another case of a project culture ("de-de") onto that culture
- * ("de-DE"), merging with `merge` when both exist; an entry under the exact code wins.
+ * Moves entries stored under another case of a project culture ("de-de"), or under the bare
+ * language of exactly one project culture ("de"), onto that culture ("de-DE"), merging with
+ * `merge` when both exist. An entry under the exact code wins, then one in another case.
  */
 export const alignCultureKeys = <T>(
   record: Readonly<Record<string, T>>,
@@ -36,13 +48,16 @@ export const alignCultureKeys = <T>(
   merge: (kept: T, moved: T) => T,
 ): Record<string, T> => {
   const aligned: Record<string, T> = {};
-  const entries = Object.entries(record);
-  const exactFirst = [
-    ...entries.filter(([code]) => cultures.includes(code)),
-    ...entries.filter(([code]) => !cultures.includes(code)),
-  ];
-  for (const [code, value] of exactFirst) {
-    const target = cultures.find((culture) => sameCode(culture, code)) ?? code;
+  const rank = (code: string) => {
+    if (cultures.includes(code)) return 0;
+    return cultures.some((culture) => sameCode(culture, code)) ? 1 : 2;
+  };
+  const ordered = Object.entries(record)
+    .map((entry, index) => ({ entry, index, rank: rank(entry[0]) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ entry }) => entry);
+  for (const [code, value] of ordered) {
+    const target = projectCultureFor(code, cultures) ?? code;
     aligned[target] = Object.hasOwn(aligned, target) ? merge(aligned[target], value) : value;
   }
   return aligned;

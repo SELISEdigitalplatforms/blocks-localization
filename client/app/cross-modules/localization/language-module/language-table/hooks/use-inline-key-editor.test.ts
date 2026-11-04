@@ -2,6 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryWrapper } from "@/test-utils/query-wrapper";
+import { toast } from "@/hooks/use-toast";
+import { FORBIDDEN_ERROR_MESSAGE } from "@/lib/error";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import {
@@ -186,5 +188,40 @@ describe("useInlineKeyEditor — /Glossary/Match", () => {
     });
     await waitFor(() => expect(result.current.sourceMatches).toHaveLength(1));
     expect(result.current.sourceMatches[0].start).toBe(5);
+  });
+});
+
+describe("useInlineKeyEditor — auto-translate errors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    matchGlossary.mockImplementation(async (request) => matchResponse([G1], request.text));
+    h.useSaveBlocksLanguageKey.mockReturnValue({ isPending: false, mutateAsync: vi.fn() } as never);
+    h.useGetTranslationSuggestion.mockReturnValue({ mutateAsync: suggestAsync } as never);
+  });
+
+  const descriptions = () => vi.mocked(toast).mock.calls.map(([arg]) => String(arg.description));
+
+  it.each([
+    [
+      "no content comes back",
+      () => suggestAsync.mockResolvedValue({ content: "", errors: ["x"] }),
+      "No suggestion came back. Try again.",
+    ],
+    ["the request throws", () => suggestAsync.mockRejectedValue(new Error("boom")), "boom"],
+    [
+      "the request is forbidden",
+      () => suggestAsync.mockRejectedValue({ status: 403, errors: {} }),
+      FORBIDDEN_ERROR_MESSAGE,
+    ],
+  ])("toasts a readable message, not JSON, when %s", async (_case, arrange, message) => {
+    arrange();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.autoTranslate("de-DE");
+    });
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "destructive", description: message }),
+    );
+    expect(descriptions().some((description) => /^[[{"]/.test(description))).toBe(false);
   });
 });

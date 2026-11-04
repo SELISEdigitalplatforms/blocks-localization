@@ -6,6 +6,7 @@ namespace Eurolm.DomainService.Services
     {
         public string Message { get; set; }
         public double Temperature { get; set; }
+        public CancellationToken CancellationToken { get; set; }
         public AiCompletionRequest(string message, double temperature) 
         { 
             Message = message;

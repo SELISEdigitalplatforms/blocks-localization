@@ -519,11 +519,11 @@ namespace XUnitTest
             _validatorMock.Setup(v => v.ValidateAsync(It.IsAny<Key>(), default))
                 .ReturnsAsync(validationResult);
 
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync((BlocksLanguageKey)null);
+            _keyRepositoryMock.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
-            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync(Array.Empty<KeyBulkSaveError>());
 
             _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
@@ -534,7 +534,7 @@ namespace XUnitTest
             // Assert
             result.Should().NotBeNull();
             result.Success.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()), Times.Exactly(2));
+            _keyRepositoryMock.Verify(r => r.BulkSaveKeysAsync(It.Is<IReadOnlyList<KeyBulkSave>>(s => s.Count == 2)), Times.Once);
         }
 
         [Fact]
@@ -580,11 +580,11 @@ namespace XUnitTest
             _validatorMock.Setup(v => v.ValidateAsync(keys[1], default))
                 .ReturnsAsync(invalidResult);
 
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(keys[0].KeyName, keys[0].ModuleId))
-                .ReturnsAsync((BlocksLanguageKey)null);
+            _keyRepositoryMock.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
 
-            _keyRepositoryMock.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()))
-                .Returns(Task.CompletedTask);
+            _keyRepositoryMock.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync(Array.Empty<KeyBulkSaveError>());
 
             _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
                 .Returns(Task.CompletedTask);
@@ -594,7 +594,7 @@ namespace XUnitTest
 
             // Assert
             result.Should().NotBeNull();
-            _keyRepositoryMock.Verify(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()), Times.Once);
+            _keyRepositoryMock.Verify(r => r.BulkSaveKeysAsync(It.Is<IReadOnlyList<KeyBulkSave>>(s => s.Count == 1 && s[0].Key.KeyName == "valid-key")), Times.Once);
         }
 
         [Fact]

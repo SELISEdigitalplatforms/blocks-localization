@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
@@ -21,11 +22,11 @@ export const GLOSSARY_TERM_SOURCE_ORDER: readonly GlossaryTermSource[] = [
   "suggested",
 ];
 
-export const GLOSSARY_TERM_SOURCE_LABELS: Record<GlossaryTermSource, string> = {
-  tagged: "Tagged",
-  module: "Module",
-  global: "Global",
-  suggested: "Suggested",
+export const GLOSSARY_TERM_SOURCE_LABEL_KEYS: Record<GlossaryTermSource, string> = {
+  tagged: "GLOSSARY_TERM_CHIP.SOURCE_TAGGED",
+  module: "GLOSSARY_TERM_CHIP.SOURCE_MODULE",
+  global: "GLOSSARY_TERM_CHIP.SOURCE_GLOBAL",
+  suggested: "GLOSSARY_TERM_CHIP.SOURCE_SUGGESTED",
 };
 
 export interface SourcedGlossary {
@@ -64,8 +65,9 @@ const GlossaryTermChip = ({
   onAdd,
   disabled,
 }: Readonly<GlossaryTermChipProps>) => {
+  const { t } = useT("localization.glossary");
   const scoped = useScopedPath();
-  const sourceLabel = GLOSSARY_TERM_SOURCE_LABELS[source];
+  const sourceLabel = t(GLOSSARY_TERM_SOURCE_LABEL_KEYS[source]);
 
   return (
     <div
@@ -97,7 +99,7 @@ const GlossaryTermChip = ({
           size="icon"
           variant="ghost"
           className="h-5 w-5 shrink-0"
-          aria-label={`Remove ${glossary.name} from key`}
+          aria-label={t("GLOSSARY_TERM_CHIP.REMOVE_ARIA", { name: glossary.name })}
           disabled={disabled}
           onClick={onRemove}
         >
@@ -110,7 +112,7 @@ const GlossaryTermChip = ({
           size="icon"
           variant="ghost"
           className="h-5 w-5 shrink-0"
-          aria-label={`Tag ${glossary.name} to key`}
+          aria-label={t("GLOSSARY_TERM_CHIP.TAG_ARIA", { name: glossary.name })}
           disabled={disabled}
           onClick={onAdd}
         >

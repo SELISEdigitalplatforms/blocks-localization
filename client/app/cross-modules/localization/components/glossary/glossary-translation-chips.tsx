@@ -20,7 +20,6 @@ const MISSING_CHIP_CLASS =
 interface GlossaryTranslationChipsProps {
   meta: GlossaryMeta;
   languages: ILanguageConfig[] | undefined;
-  /** Chips shown before "+N" (the glossary picker shows 3). */
   max?: number;
 }
 

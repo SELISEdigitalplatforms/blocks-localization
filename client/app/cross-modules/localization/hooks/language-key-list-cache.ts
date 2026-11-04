@@ -104,8 +104,24 @@ export const removeLanguageKeyRows =
     return keys.filter((key) => !removedIds.has(key.itemId));
   };
 
+export const removeGlossaryFromLanguageKeyRows =
+  (glossaryId: string): LanguageKeyRowsPatch =>
+  (keys) =>
+    keys.map((key) => {
+      const tagged = key.glossaryIds?.includes(glossaryId);
+      const violated = key.glossaryViolations?.some((v) => v.glossaryId === glossaryId);
+      if (!tagged && !violated) return key;
+      return {
+        ...key,
+        ...(tagged && { glossaryIds: key.glossaryIds?.filter((id) => id !== glossaryId) }),
+        ...(violated && {
+          glossaryViolations: key.glossaryViolations?.filter((v) => v.glossaryId !== glossaryId),
+        }),
+      };
+    });
+
 /** When the worker's re-check after a glossary write has likely finished, in ms after the write. */
-export const GLOSSARY_RECHECK_REFRESH_DELAYS_MS = [4_000, 15_000] as const;
+export const GLOSSARY_RECHECK_REFRESH_DELAYS_MS = [4_000, 15_000, 60_000] as const;
 
 /**
  * Refreshes what shows glossary issues after a glossary is saved or deleted: key lists, key

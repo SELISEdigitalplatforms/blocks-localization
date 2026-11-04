@@ -26,6 +26,7 @@ import {
   allViewRefreshAfterSave,
   refreshKeysAfterGlossaryChange,
   refreshLanguageKeyLists,
+  removeGlossaryFromLanguageKeyRows,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
   savedLanguageKeyRow,
@@ -835,18 +836,6 @@ export const useSaveGlossary = () => {
   });
 };
 
-export const useDeleteGlossary = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: ["glossary", "delete"],
-    mutationFn: languageManagerService.deleteGlossary,
-    onSuccess: () => {
-      GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
-      refreshKeysAfterGlossaryChange(queryClient);
-    },
-  });
-};
-
 export const useGetGlobalGlossaries = () => {
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
   return useQuery({
@@ -1134,8 +1123,11 @@ export const useDeleteGlossaryWithCascade = () => {
   const queryClient = useQueryClient();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  const invalidateKeys = () => {
-    refreshLanguageKeyLists(queryClient, "reset");
+  const invalidateKeys = (deletedGlossaryId?: string) => {
+    refreshLanguageKeyLists(
+      queryClient,
+      deletedGlossaryId ? removeGlossaryFromLanguageKeyRows(deletedGlossaryId) : "keep",
+    );
     queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
   };
 
@@ -1160,9 +1152,9 @@ export const useDeleteGlossaryWithCascade = () => {
     },
     // Also after a failure: "not found" means it is already gone, and a delete that failed after
     // untagging has changed keys.
-    onSettled: () => {
+    onSettled: (result, _error, { glossaryId }) => {
       invalidateGlossaries();
-      invalidateKeys();
+      invalidateKeys(result?.status === "deleted" ? glossaryId : undefined);
       refreshKeysAfterGlossaryChange(queryClient);
     },
   });

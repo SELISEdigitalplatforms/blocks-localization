@@ -8,6 +8,7 @@ import {
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
 import { toast } from "@/hooks/use-toast";
+import { getHttpErrorMessage } from "@/lib/error";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
 const COMMON_ERROR = "common:ERROR";
@@ -174,7 +175,10 @@ export const useInlineKeyEditor = (
     toast({
       variant: "destructive",
       title: t(COMMON_ERROR),
-      description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
+      description:
+        outcome.status === "error"
+          ? getHttpErrorMessage(outcome.error)
+          : t("USE_INLINE_KEY_EDITOR.NO_SUGGESTION"),
     });
   };
 
