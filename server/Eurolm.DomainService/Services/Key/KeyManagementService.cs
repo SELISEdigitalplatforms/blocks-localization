@@ -291,30 +291,7 @@ namespace Eurolm.DomainService.Services
                 return;
             }
 
-            var failed = new HashSet<int>();
-            foreach (var failure in failures)
-            {
-                var save = batch[failure.Index];
-                failed.Add(failure.Index);
-                if (failure.IsDuplicateKey)
-                {
-                    var duplicate = DuplicateKeyFailure();
-                    errors[save.Index] = KeyErrorLine(save.Key, $"{duplicate.PropertyName}: {duplicate.ErrorMessage}");
-                }
-                else
-                {
-                    errors[save.Index] = KeyErrorLine(save.Key, failure.Message);
-                }
-            }
-            if (failures.Any(f => f.IsDuplicateKey))
-            {
-                // User-supplied names stay out of the log; the response carries the details.
-#pragma warning disable S6667
-                _logger.LogWarning("A key save was rejected by the unique key index");
-#pragma warning restore S6667
-            }
-            if (failures.Any(f => !f.IsDuplicateKey))
-                _logger.LogError("Bulk save: {FailedCount} keys could not be written", failures.Count(f => !f.IsDuplicateKey));
+            var failed = RecordWriteFailures(batch, failures, errors);
 
             for (var i = 0; i < batch.Count; i++)
             {
@@ -340,6 +317,35 @@ namespace Eurolm.DomainService.Services
                     errors[save.Index] = KeyErrorLine(save.Key, ex.Message);
                 }
             }
+        }
+
+        private HashSet<int> RecordWriteFailures(List<PlannedKeySave> batch, IReadOnlyList<KeyBulkSaveError> failures, string?[] errors)
+        {
+            var failed = new HashSet<int>();
+            foreach (var failure in failures)
+            {
+                var save = batch[failure.Index];
+                failed.Add(failure.Index);
+                if (failure.IsDuplicateKey)
+                {
+                    var duplicate = DuplicateKeyFailure();
+                    errors[save.Index] = KeyErrorLine(save.Key, $"{duplicate.PropertyName}: {duplicate.ErrorMessage}");
+                }
+                else
+                {
+                    errors[save.Index] = KeyErrorLine(save.Key, failure.Message);
+                }
+            }
+            if (failures.Any(f => f.IsDuplicateKey))
+            {
+                // User-supplied names stay out of the log; the response carries the details.
+#pragma warning disable S6667
+                _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
+            }
+            if (failures.Any(f => !f.IsDuplicateKey))
+                _logger.LogError("Bulk save: {FailedCount} keys could not be written", failures.Count(f => !f.IsDuplicateKey));
+            return failed;
         }
 
         private static string KeyErrorLine(Key key, string message) => $"Key '{key.KeyName}' in Module '{key.ModuleId}': {message}";

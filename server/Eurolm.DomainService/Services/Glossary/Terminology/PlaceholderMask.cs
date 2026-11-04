@@ -100,7 +100,8 @@ namespace Eurolm.DomainService.Services
         private static void WalkIcuArgument(string text, int start, Action<int, int> onOptionName, Action<int> onBranchOpen)
         {
             var depth = 1;
-            for (var i = start; i < text.Length && depth > 0; i++)
+            var i = start;
+            while (i < text.Length && depth > 0)
             {
                 var c = text[i];
                 if (c == '{')
@@ -114,14 +115,21 @@ namespace Eurolm.DomainService.Services
                 }
                 else if (depth == 1 && IsWordChar(c))
                 {
-                    var end = i;
-                    while (end < text.Length && IsWordChar(text[end])) end++;
-                    var next = end;
-                    while (next < text.Length && (text[next] == ' ' || text[next] == '\t')) next++;
-                    if (next < text.Length && text[next] == '{') onOptionName(i, end - i);
-                    i = end - 1;
+                    i = ScanOptionName(text, i, onOptionName);
+                    continue;
                 }
+                i++;
             }
+        }
+
+        private static int ScanOptionName(string text, int start, Action<int, int> onOptionName)
+        {
+            var end = start;
+            while (end < text.Length && IsWordChar(text[end])) end++;
+            var next = end;
+            while (next < text.Length && (text[next] == ' ' || text[next] == '\t')) next++;
+            if (next < text.Length && text[next] == '{') onOptionName(start, end - start);
+            return end;
         }
 
         private static bool IsWordChar(char c) => char.IsLetter(c) || char.IsNumber(c) || c == '_';

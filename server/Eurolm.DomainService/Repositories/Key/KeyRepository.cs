@@ -483,7 +483,7 @@ namespace Eurolm.DomainService.Repositories
             catch (MongoBulkWriteException<BlocksLanguageKey> ex)
             {
                 if (ex.WriteConcernError != null)
-                    _logger.LogWarning("Bulk key save: write concern error {WriteConcernErrorCode} for a batch of {KeyCount} keys", ex.WriteConcernError.Code, saves.Count);
+                    _logger.LogWarning(ex, "Bulk key save: write concern error {WriteConcernErrorCode} for a batch of {KeyCount} keys", ex.WriteConcernError.Code, saves.Count);
                 errors.AddRange(ex.WriteErrors.Select(error => new KeyBulkSaveError(error.Index, DuplicateKeyRetry.IsDuplicateKey(error), error.Message)));
             }
 
@@ -516,7 +516,7 @@ namespace Eurolm.DomainService.Repositories
             catch (MongoBulkWriteException<BlocksLanguageKey> ex)
             {
                 if (ex.WriteConcernError != null)
-                    _logger.LogWarning("Bulk key save: write concern error {WriteConcernErrorCode} for a batch of {KeyCount} keys", ex.WriteConcernError.Code, replacements.Count);
+                    _logger.LogWarning(ex, "Bulk key save: write concern error {WriteConcernErrorCode} for a batch of {KeyCount} keys", ex.WriteConcernError.Code, replacements.Count);
                 errors.AddRange(ex.WriteErrors.Select(error => new KeyBulkSaveError(missing[error.Index], DuplicateKeyRetry.IsDuplicateKey(error), error.Message)));
             }
         }

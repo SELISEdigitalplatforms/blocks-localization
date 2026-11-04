@@ -196,11 +196,11 @@ namespace Eurolm.DomainService.Services
                 {
                     if (!await RunAsync(tenantId, owner, job, eventGlossaryId, result)) return false;
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Put the claimed scope back so a retry (or the next request) still covers it.
                     await _jobRepository.RequeueFailedAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow);
-                    _logger.LogWarning("Glossary re-check failed for tenant {TenantId}; scope queued again and marked failed", tenantId);
+                    _logger.LogWarning(ex, "Glossary re-check failed for tenant {TenantId}; scope queued again and marked failed", tenantId);
                     throw;
                 }
                 eventGlossaryId = null;
