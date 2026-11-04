@@ -67,6 +67,24 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task GetAllAsync_EscapesSearchText_SoRegexMetacharactersMatchLiterally()
+        {
+            FilterDefinition<BlocksGlossary>? captured = null;
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary>());
+            _blocksGlossaryCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<BlocksGlossary>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksGlossary>, CountOptions, CancellationToken>((f, _, _) => captured = f)
+                .ReturnsAsync(0L);
+
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = "a.b(" });
+
+            var rendered = captured!
+                .Render(new RenderArgs<BlocksGlossary>(BsonSerializer.SerializerRegistry.GetSerializer<BlocksGlossary>(), BsonSerializer.SerializerRegistry))
+                .ToString();
+            rendered.Should().Contain(@"a\\.b\\(");
+        }
+
+        [Fact]
         public async Task GetByIdAsync_WhenFound_ReturnsGlossary()
         {
             MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary> { new BlocksGlossary { ItemId = "g1", Name = "API" } });

@@ -171,6 +171,21 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task Resource_search_text_is_escaped_so_a_regex_metacharacter_is_matched_literally()
+        {
+            // Production 500s: an unescaped "(" or ")" here made Mongo reject the pattern.
+            var request = Request();
+            request.ResourceSearchFilters = new[]
+            {
+                new ResourceSearchFilter { Culture = "en-US", SearchText = "a.b(" }
+            };
+
+            await _repo.GetAllKeysAsync(request);
+
+            RenderedFilter().Should().Contain(@"a\\.b\\(");
+        }
+
+        [Fact]
         public async Task A_resource_search_filter_missing_either_half_is_skipped()
         {
             var request = Request();
