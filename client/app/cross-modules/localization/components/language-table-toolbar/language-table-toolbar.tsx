@@ -37,9 +37,7 @@ export const useKeysFilterQueryParams = () => {
     lastUpdateStartDate: parseAsString.withDefault(""),
     lastUpdateEndDate: parseAsString.withDefault(""),
     resourceSearch: parseAsString.withDefault(""),
-    // Set by the duplicates chip in the Translations header: show only duplicate key rows.
     duplicates: parseAsBoolean.withDefault(false),
-    // "Glossary issues": only keys with violations the server stored.
     glossaryIssues: parseAsBoolean.withDefault(false),
   });
   return { queryParams, setQueryParams };
@@ -52,13 +50,12 @@ export function LanguageTableToolbar({
   languagesData,
   glossaryIssueCount,
   disabled = false,
-}: {
+}: Readonly<{
   languageModulesData: Array<{ itemId: string; moduleName: string }>;
   languagesData: Array<{ languageCode: string; languageName: string }>;
-  /** Keys with glossary issues under the other filters; undefined while it loads. */
   glossaryIssueCount?: number;
   disabled?: boolean;
-}) {
+}>) {
   const { t } = useT("localization.language-table");
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
