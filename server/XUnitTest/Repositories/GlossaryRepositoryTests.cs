@@ -69,17 +69,17 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task GetAllAsync_EscapesSearchText_SoRegexMetacharactersMatchLiterally()
         {
-            FilterDefinition<Glossary>? captured = null;
-            MockCursorHelper.SetupFindAsync(_glossaryCollection, new List<Glossary>());
-            _glossaryCollection
-                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<Glossary>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
-                .Callback<FilterDefinition<Glossary>, CountOptions, CancellationToken>((f, _, _) => captured = f)
+            FilterDefinition<BlocksGlossary>? captured = null;
+            MockCursorHelper.SetupFindAsync(_blocksGlossaryCollection, new List<BlocksGlossary>());
+            _blocksGlossaryCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<BlocksGlossary>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksGlossary>, CountOptions, CancellationToken>((f, _, _) => captured = f)
                 .ReturnsAsync(0L);
 
             await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = "a.b(" });
 
             var rendered = captured!
-                .Render(new RenderArgs<Glossary>(BsonSerializer.SerializerRegistry.GetSerializer<Glossary>(), BsonSerializer.SerializerRegistry))
+                .Render(new RenderArgs<BlocksGlossary>(BsonSerializer.SerializerRegistry.GetSerializer<BlocksGlossary>(), BsonSerializer.SerializerRegistry))
                 .ToString();
             rendered.Should().Contain(@"a\\.b\\(");
         }
