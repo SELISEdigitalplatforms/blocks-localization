@@ -352,6 +352,40 @@ describe("localization/hooks/use-language-manager", () => {
     expect(result.current.data).toEqual(summary);
   });
 
+  it("useGetGlossaryIssueCount should request one issue row under the other filters", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [] } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetGlossaryIssueCount({
+        searchKey: "save",
+        moduleIds: ["m1"],
+        createStartDate: "2026-01-01T00:00:00.000Z",
+        createEndDate: "",
+        lastUpdateStartDate: "",
+        lastUpdateEndDate: "",
+        resourceSearchFilters: [],
+        missingLanguages: ["de-DE"],
+        onlyDuplicates: true,
+      }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe(7);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 0,
+        pageSize: 1,
+        searchKey: "save",
+        moduleIds: ["m1"],
+        createDateRange: { startDate: "2026-01-01T00:00:00.000Z", endDate: "" },
+        lastUpdateDateRange: undefined,
+        resourceSearchFilters: undefined,
+        missingLanguages: ["de-DE"],
+        onlyDuplicates: true,
+        hasGlossaryViolations: true,
+      }),
+      expect.anything(),
+    );
+  });
+
   it("useGetDuplicateSummary should not retry a failure", async () => {
     svc.fetchDuplicateSummary.mockRejectedValue(new Error("down"));
     const { result } = renderQ(() => hooks.useGetDuplicateSummary());

@@ -70,4 +70,58 @@ describe("components/language-table-toolbar", () => {
     fireEvent.click(screen.getAllByText("Modules")[0]);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  describe("Glossary issues filter", () => {
+    const Probe = () => {
+      const { queryParams } = useKeysFilterQueryParams();
+      return <pre data-testid="params">{JSON.stringify(queryParams)}</pre>;
+    };
+    const params = () => JSON.parse(screen.getByTestId("params").textContent || "{}");
+    const renderToolbar = (searchParams = "", glossaryIssueCount?: number) =>
+      renderWithProviders(
+        <>
+          <LanguageTableToolbar
+            languageModulesData={[]}
+            languagesData={[]}
+            glossaryIssueCount={glossaryIssueCount}
+          />
+          <Probe />
+        </>,
+        { searchParams },
+      );
+    // The desktop and mobile toolbars both render the filter; the first is the desktop one.
+    const glossaryButton = () => screen.getAllByRole("button", { name: /Glossary issues/ })[0];
+
+    it("toggles like the other filter buttons and returns to the first page (H11)", () => {
+      renderToolbar("?pageNumber=4");
+
+      expect(glossaryButton().getAttribute("aria-pressed")).toBe("false");
+      expect(screen.queryByText("Reset")).toBeNull();
+
+      fireEvent.click(glossaryButton());
+      expect(params()).toMatchObject({ glossaryIssues: true, pageNumber: 0 });
+      expect(glossaryButton().getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getAllByText("Reset").length).toBeGreaterThan(0);
+
+      fireEvent.click(glossaryButton());
+      expect(params()).toMatchObject({ glossaryIssues: false, pageNumber: 0 });
+    });
+
+    it("reads the filter from the URL and clears it with Reset", () => {
+      renderToolbar("?glossaryIssues=true");
+
+      expect(glossaryButton().getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getAllByText("Reset")[0]);
+      expect(params()).toMatchObject({ glossaryIssues: false });
+    });
+
+    it("shows the issue count once it is known", () => {
+      const { unmount } = renderToolbar("", undefined);
+      expect(glossaryButton().textContent).toBe("Glossary issues");
+      unmount();
+
+      renderToolbar("", 7);
+      expect(glossaryButton().textContent).toBe("Glossary issues7");
+    });
+  });
 });

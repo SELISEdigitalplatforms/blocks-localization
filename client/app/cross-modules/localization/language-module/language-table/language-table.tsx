@@ -480,6 +480,7 @@ export function LanguageTable() {
     currentTotalCount,
     refetchLanguageKeys,
     showDuplicatesTruncatedNote,
+    glossaryIssueCount,
   } = useLanguageKeysQueries({ queryParams, sortQueryParams, resourceSearchFilters });
 
   const {
@@ -1290,11 +1291,13 @@ export function LanguageTable() {
                     <Skeleton className="h-8 w-[180px] rounded border-dashed" />
                     <Skeleton className="h-8 w-[140px] rounded border-dashed" />
                     <Skeleton className="h-8 w-[160px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[170px] rounded border-dashed" />
                   </div>
                 ) : (
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}
                     languagesData={languageListData || []}
+                    glossaryIssueCount={glossaryIssueCount}
                     disabled={areTableFiltersDisabled}
                   />
                 )}

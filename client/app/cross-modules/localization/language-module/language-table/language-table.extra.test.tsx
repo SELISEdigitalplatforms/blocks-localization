@@ -60,6 +60,7 @@ vi.mock("../localization-timeline/localization-timeline", () => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   // The duplicate chips have their own tests; here the summary simply has not loaded.
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useGetGlossaryIssueCount: vi.fn(() => ({ data: undefined })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
   useGetBlocksLanguageKeysInfinite: vi.fn(),

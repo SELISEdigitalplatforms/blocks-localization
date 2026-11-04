@@ -3,6 +3,7 @@ import type { useKeysFilterQueryParams } from "@blocks-localization/components/l
 import {
   useGetBlocksLanguageKey,
   useGetBlocksLanguageKeysInfinite,
+  useGetGlossaryIssueCount,
 } from "@blocks-localization/hooks/use-language-manager";
 import {
   ALL_KEYS_PAGE_SIZE,
@@ -71,6 +72,17 @@ export const useLanguageKeysQueries = ({
     onlyDuplicates: queryParams.duplicates,
     hasGlossaryViolations: queryParams.glossaryIssues,
   });
+  const glossaryIssueCountQuery = useGetGlossaryIssueCount({
+    searchKey: queryParams.search ?? "",
+    moduleIds: queryParams.moduleIds ?? [],
+    createStartDate: createDateRange?.startDate ?? "",
+    createEndDate: createDateRange?.endDate ?? "",
+    lastUpdateStartDate: lastUpdateDateRange?.startDate ?? "",
+    lastUpdateEndDate: lastUpdateDateRange?.endDate ?? "",
+    resourceSearchFilters: resourceSearchFilters,
+    missingLanguages: queryParams.missingLanguages ?? [],
+    onlyDuplicates: queryParams.duplicates,
+  });
   const allViewKeys = useMemo(
     () => allViewQuery.data?.pages.flatMap((page) => page.keys) ?? [],
     [allViewQuery.data],
@@ -110,5 +122,6 @@ export const useLanguageKeysQueries = ({
     currentTotalCount: isAllView ? allViewTotalCount : (pagedData?.totalCount ?? 0),
     refetchLanguageKeys,
     showDuplicatesTruncatedNote: Boolean(queryParams.duplicates && isDuplicatesTruncated),
+    glossaryIssueCount: glossaryIssueCountQuery.data,
   };
 };

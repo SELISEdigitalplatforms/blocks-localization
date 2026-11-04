@@ -1,5 +1,8 @@
 import { useProjectStore } from "@seliseblocks/genesis-os";
-import { localizationQueryKeys } from "../constants/query-keys";
+import {
+  localizationQueryKeys,
+  type LanguageKeyIssueCountFilters,
+} from "../constants/query-keys";
 import {
   ExportHistoryFilters,
   IBlocksLanguageKeyResponse,
@@ -240,6 +243,46 @@ export const useGetDuplicateSummary = () => {
     retry: false,
   });
 };
+
+/** Keys with stored glossary violations under the table's other filters; one row is fetched for the total. */
+export const useGetGlossaryIssueCount = (filters: LanguageKeyIssueCountFilters) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.glossaryIssueCount(tenantId, filters),
+    queryFn: ({ signal }) =>
+      languageManagerService.fetchBlocksLanguageKey(
+        {
+          pageNumber: 0,
+          pageSize: 1,
+          searchKey: filters.searchKey,
+          moduleIds: filters.moduleIds,
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          createDateRange: optionalDateRange(filters.createStartDate, filters.createEndDate),
+          lastUpdateDateRange: optionalDateRange(
+            filters.lastUpdateStartDate,
+            filters.lastUpdateEndDate,
+          ),
+          resourceSearchFilters:
+            filters.resourceSearchFilters.length > 0 ? filters.resourceSearchFilters : undefined,
+          missingLanguages: filters.missingLanguages,
+          ...(filters.onlyDuplicates ? { onlyDuplicates: true } : {}),
+          hasGlossaryViolations: true,
+        },
+        { signal },
+      ),
+    select: (data) => data.totalCount ?? 0,
+    enabled: !!tenantId,
+    placeholderData: keepPreviousData,
+    staleTime: LANGUAGE_KEY_PAGE_STALE_TIME,
+    // A failed count only hides the badge; it is not worth retrying or surfacing.
+    retry: false,
+  });
+};
+
+const optionalDateRange = (startDate: string, endDate: string) =>
+  startDate || endDate ? { startDate, endDate } : undefined;
 
 export const useEnforceUniqueness = () => {
   const queryClient = useQueryClient();
