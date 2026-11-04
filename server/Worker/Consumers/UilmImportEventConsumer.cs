@@ -15,13 +15,16 @@ namespace Worker.Consumers
         private readonly IWebHookService _webHookService;
         private readonly ILocalizationUniquenessRepository _uniquenessRepository;
         private readonly ILogger<UilmImportEventConsumer> _logger;
+        private readonly IActionPublisher _actionPublisher;
 
         public UilmImportEventConsumer(
             IKeyManagementService keyManagementService,
             IWebHookService webHookService,
             ILocalizationUniquenessRepository uniquenessRepository,
-            ILogger<UilmImportEventConsumer> logger)
+            ILogger<UilmImportEventConsumer> logger,
+            IActionPublisher actionPublisher)
         {
+            _actionPublisher = actionPublisher;
             _keyManagementService = keyManagementService;
             _webHookService = webHookService;
             _uniquenessRepository = uniquenessRepository;
@@ -37,6 +40,12 @@ namespace Worker.Consumers
                 _webHookService.CallWebhook(new { UilmImportEvent = @event, IsSuccess = isSuccess});
             }
 
+            await _actionPublisher.PublishAsync("localization.import.completed", new
+            {
+                fileId = @event.FileId,
+                projectKey = @event.ProjectKey,
+                isSuccess
+            });
         }
 
         /// <summary>
