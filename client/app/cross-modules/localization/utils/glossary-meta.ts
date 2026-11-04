@@ -1,5 +1,4 @@
 import {
-  GLOSSARY_META_PREFIX,
   GLOSSARY_META_PREFIX_PATTERN,
   GLOSSARY_RULES,
   GlossaryMeta,
@@ -53,9 +52,10 @@ const toRule = (value: unknown): GlossaryRule =>
   GLOSSARY_RULES.includes(value as GlossaryRule) ? (value as GlossaryRule) : "translate";
 
 /**
- * Reads the terminology data stored in a glossary's `additionalNote`. Tolerates plain
- * notes, hand-edited or broken JSON and unknown versions, because other clients (the
- * browser extension, the CLI) edit the same field as raw text.
+ * Reads the terminology data a Phase 2 client stored in a glossary's `additionalNote`.
+ * Read-only: the console now saves structured fields, so only notes not yet migrated still
+ * hold this JSON. Tolerates plain notes, hand-edited or broken JSON and unknown versions,
+ * because other clients (the browser extension, the CLI) edit the same field as raw text.
  */
 export const parseGlossaryMeta = (raw = ""): ParsedGlossaryMeta => {
   if (!raw) {
@@ -92,41 +92,4 @@ export const parseGlossaryMeta = (raw = ""): ParsedGlossaryMeta => {
     meta.note = data.note.trim();
   }
   return { meta, status: "structured", raw };
-};
-
-const sortedEntries = <T>(record: Record<string, T>) =>
-  Object.entries(record).sort(([a], [b]) => (a < b ? -1 : Number(a > b)));
-
-/** Normalizes the meta the same way the parser does (trimmed values, empties removed). */
-export const normalizeGlossaryMeta = (meta: GlossaryMeta): GlossaryMeta => {
-  const normalized: GlossaryMeta = {
-    rule: toRule(meta.rule),
-    caseSensitive: meta.caseSensitive === true,
-    variants: toStringList(meta.variants),
-    translations: Object.fromEntries(sortedEntries(toTranslations(meta.translations))),
-    forbidden: Object.fromEntries(sortedEntries(toForbidden(meta.forbidden))),
-  };
-  const note = meta.note?.trim();
-  if (note) {
-    normalized.note = note;
-  }
-  return normalized;
-};
-
-/**
- * Serializes the meta with a deterministic key order (rule, caseSensitive, variants,
- * translations, forbidden, note), omitting defaults, so an unchanged term round-trips
- * byte-identically.
- */
-export const serializeGlossaryMeta = (meta: GlossaryMeta): string => {
-  const normalized = normalizeGlossaryMeta(meta);
-  const compact: Record<string, unknown> = { rule: normalized.rule };
-  if (normalized.caseSensitive) compact.caseSensitive = true;
-  if (normalized.variants.length > 0) compact.variants = normalized.variants;
-  if (Object.keys(normalized.translations).length > 0) {
-    compact.translations = normalized.translations;
-  }
-  if (Object.keys(normalized.forbidden).length > 0) compact.forbidden = normalized.forbidden;
-  if (normalized.note) compact.note = normalized.note;
-  return GLOSSARY_META_PREFIX + JSON.stringify(compact);
 };

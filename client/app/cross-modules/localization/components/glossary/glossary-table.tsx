@@ -1,9 +1,26 @@
-import { useCallback, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
-import { useT } from "@seliseblocks/genesis-os/i18n";
-import { EllipsisVertical, Plus, Pencil, Trash } from "lucide-react";
-import { ColumnDef, flexRender, getCoreRowModel, Row, useReactTable } from "@tanstack/react-table";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  EllipsisVertical,
+  Plus,
+  Pencil,
+  Settings2,
+  Trash,
+  X,
+} from "lucide-react";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  Row,
+  useReactTable,
+  VisibilityState,
+} from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui-kits/card/card";
 import {
   Table,
@@ -14,109 +31,551 @@ import {
   TableRow,
 } from "@/components/ui-kits/table/table";
 import { Button } from "@/components/ui-kits/button/button";
+import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { FilterControls } from "@/components/filter-toolbar";
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import { Pagination } from "@/components/ui-kits/pagination/pagination";
 import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui-kits/select/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui-kits/tooltip/tooltip";
+import useIsMobile from "@/hooks/use-is-mobile";
 import { useGetGlossaries, useGetLanguages } from "@blocks-localization/hooks/use-language-manager";
-import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import {
+  GLOSSARY_STATUSES,
+  GLOSSARY_TYPE_OPTIONS,
+  GlossaryRuleDto,
+  GlossaryScopeFilter,
+  GlossarySortBy,
+  GlossaryStatus,
+  IGlossary,
+  ILanguageConfig,
+} from "@blocks-localization/models/language";
+import { GLOSSARY_RULES } from "@blocks-localization/models/glossary-meta";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
-import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
-import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
-import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
-import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
+import GlossaryRuleBadge, {
+  useGlossaryRuleLabels,
+} from "@blocks-localization/components/glossary/glossary-rule-badge";
+import GlossaryStatusBadge, {
+  GLOSSARY_STATUS_LABELS,
+} from "@blocks-localization/components/glossary/glossary-status-badge";
+import GlossaryTranslationChips, {
+  MAX_TRANSLATION_CHIPS,
+} from "@blocks-localization/components/glossary/glossary-translation-chips";
+import GlossaryBulkActions from "@blocks-localization/components/glossary/glossary-bulk-actions";
+import GlossaryMobileList from "@blocks-localization/components/glossary/glossary-mobile-list";
+import {
+  getGlossaryStatus,
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
+import {
+  getTargetLanguages,
+  stripRuleMarker,
+} from "@blocks-localization/utils/glossary-rule-marker";
 import DeleteGlossary from "@blocks-localization/components/modals/glossary/delete-glossary";
-import { langConfigureData } from "@blocks-localization/constants/language-dummy-data";
 
 const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+/** Select value for "no filter"; Radix Select items can't have an empty value. */
+const ALL_FILTER = "all";
 const getOptionalCellText = (value?: string | null) => value?.trim() || "-";
 
-const DefinitionHeader = () => {
-  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
-  return (
-    <div className="flex items-center">
-      <span className="font-bold text-medium-emphasis">
-        {t("GLOSSARY_TABLE.COLUMN_DEFINITION")}
-      </span>
-    </div>
-  );
+export const GLOSSARY_COLUMNS_STORAGE_KEY = "glossary-table-columns";
+const DEFAULT_COLUMN_VISIBILITY: VisibilityState = { createDate: false };
+
+const HIDEABLE_COLUMNS: { id: string; labelKey: string }[] = [
+  { id: "rule", labelKey: "GLOSSARY_TABLE.COLUMN_RULE" },
+  { id: "status", labelKey: "GLOSSARY_TABLE.COLUMN_STATUS" },
+  { id: "translations", labelKey: "GLOSSARY_TABLE.COLUMN_TRANSLATIONS" },
+  { id: "language", labelKey: "GLOSSARY_TABLE.COLUMN_LANGUAGE" },
+  { id: "type", labelKey: "GLOSSARY_TABLE.COLUMN_TYPE" },
+  { id: "context", labelKey: "GLOSSARY_TABLE.COLUMN_DEFINITION" },
+  { id: "createDate", labelKey: "GLOSSARY_TABLE.COLUMN_CREATED" },
+  { id: "lastUpdateDate", labelKey: "GLOSSARY_TABLE.COLUMN_LAST_UPDATED" },
+];
+
+const readColumnVisibility = (): VisibilityState => {
+  try {
+    const stored = globalThis.localStorage?.getItem(GLOSSARY_COLUMNS_STORAGE_KEY);
+    if (!stored) return DEFAULT_COLUMN_VISIBILITY;
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return DEFAULT_COLUMN_VISIBILITY;
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([id, visible]) =>
+          HIDEABLE_COLUMNS.some((column) => column.id === id) && typeof visible === "boolean",
+      ),
+    );
+  } catch {
+    return DEFAULT_COLUMN_VISIBILITY;
+  }
 };
 
-const RuleHeader = () => {
-  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
-  return (
-    <div className="flex items-center">
-      <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_RULE")}</span>
-    </div>
-  );
+const writeColumnVisibility = (visibility: VisibilityState) => {
+  try {
+    globalThis.localStorage?.setItem(GLOSSARY_COLUMNS_STORAGE_KEY, JSON.stringify(visibility));
+  } catch {
+    // Storage unavailable (private mode, blocked): the choice lasts for this page only.
+  }
 };
 
-const TranslationsHeader = () => {
-  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
-  return (
-    <div className="flex items-center">
-      <span className="font-bold text-medium-emphasis">
-        {t("GLOSSARY_TABLE.COLUMN_TRANSLATIONS")}
-      </span>
-    </div>
-  );
-};
-
-const ActionsHeader = () => {
-  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
-  return (
-    <div className="flex items-center">
-      <span className="font-bold text-medium-emphasis">{t("GLOSSARY_TABLE.COLUMN_ACTIONS")}</span>
-    </div>
-  );
-};
-
-function renderDefinitionCell(row: { original: IGlossary }) {
-  const definition = getOptionalCellText(stripRuleMarker(row.original.context));
-  return (
-    <div className="max-w-[200px] truncate" title={definition === "-" ? undefined : definition}>
-      {definition}
-    </div>
-  );
+interface GlossarySort {
+  sortBy: GlossarySortBy;
+  descending: boolean;
 }
 
+/** Today's order; sent as no parameters, so the server keeps its default (C18). */
+const DEFAULT_SORT: GlossarySort = { sortBy: "createDate", descending: true };
+
+const SORTABLE_COLUMNS: Record<string, GlossarySortBy | undefined> = {
+  name: "name",
+  createDate: "createDate",
+  lastUpdateDate: "lastUpdateDate",
+};
+
+const defaultDescending = (sortBy: GlossarySortBy) => sortBy !== "name";
+
+const HeaderLabel = ({ children }: Readonly<{ children: string }>) => (
+  <div className="flex items-center">
+    <span className="whitespace-nowrap font-bold text-medium-emphasis">{children}</span>
+  </div>
+);
+
+const SortHeader = ({
+  label,
+  sortBy,
+  sort,
+  onSort,
+}: Readonly<{
+  label: string;
+  sortBy: GlossarySortBy;
+  sort: GlossarySort;
+  onSort: (sortBy: GlossarySortBy) => void;
+}>) => {
+  const isActive = sort.sortBy === sortBy;
+  let Icon = ChevronsUpDown;
+  if (isActive) Icon = sort.descending ? ChevronDown : ChevronUp;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="-ml-3 h-8 gap-1 font-bold text-medium-emphasis"
+      onClick={(event) => {
+        event.stopPropagation();
+        onSort(sortBy);
+      }}
+    >
+      {label}
+      <Icon className={`h-4 w-4 ${isActive ? "" : "opacity-50"}`} aria-hidden="true" />
+    </Button>
+  );
+};
+
+const TruncatedText = ({ text, className }: Readonly<{ text: string; className: string }>) => {
+  if (text === "-") return <span className="text-low-emphasis">-</span>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={`block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+          onKeyDown={(event) => {
+            // Only shows the tooltip: Enter and Space must not click through to the row and open the term.
+            if (event.key === "Enter" || event.key === " ") event.preventDefault();
+          }}
+        >
+          <span className="block truncate">{text}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-80 whitespace-pre-wrap text-sm font-normal">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 function renderRuleCell(row: { original: IGlossary }) {
-  const { meta, status } = parseGlossaryMeta(row.original.additionalNote);
-  return status === "unsupported-version" ? <span>—</span> : <GlossaryRuleBadge rule={meta.rule} />;
+  return isUnsupportedGlossaryNote(row.original) ? (
+    <span className="text-low-emphasis">—</span>
+  ) : (
+    <GlossaryRuleBadge rule={toGlossaryMeta(row.original).rule} />
+  );
 }
 
 function renderTranslationsCell(
   row: { original: IGlossary },
   languages: ILanguageConfig[] | undefined,
 ) {
-  const { meta, status } = parseGlossaryMeta(row.original.additionalNote);
-  return status === "unsupported-version" ? (
-    <span>—</span>
-  ) : (
-    <GlossaryTranslationChips meta={meta} languages={languages} />
+  return (
+    <div className={TRANSLATIONS_CELL_CLASS}>
+      {isUnsupportedGlossaryNote(row.original) ? (
+        <span className="text-low-emphasis">—</span>
+      ) : (
+        <GlossaryTranslationChips meta={toGlossaryMeta(row.original)} languages={languages} />
+      )}
+    </div>
   );
+}
+
+const TRANSLATIONS_CELL_CLASS = "min-w-[232px] max-w-[320px] text-low-emphasis";
+
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
+
+export const getGlossaryLanguageName = (
+  code: string | undefined,
+  languages: ILanguageConfig[] | undefined,
+) => languages?.find((language) => language.languageCode === code)?.languageName ?? (code || "—");
+
+const ROW_CLICK_IGNORE = "data-row-click-ignore";
+
+type CheckedChange = (checked: boolean | "indeterminate") => void;
+
+const SelectAllHeader = ({
+  allSelected,
+  someSelected,
+  disabled,
+  onCheckedChange,
+}: Readonly<{
+  allSelected: boolean;
+  someSelected: boolean;
+  disabled: boolean;
+  onCheckedChange: CheckedChange;
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <Checkbox
+      aria-label={t("GLOSSARY_TABLE.SELECT_ALL_ARIA")}
+      checked={allSelected || (someSelected && "indeterminate")}
+      disabled={disabled}
+      onCheckedChange={onCheckedChange}
+    />
+  );
+};
+
+const SelectRowCell = ({
+  glossary,
+  checked,
+  onToggle,
+}: Readonly<{
+  glossary: IGlossary;
+  checked: boolean;
+  onToggle: (itemId: string, checked: boolean) => void;
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <div className="flex items-center" {...{ [ROW_CLICK_IGNORE]: true }}>
+      <Checkbox
+        aria-label={t("GLOSSARY_TABLE.SELECT_ROW_ARIA", { name: glossary.name })}
+        checked={checked}
+        disabled={isUnsupportedGlossaryNote(glossary)}
+        onCheckedChange={(value) => onToggle(glossary.itemId, value === true)}
+      />
+    </div>
+  );
+};
+
+const GlossaryActionsCell = ({
+  glossary,
+  onEdit,
+  onDelete,
+}: Readonly<{
+  glossary: IGlossary;
+  onEdit: (glossary: IGlossary) => void;
+  onDelete: (glossary: IGlossary) => void;
+}>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        asChild
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <Button
+          variant="ghost"
+          className="ml-auto flex h-8 w-8 p-0"
+          aria-label={t("GLOSSARY_TABLE.ACTIONS_FOR_ARIA", { name: glossary.name })}
+        >
+          <EllipsisVertical width={20} height={20} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            onEdit(glossary);
+          }}
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          <span>{t("common:EDIT")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer text-error"
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete(glossary);
+          }}
+        >
+          <Trash className="mr-2 h-4 w-4" />
+          <span>{t("common:DELETE")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+interface GlossaryColumnsOptions {
+  t: TFunction;
+  sort: GlossarySort;
+  onSort: (sortBy: GlossarySortBy) => void;
+  selectedIds: ReadonlySet<string>;
+  allSelected: boolean;
+  someSelected: boolean;
+  selectAllDisabled: boolean;
+  onSelectAll: CheckedChange;
+  onToggleRow: (itemId: string, checked: boolean) => void;
+  languages: ILanguageConfig[] | undefined;
+  onEdit: (glossary: IGlossary) => void;
+  onDelete: (glossary: IGlossary) => void;
+}
+
+const buildGlossaryColumns = ({
+  t,
+  sort,
+  onSort,
+  selectedIds,
+  allSelected,
+  someSelected,
+  selectAllDisabled,
+  onSelectAll,
+  onToggleRow,
+  languages,
+  onEdit,
+  onDelete,
+}: GlossaryColumnsOptions): ColumnDef<IGlossary>[] => [
+  {
+    id: "select",
+    enableHiding: false,
+    header: () => (
+      <SelectAllHeader
+        allSelected={allSelected}
+        someSelected={someSelected}
+        disabled={selectAllDisabled}
+        onCheckedChange={onSelectAll}
+      />
+    ),
+    cell: ({ row }) => (
+      <SelectRowCell
+        glossary={row.original}
+        checked={selectedIds.has(row.original.itemId)}
+        onToggle={onToggleRow}
+      />
+    ),
+  },
+  {
+    accessorKey: "name",
+    enableHiding: false,
+    header: () => (
+      <SortHeader label={t("GLOSSARY_TABLE.COLUMN_NAME")} sortBy="name" sort={sort} onSort={onSort} />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[150px] max-w-[240px] break-words font-medium text-high-emphasis">
+        {row.original.name}
+      </div>
+    ),
+  },
+  {
+    id: "rule",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_RULE")}</HeaderLabel>,
+    cell: ({ row }) => renderRuleCell(row),
+  },
+  {
+    id: "status",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_STATUS")}</HeaderLabel>,
+    cell: ({ row }) => <GlossaryStatusBadge status={getGlossaryStatus(row.original)} />,
+  },
+  {
+    id: "translations",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_TRANSLATIONS")}</HeaderLabel>,
+    cell: ({ row }) => renderTranslationsCell(row, languages),
+  },
+  {
+    accessorKey: "language",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_LANGUAGE")}</HeaderLabel>,
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">
+        {getGlossaryLanguageName(row.original.language, languages)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "type",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_TYPE")}</HeaderLabel>,
+    cell: ({ row }) => (
+      <TruncatedText
+        text={getOptionalCellText(row.original.type)}
+        className="max-w-[120px] lg:max-w-[200px]"
+      />
+    ),
+  },
+  {
+    accessorKey: "context",
+    header: () => <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_DEFINITION")}</HeaderLabel>,
+    cell: ({ row }) => (
+      <TruncatedText
+        text={getOptionalCellText(stripRuleMarker(row.original.context))}
+        className="max-w-[200px]"
+      />
+    ),
+  },
+  {
+    accessorKey: "createDate",
+    header: () => (
+      <SortHeader
+        label={t("GLOSSARY_TABLE.COLUMN_CREATED")}
+        sortBy="createDate"
+        sort={sort}
+        onSort={onSort}
+      />
+    ),
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">{formatDate(row.original.createDate)}</span>
+    ),
+  },
+  {
+    accessorKey: "lastUpdateDate",
+    header: () => (
+      <SortHeader
+        label={t("GLOSSARY_TABLE.COLUMN_LAST_UPDATED")}
+        sortBy="lastUpdateDate"
+        sort={sort}
+        onSort={onSort}
+      />
+    ),
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">{formatDate(row.original.lastUpdateDate)}</span>
+    ),
+  },
+  {
+    id: "actions",
+    enableHiding: false,
+    header: () => (
+      <div className="flex justify-end">
+        <HeaderLabel>{t("GLOSSARY_TABLE.COLUMN_ACTIONS")}</HeaderLabel>
+      </div>
+    ),
+    cell: ({ row }) => (
+      <GlossaryActionsCell glossary={row.original} onEdit={onEdit} onDelete={onDelete} />
+    ),
+  },
+];
+
+const BADGE_SKELETON_CLASS = "h-[26px] rounded";
+const TEXT_SKELETON_CLASS = "h-5 rounded";
+
+const createSkeletonKeys = (count: number, prefix: string) =>
+  Array.from({ length: count }, (_, position) => `${prefix}-${position}`);
+
+function renderSkeletonCell(columnId: string, chipCount: number) {
+  switch (columnId) {
+    case "select":
+      return <Skeleton className="h-4 w-4 rounded-sm" />;
+    case "name":
+      return (
+        <div className="min-w-[150px] max-w-[240px]">
+          <Skeleton className={`${TEXT_SKELETON_CLASS} w-28`} />
+        </div>
+      );
+    case "rule":
+      return <Skeleton className={`${BADGE_SKELETON_CLASS} w-[84px]`} />;
+    case "status":
+      return <Skeleton className={`${BADGE_SKELETON_CLASS} w-[92px]`} />;
+    case "translations":
+      return (
+        <div className={TRANSLATIONS_CELL_CLASS}>
+          {chipCount === 0 ? (
+            <Skeleton className={`${TEXT_SKELETON_CLASS} w-3`} />
+          ) : (
+            <div className="flex flex-wrap items-center gap-1">
+              {createSkeletonKeys(chipCount, "translation-chip-skeleton").map((chipKey) => (
+                <Skeleton key={chipKey} className={`${BADGE_SKELETON_CLASS} w-16`} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    case "language":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-20`} />;
+    case "type":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-16`} />;
+    case "context":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-40 max-w-[200px]`} />;
+    case "createDate":
+    case "lastUpdateDate":
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-20`} />;
+    case "actions":
+      return <Skeleton className="ml-auto h-8 w-8 rounded-md" />;
+    default:
+      return <Skeleton className={`${TEXT_SKELETON_CLASS} w-full`} />;
+  }
+}
+
+function renderSkeletonRows(
+  rowCount: number,
+  columnIds: string[],
+  languages: ILanguageConfig[] | undefined,
+) {
+  const chipCount = languages
+    ? Math.min(getTargetLanguages(languages).length, MAX_TRANSLATION_CHIPS)
+    : 2;
+
+  return createSkeletonKeys(rowCount, "glossary-row-skeleton").map((rowKey) => (
+    <TableRow key={rowKey}>
+      {columnIds.map((columnId) => (
+        <TableCell key={columnId}>{renderSkeletonCell(columnId, chipCount)}</TableCell>
+      ))}
+    </TableRow>
+  ));
 }
 
 function renderTableRows(
   tableRows: Row<IGlossary>[],
-  columns: ColumnDef<IGlossary>[],
+  columnCount: number,
   scoped: (path: string) => string,
   navigate: (path: string) => void,
-  searchText: string,
+  emptyState: ReactNode,
 ) {
   if (tableRows.length === 0) {
     return (
       <TableRow>
-        <TableCell colSpan={columns.length} className="h-40 text-center">
-          <GlossaryEmptyState searchQuery={searchText} />
+        <TableCell colSpan={columnCount} className="h-40 text-center">
+          {emptyState}
         </TableCell>
       </TableRow>
     );
@@ -129,8 +588,14 @@ function renderTableRows(
         key={row.id}
         isHoverable
         tabIndex={0}
+        data-state={row.getIsSelected() ? "selected" : undefined}
         className="font-normal text-medium-emphasis focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={openGlossary}
+        onClick={(event) => {
+          // A click in the select cell only toggles its checkbox; it never opens the term.
+          if (event.target instanceof Element && event.target.closest(`[${ROW_CLICK_IGNORE}]`))
+            return;
+          openGlossary();
+        }}
         onKeyDown={(event) => {
           // Keys on the row's own controls (the actions menu) keep their behaviour (A10).
           if (event.target !== event.currentTarget || event.key !== "Enter") return;
@@ -148,8 +613,32 @@ function renderTableRows(
   });
 }
 
-function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) {
+function GlossaryEmptyState({
+  searchQuery,
+  isFiltered,
+  onClearFilters,
+}: Readonly<{
+  searchQuery: string;
+  isFiltered: boolean;
+  onClearFilters: () => void;
+}>) {
   const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  const clearButton = (
+    <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onClearFilters}>
+      {t("GLOSSARY_TABLE.CLEAR_FILTERS")}
+    </Button>
+  );
+
+  if (!searchQuery && isFiltered) {
+    return (
+      <output className="flex flex-col items-center gap-2 py-4">
+        <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.NO_MATCHING_TITLE")}</p>
+        <p className="text-muted-foreground">{t("GLOSSARY_TABLE.NO_MATCHING_FILTERS_BODY")}</p>
+        {clearButton}
+      </output>
+    );
+  }
+
   if (searchQuery) {
     return (
       <output className="flex flex-col items-center gap-2 py-4">
@@ -157,6 +646,7 @@ function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) 
         <p className="text-muted-foreground">
           {t("GLOSSARY_TABLE.NO_MATCHING_BODY", { query: searchQuery })}
         </p>
+        {clearButton}
       </output>
     );
   }
@@ -169,26 +659,116 @@ function GlossaryEmptyState({ searchQuery }: Readonly<{ searchQuery: string }>) 
   );
 }
 
+function GlossaryLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return (
+    <div role="alert" className="flex flex-col items-center gap-2 py-4">
+      <p className="font-medium text-high-emphasis">{t("GLOSSARY_TABLE.LOAD_FAILED_TITLE")}</p>
+      <p className="text-muted-foreground">{t("GLOSSARY_TABLE.LOAD_FAILED_BODY")}</p>
+      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onRetry}>
+        {t("common:RETRY")}
+      </Button>
+    </div>
+  );
+}
+
 const GlossaryTable = () => {
   const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  const ruleLabels = useGlossaryRuleLabels();
   const navigate = useNavigate();
   const scoped = useScopedPath();
+  const isMobile = useIsMobile();
   const [pageNumber, setPageNumber] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState("");
+  const [ruleFilter, setRuleFilter] = useState<GlossaryRuleDto | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<GlossaryStatus | undefined>(undefined);
+  const [languageFilter, setLanguageFilter] = useState<string | undefined>(undefined);
+  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [scopeFilter, setScopeFilter] = useState<GlossaryScopeFilter | undefined>(undefined);
+  const [sort, setSort] = useState<GlossarySort>(DEFAULT_SORT);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(readColumnVisibility);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editGlossary, setEditGlossary] = useState<IGlossary | undefined>(undefined);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteGlossary, setDeleteGlossary] = useState<IGlossary | undefined>(undefined);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchText(value.trim());
+  // Filters, sort and paging restart at page 0 (except paging) and clear the selection (C10).
+  const resetPaging = useCallback(() => {
     setPageNumber(0);
+    setSelectedIds(new Set());
   }, []);
 
-  const { data, isLoading } = useGetGlossaries(pageNumber, pageSize, searchText);
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchText(value.trim());
+      resetPaging();
+    },
+    [resetPaging],
+  );
+
+  // Server-side filters (query parameters), not table column filters.
+  const selectFilter =
+    <T extends string>(setter: (value: T | undefined) => void) =>
+    (value: string) => {
+      setter(value === ALL_FILTER ? undefined : (value as T));
+      resetPaging();
+    };
+
+  const handleSort = useCallback(
+    (sortBy: GlossarySortBy) => {
+      setSort((current) =>
+        current.sortBy === sortBy
+          ? { sortBy, descending: !current.descending }
+          : { sortBy, descending: defaultDescending(sortBy) },
+      );
+      resetPaging();
+    },
+    [resetPaging],
+  );
+
+  const clearFilters = useCallback(() => {
+    setSearchText("");
+    setRuleFilter(undefined);
+    setStatusFilter(undefined);
+    setLanguageFilter(undefined);
+    setTypeFilter(undefined);
+    setScopeFilter(undefined);
+    resetPaging();
+  }, [resetPaging]);
+
+  const isFiltered =
+    !!ruleFilter || !!statusFilter || !!languageFilter || !!typeFilter || !!scopeFilter;
+  const isDefaultSort =
+    sort.sortBy === DEFAULT_SORT.sortBy && sort.descending === DEFAULT_SORT.descending;
+
+  const { data, isLoading, isError, refetch } = useGetGlossaries(pageNumber, pageSize, searchText, {
+    rule: ruleFilter,
+    status: statusFilter,
+    language: languageFilter,
+    type: typeFilter,
+    scope: scopeFilter,
+    ...(!isDefaultSort && { sortBy: sort.sortBy, sortDescending: sort.descending }),
+  });
+  // A delete can leave the current page past the last one; step back to the last page.
+  const totalCount = data?.totalCount;
+  if (totalCount !== undefined && pageNumber > 0 && pageNumber * pageSize >= totalCount) {
+    setPageNumber(Math.max(0, Math.ceil(totalCount / pageSize) - 1));
+    setSelectedIds(new Set());
+  }
   const { data: languageListData } = useGetLanguages();
+  const pageItems = useMemo(() => data?.items ?? [], [data?.items]);
+  // Terms saved by a newer version can't be edited here, so they can't be selected (C9).
+  const selectableItems = useMemo(
+    () => pageItems.filter((glossary) => !isUnsupportedGlossaryNote(glossary)),
+    [pageItems],
+  );
+  const selectedGlossaries = useMemo(
+    () => selectableItems.filter((glossary) => selectedIds.has(glossary.itemId)),
+    [selectableItems, selectedIds],
+  );
 
   const handleEditClick = useCallback((glossary: IGlossary) => {
     setEditGlossary(glossary);
@@ -200,146 +780,108 @@ const GlossaryTable = () => {
     setDeleteModalOpen(true);
   }, []);
 
-  const columns = useMemo<ColumnDef<IGlossary>[]>(
-    () => [
-      {
-        accessorKey: "name",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              {t("GLOSSARY_TABLE.COLUMN_NAME")}
-            </span>
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex w-[150px] items-center">
-            <span>{row.original.name}</span>
-          </div>
-        ),
-      },
-      {
-        id: "rule",
-        header: RuleHeader,
-        cell: ({ row }) => renderRuleCell(row),
-      },
-      {
-        id: "translations",
-        header: TranslationsHeader,
-        cell: ({ row }) => renderTranslationsCell(row, languageListData),
-      },
-      {
-        accessorKey: "language",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              {t("GLOSSARY_TABLE.COLUMN_LANGUAGE")}
-            </span>
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center">
-            <span>
-              {langConfigureData.find((lang) => lang.languageCode === row.original.language)
-                ?.languageName ??
-                (row.original.language || "-")}
-            </span>
-          </div>
-        ),
-      },
-      {
-        accessorKey: "type",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              {t("GLOSSARY_TABLE.COLUMN_TYPE")}
-            </span>
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center">
-            <span>{row.original.type ?? "-"}</span>
-          </div>
-        ),
-      },
-      {
-        accessorKey: "context",
-        header: DefinitionHeader,
-        cell: ({ row }) => renderDefinitionCell(row),
-      },
-      {
-        accessorKey: "createDate",
-        header: () => (
-          <div className="flex items-center">
-            <span className="font-bold text-medium-emphasis">
-              {t("GLOSSARY_TABLE.COLUMN_CREATED")}
-            </span>
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center">
-            <span>
-              {row.original.createDate
-                ? new Date(row.original.createDate).toLocaleDateString()
-                : "-"}
-            </span>
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        enableHiding: false,
-        header: ActionsHeader,
-        cell: ({ row }) => (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              asChild
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <EllipsisVertical width={20} height={20} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleEditClick(row.original);
-                }}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                <span>{t("common:EDIT")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer text-error"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleDeleteClick(row.original);
-                }}
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                <span>{t("common:DELETE")}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-      },
+  const handleVisibilityChange = (id: string, visible: boolean) => {
+    setColumnVisibility((current) => {
+      const next = { ...current, [id]: visible };
+      writeColumnVisibility(next);
+      return next;
+    });
+  };
+
+  const toggleRow = useCallback((itemId: string, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  }, []);
+
+  const allSelected =
+    selectableItems.length > 0 && selectedGlossaries.length === selectableItems.length;
+  const someSelected = selectedGlossaries.length > 0 && !allSelected;
+
+  const handleSelectAll = useCallback(
+    (checked: boolean | "indeterminate") =>
+      setSelectedIds(
+        checked === true ? new Set(selectableItems.map((glossary) => glossary.itemId)) : new Set(),
+      ),
+    [selectableItems],
+  );
+
+  const selectAllDisabled = selectableItems.length === 0;
+
+  const columns = useMemo(
+    () =>
+      buildGlossaryColumns({
+        t,
+        sort,
+        onSort: handleSort,
+        selectedIds,
+        allSelected,
+        someSelected,
+        selectAllDisabled,
+        onSelectAll: handleSelectAll,
+        onToggleRow: toggleRow,
+        languages: languageListData,
+        onEdit: handleEditClick,
+        onDelete: handleDeleteClick,
+      }),
+    [
+      handleEditClick,
+      handleDeleteClick,
+      handleSort,
+      toggleRow,
+      handleSelectAll,
+      languageListData,
+      sort,
+      selectedIds,
+      selectAllDisabled,
+      allSelected,
+      someSelected,
+      t,
     ],
-    [handleEditClick, handleDeleteClick, languageListData, t],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable is the table API this component is built on.
   const table = useReactTable({
-    data: data?.items ?? [],
+    data: pageItems,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.itemId,
     manualPagination: true,
     pageCount: Math.ceil((data?.totalCount ?? 0) / pageSize),
+    state: {
+      columnVisibility,
+      rowSelection: Object.fromEntries([...selectedIds].map((id) => [id, true])),
+    },
   });
-  const isUnfilteredEmpty = !isLoading && searchText.length === 0 && (data?.totalCount ?? 0) === 0;
+  // A failed refetch keeps showing the last page; only a list that never loaded shows the error.
+  const isLoadError = isError && !data;
+  const isUnfilteredEmpty =
+    !isLoading &&
+    !isLoadError &&
+    searchText.length === 0 &&
+    !isFiltered &&
+    (data?.totalCount ?? 0) === 0;
   const tableRows = table.getRowModel().rows;
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
+
+  const emptyState = isLoadError ? (
+    <GlossaryLoadError onRetry={() => void refetch()} />
+  ) : (
+    <GlossaryEmptyState
+      searchQuery={searchText}
+      isFiltered={isFiltered}
+      onClearFilters={clearFilters}
+    />
+  );
+
+  const ariaSortFor = (sortBy: GlossarySortBy | undefined) => {
+    if (!sortBy) return undefined;
+    if (sort.sortBy !== sortBy) return "none" as const;
+    return sort.descending ? ("descending" as const) : ("ascending" as const);
+  };
 
   return (
     <div>
@@ -362,51 +904,191 @@ const GlossaryTable = () => {
       </div>
 
       <Card className="mt-6 rounded-sm border border-border shadow-none">
-        <CardHeader>
+        <CardHeader className="gap-2">
           <CardTitle className="flex items-center justify-between text-xl text-high-emphasis">
             {t("GLOSSARY_TABLE.CARD_TITLE")}
           </CardTitle>
         </CardHeader>
-        <div className="mb-4 w-full sm:w-[300px]">
-          <FilterControls.SearchInput
-            placeholder={t("GLOSSARY_TABLE.SEARCH_PLACEHOLDER")}
-            value={searchText}
-            onChange={handleSearchChange}
-            className="h-9 w-full"
-            disabled={isUnfilteredEmpty}
-          />
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start">
+          <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
+            <div className="col-span-2 sm:col-span-3 lg:w-[260px]">
+              <FilterControls.SearchInput
+                placeholder={t("GLOSSARY_TABLE.SEARCH_PLACEHOLDER")}
+                value={searchText}
+                onChange={handleSearchChange}
+                className="h-9 w-full"
+                disabled={isUnfilteredEmpty}
+              />
+            </div>
+            <Select
+              value={ruleFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryRuleDto>(setRuleFilter)}
+            >
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_RULE")} className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_RULES")}</SelectItem>
+                {GLOSSARY_RULES.map((rule) => (
+                  <SelectItem key={rule} value={rule}>
+                    {ruleLabels[rule]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryStatus>(setStatusFilter)}
+            >
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_STATUS")} className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_STATUSES")}</SelectItem>
+                {GLOSSARY_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {GLOSSARY_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={languageFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<string>(setLanguageFilter)}
+            >
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_LANGUAGE")} className="h-9 w-full lg:w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_LANGUAGES")}</SelectItem>
+                {languageListData?.map((language) => (
+                  <SelectItem key={language.languageCode} value={language.languageCode}>
+                    {language.languageName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={typeFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<string>(setTypeFilter)}
+            >
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.COLUMN_TYPE")} className="h-9 w-full lg:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_TYPES")}</SelectItem>
+                {GLOSSARY_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={scopeFilter ?? ALL_FILTER}
+              onValueChange={selectFilter<GlossaryScopeFilter>(setScopeFilter)}
+            >
+              <SelectTrigger aria-label={t("GLOSSARY_TABLE.FILTER_SCOPE")} className="h-9 w-full lg:w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>{t("GLOSSARY_TABLE.ALL_SCOPES")}</SelectItem>
+                <SelectItem value="project">{t("GLOSSARY_TABLE.SCOPE_PROJECT")}</SelectItem>
+                <SelectItem value="modules">{t("GLOSSARY_TABLE.SCOPE_MODULES")}</SelectItem>
+              </SelectContent>
+            </Select>
+            {(isFiltered || !!searchText) && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 gap-1 text-medium-emphasis"
+                onClick={clearFilters}
+              >
+                {t("common:RESET")}
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+          {!isMobile && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-9 self-end lg:shrink-0 lg:self-start">
+                  <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("GLOSSARY_TABLE.COLUMNS")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t("GLOSSARY_TABLE.COLUMNS")}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {HIDEABLE_COLUMNS.map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={columnVisibility[column.id] !== false}
+                    onCheckedChange={(checked) => handleVisibilityChange(column.id, checked)}
+                    onSelect={(event) => event.preventDefault()}
+                  >
+                    {t(column.labelKey)}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <CardContent>
-          <div className="w-full overflow-x-auto">
-            <Table className="text-sm">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="font-bold text-medium-emphasis">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {isLoading
-                  ? Array.from({ length: 10 }).map((_, index) => (
-                      <TableRow key={index}>
-                        {columns.map((_, colIndex) => (
-                          <TableCell key={colIndex}>
-                            <Skeleton className="h-6 w-full rounded" />
-                          </TableCell>
+          <GlossaryBulkActions
+            selected={selectedGlossaries}
+            onClearSelection={() => setSelectedIds(new Set())}
+            onReload={() => void refetch()}
+          />
+          {isMobile ? (
+            <GlossaryMobileList
+              glossaries={pageItems}
+              languages={languageListData}
+              isLoading={isLoading}
+              emptyState={emptyState}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+            />
+          ) : (
+            <TooltipProvider delayDuration={200}>
+              <div className="w-full overflow-x-auto">
+                <Table className="text-sm">
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id} className="px-4 py-3 hover:bg-transparent">
+                        {headerGroup.headers.map((header) => (
+                          <TableHead
+                            key={header.id}
+                            className="font-bold text-medium-emphasis"
+                            aria-sort={ariaSortFor(SORTABLE_COLUMNS[header.column.id])}
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))
-                  : renderTableRows(tableRows, columns, scoped, navigate, searchText)}
-              </TableBody>
-            </Table>
-          </div>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading
+                      ? renderSkeletonRows(
+                          pageSize,
+                          table.getVisibleLeafColumns().map((column) => column.id),
+                          languageListData,
+                        )
+                      : renderTableRows(
+                          tableRows,
+                          visibleColumnCount,
+                          scoped,
+                          navigate,
+                          emptyState,
+                        )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TooltipProvider>
+          )}
         </CardContent>
         {!isLoading && (data?.totalCount ?? 0) > pageSize && (
           <div className="mt-5 flex items-center md:justify-end">
@@ -415,17 +1097,19 @@ const GlossaryTable = () => {
               pageSize={pageSize}
               totalCount={data?.totalCount ?? 0}
               pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onChange={setPageNumber}
+              onChange={(page) => {
+                setPageNumber(page);
+                setSelectedIds(new Set());
+              }}
               onPageSizeChange={(size) => {
                 setPageSize(size);
-                setPageNumber(0);
+                resetPaging();
               }}
             />
           </div>
         )}
       </Card>
 
-      {/* Edit Sheet */}
       <GlossaryEditorSheet
         open={editModalOpen && !!editGlossary}
         glossary={editGlossary}
@@ -441,6 +1125,7 @@ const GlossaryTable = () => {
           <DeleteGlossary
             itemId={deleteGlossary.itemId}
             glossaryName={deleteGlossary.name}
+            glossary={deleteGlossary}
             onClose={() => {
               setDeleteModalOpen(false);
               setDeleteGlossary(undefined);

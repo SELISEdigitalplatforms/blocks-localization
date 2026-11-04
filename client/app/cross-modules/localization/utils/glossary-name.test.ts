@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { IGlossary } from "@blocks-localization/models/language";
-import { findDuplicateGlossary, normalizeGlossaryName } from "./glossary-name";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
+import {
+  findDuplicateGlossary,
+  isMatchedGlossaryName,
+  normalizeGlossaryName,
+} from "./glossary-name";
 
 const glossary = (itemId: string, name: string): IGlossary => ({
   itemId,
@@ -18,6 +23,20 @@ describe("utils/glossary-name", () => {
 
     it("should ignore letter case", () => {
       expect(normalizeGlossaryName("WorkSPACE")).toBe(normalizeGlossaryName("workspace"));
+    });
+
+    it("should lower-case like the server whatever the browser locale", () => {
+      const original = String.prototype.toLocaleLowerCase;
+      String.prototype.toLocaleLowerCase = function () {
+        return original.call(this, "tr");
+      };
+      try {
+        expect(normalizeGlossaryName("INBOX")).toBe("inbox");
+      } finally {
+        String.prototype.toLocaleLowerCase = original;
+      }
+      expect(normalizeGlossaryName("ΟΔΟΣ")).toBe("οδοσ");
+      expect(normalizeGlossaryName("İstanbul")).toBe("İstanbul");
     });
 
     it("should apply NFC normalization", () => {
@@ -46,5 +65,36 @@ describe("utils/glossary-name", () => {
       expect(findDuplicateGlossary("   ", items)).toBeUndefined();
       expect(findDuplicateGlossary("Workspace", undefined)).toBeUndefined();
     });
+  });
+});
+
+describe("utils/glossary-name isMatchedGlossaryName", () => {
+  const workspace = {
+    glossary: { itemId: "g1", name: "Workspace", createDate: "", lastUpdateDate: "" },
+    meta: {
+      rule: "translate",
+      caseSensitive: false,
+      variants: ["workspaces"],
+      translations: {},
+      forbidden: {},
+    },
+    definition: "",
+    start: 10,
+    length: 9,
+    surface: "WORKSPACE",
+    scope: "global",
+    status: "approved",
+  } as GlossaryMatch;
+
+  it("is true for the name, a variant or the matched text in any letter case", () => {
+    expect(isMatchedGlossaryName(" workspace ", [workspace])).toBe(true);
+    expect(isMatchedGlossaryName("Workspaces", [workspace])).toBe(true);
+    expect(isMatchedGlossaryName("WORKSPACE", [workspace])).toBe(true);
+  });
+
+  it("is false for other text, empty text or no matches", () => {
+    expect(isMatchedGlossaryName("Open your Workspace", [workspace])).toBe(false);
+    expect(isMatchedGlossaryName("  ", [workspace])).toBe(false);
+    expect(isMatchedGlossaryName("Workspace", [])).toBe(false);
   });
 });

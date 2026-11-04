@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui-kits/dialog/
 import { toast } from "@/hooks/use-toast";
 import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
-import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
 import GlossaryPicker, { pickCreatedGlossary } from "./glossary-picker";
@@ -24,6 +23,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useResolveGlossariesByIds: vi.fn(),
   useSaveGlossary: vi.fn(),
   useGetLanguageModules: vi.fn(),
+  useFetchLatestGlossary: vi.fn(() => vi.fn()),
 }));
 vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: { fetchGlossaries: vi.fn() },
@@ -45,17 +45,17 @@ const glossary = (overrides: Partial<IGlossary>): IGlossary => ({
 const WORKSPACE = glossary({
   itemId: "g1",
   name: "Workspace",
-  additionalNote:
-    GLOSSARY_META_PREFIX +
-    JSON.stringify({
-      rule: "translate",
-      translations: { "de-DE": "Arbeitsbereich", "fr-FR": "Espace", "es-ES": "Espacio" },
-    }),
+  rule: "translate",
+  translations: [
+    { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+    { language: "fr-FR", value: "Espace", forbiddenValues: [] },
+    { language: "es-ES", value: "Espacio", forbiddenValues: [] },
+  ],
 });
 const SELISE = glossary({
   itemId: "g2",
   name: "SELISE",
-  additionalNote: GLOSSARY_META_PREFIX + JSON.stringify({ rule: "keep" }),
+  rule: "keep",
 });
 const FUTURE = glossary({
   itemId: "g3",
@@ -129,15 +129,12 @@ describe("GlossaryPicker", () => {
     saveGlossaryAsync.mockResolvedValue({ success: true });
   });
 
-  it("shows the name, rule and up to 3 translation chips per row (H7, C16)", () => {
+  it("shows only the name and rule per row (H7, C16)", () => {
     renderWithProviders(<Harness />);
     openPicker();
     const workspace = screen.getByRole("option", { name: /Workspace/ });
     expect(within(workspace).getByText("Translate")).toBeTruthy();
-    expect(within(workspace).getByText("de-DE")).toBeTruthy();
-    expect(within(workspace).getByText("es-ES")).toBeTruthy();
-    expect(within(workspace).queryByText("it-IT missing")).toBeNull();
-    expect(within(workspace).getByText("+1")).toBeTruthy();
+    expect(within(workspace).queryByText("de-DE")).toBeNull();
     expect(within(screen.getByRole("option", { name: /SELISE/ })).getByText("Keep")).toBeTruthy();
     expect(within(screen.getByRole("option", { name: /Future/ })).getByText("—")).toBeTruthy();
   });
@@ -148,7 +145,6 @@ describe("GlossaryPicker", () => {
     await user.click(screen.getByRole("combobox"));
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onChangeSpy).toHaveBeenLastCalledWith(["g2"]);
-    // Backspace in the empty search keeps the chips.
     await user.keyboard("{Backspace}");
     expect(screen.getByRole("button", { name: "Remove SELISE" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remove SELISE" }));
@@ -240,7 +236,6 @@ describe("GlossaryPicker", () => {
         searchText: "Onboardng",
       });
       expect(screen.getByRole("button", { name: "Remove Onboardng" })).toBeTruthy();
-      // The tagging dialog stays open.
       expect(screen.getByText("Tag Glossary")).toBeTruthy();
     });
 
@@ -252,7 +247,7 @@ describe("GlossaryPicker", () => {
       await waitFor(() =>
         expect(toast).toHaveBeenCalledWith(
           expect.objectContaining({
-            description: "Term created, but it couldn't be selected. Search for it.",
+            description: "Glossary created, but it couldn't be selected. Search for it.",
           }),
         ),
       );

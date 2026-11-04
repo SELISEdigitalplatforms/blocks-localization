@@ -3,6 +3,7 @@ import { localizationQueryKeys } from "@blocks-localization/constants/query-keys
 import type {
   IBlocksLanguageKey,
   IBlocksLanguageKeyResponse,
+  ISaveBlocksLanguageKeyPayload,
 } from "@blocks-localization/models/language";
 
 /** Rewrites the loaded rows of the All view, e.g. to replace an edited key or drop deleted ones. */
@@ -85,9 +86,43 @@ export const allViewRefreshAfterSave = (
   return replaceLanguageKeyRows(savedKeys);
 };
 
+/**
+ * The row a save payload stands for. A glossary-only save leaves the stored resources, routes and
+ * context alone, so only its glossaryIds are patched in.
+ */
+export const savedLanguageKeyRow = ({
+  isNewKey: _isNewKey,
+  glossaryIdsOnly,
+  ...key
+}: ISaveBlocksLanguageKeyPayload): Partial<IBlocksLanguageKey> & { itemId: string } =>
+  glossaryIdsOnly ? { itemId: key.itemId, glossaryIds: key.glossaryIds } : key;
+
 export const removeLanguageKeyRows =
   (itemIds: string[]): LanguageKeyRowsPatch =>
   (keys) => {
     const removedIds = new Set(itemIds);
     return keys.filter((key) => !removedIds.has(key.itemId));
   };
+
+/** When the worker's re-check after a glossary write has likely finished, in ms after the write. */
+export const GLOSSARY_RECHECK_REFRESH_DELAYS_MS = [4_000, 15_000] as const;
+
+/**
+ * Refreshes what shows glossary issues after a glossary is saved or deleted: key lists, key
+ * details and glossary usage counts. The server re-checks keys later in a worker, so this runs
+ * now and again after each delay. An All view on screen is kept (no jump, no chunk refetch);
+ * one that is not is dropped so it loads fresh when opened.
+ */
+export const refreshKeysAfterGlossaryChange = (queryClient: QueryClient) => {
+  const refresh = () => {
+    refreshLanguageKeyLists(queryClient, "keep");
+    queryClient.removeQueries({
+      queryKey: localizationQueryKeys.languageKeys.infinitePrefix,
+      type: "inactive",
+    });
+    void queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
+    void queryClient.invalidateQueries({ queryKey: localizationQueryKeys.glossaries.all });
+  };
+  refresh();
+  GLOSSARY_RECHECK_REFRESH_DELAYS_MS.forEach((delay) => setTimeout(refresh, delay));
+};

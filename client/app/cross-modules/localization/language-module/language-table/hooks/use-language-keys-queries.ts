@@ -56,6 +56,7 @@ export const useLanguageKeysQueries = ({
     queryParams.missingLanguages ?? [],
     !isAllView,
     queryParams.duplicates,
+    queryParams.glossaryIssues,
   );
   const allViewQuery = useGetBlocksLanguageKeysInfinite({
     searchKey: queryParams.search ?? "",
@@ -68,6 +69,7 @@ export const useLanguageKeysQueries = ({
     missingLanguages: queryParams.missingLanguages ?? [],
     enabled: isAllView,
     onlyDuplicates: queryParams.duplicates,
+    hasGlossaryViolations: queryParams.glossaryIssues,
   });
   const allViewKeys = useMemo(
     () => allViewQuery.data?.pages.flatMap((page) => page.keys) ?? [],

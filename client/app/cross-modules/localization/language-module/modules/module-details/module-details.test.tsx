@@ -16,6 +16,13 @@ vi.mock("react-router", async (importOriginal) => ({
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetLanguageModules: vi.fn(),
   useGetModuleGlossaries: vi.fn(),
+  useGetLanguages: vi.fn(() => ({
+    data: [
+      { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
+      { itemId: "2", languageCode: "de-DE", languageName: "German" },
+      { itemId: "3", languageCode: "fr-FR", languageName: "French" },
+    ],
+  })),
 }));
 vi.mock("@blocks-localization/hooks/use-user-lookup", () => ({
   useCurrentUser: vi.fn(),
@@ -119,6 +126,47 @@ describe("language-module/module-details", () => {
     expect(screen.queryByRole("columnheader", { name: "Language" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Type" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Context" })).toBeNull();
+  });
+
+  it("should show language names, the rule and translation coverage (Phase 8 H13)", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
+      isLoading: false,
+    } as never);
+    h.useGetModuleGlossaries.mockReturnValue({
+      data: {
+        items: [
+          {
+            itemId: "g1",
+            name: "Workspace",
+            language: "de-DE",
+            createDate: "2026-01-01",
+            rule: "translate",
+            translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] }],
+          },
+          {
+            itemId: "g2",
+            name: "SELISE",
+            language: "xx-XX",
+            createDate: "2026-01-01",
+            rule: "keep",
+          },
+        ],
+        totalCount: 2,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<ModuleDetails />, {
+      route: "/app/abc/services/modules/m1",
+      searchParams: "?moduleTab=glossary",
+    });
+    expect(screen.getByRole("cell", { name: "German" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "xx-XX" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Rule" })).toBeTruthy();
+    expect(screen.getByText("Translate")).toBeTruthy();
+    expect(screen.getByText("Keep")).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "1 / 2 languages" })).toBeTruthy();
+    expect(screen.getAllByRole("cell", { name: "—" }).length).toBeGreaterThan(0);
   });
 
   it("should display optional glossary columns when the response contains their data", () => {

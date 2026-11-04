@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher, GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import GlossaryTermPopover, { getGlossaryTermValue } from "./glossary-term-popover";
 
 vi.mock("@seliseblocks/genesis-os", async () => ({
@@ -37,10 +38,7 @@ const G3 = term("g3", "Dashboard", {
 });
 
 const matchOf = (glossary: IGlossary, text = glossary.name): GlossaryMatch =>
-  buildGlossaryMatcher([glossary]).match(text, {
-    scopeMode: "applicable",
-    sourceCulture: "en-US",
-  })[0];
+  findGlossaryMatches([glossary], text)[0];
 
 const DE = { languageCode: "de-DE", languageName: "German" };
 
@@ -89,12 +87,38 @@ describe("GlossaryTermPopover", () => {
     expect(screen.queryByText(/⟦rule/)).toBeNull();
   });
 
+  it("shows the first usage example only (Phase 8 H22)", async () => {
+    const match = matchOf(G1);
+    renderPopover({
+      ...match,
+      glossary: { ...match.glossary, usageExamples: [" ", "Open your workspace.", "Second."] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    expect(await screen.findByText("e.g. “Open your workspace.”")).toBeTruthy();
+    expect(screen.queryByText(/Second\./)).toBeNull();
+  });
+
+  it("shows the Draft badge and notice for a Draft term (H7)", async () => {
+    renderPopover(matchOf({ ...G1, status: "draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    expect(await screen.findByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Draft: not sent to the AI")).toBeTruthy();
+  });
+
+  it("shows no status for an Approved term", async () => {
+    renderPopover(matchOf(G1));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    await screen.findByText("Arbeitsbereich");
+    expect(screen.queryByText("Draft")).toBeNull();
+    expect(screen.queryByText("Draft: not sent to the AI")).toBeNull();
+  });
+
   it("inserts the translation and closes (H3)", async () => {
     const onInsert = vi.fn();
     renderPopover(matchOf(G1), onInsert);
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
-    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
+    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich", "Workspace");
     await waitFor(() => expect(screen.queryByText("Arbeitsbereich")).toBeNull());
   });
 
@@ -111,7 +135,7 @@ describe("GlossaryTermPopover", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     expect(
-      await screen.findByText("The glossary has no French translation for this term yet."),
+      await screen.findByText("The glossary has no French translation for this glossary yet."),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
     fireEvent.click(
@@ -170,7 +194,7 @@ describe("GlossaryTermPopover", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     renderPopover(matchOf(G1));
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open term (opens in a new tab)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open glossary (opens in a new tab)" }));
     expect(open).toHaveBeenCalledWith("/app/p1/services/glossary/g1", "_blank", "noopener");
   });
 

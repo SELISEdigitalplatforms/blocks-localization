@@ -136,7 +136,7 @@ namespace XUnitTest
                     It.IsAny<string>()))
                 .ReturnsAsync(resourceKey);
             _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
-                .ReturnsAsync("Willkommen");
+                .ReturnsAsync(new SuggestionResult { Content = "Willkommen" });
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1L);
 

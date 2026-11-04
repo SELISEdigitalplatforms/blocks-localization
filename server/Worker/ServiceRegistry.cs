@@ -29,6 +29,7 @@ namespace Worker
             services.AddSingleton<IConsumer<UilmImportEvent>, UilmImportEventConsumer>();
             services.AddSingleton<IConsumer<UilmExportEvent>, UilmExportEventConsumer>();
             services.AddSingleton<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>();
+            services.AddSingleton<IConsumer<RecheckGlossaryViolationsEvent>, RecheckGlossaryViolationsEventConsumer>();
 
             services.AddSingleton<XlsxOutputGeneratorService>();
             services.AddSingleton<JsonOutputGeneratorService>();
@@ -60,6 +61,7 @@ namespace Worker
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
+            services.AddGlossaryTerminology();
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();

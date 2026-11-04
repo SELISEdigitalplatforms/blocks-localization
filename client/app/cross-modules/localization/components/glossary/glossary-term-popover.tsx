@@ -6,10 +6,12 @@ import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui-kits/popover/popover";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
+import GlossaryStatusBadge from "@blocks-localization/components/glossary/glossary-status-badge";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
-import { findInTarget } from "@blocks-localization/utils/glossary-validation";
+import { containsApprovedTranslation } from "@blocks-localization/utils/glossary-validation";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
@@ -33,12 +35,28 @@ export const getGlossaryTermValue = (
 ): GlossaryTermValue => {
   if (meta.rule === "keep") return { kind: "keep", value: surface };
   if (meta.rule === "forbidden") {
-    return { kind: "forbidden", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
+    return { kind: "forbidden", alsoAvoid: findCultureEntry(meta.forbidden, targetCulture) ?? [] };
   }
-  const value = meta.translations[targetCulture]?.trim();
+  const value = findCultureEntry(meta.translations, targetCulture)?.trim();
   return value
     ? { kind: "translate", value }
-    : { kind: "missing", alsoAvoid: meta.forbidden[targetCulture] ?? [] };
+    : { kind: "missing", alsoAvoid: findCultureEntry(meta.forbidden, targetCulture) ?? [] };
+};
+
+/**
+ * True when the target text already has the glossary's wording: the approved value of a
+ * Translate glossary, or the source surface of a Keep one.
+ */
+export const isGlossaryMatchUsed = (
+  match: GlossaryMatch,
+  targetText: string,
+  targetCulture: string,
+): boolean => {
+  const term = getGlossaryTermValue(match.meta, match.surface, targetCulture);
+  return (
+    (term.kind === "translate" || term.kind === "keep") &&
+    containsApprovedTranslation(targetText, term.value, targetCulture)
+  );
 };
 
 const ValueCaption = ({ children }: Readonly<{ children: ReactNode }>) => (
@@ -113,12 +131,12 @@ interface GlossaryTermPopoverProps {
   targetLanguage?: TermTargetLanguage;
   /** The current target text: Insert is disabled when the value is already in it. */
   targetText?: string;
-  onInsert?: (value: string) => void;
+  /** `replacing` is the source wording, swapped for the value if it is left in the target. */
+  onInsert?: (value: string, replacing?: string) => void;
   /** The trigger (a highlighted term or a chip); it gets focus back on Escape. */
   children: ReactElement;
 }
 
-/** Term, rule, target value and definition, with Insert and Open term. */
 const GlossaryTermPopover = ({
   match,
   targetLanguage,
@@ -133,11 +151,10 @@ const GlossaryTermPopover = ({
   const code = targetLanguage?.languageCode ?? "";
   const languageName = targetLanguage?.languageName || code;
   const term = getGlossaryTermValue(match.meta, match.surface, code);
+  const firstExample = match.glossary.usageExamples?.find((example) => example.trim())?.trim();
   // Keep terms are already right in the source wording, so there is nothing to insert.
   const insertValue = term.kind === "translate" ? term.value : null;
-  const alreadyUsed =
-    insertValue !== null &&
-    !!findInTarget(targetText, insertValue, { caseInsensitive: true, targetCulture: code });
+  const alreadyUsed = insertValue !== null && isGlossaryMatchUsed(match, targetText, code);
   // Only an approved value can be inserted: no greyed-out button for a missing translation.
   const showInsert = !!onInsert && term.kind === "translate";
   const isMissing = term.kind === "missing";
@@ -145,7 +162,7 @@ const GlossaryTermPopover = ({
   const handleInsert = () => {
     if (insertValue === null || !onInsert) return;
     insertedRef.current = true;
-    onInsert(insertValue);
+    onInsert(insertValue, match.surface);
     setOpen(false);
   };
 
@@ -173,12 +190,25 @@ const GlossaryTermPopover = ({
             <p className="min-w-0 break-words text-sm font-semibold text-high-emphasis">
               {match.glossary.name}
             </p>
-            <GlossaryRuleBadge rule={match.meta.rule} className="shrink-0" />
+            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+              {match.status === "draft" && <GlossaryStatusBadge status="draft" />}
+              <GlossaryRuleBadge rule={match.meta.rule} className="shrink-0" />
+            </div>
           </div>
+          {match.status === "draft" && (
+            <p className="text-xs text-medium-emphasis">
+              {t("GLOSSARY_TERM_POPOVER.DRAFT_NOTICE")}
+            </p>
+          )}
           <TermValue term={term} language={languageName} />
           {match.definition && (
             <p className="line-clamp-4 border-t border-border pt-3 text-sm text-medium-emphasis">
               {match.definition}
+            </p>
+          )}
+          {firstExample && (
+            <p className="line-clamp-2 text-xs italic text-medium-emphasis">
+              {t("GLOSSARY_TERM_POPOVER.EXAMPLE", { example: firstExample })}
             </p>
           )}
         </div>

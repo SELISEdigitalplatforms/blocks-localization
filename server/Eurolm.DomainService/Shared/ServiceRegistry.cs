@@ -61,6 +61,8 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
+            services.AddSingleton<IGlossaryMigrationService, GlossaryMigrationService>();
+            services.AddGlossaryTerminology();
 
 
         }

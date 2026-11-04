@@ -1861,7 +1861,7 @@ namespace XUnitTest
             };
 
             _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
-                .ReturnsAsync("Bonjour");
+                .ReturnsAsync(new SuggestionResult { Content = "Bonjour" });
 
             await _service.ProcessMissingResource(request, key, defaultRes, targetRes, list, languages);
 
