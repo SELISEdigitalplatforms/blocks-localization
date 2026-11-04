@@ -923,6 +923,24 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task GetUilmExportedFilesAsync_EscapesSearchText_SoRegexMetacharactersMatchLiterally()
+        {
+            FilterDefinition<UilmExportedFile>? captured = null;
+            MockCursorHelper.SetupFindAsync(_exportedFileCollection, new List<UilmExportedFile>());
+            _exportedFileCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<UilmExportedFile>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<UilmExportedFile>, CountOptions, CancellationToken>((f, _, _) => captured = f)
+                .ReturnsAsync(0L);
+
+            await _repo.GetUilmExportedFilesAsync(new GetUilmExportedFilesRequest { PageNumber = 0, PageSize = 10, SearchText = "a.b(" });
+
+            var rendered = captured!
+                .Render(new RenderArgs<UilmExportedFile>(BsonSerializer.SerializerRegistry.GetSerializer<UilmExportedFile>(), BsonSerializer.SerializerRegistry))
+                .ToString();
+            rendered.Should().Contain(@"a\\.b\\(");
+        }
+
+        [Fact]
         public async Task GetUilmExportedFilesAsync_WithDateRange_FiltersFiles()
         {
             MockCursorHelper.SetupFindAsync(_exportedFileCollection, new List<UilmExportedFile>());

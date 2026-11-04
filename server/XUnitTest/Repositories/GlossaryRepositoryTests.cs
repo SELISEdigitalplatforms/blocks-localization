@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using FluentAssertions;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Moq;
 using Xunit;
@@ -64,6 +65,24 @@ namespace XUnitTest.Repositories
 
             result.Items.Should().HaveCount(1);
             result.TotalCount.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_EscapesSearchText_SoRegexMetacharactersMatchLiterally()
+        {
+            FilterDefinition<Glossary>? captured = null;
+            MockCursorHelper.SetupFindAsync(_glossaryCollection, new List<Glossary>());
+            _glossaryCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<Glossary>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<Glossary>, CountOptions, CancellationToken>((f, _, _) => captured = f)
+                .ReturnsAsync(0L);
+
+            await _repo.GetAllAsync(new GetGlossariesRequest { PageNumber = 0, PageSize = 10, SearchText = "a.b(" });
+
+            var rendered = captured!
+                .Render(new RenderArgs<Glossary>(BsonSerializer.SerializerRegistry.GetSerializer<Glossary>(), BsonSerializer.SerializerRegistry))
+                .ToString();
+            rendered.Should().Contain(@"a\\.b\\(");
         }
 
         [Fact]

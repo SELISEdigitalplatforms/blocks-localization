@@ -435,11 +435,9 @@ export class LanguageManagerService {
       PageSize: String(request.pageSize),
     });
 
+    // Sent as typed: the server escapes it before building the regex.
     if (request.searchText) {
-      params.append(
-        "SearchText",
-        request.searchText.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`),
-      );
+      params.append("SearchText", request.searchText);
     }
 
     if (request.isGlobal !== undefined) {

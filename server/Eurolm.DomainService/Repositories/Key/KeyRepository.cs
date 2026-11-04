@@ -889,10 +889,10 @@ namespace Eurolm.DomainService.Repositories
             var builder = Builders<UilmExportedFile>.Filter;
             var filters = new List<FilterDefinition<UilmExportedFile>>();
 
-            // Apply regex-based search filter on FileName if SearchText is provided
+            // Case-insensitive "contains" search on FileName; the text is escaped so it matches literally
             if (!string.IsNullOrEmpty(request.SearchText))
             {
-                var regexFilter = builder.Regex(x => x.FileName, new MongoDB.Bson.BsonRegularExpression(request.SearchText, "i")); // "i" for case-insensitive
+                var regexFilter = builder.Regex(x => x.FileName, new MongoDB.Bson.BsonRegularExpression(Regex.Escape(request.SearchText), "i"));
                 filters.Add(regexFilter);
             }
 

@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Services;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace Eurolm.DomainService.Repositories
 {
@@ -26,7 +27,7 @@ namespace Eurolm.DomainService.Repositories
             if (!string.IsNullOrWhiteSpace(request.SearchText))
             {
                 var nameFilter = filterBuilder.Regex(g => g.Name,
-                    new BsonRegularExpression($".*{request.SearchText}.*", "i"));
+                    new BsonRegularExpression($".*{Regex.Escape(request.SearchText)}.*", "i"));
                 filter = filterBuilder.And(filter, nameFilter);
             }
 
