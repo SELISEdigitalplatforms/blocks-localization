@@ -192,17 +192,23 @@ namespace Eurolm.DomainService.Services
             // Claim after taking the lease, so glossary edits made while a job runs queue the next one.
             for (var job = await _jobRepository.ClaimAsync(tenantId); job != null; job = await _jobRepository.ClaimAsync(tenantId))
             {
+                var completed = false;
+                bool keptLease;
                 try
                 {
-                    if (!await RunAsync(tenantId, owner, job, eventGlossaryId, result)) return false;
+                    keptLease = await RunAsync(tenantId, owner, job, eventGlossaryId, result);
+                    completed = true;
                 }
-                catch (Exception ex)
+                finally
                 {
-                    // Put the claimed scope back so a retry (or the next request) still covers it.
-                    await _jobRepository.RequeueFailedAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow);
-                    _logger.LogWarning(ex, "Glossary re-check failed for tenant {TenantId}; scope queued again and marked failed", tenantId);
-                    throw;
+                    // A failed run puts the claimed scope back so a retry (or the next request) still covers it.
+                    if (!completed)
+                    {
+                        await _jobRepository.RequeueFailedAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow);
+                        _logger.LogWarning("Glossary re-check failed for tenant {TenantId}; scope queued again and marked failed", tenantId);
+                    }
                 }
+                if (!keptLease) return false;
                 eventGlossaryId = null;
             }
             return true;
