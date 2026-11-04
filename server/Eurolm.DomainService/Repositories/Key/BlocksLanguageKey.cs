@@ -15,5 +15,7 @@ namespace Eurolm.DomainService.Repositories
         public List<string>? GlossaryIds { get; set; }
         public string? Context { get; set; }
         public bool IsPartiallyTranslated { get; set; }
+        /// <summary>Glossary rules the stored translations break, per culture. Never written from a client request.</summary>
+        public List<KeyGlossaryViolation>? GlossaryViolations { get; set; }
     }
 }

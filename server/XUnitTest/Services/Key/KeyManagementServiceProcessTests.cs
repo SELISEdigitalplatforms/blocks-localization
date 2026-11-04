@@ -42,7 +42,7 @@ namespace XUnitTest
             var storageHelper = new StorageHelper(storageLogger.Object, storageDriverServiceMock.Object);
 
             _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
-                .ReturnsAsync("Bonjour");
+                .ReturnsAsync(new SuggestionResult { Content = "Bonjour" });
 
             _service = new KeyManagementService(
                 _keyRepositoryMock.Object,

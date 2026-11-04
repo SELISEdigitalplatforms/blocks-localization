@@ -19,7 +19,7 @@ export class GlossaryPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.heading = page.getByRole("heading", { name: "Glossary Management" });
+    this.heading = page.getByRole("heading", { name: "Glossary", exact: true });
     this.newGlossaryButton = page.getByRole("button", { name: "New Glossary" });
     this.glossaryDescription = page.getByText("Glossaries help keep");
     this.noGlossariesMessage = page.getByText("No glossaries yet");
@@ -27,7 +27,7 @@ export class GlossaryPage {
     this.addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
     this.glossaryNameInput = page.getByRole("textbox", { name: "Name *" });
     this.definitionInput = page.getByRole("textbox", { name: "Definition" });
-    this.internalNoteInput = page.getByRole("textbox", { name: "Additional note" });
+    this.internalNoteInput = page.getByRole("textbox", { name: "Internal note" });
     this.editDialog = page.getByRole("dialog", { name: "Edit Glossary" });
     this.deleteDialog = page.getByRole("dialog", { name: "Delete Glossary Item" });
   }
@@ -82,7 +82,7 @@ export class GlossaryPage {
 
   async expectEditorSectionsInOrder() {
     const headings = this.editorSheet.getByRole("heading", { level: 3 });
-    await expect(headings).toHaveText(["Term", "Translations", "Meaning", "Scope"]);
+    await expect(headings).toHaveText(["Glossary", "Translations", "Meaning", "Scope"]);
     await expect(this.editorSheet.getByRole("button", { name: "Internal Note" })).toBeVisible();
   }
 
@@ -231,7 +231,6 @@ export class GlossaryPage {
     await this.editorSheet.getByRole("button", { name: "Save" }).click();
   }
 
-  /** Saves and returns the body of the Glossary/Save request. */
   async saveAndCapturePayload(): Promise<Record<string, unknown>> {
     const requestPromise = this.page.waitForRequest(
       (request) => request.method() === "POST" && /\/Glossary\/Save/.test(request.url()),
@@ -244,12 +243,16 @@ export class GlossaryPage {
    * Creates a glossary whose stored `additionalNote` is exactly `additionalNote`, as another
    * client (extension, CLI) or an older UI would have written it. The term is created through
    * the UI, and its Glossary/Save request body is rewritten in flight, so the app's own
-   * authenticated request stores the fixture.
+   * authenticated request stores the fixture. The structured fields (SPEC7) are dropped, as an
+   * older client never sends them, so the server reads a v1 note as a Track A save (Phase 6 H17).
    */
   async createGlossaryWithStoredNote(name: string, additionalNote: string) {
     const pattern = /\/Glossary\/Save/;
     await this.page.route(pattern, async (route) => {
       const body = route.request().postDataJSON() as Record<string, unknown>;
+      for (const field of ["rule", "caseSensitive", "variants", "translations", "status"]) {
+        delete body[field];
+      }
       await route.continue({
         postData: JSON.stringify({ ...body, context: "", additionalNote }),
       });
@@ -319,7 +322,7 @@ export class GlossaryPage {
     await expect(this.page.getByRole("heading", { name: "Details" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Definition" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Internal Note" })).toBeVisible();
-    await expect(this.page.getByRole("heading", { name: "Tagged Keys" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: "Keys", exact: true })).toBeVisible();
   }
 
   async clickEditButton() {
@@ -347,6 +350,26 @@ export class GlossaryPage {
       this.page.getByText("Glossary item updated successfully.", { exact: true }),
     ).toBeVisible({ timeout: 20_000 });
     await expect(this.page.getByRole("heading", { name: name })).toBeVisible({ timeout: 15_000 });
+  }
+
+  /** The editor's Alert after a save was rejected because someone else changed the term. */
+  async expectVersionConflict() {
+    await expect(
+      this.editorSheet.getByText(
+        "This glossary was changed by someone else. Reload the latest version and re-apply your changes.",
+        { exact: true },
+      ),
+    ).toBeVisible({ timeout: 20_000 });
+  }
+
+  async reloadLatest() {
+    await this.editorSheet.getByRole("button", { name: "Reload latest" }).click();
+  }
+
+  async expectEditName(name: string) {
+    await expect(this.editDialog.getByRole("textbox", { name: "Name *" })).toHaveValue(name, {
+      timeout: 15_000,
+    });
   }
 
   async goBackToList() {
@@ -385,19 +408,45 @@ export class GlossaryPage {
     await expect(this.deleteDialog).toBeVisible();
   }
 
+  get deleteGlossaryDialog() {
+    return this.deleteDialog;
+  }
+
   async confirmDeleteGlossary() {
     await this.deleteDialog.getByRole("button", { name: "Delete" }).click();
   }
 
   async expectNoTaggedKeys() {
     await expect(
-      this.page.getByText("No keys are tagged with this glossary.", { exact: true }),
+      // The wording depends on the glossary's scope (only tagged, global, or module).
+      this.page.getByText(/^No keys are tagged with this glossary( directly| or belong to its modules)?\.$/),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(this.page.getByText("Failed to load tagged keys.", { exact: true })).toBeHidden();
+    await expect(this.page.getByText("Failed to load keys.", { exact: true })).toBeHidden();
   }
 
   async expectDeleteUsage(text: string | RegExp) {
     await expect(this.deleteDialog.getByText(text)).toBeVisible({ timeout: 15_000 });
+  }
+
+  get statusSelect() {
+    return this.editorSheet.getByRole("combobox", { name: "Status" });
+  }
+
+  async setStatus(status: "Draft" | "Approved" | "Deprecated") {
+    await this.statusSelect.click();
+    await this.page.getByRole("option", { name: status, exact: true }).click();
+    await expect(this.statusSelect).toHaveText(status);
+  }
+
+  /** The glossary table toolbar's Rule or Status filter select. */
+  tableFilter(name: "Rule" | "Status") {
+    return this.page.getByRole("combobox", { name });
+  }
+
+  async setTableFilter(name: "Rule" | "Status", option: string) {
+    await this.tableFilter(name).click();
+    await this.page.getByRole("option", { name: option, exact: true }).click();
+    await expect(this.tableFilter(name)).toHaveText(option);
   }
 
   async expectDuplicateNameWarning(existingName: string) {

@@ -387,7 +387,7 @@ namespace XUnitTest
                 .ReturnsAsync(resourceKey);
 
             _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
-                .ReturnsAsync("Bonjour");
+                .ReturnsAsync(new SuggestionResult { Content = "Bonjour" });
 
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1);
@@ -853,7 +853,7 @@ namespace XUnitTest
                 .ReturnsAsync(new List<BlocksLanguageKey>().AsQueryable());
 
             _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
-                .ReturnsAsync("Bonjour");
+                .ReturnsAsync(new SuggestionResult { Content = "Bonjour" });
 
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1);

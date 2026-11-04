@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Services
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IKeyRepository _keyRepository;
         private readonly IKeyTimelineRepository _keyTimelineRepository;
+        private readonly IGlossaryChangeNotifier? _glossaryChangeNotifier;
 
         private const string ItemIdErrorKey = "ItemId";
         private const string TargetModuleIdErrorKey = "TargetModuleId";
@@ -26,7 +27,8 @@ namespace Eurolm.DomainService.Services
                                       //Lazy<IKeyBulkOperationsService> keyBulkOperationsService,
                                       IGlossaryRepository glossaryRepository,
                                       IKeyRepository keyRepository,
-                                      IKeyTimelineRepository keyTimelineRepository)
+                                      IKeyTimelineRepository keyTimelineRepository,
+                                      IGlossaryChangeNotifier? glossaryChangeNotifier = null)
         {
             _validator = validator;
             _moduleRepository = moduleRepository;
@@ -35,6 +37,7 @@ namespace Eurolm.DomainService.Services
             _glossaryRepository = glossaryRepository;
             _keyRepository = keyRepository;
             _keyTimelineRepository = keyTimelineRepository;
+            _glossaryChangeNotifier = glossaryChangeNotifier;
         }
 
         public async Task<ApiResponse> SaveModuleAsync(SaveModuleRequest module)
@@ -120,6 +123,7 @@ namespace Eurolm.DomainService.Services
                     return DeleteModuleFailure(ItemIdErrorKey, "Module has keys. Please delete or move all keys to another module before deleting it.");
 
                 await _moduleRepository.DeleteAsync(request.ItemId);
+                await DetachDeletedModuleAsync(request.ItemId, isMove ? request.TargetModuleId : null);
                 return new BaseMutationResponse { IsSuccess = true };
             }
             catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
@@ -138,6 +142,40 @@ namespace Eurolm.DomainService.Services
                 return DeleteModuleFailure("Error", "An unexpected error occurred");
             }
         }
+
+        /// <summary>
+        /// Removes a deleted module from its glossaries and, after a move, re-checks the target module's keys
+        /// against the glossaries of both modules. A failure is logged: the module is already deleted.
+        /// </summary>
+        private async Task DetachDeletedModuleAsync(string moduleId, string? targetModuleId)
+        {
+            try
+            {
+                var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+                var tagged = await GlossaryIdsOfModuleAsync(tenantId, moduleId);
+                if (tagged.Count > 0)
+                    await _glossaryRepository.UpdateModuleTagsAsync(moduleId, Array.Empty<string>(), tagged);
+
+                if (_glossaryChangeNotifier == null) return;
+                if (targetModuleId == null)
+                {
+                    await _glossaryChangeNotifier.NotifyAsync(tenantId, Array.Empty<string>());
+                    return;
+                }
+
+                var changed = tagged.Concat(await GlossaryIdsOfModuleAsync(tenantId, targetModuleId))
+                    .Distinct(StringComparer.Ordinal).ToList();
+                await _glossaryChangeNotifier.NotifyAsync(tenantId, changed, new[] { targetModuleId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Module {ModuleId} was deleted, but its glossaries were not updated", moduleId);
+            }
+        }
+
+        private async Task<List<string>> GlossaryIdsOfModuleAsync(string tenantId, string moduleId) =>
+            (await _glossaryRepository.GetByModuleIdAsync(tenantId, moduleId))
+                .Select(g => g.ItemId ?? "").Where(id => id.Length > 0).ToList();
 
         private async Task<string?> MoveAllKeysAsync(string sourceModuleId, string targetModuleId)
         {
@@ -256,32 +294,40 @@ namespace Eurolm.DomainService.Services
 
         public async Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request)
         {
+            if (request?.GlossaryIds == null || string.IsNullOrWhiteSpace(request.ModuleId))
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "ModuleId and GlossaryIds are required." } } };
+
             try
             {
                 var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
                 var currentlyTagged = await _glossaryRepository.GetByModuleIdAsync(tenantId, request.ModuleId);
 
-                foreach (var glossary in currentlyTagged)
-                {
-                    if (!request.GlossaryIds.Contains(glossary.ItemId ?? ""))
-                    {
-                        glossary.ModuleIds?.Remove(request.ModuleId);
-                        await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
-                    }
-                }
+                var removeFrom = currentlyTagged
+                    .Where(g => !request.GlossaryIds.Contains(g.ItemId ?? ""))
+                    .Select(g => g.ItemId ?? "")
+                    .ToList();
 
+                var addTo = new List<string>();
                 if (request.GlossaryIds.Count > 0)
                 {
                     var targetGlossaries = await _glossaryRepository.GetByIdsAsync(request.GlossaryIds);
-                    foreach (var glossary in targetGlossaries)
-                    {
-                        glossary.ModuleIds ??= new List<string>();
-                        if (!glossary.ModuleIds.Contains(request.ModuleId))
-                        {
-                            glossary.ModuleIds.Add(request.ModuleId);
-                            await _glossaryRepository.SaveAsync(MapToBlocksGlossary(glossary, tenantId));
-                        }
-                    }
+                    addTo = targetGlossaries
+                        .Where(g => g.ModuleIds == null || !g.ModuleIds.Contains(request.ModuleId))
+                        .Select(g => g.ItemId ?? "")
+                        .ToList();
+                }
+
+                if (removeFrom.Count > 0 || addTo.Count > 0)
+                    await _glossaryRepository.UpdateModuleTagsAsync(request.ModuleId, addTo, removeFrom);
+
+                // Module scope feeds the matcher's key > module > global precedence.
+                // Re-check the keys of every glossary whose module scope changed (coalesced, flag on only).
+                var changed = removeFrom.Concat(addTo).Where(id => id.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+                // A glossary removed from the module no longer lists it, so name the module for the re-check.
+                if (_glossaryChangeNotifier != null)
+                {
+                    if (removeFrom.Count > 0) await _glossaryChangeNotifier.NotifyAsync(tenantId, changed, new[] { request.ModuleId });
+                    else await _glossaryChangeNotifier.NotifyAsync(tenantId, changed);
                 }
 
                 return new BaseMutationResponse { IsSuccess = true };
@@ -289,7 +335,7 @@ namespace Eurolm.DomainService.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while tagging glossary for module {ErrorMessage}", ex.Message);
-                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", ex.Message } } };
+                return new BaseMutationResponse { IsSuccess = false, Errors = new Dictionary<string, string> { { "Error", "Could not tag the glossaries to the module." } } };
             }
         }
 
@@ -316,20 +362,5 @@ namespace Eurolm.DomainService.Services
 
             return repoModule;
         }
-
-        private static BlocksGlossary MapToBlocksGlossary(Glossary glossary, string tenantId) => new BlocksGlossary
-        {
-            ItemId = glossary.ItemId ?? "",
-            Name = glossary.Name,
-            Language = glossary.Language ?? "",
-            Type = glossary.Type ?? "",
-            Context = glossary.Context ?? "",
-            AdditionalNote = glossary.AdditionalNote ?? "",
-            IsGlobal = glossary.IsGlobal,
-            ModuleIds = glossary.ModuleIds,
-            CreateDate = glossary.CreateDate,
-            LastUpdateDate = DateTime.UtcNow,
-            TenantId = tenantId
-        };
     }
 }

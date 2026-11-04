@@ -902,7 +902,7 @@ describe("LanguageManagerService", () => {
       expect(url).toContain("SearchText=term");
     });
 
-    it("should send SearchText unescaped (the server escapes it)", async () => {
+    it("should send regex characters in SearchText raw (the server escapes them)", async () => {
       vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
 
       await service.fetchGlossaries({
@@ -957,6 +957,34 @@ describe("LanguageManagerService", () => {
 
       const url = vi.mocked(http.get).mock.calls[0][0];
       expect(url).toContain("ModuleId=mod-1");
+    });
+  });
+
+  describe("fetchGlossaries (Phase 8 filters and sort)", () => {
+    it("should send Language, Type, Scope, SortBy and SortDescending when set (H16, H17)", async () => {
+      vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
+      await service.fetchGlossaries({
+        pageNumber: 0,
+        pageSize: 20,
+        language: "de-DE",
+        type: "Acronym",
+        scope: "modules",
+        sortBy: "name",
+        sortDescending: false,
+      });
+      const url = vi.mocked(http.get).mock.calls[0][0] as string;
+      expect(url).toContain("Language=de-DE");
+      expect(url).toContain("Type=Acronym");
+      expect(url).toContain("Scope=modules");
+      expect(url).toContain("SortBy=name");
+      expect(url).toContain("SortDescending=false");
+    });
+
+    it("should send none of them when absent (C18)", async () => {
+      vi.mocked(http.get).mockResolvedValue({ items: [], totalCount: 0 });
+      await service.fetchGlossaries({ pageNumber: 0, pageSize: 20 });
+      const url = vi.mocked(http.get).mock.calls[0][0] as string;
+      expect(url).not.toMatch(/Language=|Type=|Scope=|SortBy=|SortDescending=/);
     });
   });
 

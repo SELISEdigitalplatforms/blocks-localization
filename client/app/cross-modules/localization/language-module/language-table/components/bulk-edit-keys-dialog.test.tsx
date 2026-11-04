@@ -126,6 +126,14 @@ describe("BulkEditKeysDialog", () => {
     expect(payload[1].glossaryIds).toEqual(["module-glossary"]);
   });
 
+  it("marks a glossary-only change so the server keeps the stored translations", () => {
+    const glossaryOnly = buildBulkEditPayload(keys, languages, "", ["glossary-2"]);
+    expect(glossaryOnly.map((key) => key.glossaryIdsOnly)).toEqual([true, true]);
+
+    const withTranslation = buildBulkEditPayload(keys, languages, "Green light", ["glossary-2"]);
+    expect(withTranslation.map((key) => key.glossaryIdsOnly)).toEqual([false, false]);
+  });
+
   it("omits keys that have no translation or glossary changes", () => {
     const payload = buildBulkEditPayload(keys, languages, "", ["glossary-1"], {
       "module-2": ["glossary-1"],

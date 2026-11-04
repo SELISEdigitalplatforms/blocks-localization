@@ -1,12 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
-import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import { useSaveBlocksLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import {
-  LIVE_CHECK_DEBOUNCE_MS,
-  useApplicableGlossaryMatches,
-  useDebouncedValue,
-  useLoadedGlossaries,
+  NO_MATCHES,
+  useSourceGlossaryMatches,
 } from "@blocks-localization/hooks/use-live-glossary-check";
 import type { GlossaryViolation } from "@blocks-localization/utils/glossary-validation";
 import type { IBlocksLanguageKey, ILanguageConfig } from "@blocks-localization/models/language";
@@ -32,7 +29,6 @@ export const useInlineKeyEditor = (
   languageListData: ILanguageConfig[],
 ) => {
   const { isPending: isSaving, mutateAsync: saveKeyAsync } = useSaveBlocksLanguageKey();
-  const loadGlossaries = useLoadAllGlossaries();
   // Per-language suggestion state; unmounting (row collapsed) drops in-flight responses (C22).
   const {
     request,
@@ -40,7 +36,7 @@ export const useInlineKeyEditor = (
     getRow: getGlossaryRow,
     clearViolations,
     fix,
-  } = useGlossarySuggestionRows({ loadGlossaries });
+  } = useGlossarySuggestionRows();
   const sortedLanguages = useMemo(
     () => [...languageListData].sort((a, b) => Number(b.isDefault) - Number(a.isDefault)),
     [languageListData],
@@ -75,16 +71,17 @@ export const useInlineKeyEditor = (
   // Each target row's glossary checklist follows the editable default-language draft.
   const defaultLanguage =
     sortedLanguages.find((language) => language.isDefault) ?? sortedLanguages[0];
-  const glossaries = useLoadedGlossaries(loadGlossaries);
-  const debouncedSource = useDebouncedValue(
-    draftTranslations[defaultLanguage?.languageCode ?? ""] ?? "",
-    LIVE_CHECK_DEBOUNCE_MS,
-  );
-  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+  // `/Glossary/Match` 300 ms after the source stops changing, never per keystroke (C18).
+  const { matches, isCurrent } = useSourceGlossaryMatches({
+    text: draftTranslations[defaultLanguage?.languageCode ?? ""] ?? "",
     sourceCulture: defaultLanguage?.languageCode ?? "",
-    keyGlossaryIds: keyDetails.glossaryIds,
+    keyId: keyDetails.itemId,
     moduleId: keyDetails.moduleId,
+    glossaryIds: keyDetails.glossaryIds,
+    debounce: true,
   });
+  // Matches of an earlier source draft would check the targets against the wrong terms.
+  const sourceMatches = isCurrent ? matches : NO_MATCHES;
   const discardChanges = () => {
     setDraftTranslations({ ...savedTranslations });
     clearViolations();
@@ -157,15 +154,6 @@ export const useInlineKeyEditor = (
     const sourceText = draftTranslations[defaultLanguage.languageCode] ?? "";
     const outcome = await request({
       requestKey: destinationLanguageCode,
-      legacyPayload: {
-        sourceText,
-        destinationLanguage: destinationLanguage.languageName || "English",
-        currentLanguage: defaultLanguage.languageName || "English",
-        temperature: 0.1,
-        glossaryIds: keyDetails.glossaryIds,
-        moduleId: keyDetails.moduleId,
-        destinationLanguageCode,
-      },
       sourceText,
       defaultLanguage,
       targetLanguage: destinationLanguage,

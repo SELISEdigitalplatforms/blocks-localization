@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { insertAtRange, useTargetInsertion } from "./use-target-insertion";
+import { findWholeWord, insertAtRange, useTargetInsertion } from "./use-target-insertion";
 
 describe("insertAtRange", () => {
   it("inserts at a collapsed caret and keeps the text around it", () => {
@@ -54,9 +54,35 @@ describe("insertAtRange", () => {
   });
 });
 
+describe("findWholeWord", () => {
+  it("finds a whole word or phrase in any letter case", () => {
+    expect(findWholeWord("Gehe zum customer portal jetzt", "Customer Portal")).toEqual({
+      start: 9,
+      end: 24,
+    });
+  });
+
+  it("ignores the word inside a longer word", () => {
+    expect(findWholeWord("Gehe zum Portalseite", "Portal")).toBeUndefined();
+  });
+
+  it("treats regex characters literally", () => {
+    expect(findWholeWord("Open (beta) now", "(beta)")).toEqual({ start: 5, end: 11 });
+    expect(findWholeWord("Open beta now", "(beta)")).toBeUndefined();
+  });
+
+  it("matches inside words in no-space languages", () => {
+    expect(findWholeWord("打开Portal页面", "Portal", "zh-CN")).toEqual({ start: 2, end: 8 });
+  });
+
+  it("finds nothing for a blank word", () => {
+    expect(findWholeWord("Hallo", "  ")).toBeUndefined();
+  });
+});
+
 describe("useTargetInsertion", () => {
-  const setup = () => {
-    const values: Record<string, string> = { "de-DE": "Hallo ", "fr-FR": "Bonjour" };
+  const setup = (initial: Record<string, string> = {}) => {
+    const values: Record<string, string> = { "de-DE": "Hallo ", "fr-FR": "Bonjour", ...initial };
     const setValue = vi.fn((culture: string, value: string) => {
       values[culture] = value;
     });
@@ -114,5 +140,23 @@ describe("useTargetInsertion", () => {
     act(() => result.current.insert("SELISE"));
     expect(setValue).toHaveBeenCalledWith("de-DE", "Hallo SELISE");
     element.remove();
+  });
+
+  it("replaces the source wording left in the target instead of appending", () => {
+    const { result, setValue } = setup({ "de-DE": "Gehe zum Customer Portal" });
+    act(() => result.current.insert("Kundenportal", "Customer Portal"));
+    expect(setValue).toHaveBeenCalledWith("de-DE", "Gehe zum Kundenportal");
+  });
+
+  it("inserts at the selection when the source wording is not in the target", () => {
+    const { result, setValue } = setup({ "de-DE": "Gehe zum " });
+    act(() => result.current.insert("Kundenportal", "Customer Portal"));
+    expect(setValue).toHaveBeenCalledWith("de-DE", "Gehe zum Kundenportal");
+  });
+
+  it("does not replace when the value is the source wording itself (Keep)", () => {
+    const { result, setValue } = setup({ "de-DE": "Öffne selise" });
+    act(() => result.current.insert("SELISE", "selise"));
+    expect(setValue).toHaveBeenCalledWith("de-DE", "Öffne selise SELISE");
   });
 });

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const switchVariants = cva(
-  "relative cursor-pointer rounded-full border border-solid duration-200",
+  "relative shrink-0 cursor-pointer rounded-full border border-solid duration-200",
   {
     variants: {
       size: {
@@ -25,8 +25,8 @@ const switchThumbVariants = cva(
     variants: {
       size: {
         sm: "size-3 translate-x-px data-[state=checked]:translate-x-[17px]", // 12px thumb
-        md: "size-5 translate-x-px data-[state=checked]:translate-x-[23px]", // 20px thumb
-        lg: "size-[20px] translate-x-px data-[state=checked]:translate-x-[23px]", // 20px thumb
+        md: "size-5 translate-x-px data-[state=checked]:translate-x-[21px]", // 20px thumb
+        lg: "size-[20px] translate-x-px data-[state=checked]:translate-x-[21px]", // 20px thumb
       },
     },
     defaultVariants: {
