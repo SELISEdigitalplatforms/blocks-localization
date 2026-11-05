@@ -134,7 +134,7 @@ import {
   withoutRow,
   withRowsSelected,
 } from "./language-table.utils";
-import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
+import { tStatic, useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
 const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
 const COMMON_DELETE = "common:DELETE";
@@ -367,6 +367,16 @@ const withBoldPart = (text: string) => {
       {match[3]}
     </>
   );
+};
+
+const getBulkEditDisabledReason = (
+  isAllMatchingSelected: boolean,
+  hasUnloadedSelectedKeys: boolean,
+  t: TFunction,
+): string | undefined => {
+  if (isAllMatchingSelected) return t("LANGUAGE_TABLE.BULK_EDIT_MATCHING");
+  if (hasUnloadedSelectedKeys) return t("LANGUAGE_TABLE.BULK_EDIT_LOADED_ONLY");
+  return undefined;
 };
 
 /** A bulk action that may be disabled; the reason shows on hover and keyboard focus. */
@@ -1195,10 +1205,11 @@ export function LanguageTable() {
     );
   const isAllMatchingOverLimit = allViewTotalCount > MAX_BULK_KEY_SELECTION;
   const isBulkActionPending = isBulkDeletingKeys || isBulkTranslatingKeys;
-  let bulkEditDisabledReason: string | undefined;
-  if (isAllMatchingSelected) bulkEditDisabledReason = t("LANGUAGE_TABLE.BULK_EDIT_MATCHING");
-  else if (selectedKeys.length > loadedSelectedRows.length)
-    bulkEditDisabledReason = t("LANGUAGE_TABLE.BULK_EDIT_LOADED_ONLY");
+  const bulkEditDisabledReason = getBulkEditDisabledReason(
+    isAllMatchingSelected,
+    selectedKeys.length > loadedSelectedRows.length,
+    t,
+  );
   const bulkActionLimitReason =
     selectedCount > MAX_BULK_KEY_SELECTION
       ? t("LANGUAGE_TABLE.BULK_SELECTION_LIMIT", {
