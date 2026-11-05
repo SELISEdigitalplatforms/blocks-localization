@@ -59,19 +59,19 @@ const toKeyListFilterBody = <T extends Partial<IKeyListFilter>>(filter: T): T =>
   if (!payload.hasGlossaryViolations) {
     delete payload.hasGlossaryViolations;
   }
-  if (!filter.createDateRange) {
-    delete payload.createDateRange;
-  } else {
+  if (filter.createDateRange) {
     if (payload.createDateRange?.startDate === "") delete payload.createDateRange.startDate;
     if (payload.createDateRange?.endDate === "") delete payload.createDateRange.endDate;
-  }
-  if (!filter.lastUpdateDateRange) {
-    delete payload.lastUpdateDateRange;
   } else {
+    delete payload.createDateRange;
+  }
+  if (filter.lastUpdateDateRange) {
     if (payload.lastUpdateDateRange?.startDate === "")
       delete payload.lastUpdateDateRange.startDate;
     if (payload.lastUpdateDateRange?.endDate === "")
       delete payload.lastUpdateDateRange.endDate;
+  } else {
+    delete payload.lastUpdateDateRange;
   }
   return payload;
 };

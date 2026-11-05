@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Repositories
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
         private const string KeyNameField = "KeyName";
+        private const string CreateDateField = "CreateDate";
         private const string MatchStage = "$match";
 
         public const int DefaultKeyPageSize = 10;
@@ -228,7 +229,7 @@ namespace Eurolm.DomainService.Repositories
             var update = Builders<BsonDocument>.Update
                 .Inc("Done", 1)
                 .Inc("Failed", succeeded ? 0 : 1)
-                .SetOnInsert("CreateDate", DateTime.UtcNow);
+                .SetOnInsert(CreateDateField, DateTime.UtcNow);
 
             var progress = await collection.FindOneAndUpdateAsync(
                 Builders<BsonDocument>.Filter.Eq("_id", operationId),
@@ -435,19 +436,19 @@ namespace Eurolm.DomainService.Repositories
 
             if (query.CreateDateRange.StartDate != default(DateTime) && query.CreateDateRange.StartDate != null && (query.CreateDateRange.EndDate == default(DateTime) || query.CreateDateRange.EndDate == null))
             {
-                dateFilter = filterBuilder.Gte("CreateDate", query.CreateDateRange.StartDate);
+                dateFilter = filterBuilder.Gte(CreateDateField, query.CreateDateRange.StartDate);
                 dateFilters.Add(dateFilter);
             }
             else if ((query.CreateDateRange.StartDate == default(DateTime) || query.CreateDateRange.StartDate == null) && query.CreateDateRange.EndDate != default(DateTime) && query.CreateDateRange.EndDate != null)
             {
-                dateFilter = filterBuilder.Lte("CreateDate", query.CreateDateRange.EndDate);
+                dateFilter = filterBuilder.Lte(CreateDateField, query.CreateDateRange.EndDate);
                 dateFilters.Add(dateFilter);
             }
             else if (query.CreateDateRange.StartDate != default(DateTime) && query.CreateDateRange.StartDate != null && query.CreateDateRange.EndDate != default(DateTime) && query.CreateDateRange.EndDate != null)
             {
                 dateFilter = filterBuilder.And(
-                    filterBuilder.Gte("CreateDate", query.CreateDateRange.StartDate),
-                    filterBuilder.Lte("CreateDate", query.CreateDateRange.EndDate)
+                    filterBuilder.Gte(CreateDateField, query.CreateDateRange.StartDate),
+                    filterBuilder.Lte(CreateDateField, query.CreateDateRange.EndDate)
                 );
                 dateFilters.Add(dateFilter);
             }

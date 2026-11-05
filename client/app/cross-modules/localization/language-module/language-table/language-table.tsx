@@ -377,6 +377,9 @@ function BulkActionReason({ reason, children }: Readonly<{ reason?: string; chil
       <Tooltip>
         <TooltipTrigger asChild>
           <span
+            role="button"
+            aria-disabled="true"
+            aria-label={reason}
             tabIndex={0}
             aria-describedby={reasonId}
             className="inline-flex rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [&_button]:pointer-events-none"
@@ -390,6 +393,147 @@ function BulkActionReason({ reason, children }: Readonly<{ reason?: string; chil
         {reason}
       </span>
     </TooltipProvider>
+  );
+}
+
+interface BulkSelectionBarProps {
+  selectedCount: number;
+  selectedKeysCount: number;
+  isAllMatchingSelected: boolean;
+  isAllView: boolean;
+  allViewTotalCount: number;
+  canEscalateToAllMatching: boolean;
+  isAllMatchingOverLimit: boolean;
+  overLimitText: string;
+  isBulkActionPending: boolean;
+  bulkEditDisabledReason?: string;
+  bulkActionLimitReason?: string;
+  onClearSelection: () => void;
+  onSelectAllMatching: () => void;
+  onSelectLoadedOnly: () => void;
+  onBulkEdit: () => void;
+  onBulkTranslate: () => void;
+  onBulkDelete: () => void;
+}
+
+function BulkSelectionBar({
+  selectedCount,
+  selectedKeysCount,
+  isAllMatchingSelected,
+  isAllView,
+  allViewTotalCount,
+  canEscalateToAllMatching,
+  isAllMatchingOverLimit,
+  overLimitText,
+  isBulkActionPending,
+  bulkEditDisabledReason,
+  bulkActionLimitReason,
+  onClearSelection,
+  onSelectAllMatching,
+  onSelectLoadedOnly,
+  onBulkEdit,
+  onBulkTranslate,
+  onBulkDelete,
+}: Readonly<BulkSelectionBarProps>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
+  if (selectedCount <= 0) return null;
+
+  return (
+    <div className="mb-4 flex items-center justify-between gap-2 rounded bg-blocks-primary-shades-300 px-4 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          aria-label={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
+          title={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
+          onClick={onClearSelection}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium" aria-live="polite">
+          {isAllMatchingSelected
+            ? withBoldPart(
+                t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
+                  count: selectedCount,
+                  formatted: selectedCount.toLocaleString(),
+                }),
+              )
+            : getSelectedKeysLabel(
+                selectedKeysCount,
+                isAllView ? allViewTotalCount : undefined,
+              )}
+        </span>
+        {canEscalateToAllMatching && !isAllMatchingOverLimit && (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto p-0"
+            disabled={isBulkActionPending}
+            onClick={onSelectAllMatching}
+          >
+            {t("LANGUAGE_TABLE.SELECT_ALL_MATCHING", {
+              count: allViewTotalCount,
+              formatted: allViewTotalCount.toLocaleString(),
+            })}
+          </Button>
+        )}
+        {canEscalateToAllMatching && isAllMatchingOverLimit && (
+          <span className="text-sm text-medium-emphasis">{overLimitText}</span>
+        )}
+        {isAllMatchingSelected && (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto p-0"
+            disabled={isBulkActionPending}
+            onClick={onSelectLoadedOnly}
+          >
+            {t("LANGUAGE_TABLE.SELECT_LOADED_ONLY")}
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <BulkActionReason reason={bulkEditDisabledReason}>
+          <Button
+            size="sm"
+            variant="default"
+            disabled={!!bulkEditDisabledReason || isBulkActionPending}
+            onClick={onBulkEdit}
+          >
+            <PencilLine className="h-4 w-4 lg:mr-1" />
+            <span className="sr-only lg:not-sr-only">{t("LANGUAGE_TABLE.BULK_EDIT")}</span>
+          </Button>
+        </BulkActionReason>
+        <BulkActionReason reason={bulkActionLimitReason}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!bulkActionLimitReason || isBulkActionPending}
+            onClick={onBulkTranslate}
+            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Languages className="lg:mr-1 h-4 w-4" />
+            <span className="sr-only lg:not-sr-only">{t(LANGUAGE_TABLE_TRANSLATE)}</span>
+          </Button>
+        </BulkActionReason>
+        <BulkActionReason reason={bulkActionLimitReason}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!bulkActionLimitReason || isBulkActionPending}
+            onClick={onBulkDelete}
+            className="border-error text-error hover:bg-error hover:text-primary-foreground"
+          >
+            <Trash className="lg:mr-1 h-4 w-4" />
+            <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
+          </Button>
+        </BulkActionReason>
+      </div>
+    </div>
   );
 }
 
@@ -1422,107 +1566,25 @@ export function LanguageTable() {
                   </DropdownMenu>
                 </div>
               </CardHeader>
-              {selectedCount > 0 && (
-                <div className="mb-4 flex items-center justify-between gap-2 rounded bg-blocks-primary-shades-300 px-4 py-2">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-9 w-9 shrink-0"
-                      aria-label={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
-                      title={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
-                      onClick={() => setRowSelection({})}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium" aria-live="polite">
-                      {isAllMatchingSelected
-                        ? withBoldPart(
-                            t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
-                              count: selectedCount,
-                              formatted: selectedCount.toLocaleString(),
-                            }),
-                          )
-                        : getSelectedKeysLabel(
-                            selectedKeys.length,
-                            isAllView ? allViewTotalCount : undefined,
-                          )}
-                    </span>
-                    {canEscalateToAllMatching && !isAllMatchingOverLimit && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="xs"
-                        className="h-auto p-0"
-                        disabled={isBulkActionPending}
-                        onClick={selectAllMatching}
-                      >
-                        {t("LANGUAGE_TABLE.SELECT_ALL_MATCHING", {
-                          count: allViewTotalCount,
-                          formatted: allViewTotalCount.toLocaleString(),
-                        })}
-                      </Button>
-                    )}
-                    {canEscalateToAllMatching && isAllMatchingOverLimit && (
-                      <span className="text-sm text-medium-emphasis">{overLimitText}</span>
-                    )}
-                    {isAllMatchingSelected && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="xs"
-                        className="h-auto p-0"
-                        disabled={isBulkActionPending}
-                        onClick={leaveAllMatching}
-                      >
-                        {t("LANGUAGE_TABLE.SELECT_LOADED_ONLY")}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BulkActionReason reason={bulkEditDisabledReason}>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        disabled={!!bulkEditDisabledReason || isBulkActionPending}
-                        onClick={() => setIsBulkEditDialogOpen(true)}
-                      >
-                        <PencilLine className="h-4 w-4 lg:mr-1" />
-                        <span className="sr-only lg:not-sr-only">
-                          {t("LANGUAGE_TABLE.BULK_EDIT")}
-                        </span>
-                      </Button>
-                    </BulkActionReason>
-                    <BulkActionReason reason={bulkActionLimitReason}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={!!bulkActionLimitReason || isBulkActionPending}
-                        onClick={() => setIsBulkTranslateDialogOpen(true)}
-                        className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                      >
-                        <Languages className="lg:mr-1 h-4 w-4" />
-                        <span className="sr-only lg:not-sr-only">
-                          {t(LANGUAGE_TABLE_TRANSLATE)}
-                        </span>
-                      </Button>
-                    </BulkActionReason>
-                    <BulkActionReason reason={bulkActionLimitReason}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={!!bulkActionLimitReason || isBulkActionPending}
-                        onClick={() => setIsBulkDeleteDialogOpen(true)}
-                        className="border-error text-error hover:bg-error hover:text-primary-foreground"
-                      >
-                        <Trash className="lg:mr-1 h-4 w-4" />
-                        <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
-                      </Button>
-                    </BulkActionReason>
-                  </div>
-                </div>
-              )}
+              <BulkSelectionBar
+                selectedCount={selectedCount}
+                selectedKeysCount={selectedKeys.length}
+                isAllMatchingSelected={isAllMatchingSelected}
+                isAllView={isAllView}
+                allViewTotalCount={allViewTotalCount}
+                canEscalateToAllMatching={canEscalateToAllMatching}
+                isAllMatchingOverLimit={isAllMatchingOverLimit}
+                overLimitText={overLimitText}
+                isBulkActionPending={isBulkActionPending}
+                bulkEditDisabledReason={bulkEditDisabledReason}
+                bulkActionLimitReason={bulkActionLimitReason}
+                onClearSelection={() => setRowSelection({})}
+                onSelectAllMatching={selectAllMatching}
+                onSelectLoadedOnly={leaveAllMatching}
+                onBulkEdit={() => setIsBulkEditDialogOpen(true)}
+                onBulkTranslate={() => setIsBulkTranslateDialogOpen(true)}
+                onBulkDelete={() => setIsBulkDeleteDialogOpen(true)}
+              />
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
                   <div className="flex flex-wrap items-center gap-4">

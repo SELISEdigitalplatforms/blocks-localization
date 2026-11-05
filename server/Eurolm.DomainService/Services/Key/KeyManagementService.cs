@@ -46,6 +46,7 @@ namespace Eurolm.DomainService.Services
             ?? throw new InvalidOperationException("A tenant context is required to save a key.");
         private const string DateTimeFormat = "yyyyMMddHHmmss";
         private const string ItemIdErrorKey = "ItemId";
+        private const string SystemUserId = "System";
 
         private const string ItemIdColumn = "ItemId";
         private const string ModuleIdColumn = "ModuleId";
@@ -535,7 +536,7 @@ namespace Eurolm.DomainService.Services
                     PreviousData = key,
                     CurrentData = null,
                     LogFrom = LogFromConstants.KeyBulkDelete,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = bulkOperationId
@@ -2529,7 +2530,7 @@ namespace Eurolm.DomainService.Services
                     FileId = fileId,
                     FileName = fileName,
                     CreateDate = DateTime.UtcNow,
-                    CreatedBy = BlocksContext.GetContext()?.UserId ?? "System"
+                    CreatedBy = BlocksContext.GetContext()?.UserId ?? SystemUserId
                 };
 
                 await _keyRepository.SaveUilmExportedFileAsync(exportedFile);
@@ -3020,7 +3021,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = currentKey,
                     PreviousData = previousKey,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId ?? Guid.NewGuid().ToString()
@@ -3050,7 +3051,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = key,
                     PreviousData = null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId
@@ -3083,7 +3084,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = key,
                     PreviousData = previousKeyDict.TryGetValue(key.ItemId, out var previousKey) ? previousKey : null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId
@@ -3110,7 +3111,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = null,
                     PreviousData = null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = Guid.NewGuid().ToString()
