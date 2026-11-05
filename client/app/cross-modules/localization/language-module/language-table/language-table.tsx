@@ -1,4 +1,15 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  Fragment,
+  type ReactNode,
+} from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -99,19 +110,27 @@ import {
 } from "./hooks/use-language-import-progress";
 import {
   areAllRowsSelected,
+  BULK_KEY_SET_CHANGED,
+  BULK_TOO_MANY_KEYS,
+  getBulkKeyTargetError,
   getDeleteKeyErrorMessage,
   getDeleteKeysErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
   getResourceSearchFilters,
   getSelectedKeysLabel,
+  getSelectedRowIds,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
+  getUpdatedExclusions,
+  KEY_LIST_QUERY_TIMEOUT,
+  MAX_BULK_KEY_SELECTION,
   parseResourceSearch,
   TABLE_ROW_HEIGHT_ESTIMATE,
   toKeyPageSize,
   updateResourceSearchValue,
+  withoutRow,
   withRowsSelected,
 } from "./language-table.utils";
 import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
@@ -255,12 +274,14 @@ async function runKeyAction({
   onSuccess,
   describeErrors,
   describeException,
+  onException,
 }: {
   request: () => Promise<IBaseMutationResponse | undefined>;
   success: { title: string; description: string };
   onSuccess: () => void;
   describeErrors: (errors: unknown) => string;
   describeException: (error: unknown) => string;
+  onException?: (error: unknown) => void;
 }) {
   try {
     const res = await request();
@@ -276,6 +297,7 @@ async function runKeyAction({
     }
   } catch (error) {
     showErrorToast(describeException(error));
+    onException?.(error);
   }
 }
 
@@ -330,6 +352,44 @@ function LanguageTableEmptyState({
       <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_KEYS_YET")}</p>
       <p className="text-muted-foreground">{t("LANGUAGE_TABLE.NO_KEYS_YET_HINT")}</p>
     </div>
+  );
+}
+
+/** Renders the part of a translated text between `<0>` and `</0>` in bold. */
+const withBoldPart = (text: string) => {
+  const match = /^(.*)<0>(.*)<\/0>(.*)$/s.exec(text);
+  if (!match) return text;
+  return (
+    <>
+      {match[1]}
+      <strong>{match[2]}</strong>
+      {match[3]}
+    </>
+  );
+};
+
+/** A bulk action that may be disabled; the reason shows on hover and keyboard focus. */
+function BulkActionReason({ reason, children }: Readonly<{ reason?: string; children: ReactNode }>) {
+  const reasonId = useId();
+  if (!reason) return children;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            aria-describedby={reasonId}
+            className="inline-flex rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [&_button]:pointer-events-none"
+          >
+            {children}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{reason}</TooltipContent>
+      </Tooltip>
+      <span id={reasonId} className="sr-only">
+        {reason}
+      </span>
+    </TooltipProvider>
   );
 }
 
@@ -473,6 +533,7 @@ export function LanguageTable() {
     allViewQuery,
     allViewKeys,
     allViewTotalCount,
+    allViewFilter,
     pagedData: blocksLanguageKeyData,
     isLoading,
     isFetching,
@@ -522,9 +583,29 @@ export function LanguageTable() {
   // In the All view, while every loaded row is selected, the rows of later chunks are selected as
   // they load, so select-all keeps covering the list while scrolling.
   const isSelectingAllLoadedRef = useRef(false);
+  // "Select all N matching": bulk Delete and Translate send the All view's filter instead of IDs,
+  // and the rows unticked meanwhile are sent as exclusions.
+  const [isAllMatchingSelected, setIsAllMatchingSelected] = useState(false);
+  const [excludedKeyIds, setExcludedKeyIds] = useState<ReadonlySet<string>>(() => new Set());
+  const leaveAllMatching = useCallback(() => {
+    setIsAllMatchingSelected(false);
+    setExcludedKeyIds((current) => (current.size > 0 ? new Set() : current));
+  }, []);
   const setRowSelection = useCallback<OnChangeFn<RowSelectionState>>(
     (updater) => {
       const next = typeof updater === "function" ? updater(rowSelectionState) : updater;
+      if (isAllMatchingSelected && Object.keys(next).length === 0) {
+        leaveAllMatching();
+      } else if (isAllMatchingSelected) {
+        setExcludedKeyIds((current) =>
+          getUpdatedExclusions(
+            current,
+            allViewKeys.map((key) => key.itemId),
+            rowSelectionState,
+            next,
+          ),
+        );
+      }
       isSelectingAllLoadedRef.current =
         isAllView &&
         areAllRowsSelected(
@@ -533,7 +614,7 @@ export function LanguageTable() {
         );
       setRowSelectionState(next);
     },
-    [rowSelectionState, isAllView, allViewKeys],
+    [rowSelectionState, isAllView, allViewKeys, isAllMatchingSelected, leaveAllMatching],
   );
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
@@ -663,7 +744,10 @@ export function LanguageTable() {
         title: t(COMMON_SUCCESS),
         description: t("LANGUAGE_TABLE.DELETED_SUCCESSFULLY"),
       },
-      onSuccess: () => setIsDeleteDialogOpen(false),
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        setRowSelectionState((current) => withoutRow(current, selectedLanguageKeyId));
+      },
       describeErrors: getDeleteKeyErrorMessage,
       describeException: (error) =>
         error instanceof Error ? error.message : t("LANGUAGE_TABLE.UNEXPECTED_ERROR"),
@@ -739,6 +823,7 @@ export function LanguageTable() {
     sortQueryParams,
     translatingKeys,
     selectAllLabel: getSelectAllLabel(isAllView, allViewKeys.length),
+    clearSelectionOnUntickAll: isAllView,
   });
 
   const tableData = useMemo(() => {
@@ -804,6 +889,7 @@ export function LanguageTable() {
     queryParams.search,
     queryParams.moduleIds,
     queryParams.missingLanguages,
+    queryParams.duplicates,
     queryParams.glossaryIssues,
     createDateRange,
     lastUpdateDateRange,
@@ -821,11 +907,22 @@ export function LanguageTable() {
     isSelectingAllLoadedRef.current = false;
   }, [isAllView, allViewFiltersHash]);
 
+  // The All view counts selected keys that are no longer loaded, so a selection made under other
+  // filters could include keys the new list hides.
   useEffect(() => {
-    if (!isSelectingAllLoadedRef.current) return;
-    const loadedKeyIds = allViewKeys.map((key) => key.itemId);
+    leaveAllMatching();
+    if (!isAllView) return;
+    setRowSelectionState((current) => (Object.keys(current).length > 0 ? {} : current));
+  }, [isAllView, allViewFiltersHash, tenantId, leaveAllMatching]);
+
+  useEffect(() => {
+    // While all matching keys are selected, every loaded row is ticked unless it was excluded.
+    if (!isAllMatchingSelected && !isSelectingAllLoadedRef.current) return;
+    const loadedKeyIds = allViewKeys
+      .map((key) => key.itemId)
+      .filter((itemId) => !excludedKeyIds.has(itemId));
     setRowSelectionState((current) => withRowsSelected(current, loadedKeyIds));
-  }, [allViewKeys]);
+  }, [allViewKeys, isAllMatchingSelected, excludedKeyIds]);
 
   const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
   useEffect(() => {
@@ -842,28 +939,103 @@ export function LanguageTable() {
     }
   }, [queryParams.pageSize, setQueryParams]);
 
-  const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
-  const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
+  const loadedSelectedRows = table.getSelectedRowModel().rows.map((row) => row.original);
+  // The All view drops its oldest chunks while scrolling; their selected keys still count.
+  const selectedKeys = isAllView
+    ? getSelectedRowIds(rowSelectionState)
+    : loadedSelectedRows.map((row) => row.itemId);
+  const allMatchingCount = allViewTotalCount - excludedKeyIds.size;
+  const selectedCount = isAllMatchingSelected ? allMatchingCount : selectedKeys.length;
+  // Offered once every loaded row is selected and more keys match; not when the total is unknown
+  // or the duplicates list was cut short, since the server then can't resolve the same set.
+  const canEscalateToAllMatching =
+    isAllView &&
+    !isAllMatchingSelected &&
+    !showDuplicatesTruncatedNote &&
+    allViewTotalCount > selectedKeys.length &&
+    areAllRowsSelected(
+      allViewKeys.map((key) => key.itemId),
+      rowSelectionState,
+    );
+  const isAllMatchingOverLimit = allViewTotalCount > MAX_BULK_KEY_SELECTION;
+  const isBulkActionPending = isBulkDeletingKeys || isBulkTranslatingKeys;
+  let bulkEditDisabledReason: string | undefined;
+  if (isAllMatchingSelected) bulkEditDisabledReason = t("LANGUAGE_TABLE.BULK_EDIT_MATCHING");
+  else if (selectedKeys.length > loadedSelectedRows.length)
+    bulkEditDisabledReason = t("LANGUAGE_TABLE.BULK_EDIT_LOADED_ONLY");
+  const bulkActionLimitReason =
+    selectedCount > MAX_BULK_KEY_SELECTION
+      ? t("LANGUAGE_TABLE.BULK_SELECTION_LIMIT", {
+          formatted: MAX_BULK_KEY_SELECTION.toLocaleString(),
+        })
+      : undefined;
+  const overLimitText = t("LANGUAGE_TABLE.ALL_MATCHING_OVER_LIMIT", {
+    formatted: MAX_BULK_KEY_SELECTION.toLocaleString(),
+  });
+
+  const selectAllMatching = () => {
+    setExcludedKeyIds(new Set());
+    setIsAllMatchingSelected(true);
+  };
+
+  /** The toast for a refused "all matching" action; a changed key set also reloads the list. */
+  const describeAllMatchingError = (fallback: (error: unknown) => string) => (error: unknown) => {
+    const targetError = getBulkKeyTargetError(error);
+    if (targetError?.code === BULK_KEY_SET_CHANGED) {
+      return t("LANGUAGE_TABLE.ALL_MATCHING_CHANGED", {
+        formatted: (targetError.matchedCount ?? 0).toLocaleString(),
+      });
+    }
+    if (targetError?.code === BULK_TOO_MANY_KEYS) return overLimitText;
+    if (targetError?.code === KEY_LIST_QUERY_TIMEOUT) return t("LANGUAGE_TABLE.ALL_MATCHING_TIMEOUT");
+    return fallback(error);
+  };
+
+  const onAllMatchingException = (error: unknown) => {
+    if (getBulkKeyTargetError(error)?.code !== BULK_KEY_SET_CHANGED) return;
+    leaveAllMatching();
+    resetAllView();
+  };
 
   const bulkDeleteModalData = {
     dialogTitle: t("LANGUAGE_TABLE.BULK_DELETE_TITLE"),
-    dialogSubtitle: t("LANGUAGE_TABLE.BULK_DELETE_SUBTITLE", { count: selectedKeys.length }),
+    dialogSubtitle: isAllMatchingSelected
+      ? t("LANGUAGE_TABLE.BULK_DELETE_MATCHING_SUBTITLE", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        })
+      : t("LANGUAGE_TABLE.BULK_DELETE_SUBTITLE", { count: selectedCount }),
     confirmButton: t(COMMON_DELETE),
     cancelButton: t(COMMON_CANCEL),
   };
 
   const bulkTranslateModalData = {
     dialogTitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_TITLE"),
-    dialogSubtitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_SUBTITLE", { count: selectedKeys.length }),
+    dialogSubtitle: isAllMatchingSelected
+      ? t("LANGUAGE_TABLE.BULK_TRANSLATE_MATCHING_SUBTITLE", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        })
+      : t("LANGUAGE_TABLE.BULK_TRANSLATE_SUBTITLE", { count: selectedCount }),
     confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
     cancelButton: t(COMMON_CANCEL),
   };
 
   const onConfirmBulkDelete = async () => {
-    if (!tenantId || selectedKeys.length === 0) return;
+    if (!tenantId || selectedCount <= 0 || bulkActionLimitReason) return;
 
+    const wasAllMatching = isAllMatchingSelected;
     await runKeyAction({
-      request: () => bulkDeleteAsync({ itemIds: selectedKeys }),
+      request: () =>
+        bulkDeleteAsync(
+          wasAllMatching
+            ? {
+                filter: allViewFilter,
+                excludedItemIds: [...excludedKeyIds],
+                expectedCount: allMatchingCount,
+              }
+            : { itemIds: selectedKeys },
+        ),
       success: {
         title: t(COMMON_SUCCESS),
         description: t("LANGUAGE_TABLE.KEYS_DELETED_SUCCESSFULLY"),
@@ -871,9 +1043,17 @@ export function LanguageTable() {
       onSuccess: () => {
         setIsBulkDeleteDialogOpen(false);
         setRowSelection({});
+        if (wasAllMatching) resetAllView();
       },
       describeErrors: getDeleteKeysErrorMessage,
-      describeException: getDeleteKeysErrorMessage,
+      describeException: wasAllMatching
+        ? describeAllMatchingError(getDeleteKeysErrorMessage)
+        : getDeleteKeysErrorMessage,
+      onException: (error) => {
+        if (!wasAllMatching) return;
+        setIsBulkDeleteDialogOpen(false);
+        onAllMatchingException(error);
+      },
     });
   };
 
@@ -882,14 +1062,22 @@ export function LanguageTable() {
   };
 
   const onConfirmBulkTranslate = async () => {
-    if (!tenantId || selectedKeys.length === 0) return;
+    if (!tenantId || selectedCount <= 0 || bulkActionLimitReason) return;
 
-    const payload = {
-      keyIds: selectedKeys,
+    const wasAllMatching = isAllMatchingSelected;
+    const options = {
       ProjectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
       defaultLanguage: defaultLanguageCode,
     };
+    const payload = wasAllMatching
+      ? {
+          ...options,
+          filter: allViewFilter,
+          excludedKeyIds: [...excludedKeyIds],
+          expectedCount: allMatchingCount,
+        }
+      : { ...options, keyIds: selectedKeys };
 
     await runKeyAction({
       request: () => bulkTranslateAsync(payload),
@@ -902,11 +1090,17 @@ export function LanguageTable() {
         setTranslatingKeys((prev) => addKeysToSet(prev, selectedKeys));
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
+        if (wasAllMatching) resetAllView();
 
         setTimeout(() => clearTranslatingKeys(keysToTranslate), 60000);
       },
       describeErrors: stringifyError,
-      describeException: stringifyError,
+      describeException: wasAllMatching ? describeAllMatchingError(stringifyError) : stringifyError,
+      onException: (error) => {
+        if (!wasAllMatching) return;
+        setIsBulkTranslateDialogOpen(false);
+        onAllMatchingException(error);
+      },
     });
   };
 
@@ -1228,9 +1422,9 @@ export function LanguageTable() {
                   </DropdownMenu>
                 </div>
               </CardHeader>
-              {selectedKeys.length > 0 && (
-                <div className="mb-4 flex items-center justify-between rounded bg-blocks-primary-shades-300 px-4 py-2">
-                  <div className="flex items-center gap-2">
+              {selectedCount > 0 && (
+                <div className="mb-4 flex items-center justify-between gap-2 rounded bg-blocks-primary-shades-300 px-4 py-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <Button
                       type="button"
                       size="icon"
@@ -1242,44 +1436,90 @@ export function LanguageTable() {
                     >
                       <X className="h-4 w-4" />
                     </Button>
-                    <span className="text-sm font-medium">
-                      {getSelectedKeysLabel(
-                        selectedKeys.length,
-                        isAllView ? allViewTotalCount : undefined,
-                      )}
+                    <span className="text-sm font-medium" aria-live="polite">
+                      {isAllMatchingSelected
+                        ? withBoldPart(
+                            t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
+                              count: selectedCount,
+                              formatted: selectedCount.toLocaleString(),
+                            }),
+                          )
+                        : getSelectedKeysLabel(
+                            selectedKeys.length,
+                            isAllView ? allViewTotalCount : undefined,
+                          )}
                     </span>
+                    {canEscalateToAllMatching && !isAllMatchingOverLimit && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="xs"
+                        className="h-auto p-0"
+                        disabled={isBulkActionPending}
+                        onClick={selectAllMatching}
+                      >
+                        {t("LANGUAGE_TABLE.SELECT_ALL_MATCHING", {
+                          count: allViewTotalCount,
+                          formatted: allViewTotalCount.toLocaleString(),
+                        })}
+                      </Button>
+                    )}
+                    {canEscalateToAllMatching && isAllMatchingOverLimit && (
+                      <span className="text-sm text-medium-emphasis">{overLimitText}</span>
+                    )}
+                    {isAllMatchingSelected && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="xs"
+                        className="h-auto p-0"
+                        disabled={isBulkActionPending}
+                        onClick={leaveAllMatching}
+                      >
+                        {t("LANGUAGE_TABLE.SELECT_LOADED_ONLY")}
+                      </Button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => setIsBulkEditDialogOpen(true)}
-                    >
-                      <PencilLine className="h-4 w-4 lg:mr-1" />
-                      <span className="sr-only lg:not-sr-only">
-                        {t("LANGUAGE_TABLE.BULK_EDIT")}
-                      </span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsBulkTranslateDialogOpen(true)}
-                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <Languages className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">
-                        {t(LANGUAGE_TABLE_TRANSLATE)}
-                      </span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsBulkDeleteDialogOpen(true)}
-                      className="border-error text-error hover:bg-error hover:text-primary-foreground"
-                    >
-                      <Trash className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
-                    </Button>
+                    <BulkActionReason reason={bulkEditDisabledReason}>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={!!bulkEditDisabledReason || isBulkActionPending}
+                        onClick={() => setIsBulkEditDialogOpen(true)}
+                      >
+                        <PencilLine className="h-4 w-4 lg:mr-1" />
+                        <span className="sr-only lg:not-sr-only">
+                          {t("LANGUAGE_TABLE.BULK_EDIT")}
+                        </span>
+                      </Button>
+                    </BulkActionReason>
+                    <BulkActionReason reason={bulkActionLimitReason}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!bulkActionLimitReason || isBulkActionPending}
+                        onClick={() => setIsBulkTranslateDialogOpen(true)}
+                        className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <Languages className="lg:mr-1 h-4 w-4" />
+                        <span className="sr-only lg:not-sr-only">
+                          {t(LANGUAGE_TABLE_TRANSLATE)}
+                        </span>
+                      </Button>
+                    </BulkActionReason>
+                    <BulkActionReason reason={bulkActionLimitReason}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!bulkActionLimitReason || isBulkActionPending}
+                        onClick={() => setIsBulkDeleteDialogOpen(true)}
+                        className="border-error text-error hover:bg-error hover:text-primary-foreground"
+                      >
+                        <Trash className="lg:mr-1 h-4 w-4" />
+                        <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
+                      </Button>
+                    </BulkActionReason>
                   </div>
                 </div>
               )}
@@ -1517,7 +1757,7 @@ export function LanguageTable() {
           <Dialog open={isBulkEditDialogOpen} onOpenChange={setIsBulkEditDialogOpen}>
             {isBulkEditDialogOpen && (
               <BulkEditKeysDialog
-                keys={selectedKeyRows}
+                keys={loadedSelectedRows}
                 languages={languageListData ?? []}
                 onCancel={() => setIsBulkEditDialogOpen(false)}
                 onSaved={() => {

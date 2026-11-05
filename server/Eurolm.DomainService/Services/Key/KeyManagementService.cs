@@ -479,67 +479,99 @@ namespace Eurolm.DomainService.Services
             return new BaseMutationResponse { IsSuccess = true };
         }
 
-        public async Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request)
+        public async Task<BulkKeyActionResponse> DeleteKeysAsync(DeleteKeysRequest request)
         {
-            _logger.LogInformation("Bulk deleting Keys start. Count: {Count}", request.ItemIds.Count);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var isFilterForm = request.Filter != null;
+            var itemIds = isFilterForm
+                ? await ResolveBulkKeyTargetAsync(request.Filter!, request.ExcludedItemIds, request.ExpectedCount ?? 0)
+                : request.ItemIds.Distinct().ToList();
+
+            // Filter values are user content; only the form and the counts are logged.
+            _logger.LogInformation("Bulk deleting Keys start. Form: {Form}, Count: {Count}", isFilterForm ? "filter" : "ids", itemIds.Count);
 
             var errors = new Dictionary<string, string>();
             var bulkOperationId = Guid.NewGuid().ToString();
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
 
-            foreach (var itemId in request.ItemIds)
+            foreach (var batch in itemIds.Chunk(BulkKeyTarget.DeleteBatchSize))
             {
                 try
                 {
-                    var key = await _keyRepository.GetByIdAsync(itemId);
-                    if (key == null)
-                    {
-                        errors[itemId] = "Key not found";
-                        continue;
-                    }
-
-                    BlocksLanguageKey? repoKey = null;
-                    try
-                    {
-                        repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
-                    }
-
-                    await _keyRepository.DeleteAsync(itemId);
-
-                    if (repoKey != null)
-                    {
-                        try
-                        {
-                            await CreateKeyTimelineEntryAsync(repoKey, null, LogFromConstants.KeyBulkDelete, bulkOperationId, entityId: repoKey.ItemId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
-                        }
-                    }
+                    var result = await _keyRepository.DeleteKeysWithSnapshotsAsync(batch);
+                    foreach (var (itemId, message) in result.Errors) errors[itemId] = message;
+                    if (result.Deleted.Count > 0)
+                        await CreateBulkDeleteTimelineEntriesAsync(result.Deleted, bulkOperationId, tenantId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
-                    errors[itemId] = ex.Message;
+                    _logger.LogError(ex, "Error while bulk deleting a batch of {Count} Keys: {Error}", batch.Length, ex.Message);
+                    foreach (var itemId in batch.Where(id => !errors.ContainsKey(id)))
+                    {
+                        errors[itemId] = ex.Message;
+                    }
                 }
             }
 
-            _logger.LogInformation("Bulk deleting Keys end. Errors: {ErrorCount}", errors.Count);
+            _logger.LogInformation("Bulk deleting Keys end. Form: {Form}, Count: {Count}, Errors: {ErrorCount}, Duration: {DurationMs} ms",
+                isFilterForm ? "filter" : "ids", itemIds.Count, errors.Count, stopwatch.ElapsedMilliseconds);
 
-            if (errors.Any())
+            return new BulkKeyActionResponse
             {
-                return new BaseMutationResponse
+                IsSuccess = errors.Count == 0,
+                Errors = errors.Count == 0 ? null : errors,
+                MatchedCount = itemIds.Count
+            };
+        }
+
+        private async Task CreateBulkDeleteTimelineEntriesAsync(List<BlocksLanguageKey> deletedKeys, string bulkOperationId, string tenantId)
+        {
+            try
+            {
+                var context = BlocksContext.GetContext();
+                var timelines = deletedKeys.Select(key => new KeyTimeline
                 {
-                    IsSuccess = false,
-                    Errors = errors
-                };
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = null,
+                    LogFrom = LogFromConstants.KeyBulkDelete,
+                    UserId = context?.UserId ?? "System",
+                    CreateDate = DateTime.UtcNow,
+                    LastUpdateDate = DateTime.UtcNow,
+                    OperationId = bulkOperationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                // The keys are already deleted; a timeline failure must not report them as failed.
+                _logger.LogError(ex, "Failed to create timeline entries for {Count} bulk deleted Keys: {Error}", deletedKeys.Count, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// The keys a filter-form bulk action acts on: the keys matching <paramref name="filter"/> minus
+        /// <paramref name="excludedIds"/>, refused when over <see cref="BulkKeyTarget.MaxKeys"/> or when they no
+        /// longer number <paramref name="expectedCount"/>.
+        /// </summary>
+        private async Task<List<string>> ResolveBulkKeyTargetAsync(GetKeysRequest filter, IReadOnlyCollection<string>? excludedIds, long expectedCount)
+        {
+            var excluded = excludedIds?.ToHashSet() ?? new HashSet<string>();
+            // One past the cap after exclusions tells an over-cap set apart without reading all of it.
+            var matching = await _keyRepository.GetMatchingKeyIdsAsync(filter, BulkKeyTarget.MaxKeys + excluded.Count + 1);
+            var target = matching.Ids.Where(id => !excluded.Contains(id)).Distinct().ToList();
+
+            if (matching.DuplicatesTruncated || target.Count > BulkKeyTarget.MaxKeys)
+            {
+                throw new BulkKeyTargetException(BulkKeyTarget.TooManyKeys, 400, target.Count);
+            }
+            if (target.Count != expectedCount)
+            {
+                throw new BulkKeyTargetException(BulkKeyTarget.KeySetChanged, 409, target.Count);
             }
 
-            return new BaseMutationResponse { IsSuccess = true };
+            return target;
         }
 
         public async Task<bool> ChangeAll(TranslateAllEvent request)
@@ -695,6 +727,27 @@ namespace Eurolm.DomainService.Services
             {
                 _logger.LogError(ex, "Error occurred while bulk translating BlocksLanguageKeys");
                 return false;
+            }
+        }
+
+        public async Task<bool?> CompleteTranslateBlocksLanguageKeysBatchAsync(TranslateBlocksLanguageKeysEvent request, bool succeeded)
+        {
+            var batchCount = request.BatchCount ?? 1;
+            if (batchCount <= 1) return succeeded;
+
+            try
+            {
+                var progress = await _keyRepository.RecordBulkTranslateBatchAsync(request.OperationId, succeeded);
+                if (progress.Done < batchCount) return null;
+
+                await _keyRepository.DeleteBulkTranslateProgressAsync(request.OperationId);
+                return progress.Failed == 0;
+            }
+            catch (Exception ex)
+            {
+                // Without the counter, notifying for this batch beats never notifying at all.
+                _logger.LogError(ex, "Failed to record bulk translate batch for operation {OperationId}: {Error}", request.OperationId, ex.Message);
+                return succeeded;
             }
         }
 
@@ -1125,24 +1178,37 @@ namespace Eurolm.DomainService.Services
             );
         }
 
-        public async Task SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request)
+        public async Task<BulkKeyActionResponse> SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request)
         {
+            var isFilterForm = request.Filter != null;
+            var keyIds = isFilterForm
+                ? await ResolveBulkKeyTargetAsync(request.Filter!, request.ExcludedKeyIds, request.ExpectedCount ?? 0)
+                : request.KeyIds?.Distinct().ToList() ?? new List<string>();
             var operationId = Guid.NewGuid().ToString();
+            var batches = keyIds.Chunk(BulkKeyTarget.TranslateEventBatchSize).ToList();
 
-            await _messageClient.SendToConsumerAsync(
-                new ConsumerMessage<TranslateBlocksLanguageKeysEvent>
-                {
-                    ConsumerName = Utilities.Constants.TranslateBlocksLanguageKeysQueue,
-                    Payload = new TranslateBlocksLanguageKeysEvent
+            // Small events keep each message well under the broker's size limit; they share the operation.
+            foreach (var batch in batches)
+            {
+                await _messageClient.SendToConsumerAsync(
+                    new ConsumerMessage<TranslateBlocksLanguageKeysEvent>
                     {
-                        MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = BlocksContext.GetContext().TenantId??"",
-                        DefaultLanguage = request.DefaultLanguage,
-                        KeyIds = request.KeyIds,
-                        OperationId = operationId
+                        ConsumerName = Utilities.Constants.TranslateBlocksLanguageKeysQueue,
+                        Payload = new TranslateBlocksLanguageKeysEvent
+                        {
+                            MessageCoRelationId = request.MessageCoRelationId,
+                            ProjectKey = BlocksContext.GetContext().TenantId??"",
+                            DefaultLanguage = request.DefaultLanguage,
+                            KeyIds = batch.ToList(),
+                            OperationId = operationId,
+                            BatchCount = batches.Count > 1 ? batches.Count : null
+                        }
                     }
-                }
-            );
+                );
+            }
+
+            _logger.LogInformation("Bulk translate queued. Form: {Form}, Count: {Count}", isFilterForm ? "filter" : "ids", keyIds.Count);
+            return new BulkKeyActionResponse { IsSuccess = true, MatchedCount = keyIds.Count };
         }
 
         public async Task SendUilmImportEvent(UilmImportRequest request)

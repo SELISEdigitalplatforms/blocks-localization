@@ -31,7 +31,11 @@ import {
   IGetTimelineResponse,
   IImportFile,
   IBaseMutationResponse,
+  IBulkKeyActionResponse,
+  IDeleteKeysPayload,
+  IKeyListFilter,
   IKeyUilmExport,
+  ITranslateKeysPayload,
   ILanguageConfig,
   IDeleteModuleRequest,
   IDuplicateSummary,
@@ -43,6 +47,40 @@ import {
   IValidationError,
   IWebhookConfig,
 } from "@blocks-localization/models/language";
+
+/** The filter as Key/Gets expects it: no Glossary issues flag unless on, no empty date bounds. */
+const toKeyListFilterBody = <T extends Partial<IKeyListFilter>>(filter: T): T => {
+  // The date ranges are copied too, so dropping a bound never edits the caller's filter.
+  const payload = {
+    ...filter,
+    ...(filter.createDateRange ? { createDateRange: { ...filter.createDateRange } } : {}),
+    ...(filter.lastUpdateDateRange ? { lastUpdateDateRange: { ...filter.lastUpdateDateRange } } : {}),
+  };
+  if (!payload.hasGlossaryViolations) {
+    delete payload.hasGlossaryViolations;
+  }
+  if (!filter.createDateRange) {
+    delete payload.createDateRange;
+  } else {
+    if (payload.createDateRange?.startDate === "") delete payload.createDateRange.startDate;
+    if (payload.createDateRange?.endDate === "") delete payload.createDateRange.endDate;
+  }
+  if (!filter.lastUpdateDateRange) {
+    delete payload.lastUpdateDateRange;
+  } else {
+    if (payload.lastUpdateDateRange?.startDate === "")
+      delete payload.lastUpdateDateRange.startDate;
+    if (payload.lastUpdateDateRange?.endDate === "")
+      delete payload.lastUpdateDateRange.endDate;
+  }
+  return payload;
+};
+
+/** The bulk payload with its filter, if any, shaped like a Key/Gets filter. */
+const toBulkKeyBody = <T extends object>(payload: T): T =>
+  "filter" in payload
+    ? { ...payload, filter: toKeyListFilterBody(payload.filter as IKeyListFilter) }
+    : payload;
 
 export class LanguageManagerService {
   private readonly httpClient = serviceInstances.localizationService;
@@ -78,24 +116,7 @@ export class LanguageManagerService {
     options?: { signal?: AbortSignal },
   ): Promise<IBlocksLanguageKeyResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.GETS;
-    const payload = { ...request };
-    if (!payload.hasGlossaryViolations) {
-      delete payload.hasGlossaryViolations;
-    }
-    if (!request.createDateRange) {
-      delete payload.createDateRange;
-    } else if (payload.createDateRange?.startDate === "") {
-      delete payload.createDateRange.startDate;
-    } else if (payload?.createDateRange?.endDate === "") {
-      delete payload.createDateRange.endDate;
-    }
-    if (!request.lastUpdateDateRange) {
-      delete payload.lastUpdateDateRange;
-    } else if (payload.lastUpdateDateRange?.startDate === "") {
-      delete payload.lastUpdateDateRange.startDate;
-    } else if (payload?.lastUpdateDateRange?.endDate === "") {
-      delete payload.lastUpdateDateRange.endDate;
-    }
+    const payload = toKeyListFilterBody(request);
     return this.httpClient.post(url, payload, undefined, { signal: options?.signal });
   };
 
@@ -219,32 +240,18 @@ export class LanguageManagerService {
     }>(`${url}?${params.toString()}`);
   };
 
-  deleteLanguageKeys = (payload: {
-    itemIds: string[];
-  }): Promise<{
-    errors: null | unknown;
-    isSuccess: boolean;
-  }> => {
+  deleteLanguageKeys = (payload: IDeleteKeysPayload): Promise<IBulkKeyActionResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS;
     const deleteOptions = {
-      body: payload,
+      body: toBulkKeyBody(payload),
     } as Parameters<typeof this.httpClient.delete>[2];
 
-    return this.httpClient.delete<{
-      errors: unknown;
-      isSuccess: boolean;
-    }>(url, undefined, deleteOptions);
+    return this.httpClient.delete<IBulkKeyActionResponse>(url, undefined, deleteOptions);
   };
 
-  translateLanguageKeys = (payload: {
-    keyIds: string[];
-    defaultLanguage: string;
-  }): Promise<{
-    errors: null | unknown;
-    isSuccess: boolean;
-  }> => {
+  translateLanguageKeys = (payload: ITranslateKeysPayload): Promise<IBulkKeyActionResponse> => {
     const url = LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS;
-    return this.httpClient.post(url, payload);
+    return this.httpClient.post(url, toBulkKeyBody(payload));
   };
 
   deleteLanguage = (payload: {

@@ -119,6 +119,30 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task TranslateBlocksLanguageKeysEventConsumer_SplitRequest_WaitsForTheLastBatch()
+        {
+            var evt = new TranslateBlocksLanguageKeysEvent { MessageCoRelationId = "cor-5", KeyIds = new List<string> { "k1" }, DefaultLanguage = "en", OperationId = "op-2", BatchCount = 3 };
+            _keyManagementService.Setup(x => x.TranslateBlocksLanguageKeys(evt)).ReturnsAsync(true);
+            _keyManagementService.Setup(x => x.CompleteTranslateBlocksLanguageKeysBatchAsync(evt, true)).ReturnsAsync((bool?)null);
+
+            await new TranslateBlocksLanguageKeysEventConsumer(_keyManagementService.Object).Consume(evt);
+
+            _keyManagementService.Verify(x => x.PublishTranslateBlocksLanguageKeyNotification(It.IsAny<bool>(), It.IsAny<string?>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TranslateBlocksLanguageKeysEventConsumer_SplitRequest_LastBatchNotifiesTheOverallResult()
+        {
+            var evt = new TranslateBlocksLanguageKeysEvent { MessageCoRelationId = "cor-6", KeyIds = new List<string> { "k1" }, DefaultLanguage = "en", OperationId = "op-3", BatchCount = 3 };
+            _keyManagementService.Setup(x => x.TranslateBlocksLanguageKeys(evt)).ReturnsAsync(true);
+            _keyManagementService.Setup(x => x.CompleteTranslateBlocksLanguageKeysBatchAsync(evt, true)).ReturnsAsync(false);
+
+            await new TranslateBlocksLanguageKeysEventConsumer(_keyManagementService.Object).Consume(evt);
+
+            _keyManagementService.Verify(x => x.PublishTranslateBlocksLanguageKeyNotification(false, "cor-6"), Times.Once);
+        }
+
+        [Fact]
         public async Task UilmImportEventConsumer_Consume_WhenSuccess_CallsWebhook()
         {
             var evt = new UilmImportEvent { FileId = "f1", MessageCoRelationId = "cor-4", ProjectKey = "p1" };

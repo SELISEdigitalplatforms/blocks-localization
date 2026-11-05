@@ -63,7 +63,10 @@ vi.mock("../../components/import-language-file/import-file-modal", () => ({
 vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
-vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+vi.mock("@blocks-localization/hooks/use-language-manager", async (importOriginal) => ({
+  // Pure: the bulk "all matching" payload must carry the same filter the query sends.
+  buildKeyListFilter: (await importOriginal<typeof import("@blocks-localization/hooks/use-language-manager")>())
+    .buildKeyListFilter,
   // The duplicate chips have their own tests; here the summary simply has not loaded.
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
@@ -484,6 +487,25 @@ describe("language-module/language-table", () => {
     const translateButtons = screen.getAllByRole("button", { name: "Translate" });
     fireEvent.click(translateButtons[translateButtons.length - 1]);
     await waitFor(() => expect(bulkTranslateAsync).toHaveBeenCalled());
+  });
+
+  it("should count only the shown rows in paged mode (H12)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    const { rerender } = renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByLabelText("Select row"));
+    expect(screen.getByText("1 key selected")).toBeTruthy();
+
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: { totalCount: 1, keys: [{ ...oneKey.keys[0], itemId: "k2", keyName: "farewell" }] },
+    } as never);
+    rerender(<LanguageTable />);
+
+    expect(screen.queryByText(/key selected/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Bulk edit" })).toBeNull();
   });
 
   it("should clear the selection", () => {

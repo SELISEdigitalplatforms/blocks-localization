@@ -196,3 +196,62 @@ export const withRowsSelected = (selection: RowSelectionState, rowIds: string[])
   if (unselected.length === 0) return selection;
   return { ...selection, ...Object.fromEntries(unselected.map((rowId) => [rowId, true])) };
 };
+
+/** The most keys one bulk Delete or Translate may send; the server enforces the same cap. */
+export const MAX_BULK_KEY_SELECTION = 10_000;
+
+/** Every selected row ID, including rows that are no longer loaded. */
+export const getSelectedRowIds = (selection: RowSelectionState) =>
+  Object.keys(selection).filter((rowId) => selection[rowId]);
+
+/** Without the row; the same object when it isn't selected. */
+export const withoutRow = (selection: RowSelectionState, rowId: string) => {
+  if (!(rowId in selection)) return selection;
+  const rest = { ...selection };
+  delete rest[rowId];
+  return rest;
+};
+
+/** Key/DeleteKeys and Key/TranslateKeys refuse an "all matching" target with these codes. */
+export const BULK_KEY_SET_CHANGED = "KEY_SET_CHANGED";
+export const BULK_TOO_MANY_KEYS = "TOO_MANY_KEYS";
+export const KEY_LIST_QUERY_TIMEOUT = "QUERY_TIMEOUT";
+
+const firstErrorValue = (value: unknown) => (Array.isArray(value) ? value[0] : value);
+
+/**
+ * Why the server refused a bulk action's target, from the `Target` error, with the count it now
+ * resolves to when it sent one.
+ */
+export const getBulkKeyTargetError = (
+  error: unknown,
+): { code: string; matchedCount?: number } | undefined => {
+  const errors = (error as { errors?: Record<string, unknown> } | null)?.errors;
+  if (!errors || typeof errors !== "object") return undefined;
+  const code = firstErrorValue(errors.Target);
+  if (typeof code !== "string") return undefined;
+  const matchedCount = Number(firstErrorValue(errors.MatchedCount));
+  return Number.isFinite(matchedCount) && errors.MatchedCount !== undefined
+    ? { code, matchedCount }
+    : { code };
+};
+
+/**
+ * The excluded rows after a selection change among the given rows: unticked ones are added and
+ * re-ticked ones removed. The same set when nothing changed.
+ */
+export const getUpdatedExclusions = (
+  excluded: ReadonlySet<string>,
+  rowIds: string[],
+  previous: RowSelectionState,
+  next: RowSelectionState,
+): ReadonlySet<string> => {
+  const updated = new Set(excluded);
+  for (const rowId of rowIds) {
+    if (previous[rowId] && !next[rowId]) updated.add(rowId);
+    else if (!previous[rowId] && next[rowId]) updated.delete(rowId);
+  }
+  const isSame =
+    updated.size === excluded.size && [...updated].every((rowId) => excluded.has(rowId));
+  return isSame ? excluded : updated;
+};

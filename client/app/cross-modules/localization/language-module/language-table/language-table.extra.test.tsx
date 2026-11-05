@@ -57,7 +57,10 @@ vi.mock("../../components/import-language-file/import-file-modal", () => ({
 vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
-vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+vi.mock("@blocks-localization/hooks/use-language-manager", async (importOriginal) => ({
+  // Pure: the bulk "all matching" payload must carry the same filter the query sends.
+  buildKeyListFilter: (await importOriginal<typeof import("@blocks-localization/hooks/use-language-manager")>())
+    .buildKeyListFilter,
   // The duplicate chips have their own tests; here the summary simply has not loaded.
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),

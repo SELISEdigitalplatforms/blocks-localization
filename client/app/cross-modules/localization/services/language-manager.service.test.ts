@@ -515,6 +515,101 @@ describe("LanguageManagerService", () => {
     });
   });
 
+  describe("deleteLanguageKeys by filter", () => {
+    it("removes both empty bounds of each date range without changing the caller", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true, matchedCount: 1 });
+      const createDateRange = { startDate: "", endDate: "" };
+      const lastUpdateDateRange = { startDate: "", endDate: "" };
+
+      await service.deleteLanguageKeys({
+        filter: {
+          searchKey: "",
+          moduleIds: ["m1"],
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          createDateRange,
+          lastUpdateDateRange,
+        },
+        excludedItemIds: [],
+        expectedCount: 1,
+      });
+
+      const body = vi.mocked(http.delete).mock.calls[0][2]?.body as {
+        filter: { createDateRange: object; lastUpdateDateRange: object };
+      };
+      expect(body.filter.createDateRange).toEqual({});
+      expect(body.filter.lastUpdateDateRange).toEqual({});
+      expect(createDateRange).toEqual({ startDate: "", endDate: "" });
+      expect(lastUpdateDateRange).toEqual({ startDate: "", endDate: "" });
+    });
+
+    it("should send the filter, the exclusions and the expected count, without empty date bounds", async () => {
+      vi.mocked(http.delete).mockResolvedValue({ errors: null, isSuccess: true, matchedCount: 2 });
+      const createDateRange = { startDate: "", endDate: "2026-02-01" };
+
+      await service.deleteLanguageKeys({
+        filter: {
+          searchKey: "",
+          moduleIds: ["m1"],
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          createDateRange,
+          hasGlossaryViolations: false,
+        },
+        excludedItemIds: ["k9"],
+        expectedCount: 2,
+      });
+
+      expect(http.delete).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.DELETE_KEYS, undefined, {
+        body: {
+          filter: {
+            searchKey: "",
+            moduleIds: ["m1"],
+            isPartiallyTranslated: false,
+            sortProperty: "KeyName",
+            isDescending: false,
+            createDateRange: { endDate: "2026-02-01" },
+          },
+          excludedItemIds: ["k9"],
+          expectedCount: 2,
+        },
+      });
+      // The caller's filter is left as it was.
+      expect(createDateRange).toEqual({ startDate: "", endDate: "2026-02-01" });
+    });
+  });
+
+  describe("translateLanguageKeys by filter", () => {
+    it("should POST the filter, the exclusions and the expected count", async () => {
+      vi.mocked(http.post).mockResolvedValue({ errors: null, isSuccess: true });
+      const filter = {
+        searchKey: "x",
+        moduleIds: [],
+        isPartiallyTranslated: false,
+        sortProperty: "KeyName",
+        isDescending: false,
+      };
+
+      await service.translateLanguageKeys({
+        filter,
+        excludedKeyIds: [],
+        expectedCount: 5,
+        ProjectKey: projectKey,
+        defaultLanguage: "en-US",
+      });
+
+      expect(http.post).toHaveBeenCalledWith(LANGUAGE_KEY_ENDPOINTS.TRANSLATE_KEYS, {
+        filter,
+        excludedKeyIds: [],
+        expectedCount: 5,
+        ProjectKey: projectKey,
+        defaultLanguage: "en-US",
+      });
+    });
+  });
+
   // ─── translateLanguageKeys ───────────────────────────────────────────────
   describe("translateLanguageKeys", () => {
     it("should POST to TRANSLATE_KEYS endpoint", async () => {
