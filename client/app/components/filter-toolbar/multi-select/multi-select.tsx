@@ -69,7 +69,7 @@ export function MultiSelect({
                 <div className="flex space-x-1">
                   {selectedValues.length > 2 ? (
                     <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                      {selectedValues.length} selected
+                      {t("MULTI_SELECT.SELECTED_COUNT", { count: selectedValues.length })}
                     </Badge>
                   ) : (
                     options

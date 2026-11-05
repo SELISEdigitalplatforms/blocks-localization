@@ -1,5 +1,5 @@
-// i18n modules. English is bundled from the files below; German comes from the localization
-// service (seeded from the i18n seed's de/ folder).
+// i18n modules. English is bundled from the files below; every other language the project enables
+// comes from the localization service at runtime.
 //
 //   localization.glossary        components/glossary, components/modals/{glossary,tag-glossary-modal,
 //                                edit-key-glossary}, glossary hooks/utils                         237 keys
@@ -8,11 +8,11 @@
 //   localization.language-table  language-module/language-table, components/language-table-toolbar   152
 //   localization.modules         language-module/modules, modals/{new-module,edit-module,
 //                                delete-module-modal,new-language,edit-route}                          97
-//   localization.shared          components, layout, hooks, lib, constants, router                      73
+//   localization.shared          components, layout, hooks, lib, constants, router                      76
 //   localization.tools           language-module/{configure,export-history,extension-guides,
 //                                wordpress-plugin-guide,timeline,localization-timeline,activity-log},
 //                                components/import-language-file, modals/export-key                   178
-//                                                                                          total      851
+//                                                                                          total      854
 import { registerTranslations } from "@seliseblocks/genesis-os/i18n";
 import glossary from "./localization.glossary.en.json";
 import keys from "./localization.keys.en.json";
@@ -21,7 +21,7 @@ import modules from "./localization.modules.en.json";
 import shared from "./localization.shared.en.json";
 import tools from "./localization.tools.en.json";
 
-// Bundled English for every module. German comes from the remote dictionary.
+// Bundled English for every module. Other languages come from the localization service.
 export const bundledModules: Record<string, Record<string, string>> = {
   "localization.glossary": glossary,
   "localization.keys": keys,

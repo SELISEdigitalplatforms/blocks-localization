@@ -1,3 +1,6 @@
+const I18N_MESSAGE =
+  "User-facing text must use an i18n key (useT/tStatic) in the module's .en.json, not a hard-coded string.";
+
 module.exports = {
   root: true,
   env: {
@@ -81,6 +84,40 @@ module.exports = {
         format: null,
       },
     ],
+    // User-facing text goes through the i18n runtime (useT/tStatic) with an English key in the owning
+    // module's app/i18n/<module>.en.json; other languages come from the localization service. Flags JSX
+    // text and text attributes with at least two lowercase letters, so acronyms like "SCA" pass.
+    "no-restricted-syntax": [
+      "error",
+      {
+        selector: "JSXText[value=/[a-z]{2,}/]",
+        message: I18N_MESSAGE,
+      },
+      {
+        selector:
+          "JSXAttribute[name.name=/^(placeholder|title|alt|aria-label)$/] > Literal[value=/[a-z]{2,}/]",
+        message: I18N_MESSAGE,
+      },
+      {
+        selector:
+          "JSXAttribute[name.name=/^(placeholder|title|alt|aria-label)$/] > JSXExpressionContainer > TemplateLiteral[expressions.length=0][quasis.0.value.raw=/[a-z]{2,}/]",
+        message: I18N_MESSAGE,
+      },
+    ],
   },
+  overrides: [
+    {
+      // Tests, stories and test helpers render fixture text, not product UI.
+      files: [
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "**/*.stories.{ts,tsx}",
+        "**/__tests__/**",
+        "**/__mocks__/**",
+        "**/test-utils/**",
+      ],
+      rules: { "no-restricted-syntax": "off" },
+    },
+  ],
   ignorePatterns: ["node_modules/", "dist/"],
 };
