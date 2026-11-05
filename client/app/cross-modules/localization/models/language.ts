@@ -206,6 +206,47 @@ export interface IBaseMutationResponse {
   isSuccess: boolean;
 }
 
+/** The Key/Gets filter without its paging fields: the keys a list shows, or a bulk action acts on. */
+export interface IKeyListFilter {
+  searchKey: string;
+  moduleIds: string[];
+  isPartiallyTranslated: boolean;
+  sortProperty: string;
+  isDescending: boolean;
+  createDateRange?: { startDate?: string; endDate?: string };
+  lastUpdateDateRange?: { startDate?: string; endDate?: string };
+  resourceSearchFilters?: { culture: string; searchText: string }[];
+  missingLanguages?: string[];
+  onlyDuplicates?: boolean;
+  hasGlossaryViolations?: boolean;
+}
+
+/** A bulk Delete or Translate response; `matchedCount` is how many keys the server acted on. */
+export interface IBulkKeyActionResponse extends IBaseMutationResponse {
+  matchedCount?: number | null;
+}
+
+/**
+ * Bulk delete by key IDs, or by filter: the server resolves the matching keys minus the excluded
+ * ones and refuses when they no longer number `expectedCount`.
+ */
+export type IDeleteKeysPayload =
+  | { itemIds: string[] }
+  | { filter: IKeyListFilter; excludedItemIds: string[]; expectedCount: number };
+
+interface ITranslateKeysOptions {
+  defaultLanguage: string;
+  messageCoRelationId?: string;
+  ProjectKey?: string;
+}
+
+/** Bulk translate by key IDs, or by filter (same rules as {@link IDeleteKeysPayload}). */
+export type ITranslateKeysPayload = ITranslateKeysOptions &
+  (
+    | { keyIds: string[] }
+    | { filter: IKeyListFilter; excludedKeyIds: string[]; expectedCount: number }
+  );
+
 export interface IGetTimelineResponse {
   totalCount: number;
   timelines: Array<{

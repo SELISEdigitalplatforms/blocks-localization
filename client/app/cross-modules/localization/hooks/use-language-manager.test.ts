@@ -221,6 +221,62 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.hasNextPage).toBe(false));
   });
 
+  it("buildKeyListFilter is exactly the filter the All view query sends", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({
+      totalCount: 1,
+      keys: [],
+      hasMore: false,
+      nextCursor: null,
+    } as never);
+    const options = {
+      searchKey: "hello",
+      moduleIds: ["m1"],
+      sortProperty: "CreateDate",
+      isDescending: true,
+      createDateRange: { startDate: "2026-01-01", endDate: "2026-02-01" },
+      resourceSearchFilters: [{ culture: "de-DE", searchText: "Hallo" }],
+      missingLanguages: ["fr-FR"],
+      onlyDuplicates: false,
+      hasGlossaryViolations: true,
+    };
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKeysInfinite(options));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const {
+      pageNumber: _pageNumber,
+      pageSize: _pageSize,
+      cursor: _cursor,
+      includeTotalCount: _includeTotalCount,
+      ...sentFilter
+    } = svc.fetchBlocksLanguageKey.mock.lastCall![0];
+
+    expect(hooks.buildKeyListFilter(options)).toEqual(sentFilter);
+    expect(sentFilter).toMatchObject({ isPartiallyTranslated: false, hasGlossaryViolations: true });
+    expect(sentFilter).not.toHaveProperty("onlyDuplicates");
+  });
+
+  it("useDeleteLanguageKeys reloads the All view after a filter-form delete", async () => {
+    svc.deleteLanguageKeys.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const resetQueries = vi.spyOn(queryClient, "resetQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageKeys(), { wrapper });
+
+    await result.current.mutateAsync({
+      filter: hooks.buildKeyListFilter({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+      }),
+      excludedItemIds: [],
+      expectedCount: 3,
+    });
+
+    expect(resetQueries).toHaveBeenCalledWith({
+      queryKey: localizationQueryKeys.languageKeys.infinitePrefix,
+    });
+  });
+
   it("useGetBlocksLanguageKeysInfinite stays idle until the All view is selected", () => {
     renderQ(() =>
       hooks.useGetBlocksLanguageKeysInfinite({

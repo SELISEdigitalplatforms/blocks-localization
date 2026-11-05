@@ -190,52 +190,251 @@ namespace XUnitTest
             _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateAllEvent>>()), Times.Once);
         }
 
+        private string[] _missingBulkDeleteIds = Array.Empty<string>();
+
+        private void SetupKeysById(params string[] missingIds) => _missingBulkDeleteIds = missingIds;
+
+        private List<KeyTimeline> CaptureBulkTimelines()
+        {
+            var timelines = new List<KeyTimeline>();
+            _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
+                .Callback<List<KeyTimeline>, string>((batch, _) => timelines.AddRange(batch))
+                .Returns(Task.CompletedTask);
+            return timelines;
+        }
+
+        private List<string> CaptureDeletedIds()
+        {
+            var deleted = new List<string>();
+            _keyRepositoryMock.Setup(r => r.DeleteKeysWithSnapshotsAsync(It.IsAny<IReadOnlyCollection<string>>()))
+                .ReturnsAsync((IReadOnlyCollection<string> ids) =>
+                {
+                    var snapshots = ids.Where(id => !_missingBulkDeleteIds.Contains(id))
+                        .Select(id => new BlocksLanguageKey { ItemId = id, KeyName = "name-" + id, ModuleId = "m1" })
+                        .ToList();
+                    deleted.AddRange(snapshots.Select(key => key.ItemId));
+                    var errors = ids.Where(id => _missingBulkDeleteIds.Contains(id))
+                        .ToDictionary(id => id, _ => "Key not found");
+                    return new BulkKeyDeleteResult(snapshots, errors);
+                });
+            return deleted;
+        }
+
         [Fact]
         public async Task DeleteKeysAsync_AllKeysExist_DeletesAllAndCreatesTimelines()
         {
-            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } };
-            _keyRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
-                .ReturnsAsync((string id) => new KeyModel { ItemId = id, KeyName = "name-" + id, ModuleId = "m1" });
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync(It.IsAny<string>(), "m1"))
-                .ReturnsAsync((string name, string mod) => new BlocksLanguageKey { ItemId = "repo-" + name, KeyName = name, ModuleId = mod });
-            _keyRepositoryMock.Setup(r => r.DeleteAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-            _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>())).Returns(Task.CompletedTask);
+            SetupKeysById();
+            var deleted = CaptureDeletedIds();
+            var timelines = CaptureBulkTimelines();
 
-            var result = await _service.DeleteKeysAsync(request);
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } });
 
             result.IsSuccess.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.DeleteAsync("k1"), Times.Once);
-            _keyRepositoryMock.Verify(r => r.DeleteAsync("k2"), Times.Once);
-            _keyTimelineRepositoryMock.Verify(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Exactly(2));
+            result.MatchedCount.Should().Be(2);
+            deleted.Should().BeEquivalentTo(new[] { "k1", "k2" });
+            timelines.Should().HaveCount(2);
+            timelines.Should().OnlyContain(t => t.LogFrom == LogFromConstants.KeyBulkDelete && t.CurrentData == null);
+            timelines.Select(t => t.PreviousData!.ItemId).Should().BeEquivalentTo(new[] { "k1", "k2" });
         }
 
         [Fact]
-        public async Task DeleteKeysAsync_KeyNotFound_ReturnsErrorForMissingKey()
+        public async Task DeleteKeysAsync_KeyNotFound_ReportsItAndDeletesTheRest()
         {
-            var request = new DeleteKeysRequest { ItemIds = new List<string> { "missing" } };
-            _keyRepositoryMock.Setup(r => r.GetByIdAsync("missing")).ReturnsAsync((KeyModel)null);
+            SetupKeysById("missing");
+            var deleted = CaptureDeletedIds();
+            CaptureBulkTimelines();
 
-            var result = await _service.DeleteKeysAsync(request);
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1", "missing" } });
 
             result.IsSuccess.Should().BeFalse();
-            result.Errors.Should().ContainKey("missing");
-            result.Errors["missing"].Should().Be("Key not found");
-            _keyRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<string>()), Times.Never);
+            result.Errors!["missing"].Should().Be("Key not found");
+            result.Errors.Should().NotContainKey("k1");
+            deleted.Should().BeEquivalentTo(new[] { "k1" });
         }
 
         [Fact]
-        public async Task DeleteKeysAsync_WhenDeleteThrows_CapturesErrorAndFails()
+        public async Task DeleteKeysAsync_ConcurrentRemoval_OnlyDeletedKeyGetsTimeline()
         {
-            var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1" } };
-            _keyRepositoryMock.Setup(r => r.GetByIdAsync("k1"))
-                .ReturnsAsync(new KeyModel { ItemId = "k1", KeyName = "n1", ModuleId = "m1" });
-            _keyRepositoryMock.Setup(r => r.GetKeyByNameAsync("n1", "m1")).ReturnsAsync((BlocksLanguageKey)null);
-            _keyRepositoryMock.Setup(r => r.DeleteAsync("k1")).ThrowsAsync(new Exception("delete failed"));
+            SetupKeysById("k2");
+            var deleted = CaptureDeletedIds();
+            var timelines = CaptureBulkTimelines();
 
-            var result = await _service.DeleteKeysAsync(request);
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } });
 
             result.IsSuccess.Should().BeFalse();
-            result.Errors["k1"].Should().Be("delete failed");
+            result.Errors!["k2"].Should().Be("Key not found");
+            deleted.Should().Equal("k1");
+            timelines.Select(t => t.EntityId).Should().Equal("k1");
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_WhenDeleteThrows_CapturesErrorForTheBatchAndFails()
+        {
+            SetupKeysById();
+            _keyRepositoryMock.Setup(r => r.DeleteKeysWithSnapshotsAsync(It.IsAny<IReadOnlyCollection<string>>())).ThrowsAsync(new Exception("delete failed"));
+
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1" } });
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors!["k1"].Should().Be("delete failed");
+            _keyTimelineRepositoryMock.Verify(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_WhenTheTimelineFails_StillReportsTheKeysDeleted()
+        {
+            SetupKeysById();
+            CaptureDeletedIds();
+            _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
+                .ThrowsAsync(new Exception("timeline down"));
+
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1" } });
+
+            result.IsSuccess.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_ARepeatedId_IsDeletedOnceWithoutAnError()
+        {
+            SetupKeysById();
+            var deleted = CaptureDeletedIds();
+            CaptureBulkTimelines();
+
+            var result = await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k1" } });
+
+            result.IsSuccess.Should().BeTrue();
+            deleted.Should().Equal("k1");
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_ReadsAndDeletesInBatchesOf500UnderOneOperation()
+        {
+            SetupKeysById();
+            var deleted = CaptureDeletedIds();
+            var timelines = CaptureBulkTimelines();
+            var ids = Enumerable.Range(0, 1_200).Select(i => $"k{i}").ToList();
+
+            await _service.DeleteKeysAsync(new DeleteKeysRequest { ItemIds = ids });
+
+            _keyRepositoryMock.Verify(r => r.DeleteKeysWithSnapshotsAsync(It.Is<IReadOnlyCollection<string>>(b => b.Count <= 500)), Times.Exactly(3));
+            _keyRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Never);
+            deleted.Should().HaveCount(1_200);
+            timelines.Should().HaveCount(1_200);
+            timelines.Select(t => t.OperationId).Distinct().Should().ContainSingle();
+        }
+
+        private void SetupMatchingIds(IEnumerable<string> ids, bool duplicatesTruncated = false)
+        {
+            _keyRepositoryMock.Setup(r => r.GetMatchingKeyIdsAsync(It.IsAny<GetKeysRequest>(), It.IsAny<int>()))
+                .ReturnsAsync(new MatchingKeyIds(ids.ToList(), duplicatesTruncated));
+        }
+
+        private static DeleteKeysRequest FilterDelete(long expectedCount, params string[] excluded) => new()
+        {
+            Filter = new GetKeysRequest { ModuleIds = new[] { "m1" }, KeySearchText = "secret-search" },
+            ExcludedItemIds = excluded.ToList(),
+            ExpectedCount = expectedCount
+        };
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_DeletesTheMatchingKeysMinusTheExcluded()
+        {
+            SetupMatchingIds(new[] { "k1", "k2", "k3", "k4" });
+            SetupKeysById();
+            var deleted = CaptureDeletedIds();
+            CaptureBulkTimelines();
+
+            var result = await _service.DeleteKeysAsync(FilterDelete(2, "k2", "k4", "not-matching"));
+
+            result.IsSuccess.Should().BeTrue();
+            result.MatchedCount.Should().Be(2);
+            deleted.Should().BeEquivalentTo(new[] { "k1", "k3" });
+            // One past the cap after the exclusions, so an over-cap set is detected without reading it all.
+            _keyRepositoryMock.Verify(r => r.GetMatchingKeyIdsAsync(It.IsAny<GetKeysRequest>(), BulkKeyTarget.MaxKeys + 3 + 1), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_WhenTheCountChanged_RefusesWithKeySetChangedAndDeletesNothing()
+        {
+            SetupMatchingIds(new[] { "k1", "k2", "k3" });
+
+            var act = () => _service.DeleteKeysAsync(FilterDelete(2));
+
+            var error = (await act.Should().ThrowAsync<BulkKeyTargetException>()).Which;
+            error.ErrorCode.Should().Be(BulkKeyTarget.KeySetChanged);
+            error.StatusCode.Should().Be(409);
+            error.MatchedCount.Should().Be(3);
+            _keyRepositoryMock.Verify(r => r.DeleteKeysWithSnapshotsAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_OverTheCap_RefusesWithTooManyKeys()
+        {
+            SetupMatchingIds(Enumerable.Range(0, BulkKeyTarget.MaxKeys + 1).Select(i => $"k{i}"));
+
+            var act = () => _service.DeleteKeysAsync(FilterDelete(BulkKeyTarget.MaxKeys + 1));
+
+            var error = (await act.Should().ThrowAsync<BulkKeyTargetException>()).Which;
+            error.ErrorCode.Should().Be(BulkKeyTarget.TooManyKeys);
+            error.StatusCode.Should().Be(400);
+            _keyRepositoryMock.Verify(r => r.DeleteKeysWithSnapshotsAsync(It.IsAny<IReadOnlyCollection<string>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_ExactlyAtTheCap_IsAccepted()
+        {
+            SetupMatchingIds(Enumerable.Range(0, BulkKeyTarget.MaxKeys).Select(i => $"k{i}"));
+            SetupKeysById();
+            var deleted = CaptureDeletedIds();
+            CaptureBulkTimelines();
+
+            var result = await _service.DeleteKeysAsync(FilterDelete(BulkKeyTarget.MaxKeys));
+
+            result.IsSuccess.Should().BeTrue();
+            deleted.Should().HaveCount(BulkKeyTarget.MaxKeys);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_WithATruncatedDuplicateList_RefusesWithTooManyKeys()
+        {
+            SetupMatchingIds(new[] { "k1" }, duplicatesTruncated: true);
+
+            var act = () => _service.DeleteKeysAsync(FilterDelete(1));
+
+            (await act.Should().ThrowAsync<BulkKeyTargetException>()).Which.ErrorCode.Should().Be(BulkKeyTarget.TooManyKeys);
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_KeyDeletedAfterResolving_IsReportedAndTheRestDeleted()
+        {
+            SetupMatchingIds(new[] { "k1", "k2" });
+            SetupKeysById("k2");
+            var deleted = CaptureDeletedIds();
+            CaptureBulkTimelines();
+
+            var result = await _service.DeleteKeysAsync(FilterDelete(2));
+
+            result.IsSuccess.Should().BeFalse();
+            result.Errors!["k2"].Should().Be("Key not found");
+            deleted.Should().Equal("k1");
+        }
+
+        [Fact]
+        public async Task DeleteKeysAsync_FilterForm_LogsTheFormAndCountsButNoFilterText()
+        {
+            SetupMatchingIds(new[] { "k1" });
+            SetupKeysById();
+            CaptureDeletedIds();
+            CaptureBulkTimelines();
+
+            await _service.DeleteKeysAsync(FilterDelete(1));
+
+            var logged = _loggerMock.Invocations
+                .Where(i => i.Method.Name == nameof(ILogger.Log))
+                .Select(i => i.Arguments[2]?.ToString() ?? "")
+                .ToList();
+            logged.Should().Contain(message => message.Contains("Form: filter") && message.Contains("Duration"));
+            logged.Should().NotContain(message => message.Contains("secret-search"));
         }
 
         #region Move entries
@@ -281,7 +480,118 @@ namespace XUnitTest
             captured.Should().NotBeNull();
             captured!.Payload.OperationId.Should().NotBeNullOrEmpty();
             captured.Payload.KeyIds.Should().BeEquivalentTo(new[] { "k1", "k2" });
+            captured.Payload.BatchCount.Should().BeNull();
             _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendTranslateBlocksLanguageKeysEvent_RepeatedIds_AreQueuedOnce()
+        {
+            TranslateBlocksLanguageKeysEvent? captured = null;
+            _messageClientMock.Setup(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()))
+                .Callback<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>(msg => captured = msg.Payload)
+                .Returns(Task.CompletedTask);
+
+            var result = await _service.SendTranslateBlocksLanguageKeysEvent(new TranslateBlocksLanguageKeysRequest
+            {
+                KeyIds = new List<string> { "k1", "k1", "k2" },
+                MessageCoRelationId = "corr",
+                ProjectKey = "proj",
+                DefaultLanguage = "en-US"
+            });
+
+            result.MatchedCount.Should().Be(2);
+            captured!.KeyIds.Should().Equal("k1", "k2");
+        }
+
+        [Fact]
+        public async Task SendTranslateBlocksLanguageKeysEvent_FilterForm_SendsEventsOfAtMost1000UnderOneOperation()
+        {
+            var captured = new List<TranslateBlocksLanguageKeysEvent>();
+            _messageClientMock.Setup(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()))
+                .Callback<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>(msg => captured.Add(msg.Payload))
+                .Returns(Task.CompletedTask);
+            SetupMatchingIds(Enumerable.Range(0, 2_500).Select(i => $"k{i}"));
+
+            var result = await _service.SendTranslateBlocksLanguageKeysEvent(new TranslateBlocksLanguageKeysRequest
+            {
+                Filter = new GetKeysRequest { ModuleIds = new[] { "m1" } },
+                ExpectedCount = 2_500,
+                MessageCoRelationId = "corr",
+                ProjectKey = "proj",
+                DefaultLanguage = "en-US"
+            });
+
+            result.MatchedCount.Should().Be(2_500);
+            captured.Select(e => e.KeyIds.Count).Should().Equal(1_000, 1_000, 500);
+            captured.Should().OnlyContain(e => e.BatchCount == 3);
+            captured.Select(e => e.OperationId).Distinct().Should().ContainSingle();
+            captured.Should().OnlyContain(e => e.MessageCoRelationId == "corr");
+        }
+
+        [Fact]
+        public async Task SendTranslateBlocksLanguageKeysEvent_FilterForm_WhenTheCountChanged_SendsNothing()
+        {
+            SetupMatchingIds(new[] { "k1", "k2" });
+
+            var act = () => _service.SendTranslateBlocksLanguageKeysEvent(new TranslateBlocksLanguageKeysRequest
+            {
+                Filter = new GetKeysRequest(),
+                ExpectedCount = 3,
+                MessageCoRelationId = "corr",
+                ProjectKey = "proj",
+                DefaultLanguage = "en-US"
+            });
+
+            (await act.Should().ThrowAsync<BulkKeyTargetException>()).Which.ErrorCode.Should().Be(BulkKeyTarget.KeySetChanged);
+            _messageClientMock.Verify(m => m.SendToConsumerAsync(It.IsAny<ConsumerMessage<TranslateBlocksLanguageKeysEvent>>()), Times.Never);
+        }
+
+        private static TranslateBlocksLanguageKeysEvent BatchEvent(int? batchCount) => new()
+        {
+            MessageCoRelationId = "corr",
+            DefaultLanguage = "en-US",
+            KeyIds = new List<string> { "k1" },
+            OperationId = "op-1",
+            BatchCount = batchCount
+        };
+
+        [Fact]
+        public async Task CompleteTranslateBlocksLanguageKeysBatchAsync_SingleEvent_ReturnsItsResultWithoutCounting()
+        {
+            (await _service.CompleteTranslateBlocksLanguageKeysBatchAsync(BatchEvent(null), false)).Should().BeFalse();
+
+            _keyRepositoryMock.Verify(r => r.RecordBulkTranslateBatchAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CompleteTranslateBlocksLanguageKeysBatchAsync_WhileBatchesRemain_ReturnsNull()
+        {
+            _keyRepositoryMock.Setup(r => r.RecordBulkTranslateBatchAsync("op-1", true)).ReturnsAsync(new BulkTranslateProgress(2, 0));
+
+            (await _service.CompleteTranslateBlocksLanguageKeysBatchAsync(BatchEvent(3), true)).Should().BeNull();
+
+            _keyRepositoryMock.Verify(r => r.DeleteBulkTranslateProgressAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(0, true)]
+        [InlineData(1, false)]
+        public async Task CompleteTranslateBlocksLanguageKeysBatchAsync_LastBatch_ReturnsWhetherAllSucceededAndCleansUp(int failed, bool expected)
+        {
+            _keyRepositoryMock.Setup(r => r.RecordBulkTranslateBatchAsync("op-1", true)).ReturnsAsync(new BulkTranslateProgress(3, failed));
+
+            (await _service.CompleteTranslateBlocksLanguageKeysBatchAsync(BatchEvent(3), true)).Should().Be(expected);
+
+            _keyRepositoryMock.Verify(r => r.DeleteBulkTranslateProgressAsync("op-1"), Times.Once);
+        }
+
+        [Fact]
+        public async Task CompleteTranslateBlocksLanguageKeysBatchAsync_WhenTheCounterFails_NotifiesForThisBatch()
+        {
+            _keyRepositoryMock.Setup(r => r.RecordBulkTranslateBatchAsync("op-1", true)).ThrowsAsync(new Exception("db down"));
+
+            (await _service.CompleteTranslateBlocksLanguageKeysBatchAsync(BatchEvent(3), true)).Should().BeTrue();
         }
 
         [Fact]
