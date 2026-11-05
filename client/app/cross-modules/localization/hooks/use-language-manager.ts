@@ -8,6 +8,7 @@ import {
   IGlossary,
   IGlossaryFilters,
   ILanguageConfig,
+  IKeyListFilter,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
@@ -137,6 +138,32 @@ export interface LanguageKeysInfiniteOptions {
   hasGlossaryViolations?: boolean;
 }
 
+/** The Key/Gets filter of the All view; its query and its "all matching" bulk actions both send it. */
+export const buildKeyListFilter = ({
+  searchKey,
+  moduleIds,
+  sortProperty,
+  isDescending,
+  createDateRange,
+  lastUpdateDateRange,
+  resourceSearchFilters,
+  missingLanguages,
+  onlyDuplicates = false,
+  hasGlossaryViolations = false,
+}: Omit<LanguageKeysInfiniteOptions, "enabled">): IKeyListFilter => ({
+  searchKey,
+  moduleIds,
+  isPartiallyTranslated: false,
+  sortProperty,
+  isDescending,
+  createDateRange,
+  lastUpdateDateRange,
+  resourceSearchFilters,
+  missingLanguages,
+  ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
+  ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
+});
+
 /**
  * The All view: keys in chunks of {@link LANGUAGE_KEY_CHUNK_SIZE} through the keyset cursor, at most
  * {@link MAX_LOADED_LANGUAGE_KEY_CHUNKS} chunks in memory. Only the first chunk asks for the total;
@@ -189,17 +216,18 @@ export const useGetBlocksLanguageKeysInfinite = ({
         {
           pageNumber: typeof pageParam === "number" ? pageParam : 0,
           pageSize: LANGUAGE_KEY_CHUNK_SIZE,
-          searchKey,
-          moduleIds,
-          isPartiallyTranslated: false,
-          sortProperty,
-          isDescending,
-          createDateRange,
-          lastUpdateDateRange,
-          resourceSearchFilters,
-          missingLanguages,
-          ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
-          ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
+          ...buildKeyListFilter({
+            searchKey,
+            moduleIds,
+            sortProperty,
+            isDescending,
+            createDateRange,
+            lastUpdateDateRange,
+            resourceSearchFilters,
+            missingLanguages,
+            onlyDuplicates,
+            hasGlossaryViolations,
+          }),
           cursor: typeof pageParam === "string" ? pageParam : undefined,
           includeTotalCount: pageParam === null,
         },
@@ -569,10 +597,9 @@ export const useDeleteLanguageKeys = () => {
     mutationKey: ["language-keys", "bulk-delete"],
     mutationFn: languageManagerService.deleteLanguageKeys,
     onSuccess: (response, payload) => {
-      refreshLanguageKeyLists(
-        queryClient,
-        response?.isSuccess ? removeLanguageKeyRows(payload.itemIds) : "keep",
-      );
+      // A filter-form delete names no rows; the All view reloads instead.
+      const allView = "itemIds" in payload ? removeLanguageKeyRows(payload.itemIds) : "reset";
+      refreshLanguageKeyLists(queryClient, response?.isSuccess ? allView : "keep");
     },
   });
 };

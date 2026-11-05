@@ -4,6 +4,17 @@ using System.Linq.Expressions;
 
 namespace Eurolm.DomainService.Repositories
 {
+    /// <param name="Ids">The matching ItemIds.</param>
+    /// <param name="DuplicatesTruncated">With the duplicates filter: the duplicate list hit its cap, so the IDs are incomplete.</param>
+    public record MatchingKeyIds(List<string> Ids, bool DuplicatesTruncated);
+
+    /// <param name="Done">Batches finished so far.</param>
+    /// <param name="Failed">Of those, batches that failed.</param>
+    public record BulkTranslateProgress(int Done, int Failed);
+
+    /// <summary>Snapshots returned by atomic deletes, and per-ID failures.</summary>
+    public record BulkKeyDeleteResult(List<BlocksLanguageKey> Deleted, Dictionary<string, string> Errors);
+
     public interface IKeyRepository
     {
         Task SaveKeyAsync(BlocksLanguageKey key);
@@ -19,6 +30,28 @@ namespace Eurolm.DomainService.Repositories
         Task<bool> HasKeysInModuleAsync(string moduleId);
         Task MoveKeysAsync(IReadOnlyCollection<string> itemIds, string targetModuleId);
         Task DeleteKeysAsync(IReadOnlyCollection<string> itemIds);
+
+        /// <summary>Atomically removes each ID and returns only keys actually deleted, with per-ID failures.</summary>
+        Task<BulkKeyDeleteResult> DeleteKeysWithSnapshotsAsync(IReadOnlyCollection<string> itemIds);
+
+        /// <summary>
+        /// The ItemIds of at most <paramref name="limit"/> keys matching the Key/Gets filter, reading ItemId only.
+        /// Paging fields of the filter are ignored. Throws <see cref="KeyListException"/> QUERY_TIMEOUT (503) past
+        /// the key list time limit.
+        /// </summary>
+        Task<MatchingKeyIds> GetMatchingKeyIdsAsync(GetKeysRequest filter, int limit);
+
+        /// <summary>
+        /// Counts one finished batch of a split bulk translate under its operation id, atomically, and returns the
+        /// totals so far.
+        /// </summary>
+        Task<BulkTranslateProgress> RecordBulkTranslateBatchAsync(string operationId, bool succeeded);
+
+        /// <summary>Removes the batch counter of a finished bulk translate.</summary>
+        Task DeleteBulkTranslateProgressAsync(string operationId);
+
+        /// <summary>The keys with these ItemIds, in one query; missing IDs are left out.</summary>
+        Task<List<BlocksLanguageKey>> GetKeysByIdsAsync(IReadOnlyCollection<string> itemIds);
 
         /// <summary>
         /// Pulls the glossary id from GlossaryIds and the glossary's entries from GlossaryViolations of every key

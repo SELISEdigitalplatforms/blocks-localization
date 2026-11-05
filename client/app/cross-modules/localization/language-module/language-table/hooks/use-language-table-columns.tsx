@@ -185,6 +185,11 @@ interface UseLanguageTableColumnsOptions {
    * only the loaded rows of a progressively loaded view are selected.
    */
   selectAllLabel?: string;
+  /**
+   * Unticking the header checkbox clears the whole selection rather than only the shown rows, for
+   * a view whose selection can include rows that are no longer loaded.
+   */
+  clearSelectionOnUntickAll?: boolean;
 }
 
 const buildLanguageColumns = (
@@ -249,6 +254,7 @@ export const useLanguageTableColumns = ({
   sortQueryParams,
   translatingKeys,
   selectAllLabel,
+  clearSelectionOnUntickAll = false,
 }: UseLanguageTableColumnsOptions) => {
   const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
@@ -263,7 +269,11 @@ export const useLanguageTableColumns = ({
           return (
             <Checkbox
               checked={checked}
-              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              onCheckedChange={(value) =>
+                !value && clearSelectionOnUntickAll
+                  ? table.resetRowSelection(true)
+                  : table.toggleAllPageRowsSelected(!!value)
+              }
               aria-label={selectAllLabel ?? t("USE_LANGUAGE_TABLE_COLUMNS.SELECT_ALL")}
               title={selectAllLabel}
             />
@@ -435,6 +445,7 @@ export const useLanguageTableColumns = ({
       sortQueryParams,
       translatingKeys,
       selectAllLabel,
+      clearSelectionOnUntickAll,
       t,
     ],
   );

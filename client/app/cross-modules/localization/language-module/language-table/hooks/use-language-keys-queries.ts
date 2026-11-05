@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { useKeysFilterQueryParams } from "@blocks-localization/components/language-table-toolbar/language-table-toolbar";
 import {
+  buildKeyListFilter,
   useGetBlocksLanguageKey,
   useGetBlocksLanguageKeysInfinite,
 } from "@blocks-localization/hooks/use-language-manager";
@@ -58,7 +59,7 @@ export const useLanguageKeysQueries = ({
     queryParams.duplicates,
     queryParams.glossaryIssues,
   );
-  const allViewQuery = useGetBlocksLanguageKeysInfinite({
+  const allViewFilterOptions = {
     searchKey: queryParams.search ?? "",
     moduleIds: queryParams.moduleIds ?? [],
     sortProperty: sortQueryParams.property,
@@ -67,9 +68,12 @@ export const useLanguageKeysQueries = ({
     lastUpdateDateRange,
     resourceSearchFilters: activeResourceSearchFilters,
     missingLanguages: queryParams.missingLanguages ?? [],
-    enabled: isAllView,
     onlyDuplicates: queryParams.duplicates,
     hasGlossaryViolations: queryParams.glossaryIssues,
+  };
+  const allViewQuery = useGetBlocksLanguageKeysInfinite({
+    ...allViewFilterOptions,
+    enabled: isAllView,
   });
   const allViewKeys = useMemo(
     () => allViewQuery.data?.pages.flatMap((page) => page.keys) ?? [],
@@ -103,6 +107,8 @@ export const useLanguageKeysQueries = ({
     allViewQuery,
     allViewKeys,
     allViewTotalCount,
+    /** What the All view's query filters by; an "all matching" bulk action sends it. */
+    allViewFilter: buildKeyListFilter(allViewFilterOptions),
     pagedData,
     isLoading: isAllView ? allViewQuery.isLoading : pagedKeysQuery.isLoading,
     isFetching: isAllView ? allViewQuery.isFetching : pagedKeysQuery.isFetching,

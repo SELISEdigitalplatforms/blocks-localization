@@ -16,6 +16,7 @@ namespace Eurolm.DomainService.Repositories
         private const string _collectionName = "BlocksLanguageKeys";
         private const string BlocksLanguageModulesCollection = "BlocksLanguageModules";
         private const string KeyNameField = "KeyName";
+        private const string CreateDateField = "CreateDate";
         private const string MatchStage = "$match";
 
         public const int DefaultKeyPageSize = 10;
@@ -173,6 +174,76 @@ namespace Eurolm.DomainService.Repositories
         private static async Task<long?> CountAsync(IMongoCollection<Key> collection, FilterDefinition<Key> filter)
         {
             return await collection.CountDocumentsAsync(filter, new CountOptions { MaxTime = KeyListQueryMaxTime });
+        }
+
+        public async Task<MatchingKeyIds> GetMatchingKeyIdsAsync(GetKeysRequest filter, int limit)
+        {
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
+            var dataBase = _dbContextProvider.GetDatabase(tenantId);
+            var collection = dataBase.GetCollection<Key>(_collectionName);
+            var query = getAllKeysFilter(filter);
+
+            try
+            {
+                var duplicatesTruncated = false;
+                if (filter.OnlyDuplicates)
+                {
+                    var (ids, truncated) = await GetDuplicateKeyIdsAsync(dataBase.GetCollection<BsonDocument>(_collectionName));
+                    duplicatesTruncated = truncated;
+                    query = Builders<Key>.Filter.And(query, Builders<Key>.Filter.In(k => k.ItemId, ids));
+                }
+
+                var documents = await collection
+                    .Find(query, new FindOptions { MaxTime = KeyListQueryMaxTime })
+                    .Project<BsonDocument>(Builders<Key>.Projection.Include(k => k.ItemId))
+                    .Limit(limit)
+                    .ToListAsync();
+
+                return new MatchingKeyIds(documents.Select(doc => doc["_id"].ToString()!).ToList(), duplicatesTruncated);
+            }
+            catch (MongoExecutionTimeoutException ex)
+            {
+                // Search text is user content; only the tenant is logged.
+                _logger.LogWarning(ex, "Bulk key target query exceeded {MaxTime} for tenant {TenantId}", KeyListQueryMaxTime, tenantId);
+                throw new KeyListException(KeyListErrorCodes.QueryTimeout, BulkKeyTarget.Field, 503, ex);
+            }
+        }
+
+        public async Task<List<BlocksLanguageKey>> GetKeysByIdsAsync(IReadOnlyCollection<string> itemIds)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            if (itemIds.Count == 0) return new List<BlocksLanguageKey>();
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+
+            return await collection.Find(Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds)).ToListAsync();
+        }
+
+        private const string BulkTranslateProgressCollection = "BulkTranslateProgress";
+
+        public async Task<BulkTranslateProgress> RecordBulkTranslateBatchAsync(string operationId, bool succeeded)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BsonDocument>(BulkTranslateProgressCollection);
+            var update = Builders<BsonDocument>.Update
+                .Inc("Done", 1)
+                .Inc("Failed", succeeded ? 0 : 1)
+                .SetOnInsert(CreateDateField, DateTime.UtcNow);
+
+            var progress = await collection.FindOneAndUpdateAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", operationId),
+                update,
+                new FindOneAndUpdateOptions<BsonDocument> { IsUpsert = true, ReturnDocument = ReturnDocument.After });
+
+            return new BulkTranslateProgress(progress["Done"].ToInt32(), progress["Failed"].ToInt32());
+        }
+
+        public async Task DeleteBulkTranslateProgressAsync(string operationId)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BsonDocument>(BulkTranslateProgressCollection);
+            await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", operationId));
         }
 
         public const int DuplicateKeyIdCap = 10_000;
@@ -365,19 +436,19 @@ namespace Eurolm.DomainService.Repositories
 
             if (query.CreateDateRange.StartDate != default(DateTime) && query.CreateDateRange.StartDate != null && (query.CreateDateRange.EndDate == default(DateTime) || query.CreateDateRange.EndDate == null))
             {
-                dateFilter = filterBuilder.Gte("CreateDate", query.CreateDateRange.StartDate);
+                dateFilter = filterBuilder.Gte(CreateDateField, query.CreateDateRange.StartDate);
                 dateFilters.Add(dateFilter);
             }
             else if ((query.CreateDateRange.StartDate == default(DateTime) || query.CreateDateRange.StartDate == null) && query.CreateDateRange.EndDate != default(DateTime) && query.CreateDateRange.EndDate != null)
             {
-                dateFilter = filterBuilder.Lte("CreateDate", query.CreateDateRange.EndDate);
+                dateFilter = filterBuilder.Lte(CreateDateField, query.CreateDateRange.EndDate);
                 dateFilters.Add(dateFilter);
             }
             else if (query.CreateDateRange.StartDate != default(DateTime) && query.CreateDateRange.StartDate != null && query.CreateDateRange.EndDate != default(DateTime) && query.CreateDateRange.EndDate != null)
             {
                 dateFilter = filterBuilder.And(
-                    filterBuilder.Gte("CreateDate", query.CreateDateRange.StartDate),
-                    filterBuilder.Lte("CreateDate", query.CreateDateRange.EndDate)
+                    filterBuilder.Gte(CreateDateField, query.CreateDateRange.StartDate),
+                    filterBuilder.Lte(CreateDateField, query.CreateDateRange.EndDate)
                 );
                 dateFilters.Add(dateFilter);
             }
@@ -749,6 +820,41 @@ namespace Eurolm.DomainService.Repositories
             var filter = Builders<BlocksLanguageKey>.Filter.In(k => k.ItemId, itemIds);
 
             await collection.DeleteManyAsync(filter);
+        }
+
+        public async Task<BulkKeyDeleteResult> DeleteKeysWithSnapshotsAsync(IReadOnlyCollection<string> itemIds)
+        {
+            ArgumentNullException.ThrowIfNull(itemIds);
+            if (itemIds.Count == 0) return new BulkKeyDeleteResult(new(), new());
+
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var collection = dataBase.GetCollection<BlocksLanguageKey>(_collectionName);
+            // Keep the same 500-ID service batches, while bounding the number of active Mongo operations.
+            using var concurrency = new SemaphoreSlim(64);
+            var tasks = itemIds.Select(async itemId =>
+            {
+                await concurrency.WaitAsync();
+                try
+                {
+                    var deleted = await collection.FindOneAndDeleteAsync(
+                        Builders<BlocksLanguageKey>.Filter.Eq(k => k.ItemId, itemId));
+                    return (ItemId: itemId, Deleted: deleted, Error: (string?)null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to delete bulk key {KeyId}", itemId);
+                    return (ItemId: itemId, Deleted: (BlocksLanguageKey?)null, Error: ex.Message);
+                }
+                finally
+                {
+                    concurrency.Release();
+                }
+            }).ToArray();
+            var results = await Task.WhenAll(tasks);
+            var deletedKeys = results.Where(result => result.Deleted != null).Select(result => result.Deleted!).ToList();
+            var errors = results.Where(result => result.Deleted == null)
+                .ToDictionary(result => result.ItemId, result => result.Error ?? "Key not found");
+            return new BulkKeyDeleteResult(deletedKeys, errors);
         }
 
         public async Task<long?> UpdateUilmResourceKeysForChangeAll(List<BlocksLanguageKey> uilmResourceKeys)
