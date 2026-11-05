@@ -155,6 +155,7 @@ export function LanguageTableToolbar({
               props: {
                 icon: AlertTriangle,
                 count: glossaryIssueCount,
+                countVariant: "warning",
               },
             },
           ]}

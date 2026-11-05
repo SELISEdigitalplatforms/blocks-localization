@@ -122,6 +122,9 @@ describe("components/language-table-toolbar", () => {
 
       renderToolbar("", 7);
       expect(glossaryButton().textContent).toBe("Glossary issues7");
+      const countBadge = screen.getAllByText("7")[0];
+      expect(countBadge.classList.contains("bg-warning-100")).toBe(true);
+      expect(countBadge.classList.contains("text-warning-700")).toBe(true);
     });
   });
 });
