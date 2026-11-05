@@ -386,15 +386,20 @@ describe("language-table All view", () => {
 
       const bulkEdit = screen.getByRole("button", { name: "Bulk edit" }) as HTMLButtonElement;
       expect(bulkEdit.disabled).toBe(true);
-      const wrapper = bulkEdit.parentElement as HTMLElement;
-      expect(wrapper.tabIndex).toBe(0);
-      const reason = document.getElementById(wrapper.getAttribute("aria-describedby") ?? "");
+      const trigger = bulkEdit.parentElement?.querySelector<HTMLButtonElement>(
+        'button[aria-disabled="true"]',
+      );
+      expect(trigger?.tabIndex).toBe(0);
+      const reason = document.getElementById(trigger?.getAttribute("aria-describedby") ?? "");
       expect(reason?.textContent).toBe(
           'Bulk edit works on loaded keys only. Use "Back to top" to reload them, or select fewer keys.',
       );
 
+      fireEvent.focus(trigger!);
+      expect((await screen.findByRole("tooltip")).textContent).toContain("Bulk edit works on loaded keys only.");
+
       fireEvent.click(bulkEdit);
-      fireEvent.keyDown(wrapper, { key: "Enter" });
+      fireEvent.keyDown(trigger!, { key: "Enter" });
       expect(screen.queryByRole("dialog")).toBeNull();
       expect((screen.getByRole("button", { name: "Translate" }) as HTMLButtonElement).disabled).toBe(
         false,
@@ -668,7 +673,9 @@ describe("language-table All view", () => {
 
       const bulkEdit = screen.getByRole("button", { name: "Bulk edit" }) as HTMLButtonElement;
       expect(bulkEdit.disabled).toBe(true);
-      const reasonId = bulkEdit.parentElement?.getAttribute("aria-describedby") ?? "";
+      const reasonId = bulkEdit.parentElement
+        ?.querySelector('button[aria-disabled="true"]')
+        ?.getAttribute("aria-describedby") ?? "";
       expect(document.getElementById(reasonId)?.textContent).toBe(
         "Bulk edit works on loaded keys only.",
       );

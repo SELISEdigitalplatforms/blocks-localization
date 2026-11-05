@@ -9,6 +9,7 @@ import {
   useState,
   Fragment,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
@@ -375,18 +376,16 @@ function BulkActionReason({ reason, children }: Readonly<{ reason?: string; chil
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            role="button"
+        <span className="relative inline-flex rounded-sm">
+          {children}
+          <TooltipTrigger
+            type="button"
             aria-disabled="true"
             aria-label={reason}
-            tabIndex={0}
             aria-describedby={reasonId}
-            className="inline-flex rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [&_button]:pointer-events-none"
-          >
-            {children}
-          </span>
-        </TooltipTrigger>
+            className="absolute inset-0 z-10 cursor-not-allowed rounded-sm bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </span>
         <TooltipContent>{reason}</TooltipContent>
       </Tooltip>
       <span id={reasonId} className="sr-only">
@@ -437,6 +436,15 @@ function BulkSelectionBar({
 }: Readonly<BulkSelectionBarProps>) {
   const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   if (selectedCount <= 0) return null;
+  const totalForLabel = isAllView ? allViewTotalCount : undefined;
+  const selectionLabel = isAllMatchingSelected
+    ? withBoldPart(
+        t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        }),
+      )
+    : getSelectedKeysLabel(selectedKeysCount, totalForLabel);
 
   return (
     <div className="mb-4 flex items-center justify-between gap-2 rounded bg-blocks-primary-shades-300 px-4 py-2">
@@ -452,19 +460,7 @@ function BulkSelectionBar({
         >
           <X className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-medium" aria-live="polite">
-          {isAllMatchingSelected
-            ? withBoldPart(
-                t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
-                  count: selectedCount,
-                  formatted: selectedCount.toLocaleString(),
-                }),
-              )
-            : getSelectedKeysLabel(
-                selectedKeysCount,
-                isAllView ? allViewTotalCount : undefined,
-              )}
-        </span>
+        <span className="text-sm font-medium" aria-live="polite">{selectionLabel}</span>
         {canEscalateToAllMatching && !isAllMatchingOverLimit && (
           <Button
             type="button"
@@ -603,6 +599,102 @@ function ImportProgressState({
     </div>
   );
 }
+
+interface LanguageTableRowsProps {
+  isAllView: boolean;
+  showLoadingSkeleton: boolean;
+  rows: Row<IBlocksLanguageKey>[];
+  renderSkeletonRows: () => ReactNode;
+  renderKeyRow: (row: Row<IBlocksLanguageKey>, ariaRowIndex?: number) => ReactNode;
+  scrollElementRef: RefObject<HTMLDivElement | null>;
+  headerRef: RefObject<HTMLTableSectionElement | null>;
+  headerRowCount: number;
+  colSpan: number;
+  headCursor: string | number | null | undefined;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
+  isAllViewError: boolean;
+  onLoadMore: () => void;
+  onBackToTop: () => void;
+  onRefetchAllView: () => void;
+  hasActiveFilters: boolean;
+  isGlossaryIssuesFilterOn: boolean;
+  importProgress: LanguageImportProgress | null;
+}
+
+function LanguageTableRows({
+  isAllView,
+  showLoadingSkeleton,
+  rows,
+  renderSkeletonRows,
+  renderKeyRow,
+  scrollElementRef,
+  headerRef,
+  headerRowCount,
+  colSpan,
+  headCursor,
+  hasNextPage,
+  isFetchingNextPage,
+  isFetchNextPageError,
+  isAllViewError,
+  onLoadMore,
+  onBackToTop,
+  onRefetchAllView,
+  hasActiveFilters,
+  isGlossaryIssuesFilterOn,
+  importProgress,
+}: Readonly<LanguageTableRowsProps>) {
+  if (isAllView && !showLoadingSkeleton && rows.length > 0) {
+    return (
+      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
+        <VirtualKeyRows
+          rows={rows}
+          scrollElementRef={scrollElementRef}
+          headerRef={headerRef}
+          headerRowCount={headerRowCount}
+          colSpan={colSpan}
+          renderKeyRow={renderKeyRow}
+          headCursor={headCursor}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          isFetchNextPageError={isFetchNextPageError}
+          onLoadMore={onLoadMore}
+          onBackToTop={onBackToTop}
+          loadError={<AllViewLoadError onRetry={onLoadMore} />}
+        />
+      </Suspense>
+    );
+  }
+
+  if (showLoadingSkeleton) return <TableBody>{renderSkeletonRows()}</TableBody>;
+  if (rows.length > 0) {
+    return (
+      <TableBody>
+        {rows.map((row) => <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>)}
+      </TableBody>
+    );
+  }
+
+  return (
+    <TableBody>
+      <TableRow>
+        <TableCell colSpan={colSpan} className="h-24 text-center">
+          {isAllView && isAllViewError ? (
+            <AllViewLoadError onRetry={onRefetchAllView} />
+          ) : (
+            <LanguageTableEmptyState
+              hasActiveFilters={hasActiveFilters}
+              isGlossaryIssuesFilterOn={isGlossaryIssuesFilterOn}
+              importProgress={importProgress}
+            />
+          )}
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  );
+}
+
 export function LanguageTable() {
   "use no memo";
 
@@ -1698,56 +1790,28 @@ export function LanguageTable() {
                         <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
-                    {isAllView && !showLoadingSkeleton && tableRows.length > 0 ? (
-                      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
-                        <VirtualKeyRows
-                          rows={tableRows}
-                          scrollElementRef={tableViewportRef}
-                          headerRef={tableHeaderRef}
-                          headerRowCount={headerRowCount}
-                          colSpan={tableColSpan}
-                          renderKeyRow={renderKeyRow}
-                          headCursor={allViewQuery.data?.pageParams[0]}
-                          hasNextPage={allViewQuery.hasNextPage}
-                          isFetchingNextPage={allViewQuery.isFetchingNextPage}
-                          isFetchNextPageError={allViewQuery.isFetchNextPageError}
-                          onLoadMore={loadNextAllViewChunk}
-                          onBackToTop={resetAllView}
-                          loadError={<AllViewLoadError onRetry={loadNextAllViewChunk} />}
-                        />
-                      </Suspense>
-                    ) : (
-                      <TableBody>
-                        {showLoadingSkeleton
-                          ? renderSkeletonRows()
-                          : (() => {
-                              return tableRows?.length ? (
-                                tableRows.map((row) => (
-                                  <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>
-                                ))
-                              ) : (
-                                <TableRow>
-                                  <TableCell
-                                    colSpan={table.getVisibleLeafColumns().length + 1}
-                                    className="h-24 text-center"
-                                  >
-                                    {isAllView && allViewQuery.isError ? (
-                                      <AllViewLoadError
-                                        onRetry={() => void allViewQuery.refetch()}
-                                      />
-                                    ) : (
-                                      <LanguageTableEmptyState
-                                        hasActiveFilters={hasActiveFilters}
-                                        isGlossaryIssuesFilterOn={queryParams.glossaryIssues}
-                                        importProgress={importProgress}
-                                      />
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })()}
-                      </TableBody>
-                    )}
+                    <LanguageTableRows
+                      isAllView={isAllView}
+                      showLoadingSkeleton={showLoadingSkeleton}
+                      rows={tableRows}
+                      renderSkeletonRows={renderSkeletonRows}
+                      renderKeyRow={renderKeyRow}
+                      scrollElementRef={tableViewportRef}
+                      headerRef={tableHeaderRef}
+                      headerRowCount={headerRowCount}
+                      colSpan={tableColSpan}
+                      headCursor={allViewQuery.data?.pageParams[0]}
+                      hasNextPage={allViewQuery.hasNextPage}
+                      isFetchingNextPage={allViewQuery.isFetchingNextPage}
+                      isFetchNextPageError={allViewQuery.isFetchNextPageError}
+                      isAllViewError={allViewQuery.isError}
+                      onLoadMore={loadNextAllViewChunk}
+                      onBackToTop={resetAllView}
+                      onRefetchAllView={() => void allViewQuery.refetch()}
+                      hasActiveFilters={hasActiveFilters}
+                      isGlossaryIssuesFilterOn={queryParams.glossaryIssues}
+                      importProgress={importProgress}
+                    />
                   </Table>
                 </div>
               </CardContent>
