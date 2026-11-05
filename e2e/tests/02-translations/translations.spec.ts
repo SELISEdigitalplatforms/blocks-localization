@@ -747,6 +747,25 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await translations.closeEditTranslation();
       });
 
+      await test.step("SPEC3 step 10: missing glossary translations are listed until the field is edited (H15)", async () => {
+        ai.script({
+          content: "Öffnen Sie Ihren Arbeitsbereich",
+          appliedTerms: [appliedG1],
+          missingGlossaryTranslations: [{ glossaryId: ids.g3, term: names.g3 }],
+        });
+        await translations.openEditTranslation(target.languageName);
+        await translations.clickAutoTranslateInDialog();
+        await expect(textarea).toHaveValue("Öffnen Sie Ihren Arbeitsbereich");
+        const missing = dialog.getByText(
+          `No glossary translation for this language yet: ${names.g3}`,
+        );
+        await expect(missing).toBeVisible();
+        await textarea.press("End");
+        await textarea.pressSequentially("!");
+        await expect(missing).toHaveCount(0);
+        await translations.closeEditTranslation();
+      });
+
       await test.step("C2: a failing /Match renders plain text, no warnings and no toast", async () => {
         const fail = (route: import("@playwright/test").Route) =>
           route.fulfill({ status: 500, json: { errors: "scripted failure" } });
@@ -850,7 +869,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await page.getByRole("button", { name: "Discard" }).click();
       });
 
-      await test.step("Module M's terms are not suggested for e2e.portal (server scope)", async () => {
+      await test.step("Module M's glossaries are not suggested for e2e.portal (server scope)", async () => {
         const loaded = suggestionsLoaded(page);
         await translations.openKeyDetails(ids.portal);
         await loaded;
@@ -860,17 +879,17 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect(tagButton(names.g3)).toHaveCount(0);
       });
 
-      await test.step("Tag e2e.other with an unrelated term first", async () => {
+      await test.step("Tag e2e.other with an unrelated glossary first", async () => {
         await translations.openKeyDetails(ids.other);
         await page.getByRole("button", { name: "Tag Glossary" }).click();
         const tagDialog = page.getByRole("dialog", { name: "Tag Glossary" });
         await expect(tagDialog).toBeVisible();
         await tagDialog.getByRole("combobox").click();
-        await tagDialog.getByPlaceholder("Search glossary...").fill(names.gu);
+        await tagDialog.getByPlaceholder("Search glossaries…").fill(names.gu);
         await tagDialog.getByRole("option", { name: names.gu }).click();
         // The picker is multi-select and stays open over the footer; close it before Save.
         // Escape closes only the picker's popover; the dialog stays open.
-        const pickerSearch = tagDialog.getByPlaceholder("Search glossary...");
+        const pickerSearch = tagDialog.getByPlaceholder("Search glossaries…");
         await pickerSearch.press("Escape");
         await expect(pickerSearch).toBeHidden();
         await expect(tagDialog).toBeVisible();
@@ -878,6 +897,8 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
           tagDialog.getByRole("button", { name: "Save", exact: true }).click(),
         );
         expect(payload.glossaryIds).toEqual([ids.gu]);
+        // SPEC4 step 18 (C13): tagging is a tag-only save.
+        expect(payload.glossaryIdsOnly).toBe(true);
         await expect(page.getByText("Glossary updated successfully", { exact: true })).toBeVisible({
           timeout: 15_000,
         });
@@ -895,7 +916,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect(page.getByRole("button", { name: "Add all suggested" })).toBeVisible();
 
         const payload = await translations.captureKeySave(() => tagButton(names.g4).click());
-        // The full key is saved with context, routes and resources unchanged, G4 added.
+        // The full key is sent as a tag-only save, G4 added (SPEC3 step 5, H11).
         expect(payload).toMatchObject({
           itemId: ids.other,
           keyName: names.other,
@@ -903,6 +924,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
           context: CUSTOM_PROMPT,
           routes: [routes.other],
           glossaryIds: [ids.gu, ids.g4],
+          glossaryIdsOnly: true,
         });
         expect(payload.resources).toEqual([
           expect.objectContaining({ culture: source.languageCode, value: names.g4 }),
@@ -972,7 +994,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await expect(dialog).toBeVisible();
       });
 
-      await test.step("Step 2: Open term opens a new tab and keeps the text (H4)", async () => {
+      await test.step("Step 2: Open glossary opens a new tab and keeps the text (H4)", async () => {
         await textarea.fill("Ungespeicherter Text");
         await translations.glossaryTerm(dialog, names.g1).click();
         const [newPage] = await Promise.all([
@@ -996,7 +1018,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         await translations.closeEditTranslation();
       });
 
-      await test.step("Step 7: the term popover fits a 390 px screen (C11)", async () => {
+      await test.step("Step 7: the glossary popover fits a 390 px screen (C11)", async () => {
         const size = page.viewportSize();
         await page.setViewportSize({ width: 390, height: 844 });
         try {
@@ -1013,7 +1035,7 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
         }
       });
 
-      await test.step("Step 10: each inline row checks its own glossary terms (H12, H13)", async () => {
+      await test.step("Step 10: each inline row checks its own glossaries (H12, H13)", async () => {
         const languages = await api.languages();
         const targets = languages.filter((language) => !language.isDefault);
         await openTranslations(page);
@@ -1059,7 +1081,179 @@ test.describe("Translations — glossary-aware suggestions (#354)", () => {
     }
   });
 
-  test("Keep terms keep inactive values but never apply them (step 9; SPEC7 C6, C20)", async ({
+  test("Translator experience: insert menu, missing wording, key chips and Add to glossary (SPEC4 steps 9, 14-17)", async ({
+    page,
+  }) => {
+    test.setTimeout(360_000);
+    const translations = new TranslationsPage(page);
+    const { api, fixtures, source, target } = await setUp(page);
+    const extra = { keys: [] as string[], glossaries: [] as string[] };
+
+    try {
+      await test.step("Create fixtures", () => fixtures.create(source, target));
+      const { names, ids } = fixtures;
+      const dashboard = `Dashboard${fixtures.tag}`;
+      const gadget = `Gadget${fixtures.tag}`;
+      const matches = await trackGlossaryMatches(page, fixtures.isOwnMatch);
+      const dialog = translations.editTranslationDialog;
+      const textarea = translations.editTranslationTextarea;
+      const keyIds = { hl: "", dash: "", chips: "", goto: "" };
+
+      await test.step("Create the SPEC4 keys", async () => {
+        extra.glossaries.push(
+          await api.createGlossary({ name: dashboard, isGlobal: true, rule: "translate" }),
+          await api.createGlossary({
+            name: gadget,
+            isGlobal: false,
+            moduleIds: [ids.m2],
+            rule: "translate",
+          }),
+        );
+        const create = async (keyName: string, moduleId: string, value: string, more = {}) => {
+          const itemId = await api.createKey({
+            keyName,
+            moduleId,
+            culture: source.languageCode,
+            value,
+            ...more,
+          });
+          extra.keys.push(itemId);
+          return itemId;
+        };
+        keyIds.hl = await create(
+          `e2e.hl.${fixtures.tag}`,
+          ids.m2,
+          `Open your ${names.g1} and ${names.g2} ${names.g3.toLowerCase()}`,
+        );
+        keyIds.dash = await create(`e2e.dash.${fixtures.tag}`, ids.m, `Open the ${dashboard}`);
+        keyIds.chips = await create(
+          `e2e.chips.${fixtures.tag}`,
+          ids.m,
+          `Open ${names.g1} in ${names.g4} with ${gadget}`,
+          { glossaryIds: [ids.gu] },
+        );
+        keyIds.goto = await create(`e2e.goto.${fixtures.tag}`, ids.m, `Go to ${names.g1}`, {
+          translations: [{ culture: target.languageCode, value: `Gehe zum ${names.g1}` }],
+        });
+      });
+
+      await test.step("Step 9: Insert glossary and Alt+Shift+G list the source's glossaries and insert at the caret (H17, C1, C4)", async () => {
+        await translations.openKeyDetails(keyIds.hl);
+        await translations.openEditTranslation(target.languageName);
+        await expect(translations.glossaryTerm(dialog, names.g1)).toBeVisible({ timeout: 15_000 });
+        await expect(translations.insertGlossaryButton).toBeVisible();
+        await expect(translations.insertGlossaryButton).toHaveAttribute(
+          "title",
+          /^Press (Alt|Option)\+Shift\+G to insert a glossary at the cursor\.$/,
+        );
+        await textarea.fill("Hallo ");
+        await textarea.press("End");
+        await translations.openInsertMenuWithShortcut();
+        const insertGroup = translations.insertMenuGroup(`Insert in ${target.languageName}`);
+        await expect(insertGroup.getByRole("option", { name: new RegExp(names.g1) })).toBeVisible();
+        await expect(insertGroup.getByRole("option", { name: new RegExp(names.g2) })).toBeVisible();
+        await expect(
+          translations.insertGlossaryMenu.getByRole("option", { name: new RegExp(names.g3) }),
+        ).toHaveCount(0);
+        await page.keyboard.press("Enter");
+        await expect(textarea).toHaveValue("Hallo Arbeitsbereich");
+        await translations.closeEditTranslation();
+
+        await translations.openEditTranslation(source.languageName);
+        await expect(translations.insertGlossaryButton).toHaveCount(0);
+        await translations.openInsertMenuWithShortcut();
+        await expect(translations.insertGlossaryMenu).toHaveCount(0);
+        await translations.closeEditTranslation();
+      });
+
+      await test.step("Step 14: a glossary without wording for the language is muted and offers Add it in the glossary (C3)", async () => {
+        await translations.openKeyDetails(keyIds.dash);
+        await translations.openEditTranslation(target.languageName);
+        const term = dialog.getByRole("button", {
+          name: `Glossary ${dashboard}: Translate, no ${target.languageName} wording in the glossary`,
+        });
+        await expect(term).toBeVisible({ timeout: 15_000 });
+        await term.click();
+        const popover = translations.termPopover;
+        await expect(popover.getByText("Add it in the glossary")).toBeVisible();
+        await expect(popover.getByRole("button", { name: "Insert" })).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await translations.closeEditTranslation();
+      });
+
+      await test.step("Step 15: View Details lists Tagged, Module, Global and Suggested chips once each, in order (H18, C25)", async () => {
+        const suggested = page.waitForResponse(
+          (response) => /\/Glossary\/GetSuggestedGlossaries/.test(response.url()),
+          { timeout: 20_000 },
+        );
+        await translations.openKeyDetails(keyIds.chips);
+        await suggested;
+        await expect(page.getByRole("button", { name: `Tag ${gadget} to key` })).toBeVisible({
+          timeout: 15_000,
+        });
+        const order = ["Tagged", "Module", "Global", "Suggested"];
+        const chips = await translations.keyGlossaryChips((name) => name.includes(fixtures.tag));
+        const sources = chips.map((chip) => chip.source);
+        expect(new Set(sources)).toEqual(new Set(order));
+        expect(sources.map((value) => order.indexOf(value))).toEqual(
+          [...sources.map((value) => order.indexOf(value))].sort((a, b) => a - b),
+        );
+        expect(new Set(chips.map((chip) => chip.name)).size).toBe(chips.length);
+        for (const chip of chips) {
+          expect(chip.canRemove, chip.name).toBe(chip.source === "Tagged");
+          expect(chip.canAdd, chip.name).toBe(chip.source === "Suggested");
+        }
+        expect(chips.find((chip) => chip.name === names.gu)?.source).toBe("Tagged");
+        expect(chips.find((chip) => chip.name === names.g4)?.source).toBe("Module");
+        expect(chips.find((chip) => chip.name === names.g1)?.source).toBe("Global");
+        expect(chips.find((chip) => chip.name === gadget)?.source).toBe("Suggested");
+      });
+
+      await test.step("Step 16: inserting replaces the source wording; a used glossary moves to Already used (H19-H21, C1)", async () => {
+        await translations.openKeyDetails(keyIds.goto);
+        await translations.openEditTranslation(target.languageName);
+        await expect(textarea).toHaveValue(`Gehe zum ${names.g1}`);
+        await translations.insertGlossaryButton.click();
+        await translations.insertMenuGroup(`Insert in ${target.languageName}`)
+          .getByRole("option", { name: new RegExp(names.g1) })
+          .click();
+        await expect(textarea).toHaveValue("Gehe zum Arbeitsbereich");
+        await expect(
+          dialog.getByRole("button", {
+            name: `Glossary ${names.g1}: Translate, used in the translation`,
+          }),
+        ).toBeVisible();
+        await expect(dialog.getByText("1 glossary · used in the translation")).toBeVisible();
+        await expect(translations.insertGlossaryButton).toHaveCount(0);
+        await translations.openInsertMenuWithShortcut();
+        const used = translations
+          .insertMenuGroup("Already used")
+          .getByRole("option", { name: new RegExp(names.g1) });
+        await expect(used).toBeVisible();
+        await expect(used).toHaveAttribute("aria-disabled", "true");
+        await page.keyboard.press("Escape");
+      });
+
+      await test.step("Step 17: no Add to glossary for a glossary's own wording; another word offers it (C26)", async () => {
+        await translations.selectSourceText(names.g1);
+        await page.waitForTimeout(300);
+        await expect(translations.addToGlossaryButton).toHaveCount(0);
+        await translations.selectSourceText("Go to");
+        await expect(translations.addToGlossaryButton).toBeVisible();
+        await translations.closeEditTranslation();
+        expect(matches.requests.length).toBeGreaterThan(0);
+      });
+      await matches.stop();
+    } finally {
+      await test.step("Clean up fixtures", async () => {
+        for (const id of extra.keys) await api.deleteKey(id);
+        for (const id of extra.glossaries) await api.deleteGlossary(id);
+        await fixtures.cleanup();
+      });
+    }
+  });
+
+  test("Keep glossaries keep inactive values but never apply them (step 9; SPEC7 C6, C20)", async ({
     page,
   }) => {
     test.setTimeout(300_000);

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui-kits/label/label";
 import { useGetLanguages, useTranslateAll } from "@blocks-localization/hooks/use-language-manager";
 import { getDefaultLanguage } from "@blocks-localization/utils/glossary-rule-marker";
 import { toast } from "@/hooks/use-toast";
+import { getHttpErrorMessage } from "@/lib/error";
 import { useT } from "@seliseblocks/genesis-os/i18n";
 
 const AUTO_TRANSLATE_UNKNOWN_ERROR = "AUTO_TRANSLATE.UNKNOWN_ERROR";
@@ -24,6 +26,7 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   const { isPending, mutateAsync } = useTranslateAll();
   const { data: languageListData } = useGetLanguages();
   const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
+  const runningRef = useRef(false);
 
   const formatErrorMessage = (errors: unknown): string => {
     if (errors === null || errors === undefined) return t(AUTO_TRANSLATE_UNKNOWN_ERROR);
@@ -39,7 +42,8 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
   };
 
   const handleTranslate = async () => {
-    if (!defaultLanguageCode) return;
+    if (!defaultLanguageCode || runningRef.current) return;
+    runningRef.current = true;
 
     const payload = {
       messageCoRelationId: "",
@@ -67,13 +71,18 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
       toast({
         variant: "destructive",
         title: t("common:ERROR"),
-        description: error instanceof Error ? error.message : String(error),
+        description: getHttpErrorMessage(error),
       });
+    } finally {
+      runningRef.current = false;
     }
   };
 
   return (
-    <DialogContent>
+    <DialogContent
+      onEscapeKeyDown={(event) => isPending && event.preventDefault()}
+      onInteractOutside={(event) => isPending && event.preventDefault()}
+    >
       <DialogHeader className="mb-4">
         <DialogTitle>{t("AUTO_TRANSLATE.TITLE")}</DialogTitle>
         <Label className="mt-[12px]! font-normal text-medium-emphasis">
@@ -86,15 +95,14 @@ const AutoTranslate: React.FC<AutoTranslateProps> = ({ onClose }) => {
             {t("common:CANCEL")}
           </Button>
         </DialogTrigger>
-        <DialogTrigger asChild>
-          <Button
-            disabled={isPending || !defaultLanguageCode}
-            className="min-w-[80px]"
-            onClick={handleTranslate}
-          >
-            {t("common:YES")}
-          </Button>
-        </DialogTrigger>
+        <Button
+          disabled={isPending || !defaultLanguageCode}
+          className="min-w-[80px]"
+          onClick={() => void handleTranslate()}
+        >
+          {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {t("common:YES")}
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

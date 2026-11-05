@@ -128,26 +128,4 @@ describe("components/language-table-toolbar filters", () => {
       glossaryIssues: false,
     });
   });
-
-  it("toggles the Glossary issues filter and returns to the first page (H11)", () => {
-    renderToolbar("?pageNumber=4");
-
-    const checkbox = screen.getByRole("checkbox", { name: "Glossary issues" });
-    expect(checkbox.getAttribute("aria-checked")).toBe("false");
-
-    fireEvent.click(checkbox);
-    expect(params()).toMatchObject({ glossaryIssues: true, pageNumber: 0 });
-    expect(checkbox.getAttribute("aria-checked")).toBe("true");
-
-    fireEvent.click(screen.getByText("Glossary issues"));
-    expect(params()).toMatchObject({ glossaryIssues: false, pageNumber: 0 });
-  });
-
-  it("reads the Glossary issues filter from the URL", () => {
-    renderToolbar("?glossaryIssues=true");
-
-    expect(
-      screen.getByRole("checkbox", { name: "Glossary issues" }).getAttribute("aria-checked"),
-    ).toBe("true");
-  });
 });

@@ -84,6 +84,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
   onClose,
 }) => {
   const { t } = useT("localization.keys");
+  const { t: tGlossary } = useT("localization.glossary");
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
   const {
     request,
@@ -338,7 +339,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
                   className="gap-2"
                   aria-label={t("EDIT_TRANSLATION.INSERT_GLOSSARY")}
                   aria-keyshortcuts="Alt+Shift+G"
-                  title={getGlossaryTermMenuHint()}
+                  title={getGlossaryTermMenuHint(tGlossary)}
                   onClick={() => setTermMenuOpen(true)}
                 >
                   <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
@@ -407,7 +408,7 @@ const EditTranslation: React.FC<EditTranslationProps> = ({
           </GlossaryTermMenu>
           {canInsertTerm && (
             <p id="glossary-term-menu-hint" className="sr-only">
-              {getGlossaryTermMenuHint()}
+              {getGlossaryTermMenuHint(tGlossary)}
             </p>
           )}
           <GlossaryTargetChecks

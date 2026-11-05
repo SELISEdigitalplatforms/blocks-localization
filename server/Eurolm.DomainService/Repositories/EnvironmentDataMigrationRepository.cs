@@ -11,6 +11,7 @@ namespace Eurolm.DomainService.Repositories
         private readonly IDbContextProvider _dbContextProvider;
         private const string _modulesCollectionName = "BlocksLanguageModules";
         private const string _keysCollectionName = "BlocksLanguageKeys";
+        private const string _glossariesCollectionName = "BlocksGlossaries";
 
         public EnvironmentDataMigrationRepository(IDbContextProvider dbContextProvider)
         {
@@ -116,14 +117,18 @@ namespace Eurolm.DomainService.Repositories
 
             if (shouldOverwrite)
             {
+                var targetGlossaryIds = await ExistingGlossaryIdsAsync(database, keys.Where(k => !existingKeysDict.ContainsKey(k.ItemId)));
+
                 // Merge resources and replace existing + insert new
                 var keysToUpsert = keys.Select(key =>
                 {
-                    if (existingKeysDict.TryGetValue(key.ItemId, out var existingKey) && existingKey.Resources != null && key.Resources != null)
+                    existingKeysDict.TryGetValue(key.ItemId, out var existingKey);
+                    if (existingKey != null && existingKey.Resources != null && key.Resources != null)
                     {
                         // Merge resources: new resources override existing ones by culture, remaining existing resources are kept
                         key.Resources = MergeResources(existingKey.Resources, key.Resources);
                     }
+                    KeepTargetGlossaryData(key, existingKey, targetGlossaryIds);
                     return key;
                 }).ToList();
 
@@ -152,6 +157,7 @@ namespace Eurolm.DomainService.Repositories
                 
                 if (keysToInsert.Any())
                 {
+                    var targetGlossaryIds = await ExistingGlossaryIdsAsync(database, keysToInsert);
                     // Only insert new (use $setOnInsert to avoid overwriting existing data)
                     var bulkOps = keys.Select(key =>
                     {
@@ -164,6 +170,8 @@ namespace Eurolm.DomainService.Repositories
                             .SetOnInsert(k => k.Resources, key.Resources)
                             .SetOnInsert(k => k.Routes, key.Routes)
                             .SetOnInsert(k => k.IsPartiallyTranslated, key.IsPartiallyTranslated)
+                            .SetOnInsert(k => k.GlossaryIds, TargetGlossaryIds(key, targetGlossaryIds))
+                            .SetOnInsert(k => k.GlossaryViolations, TargetGlossaryViolations(key, targetGlossaryIds))
                             .SetOnInsert(k => k.CreateDate, key.CreateDate)
                             .SetOnInsert(k => k.LastUpdateDate, key.LastUpdateDate)
                             .SetOnInsert(k => k.TenantId, key.TenantId)
@@ -183,6 +191,48 @@ namespace Eurolm.DomainService.Repositories
 
             return result;
         }
+
+        /// <summary>
+        /// The ids among the keys' glossary tags and violations that exist in the target tenant's glossaries.
+        /// </summary>
+        private static async Task<HashSet<string>> ExistingGlossaryIdsAsync(IMongoDatabase database, IEnumerable<BlocksLanguageKey> keys)
+        {
+            var requested = keys
+                .SelectMany(k => (k.GlossaryIds ?? new List<string>())
+                    .Concat(k.GlossaryViolations?.Select(v => v.GlossaryId) ?? Enumerable.Empty<string>()))
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (requested.Count == 0) return new HashSet<string>(StringComparer.Ordinal);
+
+            var existing = await database.GetCollection<BlocksGlossary>(_glossariesCollectionName)
+                .Find(Builders<BlocksGlossary>.Filter.In(g => g.ItemId, requested))
+                .Project(g => g.ItemId)
+                .ToListAsync();
+            return existing.ToHashSet(StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// An overwritten target key keeps its own glossary tags and violations; a new key keeps only those of
+        /// glossaries that exist in the target.
+        /// </summary>
+        private static void KeepTargetGlossaryData(BlocksLanguageKey key, BlocksLanguageKey? existingKey, ISet<string> targetGlossaryIds)
+        {
+            if (existingKey != null)
+            {
+                key.GlossaryIds = existingKey.GlossaryIds;
+                key.GlossaryViolations = existingKey.GlossaryViolations;
+                return;
+            }
+            key.GlossaryIds = TargetGlossaryIds(key, targetGlossaryIds);
+            key.GlossaryViolations = TargetGlossaryViolations(key, targetGlossaryIds);
+        }
+
+        private static List<string>? TargetGlossaryIds(BlocksLanguageKey key, ISet<string> targetGlossaryIds) =>
+            key.GlossaryIds?.Where(targetGlossaryIds.Contains).ToList();
+
+        private static List<KeyGlossaryViolation>? TargetGlossaryViolations(BlocksLanguageKey key, ISet<string> targetGlossaryIds) =>
+            key.GlossaryViolations?.Where(v => targetGlossaryIds.Contains(v.GlossaryId)).ToList();
 
         /// <summary>
         /// Merges existing and new resources by culture.
@@ -354,15 +404,19 @@ namespace Eurolm.DomainService.Repositories
 
             if (shouldOverwrite)
             {
+                var targetGlossaryIds = await ExistingGlossaryIdsAsync(database, keys.Where(k => !existingKeysDict.ContainsKey($"{k.ModuleId}:{k.KeyName}")));
+
                 // Merge resources and replace existing + insert new
                 var keysToUpsert = keys.Select(key =>
                 {
                     var lookupKey = $"{key.ModuleId}:{key.KeyName}";
-                    if (existingKeysDict.TryGetValue(lookupKey, out var existingKey) && existingKey.Resources != null && key.Resources != null)
+                    existingKeysDict.TryGetValue(lookupKey, out var existingKey);
+                    if (existingKey != null && existingKey.Resources != null && key.Resources != null)
                     {
                         // Merge resources: new resources override existing ones by culture, remaining existing resources are kept
                         key.Resources = MergeResources(existingKey.Resources, key.Resources);
                     }
+                    KeepTargetGlossaryData(key, existingKey, targetGlossaryIds);
                     return key;
                 }).ToList();
 
@@ -392,6 +446,7 @@ namespace Eurolm.DomainService.Repositories
 
                 if (keysToInsert.Any())
                 {
+                    var targetGlossaryIds = await ExistingGlossaryIdsAsync(database, keysToInsert);
                     // Only insert new (use $setOnInsert to avoid overwriting existing data)
                     var bulkOps = keysToInsert.Select(key =>
                     {
@@ -407,6 +462,8 @@ namespace Eurolm.DomainService.Repositories
                             .SetOnInsert(k => k.Resources, key.Resources)
                             .SetOnInsert(k => k.Routes, key.Routes)
                             .SetOnInsert(k => k.IsPartiallyTranslated, key.IsPartiallyTranslated)
+                            .SetOnInsert(k => k.GlossaryIds, TargetGlossaryIds(key, targetGlossaryIds))
+                            .SetOnInsert(k => k.GlossaryViolations, TargetGlossaryViolations(key, targetGlossaryIds))
                             .SetOnInsert(k => k.CreateDate, key.CreateDate)
                             .SetOnInsert(k => k.LastUpdateDate, key.LastUpdateDate)
                             .SetOnInsert(k => k.TenantId, key.TenantId)

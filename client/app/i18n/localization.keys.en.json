@@ -32,6 +32,7 @@
   "ADD_NEW_LANGUAGE_KEY.SAVE_FAILED": "Unable to save language key",
   "ADD_NEW_LANGUAGE_KEY.SEARCH_MODULE": "Search Module...",
   "ADD_NEW_LANGUAGE_KEY.SELECT_MODULE": "Select Module...",
+  "ADD_NEW_LANGUAGE_KEY.NO_SUGGESTION": "No suggestion came back. Try again.",
   "ADD_NEW_LANGUAGE_KEY.SOMETHING_WENT_WRONG": "Something went wrong",
   "ADD_NEW_LANGUAGE_KEY.TRANSLATED": "Translated successfully",
   "ADD_NEW_LANGUAGE_KEY.TRANSLATIONS": "Translations",

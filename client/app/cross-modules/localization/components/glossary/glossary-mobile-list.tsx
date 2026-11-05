@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
 import { EllipsisVertical, Pencil, Trash } from "lucide-react";
 import { Card, CardContent } from "@/components/ui-kits/card/card";
 import { Button } from "@/components/ui-kits/button/button";
@@ -23,10 +24,9 @@ import {
 
 const MOBILE_SKELETON_KEYS = Array.from({ length: 5 }, (_, index) => `glossary-card-${index}`);
 
-export const getGlossaryScopeText = (glossary: IGlossary) => {
-  if (glossary.isGlobal) return "Whole project";
-  const count = glossary.moduleIds?.length ?? 0;
-  return `${count} module${count === 1 ? "" : "s"}`;
+export const getGlossaryScopeText = (t: TFunction, glossary: IGlossary) => {
+  if (glossary.isGlobal) return t("GLOSSARY_DETAILS.SCOPE_WHOLE_PROJECT");
+  return t("GLOSSARY_DETAILS.SCOPE_MODULES", { count: glossary.moduleIds?.length ?? 0 });
 };
 
 interface GlossaryMobileListProps {
@@ -46,6 +46,7 @@ const GlossaryMobileList = ({
   onEdit,
   onDelete,
 }: Readonly<GlossaryMobileListProps>) => {
+  const { t } = useT("localization.glossary");
   const scoped = useScopedPath();
 
   if (isLoading) {
@@ -63,7 +64,7 @@ const GlossaryMobileList = ({
   }
 
   return (
-    <ul className="flex flex-col gap-3" aria-label="Glossaries">
+    <ul className="flex flex-col gap-3" aria-label={t("GLOSSARY_MOBILE_LIST.LIST_ARIA")}>
       {glossaries.map((glossary) => {
         const isUnsupported = isUnsupportedGlossaryNote(glossary);
         const meta = toGlossaryMeta(glossary);
@@ -83,7 +84,7 @@ const GlossaryMobileList = ({
                       <Button
                         variant="ghost"
                         className="relative z-10 h-8 w-8 shrink-0 p-0"
-                        aria-label={`Actions for ${glossary.name}`}
+                        aria-label={t("GLOSSARY_TABLE.ACTIONS_FOR_ARIA", { name: glossary.name })}
                       >
                         <EllipsisVertical width={20} height={20} />
                       </Button>
@@ -91,14 +92,14 @@ const GlossaryMobileList = ({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(glossary)}>
                         <Pencil className="mr-2 h-4 w-4" />
-                        <span>Edit</span>
+                        <span>{t("common:EDIT")}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="cursor-pointer text-error"
                         onClick={() => onDelete(glossary)}
                       >
                         <Trash className="mr-2 h-4 w-4" />
-                        <span>Delete</span>
+                        <span>{t("common:DELETE")}</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -106,7 +107,7 @@ const GlossaryMobileList = ({
                 <div className="flex flex-wrap items-center gap-2">
                   {!isUnsupported && <GlossaryRuleBadge rule={meta.rule} />}
                   <GlossaryStatusBadge status={getGlossaryStatus(glossary)} />
-                  <span className="text-xs text-medium-emphasis">{getGlossaryScopeText(glossary)}</span>
+                  <span className="text-xs text-medium-emphasis">{getGlossaryScopeText(t, glossary)}</span>
                 </div>
                 {!isUnsupported && (
                   <div className="relative z-10 w-fit">

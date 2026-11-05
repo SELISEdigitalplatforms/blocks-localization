@@ -91,6 +91,7 @@ namespace XUnitTest.Services.Key
             await TranslateGerman(key, new SuggestionResult
             {
                 Content = "Öffnen Sie Ihren Werkbereich",
+                Validated = true,
                 GlossaryViolations = { new GlossaryViolationDto { GlossaryId = "g1", Term = "Workspace", Kind = GlossaryViolationKinds.ForbiddenUsed, Found = "Werkbereich" } }
             });
 
@@ -106,9 +107,33 @@ namespace XUnitTest.Services.Key
             _terminology.SetupGet(t => t.IsEnforcementEnabled).Returns(true);
             var key = KeyWithViolations(Stored("de-DE", "old"));
 
-            await TranslateGerman(key, new SuggestionResult { Content = "Öffnen Sie Ihren Arbeitsbereich" });
+            await TranslateGerman(key, new SuggestionResult { Content = "Öffnen Sie Ihren Arbeitsbereich", Validated = true });
 
             key.GlossaryViolations.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task Worker_keeps_a_cultures_violations_after_a_legacy_fallback()
+        {
+            _terminology.SetupGet(t => t.IsEnforcementEnabled).Returns(true);
+            var stored = Stored("de-DE", "old");
+            var key = KeyWithViolations(stored);
+
+            await TranslateGerman(key, new SuggestionResult { Content = "Öffnen Sie Ihren Arbeitsbereich" });
+
+            key.GlossaryViolations.Should().ContainSingle().Which.Should().BeSameAs(stored);
+        }
+
+        [Fact]
+        public async Task Worker_keeps_a_cultures_violations_when_no_content_came_back()
+        {
+            _terminology.SetupGet(t => t.IsEnforcementEnabled).Returns(true);
+            var stored = Stored("de-DE", "old");
+            var key = KeyWithViolations(stored);
+
+            await TranslateGerman(key, new SuggestionResult { Content = null, Validated = true });
+
+            key.GlossaryViolations.Should().ContainSingle().Which.Should().BeSameAs(stored);
         }
 
         [Fact]
@@ -203,7 +228,7 @@ namespace XUnitTest.Services.Key
             stored.GlossaryIds = new List<string> { "g-old" };
             BlocksLanguageKey? saved = null;
             _keyRepository.Setup(r => r.GetKeyByNameAsync("open", "m1")).ReturnsAsync(stored);
-            _keyRepository.Setup(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>())).Callback<BlocksLanguageKey>(k => saved = k).Returns(Task.CompletedTask);
+            _keyRepository.Setup(r => r.SetGlossaryIdsAsync(It.IsAny<BlocksLanguageKey>(), true)).Callback<BlocksLanguageKey, bool>((k, _) => saved = k).ReturnsAsync(true);
 
             var request = Save();
             request.Routes = new List<string>();
@@ -218,6 +243,7 @@ namespace XUnitTest.Services.Key
             saved.Routes.Should().Equal("/home");
             saved.Context.Should().Be("Newer context");
             checkedKey.Should().BeSameAs(saved);
+            _keyRepository.Verify(r => r.SaveKeyAsync(It.IsAny<BlocksLanguageKey>()), Times.Never);
         }
 
         [Fact]

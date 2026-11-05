@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui-kits/button/button";
@@ -200,6 +201,90 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       ],
       additionalNote: "n",
       version: 3,
+    });
+  });
+
+  describe("SPEC15 culture codes", () => {
+    it("shows a value stored under another case in the project row and saves one entry (H30)", async () => {
+      renderSheet(
+        makeGlossary({
+          rule: "translate",
+          translations: [{ language: "de-de", value: "Arbeitsbereich", forbiddenValues: [] }],
+          version: 1,
+        }),
+      );
+      expect((screen.getByLabelText("German (de-DE)") as HTMLInputElement).value).toBe(
+        "Arbeitsbereich",
+      );
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().translations).toEqual([
+        { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+      ]);
+    });
+
+    it("shows a bare-language value in its culture's row and saves it only there (H27)", async () => {
+      renderSheet(
+        makeGlossary({
+          rule: "translate",
+          translations: [{ language: "de", value: "Arbeitsbereich", forbiddenValues: [] }],
+          version: 1,
+        }),
+      );
+      expect((screen.getByLabelText("German (de-DE)") as HTMLInputElement).value).toBe(
+        "Arbeitsbereich",
+      );
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().translations).toEqual([
+        { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+      ]);
+    });
+
+    it("prefers the de-DE value over a bare de one and saves only de-DE (C31)", async () => {
+      renderSheet(
+        makeGlossary({
+          rule: "translate",
+          translations: [
+            { language: "de", value: "Bereich", forbiddenValues: [] },
+            { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+          ],
+          version: 1,
+        }),
+      );
+      expect((screen.getByLabelText("German (de-DE)") as HTMLInputElement).value).toBe(
+        "Arbeitsbereich",
+      );
+      save();
+      await waitFor(() => expect(saveGlossaryAsync).toHaveBeenCalled());
+      expect(lastPayload().translations).toEqual([
+        { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+      ]);
+    });
+
+    it("keeps a bare language as its own row when it is a project language (C31)", () => {
+      vi.mocked(hooks.useGetLanguages).mockReturnValue({
+        data: [
+          { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
+          { itemId: "2", languageCode: "de-DE", languageName: "German" },
+          { itemId: "4", languageCode: "de", languageName: "German (generic)" },
+        ],
+      } as never);
+      renderSheet(
+        makeGlossary({
+          rule: "translate",
+          translations: [
+            { language: "de", value: "Bereich", forbiddenValues: [] },
+            { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+          ],
+        }),
+      );
+      expect((screen.getByLabelText("German (generic) (de)") as HTMLInputElement).value).toBe(
+        "Bereich",
+      );
+      expect((screen.getByLabelText("German (de-DE)") as HTMLInputElement).value).toBe(
+        "Arbeitsbereich",
+      );
     });
   });
 
@@ -646,6 +731,15 @@ describe("modals/glossary/glossary-editor-sheet", () => {
       const onOpenChange = renderControlled();
       typeName("Changed");
       close();
+      expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("asks before a click outside the sheet discards a change (SPEC15 C34)", async () => {
+      const onOpenChange = renderControlled();
+      typeName("Changed");
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      await user.pointer({ keys: "[MouseLeft]", target: document.body });
       expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
       expect(onOpenChange).not.toHaveBeenCalled();
     });

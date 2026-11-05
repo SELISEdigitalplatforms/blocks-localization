@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly.CircuitBreaker;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -14,6 +15,11 @@ namespace Eurolm.DomainService.Services
 {
     public class AssistantService : IAssistantService
     {
+        public const int MaxAiCallsPerSuggestion = 4;
+        public static readonly TimeSpan SuggestionTimeLimit = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan EmptyResultRetryDelay = TimeSpan.FromSeconds(5);
+        private const int MaxEmptyResultRetries = 3;
+
         private readonly ILogger<AssistantService> _logger;
         private readonly IConfiguration _configuration;
         private readonly string _chatGptTemperature;
@@ -21,13 +27,15 @@ namespace Eurolm.DomainService.Services
         private readonly ILocalizationSecret _localizationSecret;
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IGlossaryMatcherCache? _matcherCache;
+        private readonly TimeProvider _timeProvider;
         public AssistantService(
             ILogger<AssistantService> logger,
             IConfiguration configuration,
             HttpClient httpClient,
             ILocalizationSecret localizationSecret,
             IGlossaryRepository glossaryRepository,
-            IGlossaryMatcherCache? matcherCache = null
+            IGlossaryMatcherCache? matcherCache = null,
+            TimeProvider? timeProvider = null
         )
         {
             _localizationSecret = localizationSecret;
@@ -37,13 +45,29 @@ namespace Eurolm.DomainService.Services
             _httpClient = httpClient;
             _glossaryRepository = glossaryRepository;
             _matcherCache = matcherCache;
+            _timeProvider = timeProvider ?? TimeProvider.System;
         }
 
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
         {
+            using var budget = new SuggestionBudget(_timeProvider);
+            try
+            {
+                return await SuggestTranslation(query, budget);
+            }
+            finally
+            {
+                if (budget.Stopped)
+                    _logger.LogWarning("SuggestTranslation: stopped after {CallCount} AI calls in {ElapsedMs} ms (limit {LimitMs} ms)",
+                        budget.CallCount, (long)budget.Elapsed.TotalMilliseconds, (long)SuggestionTimeLimit.TotalMilliseconds);
+            }
+        }
+
+        private async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query, SuggestionBudget budget)
+        {
             if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null)
             {
-                return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
+                return new SuggestionResult { Content = await SuggestLegacyAsync(query, budget) };
             }
 
             TerminologyPrompt prompt;
@@ -64,7 +88,7 @@ namespace Eurolm.DomainService.Services
             {
                 // Degrade to today's prompt; the log carries no source text or glossary content.
                 _logger.LogWarning(ex, "SuggestTranslation: glossary matching failed, using the legacy prompt path");
-                return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
+                return new SuggestionResult { Content = await SuggestLegacyAsync(query, budget) };
             }
 
             if (prompt.MissingTranslations.Count > 0)
@@ -74,22 +98,23 @@ namespace Eurolm.DomainService.Services
                     prompt.MissingTranslations.Count, query.DestinationLanguageCode);
             }
 
-            var first = await CompleteAsync(prompt.Prompt, query);
+            var first = await CompleteAsync(prompt.Prompt, query, budget);
             if (first == null)
                 return new SuggestionResult { AppliedTerms = prompt.AppliedTerms, MissingGlossaryTranslations = prompt.MissingTranslations };
 
             var violations = TranslationValidator.Validate(first, query.DestinationLanguageCode, prompt.RuleMatches);
             if (violations.Count == 0)
-                return new SuggestionResult { Content = first, AppliedTerms = prompt.AppliedTerms, MissingGlossaryTranslations = prompt.MissingTranslations };
+                return new SuggestionResult { Content = first, Validated = true, AppliedTerms = prompt.AppliedTerms, MissingGlossaryTranslations = prompt.MissingTranslations };
 
             // One correction attempt at most; if it fails or comes back empty, keep the first answer.
-            var corrected = await CompleteAsync(TerminologyPromptBuilder.BuildCorrection(prompt, violations), query);
+            var corrected = await CompleteAsync(TerminologyPromptBuilder.BuildCorrection(prompt, violations), query, budget);
             _logger.LogInformation("SuggestTranslation: correction attempt made for {ViolationCount} glossary violations, succeeded: {Succeeded}",
                 violations.Count, corrected != null);
             if (corrected == null)
                 return new SuggestionResult
                 {
                     Content = first,
+                    Validated = true,
                     AppliedTerms = prompt.AppliedTerms,
                     GlossaryViolations = violations,
                     MissingGlossaryTranslations = prompt.MissingTranslations
@@ -98,13 +123,14 @@ namespace Eurolm.DomainService.Services
             return new SuggestionResult
             {
                 Content = corrected,
+                Validated = true,
                 AppliedTerms = prompt.AppliedTerms,
                 MissingGlossaryTranslations = prompt.MissingTranslations,
                 GlossaryViolations = TranslationValidator.Validate(corrected, query.DestinationLanguageCode, prompt.RuleMatches)
             };
         }
 
-        private async Task<string?> SuggestLegacyAsync(SuggestLanguageRequest query)
+        private async Task<string?> SuggestLegacyAsync(SuggestLanguageRequest query, SuggestionBudget budget)
         {
             var projectKey =  BlocksContext.GetContext()?.TenantId ?? "";
 
@@ -135,32 +161,54 @@ namespace Eurolm.DomainService.Services
 
             var context = GenerateSuggestTranslationContext(query, glossaryContext);
 
-            return await CompleteAsync(context, query);
+            return await CompleteAsync(context, query, budget);
         }
 
         /// <summary>
         /// One logical AI attempt: the completion with today's empty-result retries (up to 3, 5 s apart),
         /// formatted. Returns null when every try came back empty or formatting left nothing.
         /// </summary>
-        private async Task<string?> CompleteAsync(string context, SuggestLanguageRequest query)
+        private async Task<string?> CompleteAsync(string context, SuggestLanguageRequest query, SuggestionBudget budget)
         {
-            var aiCompletionRequest = new AiCompletionRequest(context, query.Temperature);
+            var aiCompletionRequest = new AiCompletionRequest(context, ResolveTemperature(query)) { CancellationToken = budget.Token };
 
-            var aiText = await AiCompletion(aiCompletionRequest);
+            var output = await CompleteWithEmptyRetriesAsync(aiCompletionRequest, query, budget);
+            if (output == null || PlaceholdersMatch(query.SourceText, output))
+                return output;
 
-            var maxRetryCount = 3;
-            var retryCount = 0;
-
-            while (string.IsNullOrEmpty(aiText) && retryCount < maxRetryCount)
+            var retried = await CompleteWithEmptyRetriesAsync(aiCompletionRequest, query, budget);
+            if (retried == null)
+                return null;
+            if (!PlaceholdersMatch(query.SourceText, retried))
             {
-                await Task.Delay(5000);
+                _logger.LogWarning("SuggestTranslation: placeholders changed in the translation ({SourcePlaceholderCount} in the source, {TranslationPlaceholderCount} in the translation); dropped",
+                    PlaceholderMask.GetTokens(query.SourceText).Count, PlaceholderMask.GetTokens(retried).Count);
+                return null;
+            }
 
-                aiText = await AiCompletion(aiCompletionRequest);
+            return retried;
+        }
+
+        private async Task<string?> CompleteWithEmptyRetriesAsync(AiCompletionRequest aiCompletionRequest, SuggestLanguageRequest query, SuggestionBudget budget)
+        {
+            if (!budget.TryStartCall())
+                return null;
+
+            var aiText = await CallAiAsync(aiCompletionRequest, budget);
+
+            var retryCount = 0;
+            while (string.IsNullOrEmpty(aiText) && retryCount < MaxEmptyResultRetries)
+            {
+                if (!await DelayAsync(EmptyResultRetryDelay, budget))
+                    return null;
+
+                aiText = await CallAiAsync(aiCompletionRequest, budget);
                 retryCount++;
             }
             if (string.IsNullOrEmpty(aiText))
             {
-                _logger.LogError("SuggestTranslation -> CallAiCompletion: Maximum Retry count reached");
+                if (!budget.Stopped)
+                    _logger.LogError("SuggestTranslation -> CallAiCompletion: Maximum Retry count reached");
                 return null;
             }
 
@@ -172,18 +220,97 @@ namespace Eurolm.DomainService.Services
                 return null;
             }
 
-            if (!PlaceholdersMatch(query.SourceText, output))
+            return output;
+        }
+
+        private async Task<string?> CallAiAsync(AiCompletionRequest aiCompletionRequest, SuggestionBudget budget)
+        {
+            if (budget.Expired)
+                return null;
+            try
             {
-                // One more try; a translation that lost or renamed a {{placeholder}} would break the text in the apps.
-                output = FormatAiTextForSuggestTranslation(await AiCompletion(aiCompletionRequest), query.SourceText);
-                if (!PlaceholdersMatch(query.SourceText, output))
+                return await AiCompletion(aiCompletionRequest).WaitAsync(budget.Token);
+            }
+            catch (OperationCanceledException) when (budget.Token.IsCancellationRequested)
+            {
+                budget.Stop();
+                return null;
+            }
+        }
+
+        private async Task<bool> DelayAsync(TimeSpan delay, SuggestionBudget budget)
+        {
+            if (budget.Expired)
+                return false;
+            try
+            {
+                await Delay(delay, budget.Token);
+                return !budget.Expired;
+            }
+            catch (OperationCanceledException) when (budget.Token.IsCancellationRequested)
+            {
+                budget.Stop();
+                return false;
+            }
+        }
+
+        protected virtual Task Delay(TimeSpan delay, CancellationToken cancellationToken) =>
+            Task.Delay(delay, _timeProvider, cancellationToken);
+
+        private double ResolveTemperature(SuggestLanguageRequest query)
+        {
+            if (query.Temperature.HasValue)
+                return query.Temperature.Value;
+            return double.TryParse(_chatGptTemperature, NumberStyles.Float, CultureInfo.InvariantCulture, out var temperature) ? temperature : 0;
+        }
+
+        private sealed class SuggestionBudget : IDisposable
+        {
+            private readonly TimeProvider _timeProvider;
+            private readonly CancellationTokenSource _deadline;
+            private long? _startedAt;
+
+            public SuggestionBudget(TimeProvider timeProvider)
+            {
+                _timeProvider = timeProvider;
+                _deadline = new CancellationTokenSource(Timeout.InfiniteTimeSpan, timeProvider);
+            }
+
+            public int CallCount { get; private set; }
+            public bool Stopped { get; private set; }
+            public CancellationToken Token => _deadline.Token;
+            public TimeSpan Elapsed => _startedAt.HasValue ? _timeProvider.GetElapsedTime(_startedAt.Value) : TimeSpan.Zero;
+
+            public bool Expired
+            {
+                get
                 {
-                    _logger.LogWarning("SuggestTranslation: placeholders of '{SourceText}' changed in the translation; dropped", query.SourceText);
-                    return null;
+                    if (!_deadline.IsCancellationRequested && (!_startedAt.HasValue || Elapsed < SuggestionTimeLimit))
+                        return false;
+                    Stop();
+                    return true;
                 }
             }
 
-            return output;
+            public bool TryStartCall()
+            {
+                if (Expired || CallCount >= MaxAiCallsPerSuggestion)
+                {
+                    Stop();
+                    return false;
+                }
+                if (!_startedAt.HasValue)
+                {
+                    _startedAt = _timeProvider.GetTimestamp();
+                    _deadline.CancelAfter(SuggestionTimeLimit);
+                }
+                CallCount++;
+                return true;
+            }
+
+            public void Stop() => Stopped = true;
+
+            public void Dispose() => _deadline.Dispose();
         }
 
         private static readonly Regex PlaceholderPattern = new(@"\{\{\s*(\w+)\s*\}\}", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
@@ -197,7 +324,7 @@ namespace Eurolm.DomainService.Services
         /// <summary>True when the translation keeps exactly the source's placeholders (order may change).</summary>
         public static bool PlaceholdersMatch(string? sourceText, string? translatedText) =>
             !string.IsNullOrWhiteSpace(translatedText) &&
-            GetPlaceholders(sourceText).SequenceEqual(GetPlaceholders(translatedText));
+            PlaceholderMask.GetTokens(sourceText).SequenceEqual(PlaceholderMask.GetTokens(translatedText));
 
         public static string GenerateSuggestTranslationContext(SuggestLanguageRequest request, string? glossaryContext = null)
         {
@@ -285,7 +412,7 @@ namespace Eurolm.DomainService.Services
         {
             try
             {
-                double.TryParse(_chatGptTemperature, out var temperature);
+                double.TryParse(_chatGptTemperature, NumberStyles.Float, CultureInfo.InvariantCulture, out var temperature);
                 TemperatureValidator(temperature);
 
                 var encryptedSecret = GetEncryptedSecret();
@@ -310,7 +437,7 @@ namespace Eurolm.DomainService.Services
                 var payload = model.ConstructCommand(request.Message, request.Temperature);
 
                 var httpRequest = PrepareHttpRequest(endpoint, HttpMethod.Post, JsonConvert.SerializeObject(payload));
-                var httpResponse = await MakeRequestAsync(httpRequest, secret);
+                var httpResponse = await MakeRequestAsync(httpRequest, secret, request.CancellationToken);
 
                 if (httpResponse != null && httpResponse.HttpStatusCode == HttpStatusCode.OK)
                 {
@@ -465,7 +592,7 @@ namespace Eurolm.DomainService.Services
             return httpRequestMessage;
         }
 
-        public async Task<RestResponse> MakeRequestAsync(HttpRequestMessage httpRequestMessage, string secret)
+        public async Task<RestResponse> MakeRequestAsync(HttpRequestMessage httpRequestMessage, string secret, CancellationToken cancellationToken = default)
         {
             var response = new RestResponse();
             var requestResponse = new HttpResponseMessage();
@@ -478,10 +605,10 @@ namespace Eurolm.DomainService.Services
 
                 ApplyApiKeyHeader(httpRequestMessage, secret);
 
-                requestResponse = await _httpClient.SendAsync(httpRequestMessage);
+                requestResponse = await _httpClient.SendAsync(httpRequestMessage, cancellationToken);
 
                 response.HttpStatusCode = requestResponse.StatusCode;
-                response.ResponseData = await requestResponse.Content.ReadAsStringAsync();
+                response.ResponseData = await requestResponse.Content.ReadAsStringAsync(cancellationToken);
 
                 _logger.LogInformation("Completed processing the API request. MethodType: {MethodType}, EndpointHost: {EndpointHost}, HttpStatusCode: {HttpStatusCode}",
                     httpRequestMessage.Method, endpointHost, response.HttpStatusCode);

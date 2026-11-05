@@ -118,7 +118,7 @@ const lowerChar = (char: string, locale: string) => {
 
 const safeLower = (value: string, locale: string) => {
   try {
-    return value.toLocaleLowerCase(locale || undefined);
+    return value.toLocaleLowerCase(locale.replaceAll("_", "-") || undefined);
   } catch {
     return value.toLowerCase();
   }

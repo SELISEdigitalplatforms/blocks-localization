@@ -1,3 +1,4 @@
+import { tStatic, type TFunction } from "@seliseblocks/genesis-os/i18n";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { KeyboardEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +52,8 @@ const keyEvent = (init: Partial<KeyboardEvent<HTMLElement>>) =>
     ...init,
   }) as KeyboardEvent<HTMLElement>;
 
+const glossaryT: TFunction = (key, values) => tStatic("localization.glossary", key, values);
+
 describe("getGlossaryTermMenuItems", () => {
   it("lists each term once by rule: translate value, missing, keep surface, no forbidden (H11)", () => {
     expect(getGlossaryTermMenuItems(matches, "de-DE")).toEqual([
@@ -94,9 +97,14 @@ describe("getGlossaryTermMenuShortcut", () => {
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
     );
     expect(getGlossaryTermMenuShortcut()).toEqual({ keys: "⌥⇧G", label: "Option+Shift+G" });
-    expect(getGlossaryTermMenuHint()).toBe(
+    expect(getGlossaryTermMenuHint(glossaryT)).toBe(
       "Press Option+Shift+G to insert a glossary at the cursor.",
     );
+  });
+
+  it("shows the search placeholder as \"Search glossaries…\" (SPEC15 H29)", () => {
+    expect(glossaryT("GLOSSARY_TERM_MENU.SEARCH")).toBe("Search glossaries…");
+    expect(glossaryT("GLOSSARY_PICKER.SEARCH_PLACEHOLDER")).toBe("Search glossaries…");
   });
 
   it("names Alt elsewhere", () => {

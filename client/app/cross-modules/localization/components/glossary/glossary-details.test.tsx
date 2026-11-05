@@ -3,10 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
+import { toast } from "@/hooks/use-toast";
+import { FORBIDDEN_ERROR_MESSAGE } from "@/lib/error";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import GlossaryDetails from "./glossary-details";
 
 const navigate = vi.fn();
+
+vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn(), showErrorToast: vi.fn() }));
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -575,6 +579,63 @@ describe("components/glossary/glossary-details", () => {
       expect(screen.getByRole("menuitem", { name: /Delete/ })).toBeTruthy();
       expect(screen.getByRole("menuitem", { name: /Deprecate/ })).toBeTruthy();
       expect(screen.queryByRole("menuitem", { name: /Re-check/ })).toBeNull();
+    });
+
+    it("reloads after a Deprecate version conflict and saves on top of it next time (SPEC15 H26)", async () => {
+      const user = userEvent.setup();
+      const saveGlossary = vi
+        .fn()
+        .mockResolvedValueOnce({
+          success: false,
+          validationErrors: [{ propertyName: "Version", errorMessage: "changed" }],
+        })
+        .mockResolvedValueOnce({ success: true });
+      h.useSaveGlossary.mockReturnValue({ mutateAsync: saveGlossary, isPending: false } as never);
+      const fetchLatest = vi.fn(async () => {
+        h.useGetGlossaryById.mockReturnValue({
+          data: { ...glossary, version: 4, name: "Workspace v4" },
+          isLoading: false,
+        } as never);
+        return { ...glossary, version: 4 };
+      });
+      h.useFetchLatestGlossary.mockReturnValue(fetchLatest as never);
+      const { rerender } = renderDetails();
+
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(screen.getByRole("menuitem", { name: /Deprecate/ }));
+      await waitFor(() => expect(fetchLatest).toHaveBeenCalledWith("g1"));
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          description:
+            "This glossary was changed by someone else. The latest version is loaded; try again.",
+        }),
+      );
+      rerender(<GlossaryDetails itemId="g1" />);
+
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(screen.getByRole("menuitem", { name: /Deprecate/ }));
+      await waitFor(() => expect(saveGlossary).toHaveBeenCalledTimes(2));
+      expect(saveGlossary).toHaveBeenLastCalledWith(
+        expect.objectContaining({ version: 4, name: "Workspace v4", status: "deprecated" }),
+      );
+    });
+
+    it("shows the shared permission message when Deprecate is forbidden (SPEC15 C30)", async () => {
+      const user = userEvent.setup();
+      h.useSaveGlossary.mockReturnValue({
+        mutateAsync: vi.fn().mockRejectedValue({ status: 403, errors: {} }),
+        isPending: false,
+      } as never);
+      renderDetails();
+
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(screen.getByRole("menuitem", { name: /Deprecate/ }));
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({ variant: "destructive", description: FORBIDDEN_ERROR_MESSAGE }),
+        ),
+      );
     });
 
     it("searches and filters the Keys card after a 300 ms pause, from page 0 (H4)", () => {

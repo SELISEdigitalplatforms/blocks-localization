@@ -140,6 +140,7 @@
   "LANGUAGE_TABLE_UTILS.KEYS_SELECTED_one": "{{formatted}} key selected",
   "LANGUAGE_TABLE_UTILS.KEYS_SELECTED_other": "{{formatted}} keys selected",
   "USE_INLINE_KEY_EDITOR.KEY_UPDATED": "Language key updated successfully",
+  "USE_INLINE_KEY_EDITOR.NO_SUGGESTION": "No suggestion came back. Try again.",
   "USE_INLINE_KEY_EDITOR.TRANSLATED": "Translated successfully",
   "USE_LANGUAGE_IMPORT_PROGRESS.FILE_AND_MORE": "{{name}} and {{count}} more",
   "USE_LANGUAGE_IMPORT_PROGRESS.FILE_FALLBACK": "Your file",

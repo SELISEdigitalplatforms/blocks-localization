@@ -18,5 +18,7 @@ namespace Eurolm.DomainService.Repositories
         public List<string> GlossaryIds { get; set; } = new();
         /// <summary>Modules the glossaries were scoped to before the change, so their keys are re-checked too.</summary>
         public List<string> ModuleIds { get; set; } = new();
+        /// <summary>Set when a run failed and put its scope back; the next request takes the marker over and publishes.</summary>
+        public bool Failed { get; set; }
     }
 }

@@ -33,6 +33,7 @@ namespace Eurolm.DomainService.Repositories
             if (!string.IsNullOrEmpty(tenantId))
             {
                 _ = GlossaryIndexInitializer.EnsureStarted(tenantId, dataBase.GetCollection<BlocksGlossary>(_collectionName), _logger);
+                _ = GlossaryIndexInitializer.EnsureUniqueNameIndexStarted(tenantId, dataBase.GetCollection<BlocksGlossary>(_collectionName), _logger);
                 _ = KeyIndexInitializer.EnsureStarted(tenantId, dataBase.GetCollection<Key>(KeyCollectionName), _logger);
             }
             return dataBase;
@@ -289,9 +290,7 @@ namespace Eurolm.DomainService.Repositories
             var dataBase = GetContextDatabase();
             var collection = dataBase.GetCollection<BlocksGlossary>(_collectionName);
 
-            await collection.Indexes.CreateOneAsync(new CreateIndexModel<BlocksGlossary>(
-                Builders<BlocksGlossary>.IndexKeys.Ascending(g => g.NormalizedName),
-                new CreateIndexOptions { Name = NormalizedNameIndexName, Unique = true }));
+            await collection.Indexes.CreateOneAsync(GlossaryIndexInitializer.UniqueNameIndex);
         }
 
         public async Task InsertAsync(BlocksGlossary glossary)

@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { tStatic, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
 import { renderWithProviders } from "@/test-utils/render";
 import { IGlossary } from "@blocks-localization/models/language";
@@ -9,6 +10,8 @@ import GlossaryMobileList, { getGlossaryScopeText } from "./glossary-mobile-list
 vi.mock("@seliseblocks/genesis-os", () => ({
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
+
+const t: TFunction = (key, values) => tStatic("localization.glossary", key, values);
 
 const languages = [
   { itemId: "1", languageCode: "en-US", languageName: "English", isDefault: true },
@@ -83,8 +86,8 @@ describe("components/glossary/glossary-mobile-list", () => {
   });
 
   it("describes the scope", () => {
-    expect(getGlossaryScopeText({ ...workspace, isGlobal: true })).toBe("Whole project");
-    expect(getGlossaryScopeText({ ...workspace, moduleIds: ["m1"] })).toBe("1 module");
-    expect(getGlossaryScopeText({ ...workspace, moduleIds: undefined })).toBe("0 modules");
+    expect(getGlossaryScopeText(t, { ...workspace, isGlobal: true })).toBe("Whole project");
+    expect(getGlossaryScopeText(t, { ...workspace, moduleIds: ["m1"] })).toBe("1 module");
+    expect(getGlossaryScopeText(t, { ...workspace, moduleIds: undefined })).toBe("0 modules");
   });
 });

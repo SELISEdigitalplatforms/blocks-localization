@@ -49,10 +49,13 @@ namespace Eurolm.DomainService.Services
             var existingIds = all.Select(g => g.ItemId).ToHashSet(StringComparer.Ordinal);
             if (!dryRun) existingIds.UnionWith((await _glossaryRepository.GetAllEntitiesAsync(tenantId)).Select(g => g.ItemId));
             report.StaleKeyRefsRemoved = await _keyRepository.RemoveStaleGlossaryIdsAsync(existingIds, dryRun, BatchSize);
+            report.StaleViolationsRemoved = await _keyRepository.RemoveStaleGlossaryViolationsAsync(existingIds, dryRun, BatchSize);
 
             var migrated = writes.Count;
             if (!dryRun)
             {
+                var runTime = DateTime.UtcNow;
+                foreach (var (glossary, _) in writes) glossary.LastUpdateDate = runTime;
                 var (modified, skipped) = await WriteAllAsync(writes, report);
                 leftLegacy += skipped;
                 migrated = modified;
@@ -90,9 +93,9 @@ namespace Eurolm.DomainService.Services
             }
 
             _logger.LogInformation(
-                "Glossary migration {Mode}: total {Total}, migrated {Migrated}, already {AlreadyMigrated}, corrupt {Corrupt}, duplicate groups {DuplicateGroups}, stale key refs {StaleKeyRefs}, unique index {UniqueIndex}",
+                "Glossary migration {Mode}: total {Total}, migrated {Migrated}, already {AlreadyMigrated}, corrupt {Corrupt}, duplicate groups {DuplicateGroups}, stale key refs {StaleKeyRefs}, stale violations {StaleViolations}, unique index {UniqueIndex}",
                 dryRun ? "dry run" : "run", report.Total, report.Migrated, report.AlreadyMigrated, report.Corrupt.Count,
-                report.DuplicateGroups.Count, report.StaleKeyRefsRemoved, report.UniqueIndexCreated);
+                report.DuplicateGroups.Count, report.StaleKeyRefsRemoved, report.StaleViolationsRemoved, report.UniqueIndexCreated);
 
             return report;
         }

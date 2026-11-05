@@ -11,7 +11,7 @@ export interface ProjectLanguage {
   isDefault: boolean;
 }
 
-interface ApiKey {
+export interface ApiKey {
   itemId: string;
   keyName: string;
   moduleId?: string;
@@ -19,6 +19,15 @@ interface ApiKey {
   routes?: string[];
   glossaryIds?: string[];
   resources?: { culture: string; value: string }[];
+  glossaryViolations?: { culture: string; glossaryId: string; kind: string; found?: string }[];
+  lastUpdateDate?: string;
+}
+
+export interface ApiGlossaryUsage {
+  keyCount: number;
+  affectedKeyCount?: number;
+  isGlobal?: boolean;
+  moduleIds: string[];
 }
 
 export interface ApiGlossaryTranslation {
@@ -124,6 +133,7 @@ export class LocalizationApi {
     isGlobal: boolean;
     additionalNote?: string;
     context?: string;
+    language?: string;
     moduleIds?: string[];
     rule?: "translate" | "keep" | "forbidden";
     status?: "draft" | "approved" | "deprecated";
@@ -183,6 +193,115 @@ export class LocalizationApi {
     );
   }
 
+  /** The stored glossary, as the editor loads it (`Glossary/GetByIds`). */
+  async getGlossary(itemId: string): Promise<Record<string, unknown> | undefined> {
+    const body = await this.json<{ items: Record<string, unknown>[] }>(
+      await this.page.request.get(
+        `${this.base}/Glossary/GetByIds?itemIds=${encodeURIComponent(itemId)}`,
+        { headers: this.headers },
+      ),
+      `get glossary ${itemId}`,
+    );
+    return body.items[0];
+  }
+
+  /**
+   * Re-saves a stored glossary with `changes` applied (its `version` is sent back as read);
+   * `omit` leaves fields out, as an older client or the CLI would.
+   */
+  async updateGlossary(itemId: string, changes: Record<string, unknown>, omit: string[] = []) {
+    const stored = await this.getGlossary(itemId);
+    expect(stored, `glossary ${itemId} exists`).toBeTruthy();
+    const data: Record<string, unknown> = { ...stored, ...changes };
+    for (const field of omit) delete data[field];
+    await this.json(
+      await this.page.request.post(`${this.base}/Glossary/Save`, {
+        headers: this.headers,
+        data,
+      }),
+      `update glossary ${itemId}`,
+    );
+  }
+
+  /** Raw `Glossary/Usage` response, for status and error-text checks. */
+  usageResponse(itemId: string) {
+    return this.page.request.get(
+      `${this.base}/Glossary/Usage?itemId=${encodeURIComponent(itemId)}&pageNumber=0&pageSize=1`,
+      { headers: this.headers },
+    );
+  }
+
+  async glossaryUsage(itemId: string): Promise<ApiGlossaryUsage> {
+    return this.json<ApiGlossaryUsage>(await this.usageResponse(itemId), `usage of ${itemId}`);
+  }
+
+  async matchGlossary(request: { text: string; language: string; moduleId?: string; keyId?: string }) {
+    return this.json<{ matches: ApiGlossaryMatch[] }>(
+      await this.page.request.post(`${this.base}/Glossary/Match`, {
+        headers: this.headers,
+        data: request,
+      }),
+      "match glossaries",
+    );
+  }
+
+  translateAll(request: { defaultLanguage: string; moduleId?: string }) {
+    return this.page.request.post(`${this.base}/Key/TranslateAll`, {
+      headers: this.headers,
+      data: { messageCoRelationId: "", ...request },
+    });
+  }
+
+  searchExportedFiles(searchText: string) {
+    const params = new URLSearchParams({ PageNumber: "0", PageSize: "10", SearchText: searchText });
+    return this.page.request.get(`${this.base}/Key/GetUilmExportedFiles?${params.toString()}`, {
+      headers: this.headers,
+    });
+  }
+
+  /** Creates many keys in one `Key/SaveKeys` request (chunked by 500). */
+  async saveKeys(
+    keys: {
+      keyName: string;
+      moduleId: string;
+      culture: string;
+      value: string;
+      glossaryIds?: string[];
+    }[],
+  ) {
+    for (let from = 0; from < keys.length; from += 500) {
+      const chunk = keys.slice(from, from + 500).map((key) => ({
+        itemId: "",
+        keyName: key.keyName,
+        moduleId: key.moduleId,
+        isNewKey: true,
+        isPartiallyTranslated: false,
+        routes: [],
+        context: "",
+        glossaryIds: key.glossaryIds ?? [],
+        resources: [{ culture: key.culture, value: key.value, characterLength: key.value.length }],
+      }));
+      await this.json(
+        await this.page.request.post(`${this.base}/Key/SaveKeys`, {
+          headers: this.headers,
+          data: chunk,
+        }),
+        `save ${chunk.length} keys`,
+      );
+    }
+  }
+
+  async listKeys(moduleId: string, pageSize = 100): Promise<ApiKey[]> {
+    const list = await this.json<{ keys: ApiKey[] }>(
+      await this.page.request.post(`${this.base}/Key/Gets`, {
+        headers: this.headers,
+        data: { pageNumber: 0, pageSize, searchKey: "", moduleIds: [moduleId] },
+      }),
+      "list keys",
+    );
+    return list.keys;
+  }
+
   async createKey(key: {
     keyName: string;
     moduleId: string;
@@ -191,7 +310,9 @@ export class LocalizationApi {
     context?: string;
     routes?: string[];
     glossaryIds?: string[];
+    translations?: { culture: string; value: string }[];
   }): Promise<string> {
+    const resources = [{ culture: key.culture, value: key.value }, ...(key.translations ?? [])];
     const body = await this.json<{ success?: boolean; errorMessage?: string }>(
       await this.page.request.post(`${this.base}/Key/Save`, {
         headers: this.headers,
@@ -204,9 +325,10 @@ export class LocalizationApi {
           routes: key.routes ?? [],
           context: key.context ?? "",
           glossaryIds: key.glossaryIds ?? [],
-          resources: [
-            { culture: key.culture, value: key.value, characterLength: key.value.length },
-          ],
+          resources: resources.map((resource) => ({
+            ...resource,
+            characterLength: resource.value.length,
+          })),
         },
       }),
       `create key ${key.keyName}`,
@@ -226,6 +348,33 @@ export class LocalizationApi {
       "search keys",
     );
     return list.keys.find((k) => k.keyName === keyName);
+  }
+
+  /** Saves a stored key again with `changes`, as another tab's full save would. */
+  async updateKey(key: ApiKey, changes: Partial<ApiKey>) {
+    const merged = { ...key, ...changes };
+    const body = await this.json<{ success?: boolean; errorMessage?: string }>(
+      await this.page.request.post(`${this.base}/Key/Save`, {
+        headers: this.headers,
+        data: {
+          itemId: merged.itemId,
+          keyName: merged.keyName,
+          moduleId: merged.moduleId,
+          isNewKey: false,
+          isPartiallyTranslated: false,
+          routes: merged.routes ?? [],
+          context: merged.context ?? "",
+          glossaryIds: merged.glossaryIds ?? [],
+          resources: (merged.resources ?? []).map((resource) => ({
+            culture: resource.culture,
+            value: resource.value,
+            characterLength: resource.value.length,
+          })),
+        },
+      }),
+      `update key ${key.keyName}`,
+    );
+    expect(body.success, body.errorMessage ?? "").toBe(true);
   }
 
   async deleteKey(itemId: string) {
@@ -259,6 +408,7 @@ export type SuggestionReply =
       content: string;
       appliedTerms?: SuggestionAppliedTerm[];
       glossaryViolations?: SuggestionViolation[];
+      missingGlossaryTranslations?: { glossaryId: string; term: string }[];
     }
   | { status: number };
 
@@ -288,6 +438,7 @@ export async function mockTranslationSuggestions(page: Page) {
           content: reply.content,
           appliedTerms: reply.appliedTerms ?? [],
           glossaryViolations: reply.glossaryViolations ?? [],
+          missingGlossaryTranslations: reply.missingGlossaryTranslations ?? [],
           errors: null,
           isSuccess: true,
         },
@@ -672,6 +823,13 @@ export class TranslationsPage {
     const firstModule = this.page.getByRole("option").first();
     await expect(firstModule).toBeVisible({ timeout: 10_000 });
     await firstModule.click();
+    await expect(this.page.getByText("Select Module...", { exact: true })).toHaveCount(0);
+  }
+
+  async selectModule(moduleName: string) {
+    await this.page.getByText("Select Module...", { exact: true }).click();
+    await this.page.getByPlaceholder("Search Module...").fill(moduleName);
+    await this.page.getByRole("option", { name: moduleName, exact: true }).click();
     await expect(this.page.getByText("Select Module...", { exact: true })).toHaveCount(0);
   }
 
@@ -1149,6 +1307,74 @@ export class TranslationsPage {
     return scope.getByRole("button", {
       name: new RegExp(`^Glossary ${escapeRegex(surface)}:`),
     });
+  }
+
+  /** "Insert glossary" next to the Edit translation target field. */
+  get insertGlossaryButton() {
+    return this.editTranslationDialog.getByRole("button", { name: "Insert glossary" });
+  }
+
+  /** The insert menu (opened by the button or Alt+Shift+G in the target field). */
+  get insertGlossaryMenu() {
+    return this.editTranslationDialog.getByLabel("Insert glossary", { exact: true }).filter({
+      has: this.page.getByRole("listbox"),
+    });
+  }
+
+  /** Items of one insert-menu group ("Insert in <language>" or "Already used"). */
+  insertMenuGroup(heading: string | RegExp) {
+    return this.insertGlossaryMenu.getByRole("group", { name: heading });
+  }
+
+  async openInsertMenuWithShortcut() {
+    await this.editTranslationTextarea.focus();
+    await this.page.keyboard.press("Alt+Shift+KeyG");
+  }
+
+  /** The key's glossary chips on View Details, in order: `{ name, source }`. */
+  async keyGlossaryChips(filter?: (name: string) => boolean) {
+    const items = this.page
+      .getByRole("list", { name: "Glossaries for this key" })
+      .getByRole("listitem");
+    const chips = await items.evaluateAll((elements) =>
+      elements.map((element) => ({
+        name: element.querySelector("a")?.textContent?.trim() ?? "",
+        source: element.querySelector(".sr-only")?.textContent?.trim() ?? "",
+        canRemove: !!element.querySelector('button[aria-label^="Remove "]'),
+        canAdd: !!element.querySelector('button[aria-label^="Tag "]'),
+      })),
+    );
+    return filter ? chips.filter((chip) => filter(chip.name)) : chips;
+  }
+
+  /** Selects `text` inside the Edit translation source block, as a mouse drag would. */
+  async selectSourceText(text: string) {
+    const found = await this.editTranslationDialog
+      .locator("section[aria-labelledby='edit-translation-source-label']")
+      .evaluate((root, wanted) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.textContent?.indexOf(wanted) ?? -1;
+          if (at < 0) continue;
+          const range = document.createRange();
+          range.setStart(node, at);
+          range.setEnd(node, at + wanted.length);
+          const selection = document.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+          return true;
+        }
+        return false;
+      }, text);
+    expect(found, `"${text}" is in the source text`).toBe(true);
+  }
+
+  get addToGlossaryButton() {
+    return this.editTranslationDialog.getByRole("button", { name: "Add to glossary" });
+  }
+
+  get autoTranslateAllDialog() {
+    return this.page.getByRole("dialog", { name: "Auto-translate all keys" });
   }
 
   get termPopover() {

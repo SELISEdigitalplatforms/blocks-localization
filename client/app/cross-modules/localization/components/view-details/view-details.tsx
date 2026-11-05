@@ -36,7 +36,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
   const {
     isLoading: isLanguageListLoading,
     isFetching: isLanguageListLoadingFetching,
-    data: languageListData,
+    data: cachedLanguageList,
   } = useGetLanguages();
   const [isEditRoutesDialogOpen, setIsEditRoutesDialogOpen] = useState(false);
   const [isEditGlossaryDialogOpen, setIsEditGlossaryDialogOpen] = useState(false);
@@ -178,7 +178,7 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     }
   };
 
-  if (isLanguageListLoading || isLanguageListLoadingFetching || !languageListData) {
+  if (isLanguageListLoading || isLanguageListLoadingFetching || !cachedLanguageList) {
     return (
       <div>
         <Skeleton className="h-64 w-full" />
@@ -186,7 +186,9 @@ const ViewDetails = ({ keyDetails }: { keyDetails: IBlocksLanguageKey }) => {
     );
   }
 
-  languageListData.sort((a, b) => (a.isDefault && !b.isDefault ? -1 : 1));
+  const languageListData = [...cachedLanguageList].sort(
+    (a, b) => Number(!!b.isDefault) - Number(!!a.isDefault),
+  );
 
   return (
     <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">

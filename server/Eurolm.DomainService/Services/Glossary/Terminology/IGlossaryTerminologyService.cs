@@ -17,6 +17,12 @@ namespace Eurolm.DomainService.Services
         Task<List<KeyGlossaryViolation>?> ComputeKeyViolationsAsync(BlocksLanguageKey key);
 
         /// <summary>
+        /// <see cref="ComputeKeyViolationsAsync(BlocksLanguageKey)"/> for many keys with one language-setting read and
+        /// one matcher. Null when the flag is off; an entry is null when that key's check failed.
+        /// </summary>
+        Task<List<List<KeyGlossaryViolation>?>?> ComputeKeyViolationsAsync(IReadOnlyList<BlocksLanguageKey> keys);
+
+        /// <summary>
         /// Ids of glossaries found in the key's default-language text that the key could be tagged with: not
         /// tagged, not global, not linked to its module, not Deprecated. In text order, at most
         /// <paramref name="maxResults"/>. Not gated by the flag.

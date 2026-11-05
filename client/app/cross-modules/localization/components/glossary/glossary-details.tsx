@@ -50,7 +50,7 @@ import {
 import PageBreadcrumb from "@/components/breadcrumb/breadcrumb";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { showErrorToast, toast } from "@/hooks/use-toast";
-import { formatErrorMessage } from "@/lib/error";
+import { formatErrorMessage, getHttpErrorMessage } from "@/lib/error";
 import {
   useFetchLatestGlossary,
   useGetGlossaryById,
@@ -550,6 +550,7 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
   const [keyModuleId, setKeyModuleId] = useState(ALL_MODULES);
   const [targetCode, setTargetCode] = useState<string | undefined>(undefined);
   const { mutateAsync: saveGlossary, isPending: isDeprecating } = useSaveGlossary();
+  const fetchLatestGlossary = useFetchLatestGlossary();
 
   // One `Key/Gets` per 300 ms pause, restarting at page 0 (H4).
   useEffect(() => {
@@ -654,11 +655,18 @@ const GlossaryDetails: React.FC<GlossaryDetailsProps> = ({ itemId }) => {
           title: t("common:SUCCESS"),
           description: t("GLOSSARY_DETAILS.DEPRECATED"),
         });
+      } else if (res?.validationErrors?.some((e) => e.propertyName === VERSION_ERROR_PROPERTY)) {
+        await fetchLatestGlossary(glossary.itemId).catch(() => undefined);
+        toast({
+          variant: "destructive",
+          title: t("common:ERROR"),
+          description: t("DELETE_GLOSSARY.VERSION_CONFLICT"),
+        });
       } else {
         showErrorToast({ errors: res?.validationErrors?.[0]?.errorMessage || res?.errorMessage });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: t("common:ERROR"), description: formatErrorMessage(error) });
+      toast({ variant: "destructive", title: t("common:ERROR"), description: getHttpErrorMessage(error) });
     }
   };
 

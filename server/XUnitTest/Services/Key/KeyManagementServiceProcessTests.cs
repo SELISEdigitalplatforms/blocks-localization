@@ -171,7 +171,7 @@ namespace XUnitTest
         [Fact]
         public async Task ChangeAll_ReturnsTrueWhenNoResources()
         {
-            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeysWithPage(It.IsAny<int>(), It.IsAny<int>()))
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKeysWithPage(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>()))
                 .ReturnsAsync(new List<BlocksLanguageKey>().AsQueryable());
             _languageServiceMock.Setup(l => l.GetLanguagesAsync())
                 .ReturnsAsync(new List<Language>());

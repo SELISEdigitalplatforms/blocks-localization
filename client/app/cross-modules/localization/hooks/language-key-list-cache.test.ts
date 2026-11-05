@@ -7,6 +7,7 @@ import {
   GLOSSARY_RECHECK_REFRESH_DELAYS_MS,
   refreshKeysAfterGlossaryChange,
   refreshLanguageKeyLists,
+  removeGlossaryFromLanguageKeyRows,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
   savedLanguageKeyRow,
@@ -136,8 +137,14 @@ describe("refreshKeysAfterGlossaryChange", () => {
 
     vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[0]);
     expect(invalidate.mock.calls.length).toBe(callsNow * 2);
-    vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[1]);
+    vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[1] - GLOSSARY_RECHECK_REFRESH_DELAYS_MS[0]);
     expect(invalidate.mock.calls.length).toBe(callsNow * 3);
+    vi.advanceTimersByTime(GLOSSARY_RECHECK_REFRESH_DELAYS_MS[2] - GLOSSARY_RECHECK_REFRESH_DELAYS_MS[1]);
+    expect(invalidate.mock.calls.length).toBe(callsNow * 4);
+  });
+
+  it("refreshes at 4 s, 15 s and 60 s", () => {
+    expect(GLOSSARY_RECHECK_REFRESH_DELAYS_MS).toEqual([4_000, 15_000, 60_000]);
   });
 
   it("drops an All view that is not on screen and never refetches one that is", () => {
@@ -191,5 +198,25 @@ describe("savedLanguageKeyRow", () => {
       context: "Stale context",
     });
     expect(savedLanguageKeyRow({ ...payload, isNewKey: true })).not.toHaveProperty("isNewKey");
+  });
+});
+
+describe("removeGlossaryFromLanguageKeyRows", () => {
+  it("drops the glossary's tag and violations and leaves other rows as they are", () => {
+    const untouched = { itemId: "b", glossaryIds: ["g2"] };
+    const rows = removeGlossaryFromLanguageKeyRows("g1")([
+      {
+        itemId: "a",
+        glossaryIds: ["g1", "g2"],
+        glossaryViolations: [{ glossaryId: "g1" }, { glossaryId: "g2" }],
+      },
+      untouched,
+    ] as never);
+    expect(rows[0]).toEqual({
+      itemId: "a",
+      glossaryIds: ["g2"],
+      glossaryViolations: [{ glossaryId: "g2" }],
+    });
+    expect(rows[1]).toBe(untouched);
   });
 });

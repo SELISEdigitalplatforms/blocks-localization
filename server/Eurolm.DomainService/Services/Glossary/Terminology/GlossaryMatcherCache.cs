@@ -1,4 +1,5 @@
 using Eurolm.DomainService.Repositories;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace Eurolm.DomainService.Services
@@ -13,28 +14,34 @@ namespace Eurolm.DomainService.Services
     {
         public static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan RevisionCheckInterval = TimeSpan.FromSeconds(5);
+        public static readonly TimeSpan SweepInterval = TimeSpan.FromSeconds(60);
 
         private readonly Func<string, Task<List<BlocksGlossary>>> _loadGlossaries;
         private readonly Func<string, Task<string>>? _loadRevision;
         private readonly Func<DateTimeOffset> _now;
+        private readonly ILogger<GlossaryMatcherCache>? _logger;
         private readonly ConcurrentDictionary<string, Entry> _entries = new();
+        private long _lastSweepTicks;
 
         private sealed record Built(GlossaryMatcher Matcher, string? Revision);
 
         private sealed record Entry(Lazy<Task<Built>> Build, DateTimeOffset BuiltAt, DateTimeOffset CheckedAt);
 
         public GlossaryMatcherCache(Func<string, Task<List<BlocksGlossary>>> loadGlossaries, Func<DateTimeOffset>? now = null,
-                                   Func<string, Task<string>>? loadRevision = null)
+                                   Func<string, Task<string>>? loadRevision = null, ILogger<GlossaryMatcherCache>? logger = null)
         {
             _loadGlossaries = loadGlossaries ?? throw new ArgumentNullException(nameof(loadGlossaries));
             _loadRevision = loadRevision;
             _now = now ?? (() => DateTimeOffset.UtcNow);
+            _logger = logger;
+            _lastSweepTicks = _now().UtcTicks;
         }
 
         public async Task<GlossaryMatcher> GetAsync(string tenantId)
         {
             var key = tenantId ?? "";
             var now = _now();
+            Sweep(key, now);
             var entry = _entries.GetOrAdd(key, k => NewEntry(k, now));
             if (now - entry.BuiltAt >= Ttl) entry = Replace(key, entry, NewEntry(key, now));
 
@@ -88,6 +95,21 @@ namespace Eurolm.DomainService.Services
         /// <summary>Replaces the entry (only if nobody already did) and returns whichever entry won.</summary>
         private Entry Replace(string key, Entry current, Entry fresh) =>
             _entries.TryUpdate(key, fresh, current) ? fresh : _entries.GetOrAdd(key, _ => fresh);
+
+        private void Sweep(string requestingTenant, DateTimeOffset now)
+        {
+            var last = Interlocked.Read(ref _lastSweepTicks);
+            if (now.UtcTicks - last < SweepInterval.Ticks) return;
+            if (Interlocked.CompareExchange(ref _lastSweepTicks, now.UtcTicks, last) != last) return;
+
+            var evicted = 0;
+            foreach (var pair in _entries)
+            {
+                if (pair.Key == requestingTenant || now - pair.Value.BuiltAt < Ttl) continue;
+                if (_entries.TryRemove(pair)) evicted++;
+            }
+            if (evicted > 0) _logger?.LogDebug("Glossary matcher cache evicted {EvictedCount} tenants", evicted);
+        }
 
         public void Invalidate(string tenantId) => _entries.TryRemove(tenantId ?? "", out _);
 
