@@ -17,17 +17,18 @@ import { Skeleton } from "@/components/ui-kits/skeleton/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
-import GlossaryTranslationChips from "@blocks-localization/components/glossary/glossary-translation-chips";
 import GlossaryEditorSheet from "@blocks-localization/components/modals/glossary/glossary-editor-sheet";
 import {
-  useGetLanguages,
   useResolveGlossariesByIds,
   useSearchGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
 import { useDebouncedValue } from "@blocks-localization/hooks/use-live-glossary-check";
-import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import {
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
 
 export const PICKER_SEARCH_DEBOUNCE_MS = 300;
 const NO_RESULTS: IGlossary[] = [];
@@ -54,34 +55,24 @@ export const pickCreatedGlossary = (
 
 const GlossaryResultRow = ({
   glossary,
-  languages,
   selected,
 }: Readonly<{
   glossary: IGlossary;
-  languages: ILanguageConfig[] | undefined;
   selected: boolean;
 }>) => {
-  const parsed = parseGlossaryMeta(glossary.additionalNote ?? "");
-  const unsupported = parsed.status === "unsupported-version";
+  const unsupported = isUnsupportedGlossaryNote(glossary);
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2">
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-medium text-high-emphasis">{glossary.name}</span>
-          {unsupported ? (
-            <span className="text-xs text-medium-emphasis">—</span>
-          ) : (
-            <GlossaryRuleBadge rule={parsed.meta.rule} />
-          )}
-        </div>
-        {!unsupported && (
-          <div className="text-xs">
-            <GlossaryTranslationChips meta={parsed.meta} languages={languages} max={3} />
-          </div>
-        )}
-      </div>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="min-w-0 flex-1 truncate font-medium text-high-emphasis">
+        {glossary.name}
+      </span>
+      {unsupported ? (
+        <span className="text-xs text-medium-emphasis">—</span>
+      ) : (
+        <GlossaryRuleBadge rule={toGlossaryMeta(glossary).rule} />
+      )}
       <Check
-        className={cn("mt-0.5 h-4 w-4 shrink-0 text-primary", !selected && "opacity-0")}
+        className={cn("h-4 w-4 shrink-0 text-primary", !selected && "opacity-0")}
         aria-hidden="true"
       />
     </div>
@@ -138,17 +129,12 @@ const SelectedChip = ({
 interface GlossaryPickerProps {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
-  /** Offers "Create "<query>"" when the search finds nothing. */
   allowCreate?: boolean;
   disabled?: boolean;
   /** Glossaries the caller already has (seed, resolved tags): names without a request. */
   knownGlossaries?: IGlossary[];
 }
 
-/**
- * Search-and-select for tagging glossaries to a module or a key. Selected chips always
- * render: names come from known glossaries or the search, otherwise from `Glossary/Get`.
- */
 const GlossaryPicker = ({
   selectedIds,
   onChange,
@@ -161,7 +147,6 @@ const GlossaryPicker = ({
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createName, setCreateName] = useState("");
-  // Glossaries picked in this session (search results, created or duplicate terms).
   const [picked, setPicked] = useState<Record<string, IGlossary>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   // The create lookup resolves after the sheet closed: it must add to the current selection.
@@ -178,7 +163,6 @@ const GlossaryPicker = ({
     isError: isSearchError,
     refetch: retrySearch,
   } = useSearchGlossaries(searchText, open);
-  const { data: languages } = useGetLanguages();
   const results = searchResults?.items ?? NO_RESULTS;
 
   const known = useMemo(() => {
@@ -224,7 +208,6 @@ const GlossaryPicker = ({
     setSheetOpen(true);
   };
 
-  /** Finds the new term by name (C19): the selection stays unchanged when it isn't found. */
   const selectCreated = async (savedName: string) => {
     try {
       const page = await languageManagerService.fetchGlossaries({
@@ -297,7 +280,6 @@ const GlossaryPicker = ({
               >
                 <GlossaryResultRow
                   glossary={glossary}
-                  languages={languages}
                   selected={selectedIds.includes(glossary.itemId)}
                 />
               </CommandItem>

@@ -38,7 +38,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.2",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@seliseblocks/genesis-os": "^4.4.7",
+    "@seliseblocks/genesis-os": "^4.5.0",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-query-devtools": "^5.62.11",
     "@tanstack/react-table": "^8.20.5",
@@ -90,6 +90,9 @@
   },
   "packageManager": "pnpm@9.4.0+sha1.9217c800d4ab947a7aee520242a7b70d64fc7638",
   "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.3"
+    },
     "zod": "$zod"
   }
 }

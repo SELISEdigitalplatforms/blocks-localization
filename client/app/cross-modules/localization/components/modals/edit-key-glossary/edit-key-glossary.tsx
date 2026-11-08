@@ -33,7 +33,7 @@ function EditKeyGlossaryBody({
 
   async function handleSave() {
     try {
-      // The key's full payload, so context, routes and resources are kept (C13).
+      // Only glossaryIds is saved; the server keeps the stored context, routes and resources (C13).
       const payload = {
         itemId: keyDetails.itemId,
         keyName: keyDetails.keyName,
@@ -46,6 +46,7 @@ function EditKeyGlossaryBody({
         glossaryIds: selectedIds,
         isPartiallyTranslated: keyDetails.isPartiallyTranslated,
         context: keyDetails.context,
+        glossaryIdsOnly: true,
       };
 
       const res = await mutateAsync(payload);

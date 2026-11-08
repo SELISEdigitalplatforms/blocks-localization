@@ -11,7 +11,7 @@ export interface ProjectLanguage {
   isDefault: boolean;
 }
 
-interface ApiKey {
+export interface ApiKey {
   itemId: string;
   keyName: string;
   moduleId?: string;
@@ -19,6 +19,33 @@ interface ApiKey {
   routes?: string[];
   glossaryIds?: string[];
   resources?: { culture: string; value: string }[];
+  glossaryViolations?: { culture: string; glossaryId: string; kind: string; found?: string }[];
+  lastUpdateDate?: string;
+}
+
+export interface ApiGlossaryUsage {
+  keyCount: number;
+  affectedKeyCount?: number;
+  isGlobal?: boolean;
+  moduleIds: string[];
+}
+
+export interface ApiGlossaryTranslation {
+  language: string;
+  value: string;
+  forbiddenValues: string[];
+}
+
+export interface ApiGlossaryMatch {
+  glossaryId: string;
+  start: number;
+  length: number;
+  surface: string;
+  term: string;
+  rule: "translate" | "keep" | "forbidden";
+  status: "draft" | "approved" | "deprecated";
+  scope: string;
+  translations: ApiGlossaryTranslation[];
 }
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -97,17 +124,34 @@ export class LocalizationApi {
     );
   }
 
-  /** Saves a glossary with an exact stored `additionalNote` and an empty definition. */
+  /**
+   * Saves a glossary: with the Phase 6 structured fields (`rule`, `status`, `translations`, ...),
+   * or with an exact stored `additionalNote` as an older client would have written it.
+   */
   async createGlossary(glossary: {
     name: string;
-    additionalNote: string;
     isGlobal: boolean;
+    additionalNote?: string;
+    context?: string;
+    language?: string;
     moduleIds?: string[];
+    rule?: "translate" | "keep" | "forbidden";
+    status?: "draft" | "approved" | "deprecated";
+    caseSensitive?: boolean;
+    variants?: string[];
+    translations?: ApiGlossaryTranslation[];
   }): Promise<string> {
     await this.json(
       await this.page.request.post(`${this.base}/Glossary/Save`, {
         headers: this.headers,
-        data: { context: "", language: "", type: "", moduleIds: [], ...glossary },
+        data: {
+          context: "",
+          additionalNote: "",
+          language: "",
+          type: "",
+          moduleIds: [],
+          ...glossary,
+        },
       }),
       `create glossary ${glossary.name}`,
     );
@@ -127,7 +171,6 @@ export class LocalizationApi {
     return created!.itemId;
   }
 
-  /** The id of the glossary named exactly `name`, or undefined. */
   async findGlossaryId(name: string): Promise<string | undefined> {
     const params = new URLSearchParams({
       PageNumber: "0",
@@ -150,6 +193,115 @@ export class LocalizationApi {
     );
   }
 
+  /** The stored glossary, as the editor loads it (`Glossary/GetByIds`). */
+  async getGlossary(itemId: string): Promise<Record<string, unknown> | undefined> {
+    const body = await this.json<{ items: Record<string, unknown>[] }>(
+      await this.page.request.get(
+        `${this.base}/Glossary/GetByIds?itemIds=${encodeURIComponent(itemId)}`,
+        { headers: this.headers },
+      ),
+      `get glossary ${itemId}`,
+    );
+    return body.items[0];
+  }
+
+  /**
+   * Re-saves a stored glossary with `changes` applied (its `version` is sent back as read);
+   * `omit` leaves fields out, as an older client or the CLI would.
+   */
+  async updateGlossary(itemId: string, changes: Record<string, unknown>, omit: string[] = []) {
+    const stored = await this.getGlossary(itemId);
+    expect(stored, `glossary ${itemId} exists`).toBeTruthy();
+    const data: Record<string, unknown> = { ...stored, ...changes };
+    for (const field of omit) delete data[field];
+    await this.json(
+      await this.page.request.post(`${this.base}/Glossary/Save`, {
+        headers: this.headers,
+        data,
+      }),
+      `update glossary ${itemId}`,
+    );
+  }
+
+  /** Raw `Glossary/Usage` response, for status and error-text checks. */
+  usageResponse(itemId: string) {
+    return this.page.request.get(
+      `${this.base}/Glossary/Usage?itemId=${encodeURIComponent(itemId)}&pageNumber=0&pageSize=1`,
+      { headers: this.headers },
+    );
+  }
+
+  async glossaryUsage(itemId: string): Promise<ApiGlossaryUsage> {
+    return this.json<ApiGlossaryUsage>(await this.usageResponse(itemId), `usage of ${itemId}`);
+  }
+
+  async matchGlossary(request: { text: string; language: string; moduleId?: string; keyId?: string }) {
+    return this.json<{ matches: ApiGlossaryMatch[] }>(
+      await this.page.request.post(`${this.base}/Glossary/Match`, {
+        headers: this.headers,
+        data: request,
+      }),
+      "match glossaries",
+    );
+  }
+
+  translateAll(request: { defaultLanguage: string; moduleId?: string }) {
+    return this.page.request.post(`${this.base}/Key/TranslateAll`, {
+      headers: this.headers,
+      data: { messageCoRelationId: "", ...request },
+    });
+  }
+
+  searchExportedFiles(searchText: string) {
+    const params = new URLSearchParams({ PageNumber: "0", PageSize: "10", SearchText: searchText });
+    return this.page.request.get(`${this.base}/Key/GetUilmExportedFiles?${params.toString()}`, {
+      headers: this.headers,
+    });
+  }
+
+  /** Creates many keys in one `Key/SaveKeys` request (chunked by 500). */
+  async saveKeys(
+    keys: {
+      keyName: string;
+      moduleId: string;
+      culture: string;
+      value: string;
+      glossaryIds?: string[];
+    }[],
+  ) {
+    for (let from = 0; from < keys.length; from += 500) {
+      const chunk = keys.slice(from, from + 500).map((key) => ({
+        itemId: "",
+        keyName: key.keyName,
+        moduleId: key.moduleId,
+        isNewKey: true,
+        isPartiallyTranslated: false,
+        routes: [],
+        context: "",
+        glossaryIds: key.glossaryIds ?? [],
+        resources: [{ culture: key.culture, value: key.value, characterLength: key.value.length }],
+      }));
+      await this.json(
+        await this.page.request.post(`${this.base}/Key/SaveKeys`, {
+          headers: this.headers,
+          data: chunk,
+        }),
+        `save ${chunk.length} keys`,
+      );
+    }
+  }
+
+  async listKeys(moduleId: string, pageSize = 100): Promise<ApiKey[]> {
+    const list = await this.json<{ keys: ApiKey[] }>(
+      await this.page.request.post(`${this.base}/Key/Gets`, {
+        headers: this.headers,
+        data: { pageNumber: 0, pageSize, searchKey: "", moduleIds: [moduleId] },
+      }),
+      "list keys",
+    );
+    return list.keys;
+  }
+
   async createKey(key: {
     keyName: string;
     moduleId: string;
@@ -158,7 +310,9 @@ export class LocalizationApi {
     context?: string;
     routes?: string[];
     glossaryIds?: string[];
+    translations?: { culture: string; value: string }[];
   }): Promise<string> {
+    const resources = [{ culture: key.culture, value: key.value }, ...(key.translations ?? [])];
     const body = await this.json<{ success?: boolean; errorMessage?: string }>(
       await this.page.request.post(`${this.base}/Key/Save`, {
         headers: this.headers,
@@ -171,9 +325,10 @@ export class LocalizationApi {
           routes: key.routes ?? [],
           context: key.context ?? "",
           glossaryIds: key.glossaryIds ?? [],
-          resources: [
-            { culture: key.culture, value: key.value, characterLength: key.value.length },
-          ],
+          resources: resources.map((resource) => ({
+            ...resource,
+            characterLength: resource.value.length,
+          })),
         },
       }),
       `create key ${key.keyName}`,
@@ -195,6 +350,33 @@ export class LocalizationApi {
     return list.keys.find((k) => k.keyName === keyName);
   }
 
+  /** Saves a stored key again with `changes`, as another tab's full save would. */
+  async updateKey(key: ApiKey, changes: Partial<ApiKey>) {
+    const merged = { ...key, ...changes };
+    const body = await this.json<{ success?: boolean; errorMessage?: string }>(
+      await this.page.request.post(`${this.base}/Key/Save`, {
+        headers: this.headers,
+        data: {
+          itemId: merged.itemId,
+          keyName: merged.keyName,
+          moduleId: merged.moduleId,
+          isNewKey: false,
+          isPartiallyTranslated: false,
+          routes: merged.routes ?? [],
+          context: merged.context ?? "",
+          glossaryIds: merged.glossaryIds ?? [],
+          resources: (merged.resources ?? []).map((resource) => ({
+            culture: resource.culture,
+            value: resource.value,
+            characterLength: resource.value.length,
+          })),
+        },
+      }),
+      `update key ${key.keyName}`,
+    );
+    expect(body.success, body.errorMessage ?? "").toBe(true);
+  }
+
   async deleteKey(itemId: string) {
     await this.page.request.delete(`${this.base}/Key/Delete?itemId=${encodeURIComponent(itemId)}`, {
       headers: this.headers,
@@ -202,15 +384,42 @@ export class LocalizationApi {
   }
 }
 
-/** A scripted reply for one GetTranslationSuggestion call: AI content, or an HTTP error. */
-export type SuggestionReply = { content: string } | { status: number };
+export interface SuggestionAppliedTerm {
+  glossaryId: string;
+  term: string;
+  rule: "translate" | "keep" | "forbidden";
+  expected?: string;
+}
+
+export interface SuggestionViolation {
+  glossaryId: string;
+  term: string;
+  kind: "missing-translation" | "missing-keep" | "forbidden-used";
+  expected?: string;
+  found?: string;
+}
+
+/**
+ * A scripted reply for one GetTranslationSuggestion call: the server's content with its applied
+ * terms and violations (empty when left out, as with the server flag off), or an HTTP error.
+ */
+export type SuggestionReply =
+  | {
+      content: string;
+      appliedTerms?: SuggestionAppliedTerm[];
+      glossaryViolations?: SuggestionViolation[];
+      missingGlossaryTranslations?: { glossaryId: string; term: string }[];
+    }
+  | { status: number };
 
 export const isTranslationSuggestionUrl = (url: URL) =>
   url.pathname.endsWith("/Assistant/GetTranslationSuggestion");
 
-/** The real full-glossary page request: Glossary/Gets?PageNumber=n&PageSize=500. */
+/** The removed Track A full-glossary load: Glossary/Gets?…&PageSize=500 (SPEC7 H13). */
 export const isFullGlossaryPageUrl = (url: URL) =>
   url.pathname.endsWith("/Glossary/Gets") && url.searchParams.get("PageSize") === "500";
+
+export const isGlossaryMatchUrl = (url: URL) => url.pathname.endsWith("/Glossary/Match");
 
 /**
  * Intercepts Assistant/GetTranslationSuggestion: each call takes the next scripted reply and
@@ -224,7 +433,16 @@ export async function mockTranslationSuggestions(page: Page) {
     requests.push(route.request().postDataJSON() as Record<string, unknown>);
     const reply = replies.shift() ?? { status: 500 };
     if ("content" in reply) {
-      await route.fulfill({ json: { content: reply.content, errors: null, isSuccess: true } });
+      await route.fulfill({
+        json: {
+          content: reply.content,
+          appliedTerms: reply.appliedTerms ?? [],
+          glossaryViolations: reply.glossaryViolations ?? [],
+          missingGlossaryTranslations: reply.missingGlossaryTranslations ?? [],
+          errors: null,
+          isSuccess: true,
+        },
+      });
     } else {
       await route.fulfill({ status: reply.status, json: { errors: "scripted failure" } });
     }
@@ -242,35 +460,45 @@ export async function mockTranslationSuggestions(page: Page) {
 }
 
 /**
- * Counts the full-glossary page requests and, when `keep` is given, trims each real response to
- * this run's fixture terms. The shared project can hold other terms; trimming keeps the expected
- * prompts exact without touching them. The request itself still reaches the server.
+ * Records every `/Glossary/Match` request body (the request still reaches the server). With
+ * `keep`, each real response is trimmed to this run's fixture terms, so other terms of the shared
+ * project don't change what is highlighted.
  */
-export async function trackFullGlossaryLoads(
+export async function trackGlossaryMatches(
   page: Page,
-  keep?: (glossary: { name?: string }) => boolean,
+  keep?: (match: ApiGlossaryMatch) => boolean,
 ) {
-  const urls: string[] = [];
-  const state = { completed: 0 };
+  const requests: { text: string; language: string; keyId?: string; moduleId?: string }[] = [];
   const handler = async (route: Route) => {
-    urls.push(route.request().url());
+    requests.push(route.request().postDataJSON() as (typeof requests)[number]);
     if (!keep) return route.fallback();
     const response = await route.fetch();
-    const body = (await response.json()) as { items?: { name?: string }[]; totalCount?: number };
-    const items = (body.items ?? []).filter(keep);
+    if (!response.ok()) return route.fulfill({ response });
+    const body = (await response.json()) as { matches?: ApiGlossaryMatch[] };
     await route.fulfill({
       status: response.status(),
-      json: { ...body, items, totalCount: items.length },
+      json: { ...body, matches: (body.matches ?? []).filter(keep) },
     });
-    state.completed++;
   };
-  await page.route(isFullGlossaryPageUrl, handler);
+  await page.route(isGlossaryMatchUrl, handler);
   return {
-    urls,
-    /** Trimmed responses delivered so far (only counted when `keep` is given). */
-    completed: () => state.completed,
-    stop: () => page.unroute(isFullGlossaryPageUrl, handler),
+    requests,
+    forText: (text: string) => requests.filter((request) => request.text === text),
+    stop: () => page.unroute(isGlossaryMatchUrl, handler),
   };
+}
+
+/**
+ * Records every request of the removed Track A full-glossary load (SPEC7 H13: there must be none).
+ * Registered as a listener, so it never changes the response.
+ */
+export function guardFullGlossaryLoads(page: Page) {
+  const urls: string[] = [];
+  const onRequest = (request: Request) => {
+    if (isFullGlossaryPageUrl(new URL(request.url()))) urls.push(request.url());
+  };
+  page.on("request", onRequest);
+  return { urls, stop: () => page.off("request", onRequest) };
 }
 
 export class TranslationsPage {
@@ -595,6 +823,13 @@ export class TranslationsPage {
     const firstModule = this.page.getByRole("option").first();
     await expect(firstModule).toBeVisible({ timeout: 10_000 });
     await firstModule.click();
+    await expect(this.page.getByText("Select Module...", { exact: true })).toHaveCount(0);
+  }
+
+  async selectModule(moduleName: string) {
+    await this.page.getByText("Select Module...", { exact: true }).click();
+    await this.page.getByPlaceholder("Search Module...").fill(moduleName);
+    await this.page.getByRole("option", { name: moduleName, exact: true }).click();
     await expect(this.page.getByText("Select Module...", { exact: true })).toHaveCount(0);
   }
 
@@ -1015,14 +1250,11 @@ export class TranslationsPage {
     await expect(dialog).toHaveCount(0);
   }
 
-  // --- Single-key suggestions (View Details, edit translation, inline editor) ---
-
   /** The "Edit translation" modal opened from a View Details language row. */
   get editTranslationDialog() {
     return this.page.getByRole("dialog", { name: "Edit translation" });
   }
 
-  /** Opens View Details for a key in the shared project. */
   async openKeyDetails(itemId: string) {
     await new KeyDetailsPage(this.page).navigateTo(itemId, e2eBaseUrl());
     // The cards render once the project languages are loaded.
@@ -1056,8 +1288,7 @@ export class TranslationsPage {
 
   /**
    * The glossary violation list under a target field: a polite live region (status role,
-   * an <output> element) that holds the list. The "Glossary unavailable" note is also a
-   * status region but has no list.
+   * an <output> element) that holds the list.
    */
   violationList(scope: Locator) {
     return scope.getByRole("status").filter({ has: this.page.getByRole("list") });
@@ -1067,25 +1298,89 @@ export class TranslationsPage {
     return this.violationList(scope).getByRole("listitem").filter({ hasText: message });
   }
 
-  // --- Glossary terms in the source (SPEC4) ---
-
-  /** A highlighted term (Edit translation) or a "Glossary terms" chip (inline / new key). */
   /** The per-language glossary checklist under a target row (inline editor, new key). */
   glossaryChecklist(scope: Locator | Page, languageName: string) {
-    return scope.getByRole("region", { name: `Glossary terms for ${languageName}` });
+    return scope.getByRole("region", { name: `Glossaries for ${languageName}` });
   }
 
   glossaryTerm(scope: Locator | Page, surface: string) {
     // The term button's accessible name is its aria-label (highlighted-source-text.tsx), so a
-    // prefix match on it keeps the "^Glossary term <surface>:" check without building a RegExp.
-    const prefix = JSON.stringify(`Glossary term ${surface}:`);
+    // prefix match on it keeps the "^Glossary <surface>:" check without building a RegExp.
+    const prefix = JSON.stringify(`Glossary ${surface}:`);
     return scope.getByRole("button").and(scope.locator(`[aria-label^=${prefix}]`));
   }
 
-  /** The open term popover. */
+  /** "Insert glossary" next to the Edit translation target field. */
+  get insertGlossaryButton() {
+    return this.editTranslationDialog.getByRole("button", { name: "Insert glossary" });
+  }
+
+  /** The insert menu (opened by the button or Alt+Shift+G in the target field). */
+  get insertGlossaryMenu() {
+    return this.editTranslationDialog.getByLabel("Insert glossary", { exact: true }).filter({
+      has: this.page.getByRole("listbox"),
+    });
+  }
+
+  /** Items of one insert-menu group ("Insert in <language>" or "Already used"). */
+  insertMenuGroup(heading: string | RegExp) {
+    return this.insertGlossaryMenu.getByRole("group", { name: heading });
+  }
+
+  async openInsertMenuWithShortcut() {
+    await this.editTranslationTextarea.focus();
+    await this.page.keyboard.press("Alt+Shift+KeyG");
+  }
+
+  /** The key's glossary chips on View Details, in order: `{ name, source }`. */
+  async keyGlossaryChips(filter?: (name: string) => boolean) {
+    const items = this.page
+      .getByRole("list", { name: "Glossaries for this key" })
+      .getByRole("listitem");
+    const chips = await items.evaluateAll((elements) =>
+      elements.map((element) => ({
+        name: element.querySelector("a")?.textContent?.trim() ?? "",
+        source: element.querySelector(".sr-only")?.textContent?.trim() ?? "",
+        canRemove: !!element.querySelector('button[aria-label^="Remove "]'),
+        canAdd: !!element.querySelector('button[aria-label^="Tag "]'),
+      })),
+    );
+    return filter ? chips.filter((chip) => filter(chip.name)) : chips;
+  }
+
+  /** Selects `text` inside the Edit translation source block, as a mouse drag would. */
+  async selectSourceText(text: string) {
+    const found = await this.editTranslationDialog
+      .locator("section[aria-labelledby='edit-translation-source-label']")
+      .evaluate((root, wanted) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.textContent?.indexOf(wanted) ?? -1;
+          if (at < 0) continue;
+          const range = document.createRange();
+          range.setStart(node, at);
+          range.setEnd(node, at + wanted.length);
+          const selection = document.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+          return true;
+        }
+        return false;
+      }, text);
+    expect(found, `"${text}" is in the source text`).toBe(true);
+  }
+
+  get addToGlossaryButton() {
+    return this.editTranslationDialog.getByRole("button", { name: "Add to glossary" });
+  }
+
+  get autoTranslateAllDialog() {
+    return this.page.getByRole("dialog", { name: "Auto-translate all keys" });
+  }
+
   get termPopover() {
     // Named by the popover itself, so it also matches the "Add it in the glossary" state.
-    return this.page.getByRole("dialog", { name: /^Glossary term / });
+    return this.page.getByRole("dialog", { name: /^Glossary / });
   }
 
   /** Shows the key in the table by searching for it and expands its inline editor. */
@@ -1111,6 +1406,26 @@ export class TranslationsPage {
     );
     await action();
     return (await requestPromise).postDataJSON() as Record<string, unknown>;
+  }
+
+  get glossaryIssuesCheckbox() {
+    return this.page.getByRole("checkbox", { name: "Glossary issues" });
+  }
+
+  /** The "N glossary issue(s)" badge on a key's row. */
+  glossaryIssueBadge(keyName: string) {
+    return this.page
+      .getByRole("row")
+      .filter({ hasText: keyName })
+      .getByTestId("glossary-issue-badge");
+  }
+
+  /** Focuses a row's issue badge and returns its open tooltip. */
+  async openGlossaryIssueTooltip(keyName: string) {
+    await this.glossaryIssueBadge(keyName).focus();
+    const tooltip = this.page.getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    return tooltip;
   }
 
   // --- New key routes ---

@@ -90,6 +90,14 @@ namespace XUnitTest.Shared
                 .ReturnsAsync(() => CreateCursor(items).Object);
         }
 
+        /// <summary>listIndexes returns no indexes, so the index initializers create every index they define.</summary>
+        public static Mock<IMongoIndexManager<T>> WithNoExistingIndexes<T>(this Mock<IMongoIndexManager<T>> indexes)
+        {
+            indexes.Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => CreateEmptyCursor<MongoDB.Bson.BsonDocument>().Object);
+            return indexes;
+        }
+
         public static void SetupCountDocuments<T>(Mock<IMongoCollection<T>> collection, long count)
         {
             collection.Setup(x => x.CountDocumentsAsync(

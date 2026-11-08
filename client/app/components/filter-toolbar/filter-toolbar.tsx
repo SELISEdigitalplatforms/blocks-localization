@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ComponentType, ReactNode, useState } from "react";
 import { FilterControls } from ".";
 import { ResetButton } from "./reset-button/reset-button";
 import {
@@ -129,13 +129,12 @@ export const FilterToolbar = <T extends Record<string, unknown>>({
   };
 
   const controllers = filters.map((item) => {
-    const Component = FilterControls[item.type];
+    // Each control takes its own value type; `filters` already ties each type to its props.
+    const Component = FilterControls[item.type] as ComponentType<Record<string, unknown>>;
 
     return (
       <Component
         {...item}
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-expect-error
         value={values[item.key]}
         onChange={(val: unknown) => changeHandler(item.key as keyof T, val as T[keyof T])}
         disabled={disabled}

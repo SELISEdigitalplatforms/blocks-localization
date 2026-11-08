@@ -1,4 +1,15 @@
-import { FC, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  ClipboardEvent,
+  FC,
+  KeyboardEvent,
+  ReactNode,
+  SyntheticEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
@@ -8,6 +19,8 @@ import { useForm, useWatch } from "react-hook-form";
 import {
   Check,
   ChevronDown,
+  Plus,
+  Sparkles,
   ChevronsUpDown,
   Info,
   LoaderCircle,
@@ -25,6 +38,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui-kits/sheet/sheet";
+import { Dialog } from "@/components/ui-kits/dialog/dialog";
+import ConfirmationModal from "@/components/confirmation-modal/confirmation-modal";
 import { ScrollArea } from "@/components/ui-kits/scroll-area/scroll-area";
 import { Separator } from "@/components/ui-kits/separator/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
@@ -73,14 +88,21 @@ import {
 import { showErrorToast, toast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import {
+  useFetchLatestGlossary,
   useGetLanguageModules,
   useGetLanguages,
   useSaveGlossary,
   useSearchGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
 import {
+  GLOSSARY_PARTS_OF_SPEECH,
+  GLOSSARY_PART_OF_SPEECH_LABELS,
+  GLOSSARY_STATUSES,
   GLOSSARY_TYPE_OPTIONS,
+  GlossaryPartOfSpeech,
+  GlossaryStatus,
   IGlossary,
+  IGlossaryTranslation,
   ILanguageConfig,
 } from "@blocks-localization/models/language";
 import { GlossaryMeta, GlossaryRule } from "@blocks-localization/models/glossary-meta";
@@ -88,26 +110,43 @@ import {
   findDuplicateGlossary,
   normalizeGlossaryName,
 } from "@blocks-localization/utils/glossary-name";
-import { parseGlossaryMeta, serializeGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
+import { parseGlossaryMeta } from "@blocks-localization/utils/glossary-meta";
 import {
-  buildGlossaryContext,
-  buildRuleMarker,
+  getGlossaryNote,
+  getGlossaryStatus,
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
+import {
+  getDefaultLanguage,
   getTargetLanguages,
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
+import { useGlossaryTermSuggestion } from "@blocks-localization/hooks/use-glossary-term-suggestion";
+import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
+import { isForbiddenTranslation } from "@blocks-localization/utils/glossary-validation";
+import { alignCultureKeys } from "@blocks-localization/utils/glossary-text";
 import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
+import { GLOSSARY_STATUS_LABELS } from "@blocks-localization/components/glossary/glossary-status-badge";
 
 const DUPLICATE_CHECK_DEBOUNCE_MS = 300;
 
-export const GLOSSARY_LIMITS = {
-  name: 200,
-  variants: 20,
-  value: 200,
-  forbiddenPerLanguage: 10,
-  definition: 1000,
-  note: 2000,
-  serialized: 20000,
-} as const;
+/** `validationErrors` property the server uses when the term changed since the edit started. */
+const VERSION_ERROR_PROPERTY = "Version";
+
+const isNotFoundError = (error: unknown) =>
+  typeof error === "object" && error !== null && (error as { status?: unknown }).status === 404;
+
+export { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
+
+const replaceAt = (items: string[], index: number, value: string) =>
+  items.map((item, itemIndex) => (itemIndex === index ? value : item));
+
+const removeAt = (items: string[], index: number) =>
+  items.filter((_, itemIndex) => itemIndex !== index);
+
+/** Select value for "no part of speech"; Radix Select items can't have an empty value. */
+const NO_PART_OF_SPEECH = "none";
 
 type GlossaryScope = "project" | "modules";
 
@@ -116,6 +155,7 @@ interface GlossaryEditorValues {
   language: string;
   type: string;
   rule: GlossaryRule;
+  status: GlossaryStatus;
   caseSensitive: boolean;
   variants: string[];
   translations: Record<string, string>;
@@ -124,6 +164,9 @@ interface GlossaryEditorValues {
   scope: GlossaryScope;
   moduleIds: string[];
   note: string;
+  /** "" = not set. */
+  partOfSpeech: string;
+  usageExamples: string[];
 }
 
 const RULE_OPTIONS: GlossaryRule[] = ["translate", "keep", "forbidden"];
@@ -173,27 +216,29 @@ const firstForbiddenError = (
       max: GLOSSARY_LIMITS.forbiddenPerLanguage,
     });
   }
-  const normalizedTranslation = normalizeGlossaryName(translation ?? "");
   for (const value of values) {
     if (value.trim().length > GLOSSARY_LIMITS.value) {
       return t("GLOSSARY_EDITOR_SHEET.ERROR_FORBIDDEN_LENGTH", { max: GLOSSARY_LIMITS.value });
     }
-    if (
-      checkTranslation &&
-      normalizedTranslation &&
-      normalizeGlossaryName(value) === normalizedTranslation
-    ) {
+    if (checkTranslation && isForbiddenTranslation(value, translation)) {
       return t("GLOSSARY_EDITOR_SHEET.ERROR_TRANSLATION_FORBIDDEN");
     }
   }
   return undefined;
 };
 
+/** At most `max` characters, unless unchanged from the stored value (the server allows that too). */
+const limitedText = (max: number, stored: string, message: string) =>
+  z.string().refine((value) => value.length <= max || value === stored, { message });
+
 /**
  * Validation only covers languages shown in the editor; other stored entries pass through.
- * Variants are only validated while they are editable (flag on); otherwise they are kept as stored.
  */
-const buildSchema = (targetCodes: string[], t: TFunction) =>
+const buildSchema = (
+  targetCodes: string[],
+  stored: { definition: string; note: string },
+  t: TFunction,
+) =>
   z
     .object({
       name: z
@@ -206,18 +251,25 @@ const buildSchema = (targetCodes: string[], t: TFunction) =>
       language: z.string(),
       type: z.string(),
       rule: z.enum(["translate", "keep", "forbidden"]),
+      status: z.enum(["draft", "approved", "deprecated"]),
       caseSensitive: z.boolean(),
       variants: z.array(z.string()),
       translations: z.record(z.string(), z.string()),
       forbidden: z.record(z.string(), z.array(z.string())),
-      definition: z.string().max(GLOSSARY_LIMITS.definition, {
-        message: t("GLOSSARY_EDITOR_SHEET.ERROR_DEFINITION_LENGTH"),
-      }),
+      definition: limitedText(
+        GLOSSARY_LIMITS.definition,
+        stored.definition,
+        t("GLOSSARY_EDITOR_SHEET.ERROR_DEFINITION_LENGTH"),
+      ),
       scope: z.enum(["project", "modules"]),
       moduleIds: z.array(z.string()),
-      note: z.string().max(GLOSSARY_LIMITS.note, {
-        message: t("GLOSSARY_EDITOR_SHEET.ERROR_NOTE_LENGTH"),
-      }),
+      note: limitedText(
+        GLOSSARY_LIMITS.note,
+        stored.note,
+        t("GLOSSARY_EDITOR_SHEET.ERROR_NOTE_LENGTH"),
+      ),
+      partOfSpeech: z.string(),
+      usageExamples: z.array(z.string()),
     })
     .superRefine((values, ctx) => {
       const variantError = firstVariantError(t, values.variants, values.name);
@@ -250,6 +302,25 @@ const buildSchema = (targetCodes: string[], t: TFunction) =>
         }
       }
 
+      const examples = values.usageExamples.map((example) => example.trim()).filter(Boolean);
+      if (examples.length > GLOSSARY_LIMITS.usageExamples) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["usageExamples"],
+          message: t("GLOSSARY_EDITOR_SHEET.ERROR_MAX_USAGE_EXAMPLES", {
+            max: GLOSSARY_LIMITS.usageExamples,
+          }),
+        });
+      } else if (examples.some((example) => example.length > GLOSSARY_LIMITS.usageExample)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["usageExamples"],
+          message: t("GLOSSARY_EDITOR_SHEET.ERROR_USAGE_EXAMPLE_LENGTH", {
+            max: GLOSSARY_LIMITS.usageExample,
+          }),
+        });
+      }
+
       if (values.scope === "modules" && values.moduleIds.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -264,27 +335,67 @@ const getInitialScope = (glossary?: IGlossary): GlossaryScope => {
   return "modules";
 };
 
+const keepTranslation = (kept: string, moved: string) => (kept.trim() ? kept : moved);
+const mergeForbidden = (kept: string[], moved: string[]) => [...new Set([...kept, ...moved])];
+
 const getInitialValues = (
   glossary: IGlossary | undefined,
   meta: GlossaryMeta,
   note: string,
   initialName = "",
-) => ({
+  defaultLanguageCode = "",
+  cultures: readonly string[] = [],
+): GlossaryEditorValues => ({
   name: glossary?.name ?? initialName,
-  language: glossary?.language ?? "",
+  // A new term starts in the project default language; an edit keeps the stored value, even "" (H9).
+  language: glossary ? (glossary.language ?? "") : defaultLanguageCode,
   type: glossary?.type ?? "",
   rule: meta.rule,
+  // New terms default to Approved (A1); legacy terms without a status are Approved too.
+  status: glossary ? getGlossaryStatus(glossary) : "approved",
   caseSensitive: meta.caseSensitive,
   variants: [...meta.variants],
-  translations: { ...meta.translations },
-  forbidden: Object.fromEntries(
-    Object.entries(meta.forbidden).map(([code, values]) => [code, [...values]]),
+  // A value stored under another case of a project language ("de-de") shows under that language.
+  translations: alignCultureKeys(meta.translations, cultures, keepTranslation),
+  forbidden: alignCultureKeys(
+    Object.fromEntries(Object.entries(meta.forbidden).map(([code, values]) => [code, [...values]])),
+    cultures,
+    mergeForbidden,
   ),
   definition: stripRuleMarker(glossary?.context),
   scope: getInitialScope(glossary),
   moduleIds: glossary?.moduleIds ?? [],
   note,
+  partOfSpeech: glossary?.partOfSpeech ?? "",
+  usageExamples: [...(glossary?.usageExamples ?? [])],
 });
+
+/**
+ * The `translations` sent on save: one entry per culture with a value or forbidden values,
+ * values trimmed and empty ones dropped. Cultures outside the project and values inactive
+ * under the rule are sent back as loaded (C6, Phase 2 A9), so the merge never drops them.
+ */
+const buildTranslationsPayload = (
+  formTranslations: Record<string, string>,
+  formForbidden: Record<string, string[]>,
+  cultures: readonly string[],
+): IGlossaryTranslation[] => {
+  // Saved under the project's own code, so "de-de" and "de-DE" are never sent as two languages.
+  const translations = alignCultureKeys(formTranslations, cultures, keepTranslation);
+  const forbidden = alignCultureKeys(formForbidden, cultures, mergeForbidden);
+  const languages = [...new Set([...Object.keys(translations), ...Object.keys(forbidden)])];
+  return languages.flatMap((language) => {
+    const value = (translations[language] ?? "").trim();
+    const forbiddenValues = (forbidden[language] ?? []).map((item) => item.trim()).filter(Boolean);
+    return value || forbiddenValues.length > 0 ? [{ language, value, forbiddenValues }] : [];
+  });
+};
+
+/**
+ * Safari sends the Enter that confirms an IME candidate right after `compositionend`, with
+ * `isComposing` already false; an Enter this soon after a composition ended belongs to it.
+ */
+export const COMPOSITION_ENTER_WINDOW_MS = 100;
 
 interface ChipInputProps {
   id?: string;
@@ -296,7 +407,10 @@ interface ChipInputProps {
   ariaLabel?: string;
 }
 
-/** Token field: Enter or a comma turns the typed text into a removable chip inside the box. */
+/**
+ * Token field: Enter turns the typed text into a removable chip inside the box; pasted lines
+ * become one chip each. Commas stay in the value ("Inc., Ltd").
+ */
 const ChipInput = ({
   id,
   values,
@@ -308,26 +422,29 @@ const ChipInput = ({
 }: Readonly<ChipInputProps>) => {
   const { t } = useT("localization.glossary");
   const [draft, setDraft] = useState("");
+  const compositionEndedAt = useRef<number | null>(null);
 
   const addValues = (items: string[]) => {
     const next = items.map((item) => item.trim()).filter(Boolean);
     if (next.length > 0) onChange([...values, ...next]);
   };
 
-  const handleChange = (text: string) => {
-    if (!text.includes(",")) {
-      setDraft(text);
-      return;
-    }
-    const parts = text.split(",");
-    setDraft(parts.pop() ?? "");
-    addValues(parts);
-  };
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
+    // Enter while an IME is composing confirms the composition, not the chip.
+    const endsComposition =
+      compositionEndedAt.current !== null &&
+      event.timeStamp - compositionEndedAt.current < COMPOSITION_ENTER_WINDOW_MS;
+    if (event.key !== "Enter" || event.nativeEvent.isComposing || endsComposition) return;
     event.preventDefault();
     addValues([draft]);
+    setDraft("");
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const text = event.clipboardData.getData("text");
+    if (!/[\r\n]/.test(text)) return;
+    event.preventDefault();
+    addValues(`${draft}${text}`.split(/\r?\n|\r/));
     setDraft("");
   };
 
@@ -354,8 +471,12 @@ const ChipInput = ({
         placeholder={values.length > 0 ? t("GLOSSARY_EDITOR_SHEET.ADD_ANOTHER") : placeholder}
         disabled={disabled}
         className="h-6 w-auto min-w-32 flex-1 border-0 bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-100"
-        onChange={(event) => handleChange(event.target.value)}
+        onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
+        onCompositionEnd={(event) => {
+          compositionEndedAt.current = event.timeStamp;
+        }}
+        onPaste={handlePaste}
         onBlur={() => {
           addValues([draft]);
           setDraft("");
@@ -463,7 +584,13 @@ const FieldError = ({ message }: Readonly<{ message?: string }>) =>
 
 interface GlossaryEditorFormProps {
   glossary?: IGlossary;
+  /** Closes at once (after a save, or when the term is gone). */
   onClose: () => void;
+  /** Cancel: the sheet asks before closing while there are unsaved changes. */
+  onRequestClose?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Called with the freshly fetched term after "Reload latest"; the caller remounts the form with it. */
+  onReloaded?: (glossary: IGlossary) => void;
   initialName?: string;
   onSaved?: (savedName: string) => void;
   onSelectExisting?: (glossary: IGlossary) => void;
@@ -472,6 +599,9 @@ interface GlossaryEditorFormProps {
 const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
   glossary,
   onClose,
+  onRequestClose,
+  onDirtyChange,
+  onReloaded,
   initialName,
   onSaved,
   onSelectExisting,
@@ -482,31 +612,65 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
   const navigate = useNavigate();
   const scoped = useScopedPath();
   const { isPending, mutateAsync } = useSaveGlossary();
+  const fetchLatestGlossary = useFetchLatestGlossary();
+  const [hasVersionConflict, setHasVersionConflict] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const { data: languageListData } = useGetLanguages();
   const { data: moduleListData } = useGetLanguageModules();
   const [languageOpen, setLanguageOpen] = useState(false);
   const [modulePopoverOpen, setModulePopoverOpen] = useState(false);
 
-  // Parsed once per open: the form state is the single source of truth afterwards.
-  const [parsed] = useState(() => parseGlossaryMeta(glossary?.additionalNote));
-  const isReadOnly = parsed.status === "unsupported-version";
-  const [noteOpen, setNoteOpen] = useState(() => !!parsed.meta.note);
+  // Read once per open from the API fields: the form state is the single source of truth afterwards.
+  const [stored] = useState(() => ({
+    meta: toGlossaryMeta(glossary ?? {}),
+    note: glossary ? getGlossaryNote(glossary) : "",
+    isCorrupt: parseGlossaryMeta(glossary?.additionalNote).status === "corrupt",
+  }));
+  const isReadOnly = !!glossary && isUnsupportedGlossaryNote(glossary);
+  const [noteOpen, setNoteOpen] = useState(() => !!stored.note);
 
   const targetLanguages = useMemo(() => getTargetLanguages(languageListData), [languageListData]);
   const schema = useMemo(
     () =>
       buildSchema(
         targetLanguages.map((language) => language.languageCode),
+        { definition: stripRuleMarker(glossary?.context), note: stored.note },
         t,
       ),
-    [targetLanguages, t],
+    [targetLanguages, glossary?.context, stored.note, t],
   );
 
+  const defaultLanguage = getDefaultLanguage(languageListData);
   const form = useForm<GlossaryEditorValues>({
-    defaultValues: getInitialValues(glossary, parsed.meta, parsed.meta.note ?? "", initialName),
+    defaultValues: getInitialValues(
+      glossary,
+      stored.meta,
+      stored.note,
+      initialName,
+      defaultLanguage?.languageCode,
+      targetLanguages.map((language) => language.languageCode),
+    ),
     resolver: zodResolver(schema),
   });
   const { control, formState } = form;
+  const { isDirty } = formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+  const {
+    suggest,
+    suggestAll,
+    cancel: cancelSuggestions,
+    pendingCodes,
+    isSuggesting,
+  } = useGlossaryTermSuggestion();
+
+  // Languages can arrive after the form mounted: preset a new term's untouched Language then.
+  useEffect(() => {
+    if (isEditMode || !defaultLanguage) return;
+    if (form.getValues("language") || form.getFieldState("language").isDirty) return;
+    form.setValue("language", defaultLanguage.languageCode);
+  }, [isEditMode, defaultLanguage, form]);
 
   const [selectedLanguage, rule, scope, rawName, moduleIds, translations, forbidden] = useWatch({
     control,
@@ -567,6 +731,11 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       { ...form.getValues("translations"), [code]: value },
       { shouldValidate: formState.isSubmitted },
     );
+  // The server sends an unchanged value to the AI as a keep; the hint points at the matching rule.
+  const isUnchangedTranslation = (code: string) => {
+    const value = (translations?.[code] ?? "").trim();
+    return value.length > 0 && value.toLowerCase() === trimmedName.toLowerCase();
+  };
   const setForbidden = (code: string, values: string[]) =>
     form.setValue(
       "forbidden",
@@ -574,34 +743,79 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       { shouldValidate: formState.isSubmitted },
     );
 
-  const formSubmitHandler = async (data: GlossaryEditorValues) => {
-    const meta: GlossaryMeta = {
-      rule: data.rule,
-      caseSensitive: data.caseSensitive,
-      variants: data.variants,
-      translations: data.translations,
-      forbidden: data.forbidden,
-      note: data.note,
-    };
-    const additionalNote = serializeGlossaryMeta(meta);
-    if (additionalNote.length > GLOSSARY_LIMITS.serialized) {
-      form.setError("root.serialized", { message: t("GLOSSARY_EDITOR_SHEET.ERROR_TOO_MUCH_DATA") });
-      return;
-    }
+  const suggestionArgs = () =>
+    defaultLanguage
+      ? {
+          name: form.getValues("name"),
+          definition: form.getValues("definition"),
+          defaultLanguage,
+        }
+      : undefined;
 
-    const languages: ILanguageConfig[] = languageListData ?? [];
+  const missingTargets = targetLanguages.filter(
+    (language) => !(translations?.[language.languageCode] ?? "").trim(),
+  );
+  const canSuggest = rule === "translate" && !!trimmedName && !!defaultLanguage && !isReadOnly;
+
+  // Fills the input only if it is still empty; nothing is saved until Save (H8, C4).
+  const fillSuggestion = (code: string, value: string) => {
+    if ((form.getValues("translations")[code] ?? "").trim()) return;
+    setTranslation(code, value);
+  };
+
+  const suggestOne = async (language: ILanguageConfig) => {
+    const args = suggestionArgs();
+    if (!args) return;
+    const value = await suggest(args, language);
+    if (value) fillSuggestion(language.languageCode, value);
+  };
+
+  const suggestAllMissing = () => {
+    const args = suggestionArgs();
+    if (!args) return;
+    void suggestAll(args, missingTargets, fillSuggestion);
+  };
+
+  /** Keeps Language, Rule and Scope for the next term and empties everything else (H7). */
+  const resetForAnother = (data: GlossaryEditorValues) => {
+    // Suggestions still running were for the saved glossary: they must not fill the next one.
+    cancelSuggestions();
+    form.reset({
+      ...getInitialValues(undefined, toGlossaryMeta({}), "", "", data.language),
+      language: data.language,
+      rule: data.rule,
+      scope: data.scope,
+      moduleIds: data.moduleIds,
+    });
+    setNoteOpen(false);
+    setTimeout(() => form.setFocus("name"), 0);
+  };
+
+  const formSubmitHandler = async (data: GlossaryEditorValues, addAnother = false) => {
+    // Structured fields go to the server as such: no rule marker in `context`, no JSON in the note.
     const payload = {
       ...(isEditMode && glossary?.itemId ? { itemId: glossary.itemId } : {}),
       name: data.name.trim(),
       language: data.language,
       type: data.type,
-      context: buildGlossaryContext(
-        data.definition,
-        buildRuleMarker(parseGlossaryMeta(additionalNote).meta, languages),
-      ),
-      additionalNote,
+      context: data.definition.trim(),
+      additionalNote: data.note?.trim() ?? "",
       isGlobal: data.scope === "project",
       moduleIds: data.scope === "project" ? [] : data.moduleIds,
+      rule: data.rule,
+      caseSensitive: data.caseSensitive,
+      variants: data.variants.map((variant) => variant.trim()).filter(Boolean),
+      translations: buildTranslationsPayload(
+        data.translations,
+        data.forbidden,
+        targetLanguages.map((language) => language.languageCode),
+      ),
+      status: data.status,
+      // "" / [] clear the stored values; the server keeps them only when omitted (merge-on-omit).
+      partOfSpeech: (data.partOfSpeech || "") as GlossaryPartOfSpeech | "",
+      usageExamples: data.usageExamples.map((example) => example.trim()).filter(Boolean),
+      // The version this edit started from, so the server rejects it if someone saved meanwhile.
+      ...(isEditMode && typeof glossary?.version === "number" ? { version: glossary.version } : {}),
     };
 
     try {
@@ -616,10 +830,16 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
             : t("GLOSSARY_EDITOR_SHEET.ADDED"),
         });
         onSaved?.(payload.name);
-        onClose();
+        if (addAnother) resetForAnother(data);
+        else onClose();
       } else if (Array.isArray(res?.validationErrors) && res.validationErrors.length > 0) {
+        // A version conflict shows the Alert (keeping the user's input); every other error is a toast.
         res.validationErrors.forEach((error) => {
-          showErrorToast({ errors: error.errorMessage });
+          if (error.propertyName === VERSION_ERROR_PROPERTY) {
+            setHasVersionConflict(true);
+          } else {
+            showErrorToast({ errors: error.errorMessage });
+          }
         });
       } else {
         showErrorToast({ errors: res?.errorMessage });
@@ -630,6 +850,29 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
         title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
+    }
+  };
+
+  const reloadLatest = async () => {
+    if (!glossary?.itemId || isReloading) return;
+    setIsReloading(true);
+    try {
+      const latest = await fetchLatestGlossary(glossary.itemId);
+      // Remounts this form, so the unsaved input, the Alert and the parsed stored note all reset.
+      onReloaded?.(latest);
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        showErrorToast({ errors: t("GLOSSARY_EDITOR_SHEET.GLOSSARY_NOT_FOUND") });
+        onClose();
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: t("common:ERROR"),
+        description: formatErrorMessage(error),
+      });
+    } finally {
+      setIsReloading(false);
     }
   };
 
@@ -668,14 +911,62 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
     return (
       <div key={code} className="grid gap-2 p-4">
         {languageLabel(inputId)}
-        <Input
-          id={inputId}
-          value={translations?.[code] ?? ""}
-          onChange={(event) => setTranslation(code, event.target.value)}
-          placeholder={t("GLOSSARY_EDITOR_SHEET.APPROVED_TRANSLATION")}
-          disabled={isReadOnly}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            id={inputId}
+            value={translations?.[code] ?? ""}
+            onChange={(event) => setTranslation(code, event.target.value)}
+            placeholder={t("GLOSSARY_EDITOR_SHEET.APPROVED_TRANSLATION")}
+            disabled={isReadOnly}
+          />
+          {canSuggest && !(translations?.[code] ?? "").trim() && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  aria-label={t("GLOSSARY_EDITOR_SHEET.SUGGEST_TRANSLATION", {
+                    language: language.languageName,
+                  })}
+                  onClick={() => void suggestOne(language)}
+                  disabled={pendingCodes.has(code)}
+                >
+                  {pendingCodes.has(code) ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs font-normal">
+                {t("GLOSSARY_EDITOR_SHEET.SUGGEST_WITH_AI")}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <FieldError message={translationError(code)} />
+        {isUnchangedTranslation(code) && (
+          <p className="flex items-start gap-1.5 text-xs text-warning-700">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              {t("GLOSSARY_EDITOR_SHEET.SAME_AS_GLOSSARY", { rule: ruleLabels.keep })}
+              {!isReadOnly && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="font-medium underline underline-offset-4 hover:no-underline"
+                    onClick={() => form.setValue("rule", "keep", { shouldDirty: true })}
+                  >
+                    {t("GLOSSARY_EDITOR_SHEET.USE_RULE", { rule: ruleLabels.keep })}
+                  </button>
+                </>
+              )}
+            </span>
+          </p>
+        )}
         <Collapsible defaultOpen={forbiddenValues.length > 0} className="group/forbidden">
           <div className="flex items-center gap-1.5">
             <CollapsibleTrigger asChild>
@@ -748,13 +1039,13 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
       <TooltipProvider delayDuration={200}>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(formSubmitHandler)}
+            onSubmit={form.handleSubmit((data) => formSubmitHandler(data))}
             className="flex min-h-0 flex-1 flex-col"
             noValidate
           >
             <ScrollArea className="min-h-0 flex-1">
               <fieldset disabled={isReadOnly} className="grid min-w-0 gap-6 p-6">
-                {parsed.status === "corrupt" && (
+                {stored.isCorrupt && (
                   <Alert className="border-warning-200 bg-warning-50 text-warning-700">
                     <TriangleAlert />
                     <AlertDescription className="text-warning-700">
@@ -935,6 +1226,40 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   />
 
                   <FormField
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium text-high-emphasis">
+                          {t("GLOSSARY_EDITOR_SHEET.STATUS")}
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isReadOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger aria-label={t("GLOSSARY_EDITOR_SHEET.STATUS")}>
+                              <SelectValue placeholder={t("GLOSSARY_EDITOR_SHEET.SELECT_STATUS")} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GLOSSARY_STATUSES.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {GLOSSARY_STATUS_LABELS[option]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs text-medium-emphasis">
+                          {t("GLOSSARY_EDITOR_SHEET.STATUS_INFO")}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     name="caseSensitive"
                     control={control}
                     render={({ field }) => (
@@ -1001,15 +1326,34 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                   <>
                     <Separator />
                     <section className="grid gap-5" aria-labelledby="glossary-section-translations">
-                      <SectionHeading
-                        id="glossary-section-translations"
-                        title={t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS")}
-                        description={
-                          rule === "forbidden"
-                            ? t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS_FORBIDDEN")
-                            : t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS_DESCRIPTION")
-                        }
-                      />
+                      <div className="flex items-start justify-between gap-4">
+                        <SectionHeading
+                          id="glossary-section-translations"
+                          title={t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS")}
+                          description={
+                            rule === "forbidden"
+                              ? t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS_FORBIDDEN")
+                              : t("GLOSSARY_EDITOR_SHEET.SECTION_TRANSLATIONS_DESCRIPTION")
+                          }
+                        />
+                        {canSuggest && missingTargets.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 gap-1"
+                            onClick={suggestAllMissing}
+                            disabled={isSuggesting}
+                          >
+                            {isSuggesting ? (
+                              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            {t("GLOSSARY_EDITOR_SHEET.SUGGEST_ALL")}
+                          </Button>
+                        )}
+                      </div>
                       {renderTranslationsBody()}
                     </section>
                   </>
@@ -1090,6 +1434,111 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    name="partOfSpeech"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <LabelRow>
+                          <FormLabel className="font-medium text-high-emphasis">
+                            {t("GLOSSARY_EDITOR_SHEET.PART_OF_SPEECH")}
+                          </FormLabel>
+                          <FieldInfo ariaLabel={t("GLOSSARY_EDITOR_SHEET.ABOUT_PART_OF_SPEECH")}>
+                            {t("GLOSSARY_EDITOR_SHEET.PART_OF_SPEECH_INFO")}
+                          </FieldInfo>
+                        </LabelRow>
+                        <Select
+                          onValueChange={(value) =>
+                            field.onChange(value === NO_PART_OF_SPEECH ? "" : value)
+                          }
+                          value={field.value || NO_PART_OF_SPEECH}
+                          disabled={isReadOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger aria-label={t("GLOSSARY_EDITOR_SHEET.PART_OF_SPEECH")}>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={NO_PART_OF_SPEECH}>
+                              {t("GLOSSARY_EDITOR_SHEET.NOT_SET")}
+                            </SelectItem>
+                            {GLOSSARY_PARTS_OF_SPEECH.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {GLOSSARY_PART_OF_SPEECH_LABELS[option]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="usageExamples"
+                    control={control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <LabelRow>
+                          <FormLabel className="font-medium text-high-emphasis">
+                            {t("GLOSSARY_EDITOR_SHEET.USAGE_EXAMPLES")}
+                          </FormLabel>
+                          <FieldInfo ariaLabel={t("GLOSSARY_EDITOR_SHEET.ABOUT_USAGE_EXAMPLES")}>
+                            {t("GLOSSARY_EDITOR_SHEET.USAGE_EXAMPLES_INFO", {
+                              max: GLOSSARY_LIMITS.usageExamples,
+                            })}
+                          </FieldInfo>
+                        </LabelRow>
+                        <div className="grid gap-2">
+                          {field.value.map((example, index) => (
+                            // Examples have no ids; the index is their position in the list.
+                            // eslint-disable-next-line react/no-array-index-key
+                            <div key={index} className="flex items-center gap-2">
+                              <Input
+                                aria-label={t("GLOSSARY_EDITOR_SHEET.USAGE_EXAMPLE", {
+                                  index: index + 1,
+                                })}
+                                value={example}
+                                maxLength={GLOSSARY_LIMITS.usageExample}
+                                onChange={(event) =>
+                                  field.onChange(replaceAt(field.value, index, event.target.value))
+                                }
+                                placeholder={t("GLOSSARY_EDITOR_SHEET.USAGE_EXAMPLE_PLACEHOLDER")}
+                                disabled={isReadOnly}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 shrink-0"
+                                aria-label={t("GLOSSARY_EDITOR_SHEET.REMOVE_USAGE_EXAMPLE", {
+                                  index: index + 1,
+                                })}
+                                onClick={() => field.onChange(removeAt(field.value, index))}
+                                disabled={isReadOnly}
+                              >
+                                <X className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          ))}
+                          {field.value.length < GLOSSARY_LIMITS.usageExamples && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-fit gap-1"
+                              onClick={() => field.onChange([...field.value, ""])}
+                              disabled={isReadOnly}
+                            >
+                              <Plus className="h-4 w-4" aria-hidden="true" />
+                              {t("GLOSSARY_EDITOR_SHEET.ADD_EXAMPLE")}
+                            </Button>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </section>
 
                 <Separator />
@@ -1153,7 +1602,7 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                                   type="button"
                                   variant="outline"
                                   role="combobox"
-                                  aria-label={t("GLOSSARY_EDITOR_SHEET.TAG_MODULES")}
+                                  aria-label={t("GLOSSARY_EDITOR_SHEET.TAG_MODULES_ARIA")}
                                   className="w-full justify-between px-3 font-normal text-muted-foreground"
                                 >
                                   {moduleTriggerLabel}
@@ -1290,15 +1739,52 @@ const GlossaryEditorForm: FC<GlossaryEditorFormProps> = ({
                     />
                   </CollapsibleContent>
                 </Collapsible>
-
-                <FieldError message={formState.errors.root?.serialized?.message} />
               </fieldset>
             </ScrollArea>
 
+            {hasVersionConflict && (
+              <div className="px-6 pb-4">
+                <Alert variant="destructive">
+                  <TriangleAlert />
+                  <AlertDescription>
+                    <p>{t("GLOSSARY_EDITOR_SHEET.VERSION_CONFLICT")}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void reloadLatest()}
+                      disabled={isReloading}
+                      className="mt-1"
+                    >
+                      {isReloading && (
+                        <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      )}
+                      {t("GLOSSARY_EDITOR_SHEET.RELOAD_LATEST")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <SheetFooter className="gap-2 border-t bg-background px-6 py-4 sm:space-x-0">
-              <Button type="button" variant="outline" onClick={onClose} className="sm:min-w-24">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRequestClose ?? onClose}
+                className="sm:min-w-24"
+              >
                 {t("common:CANCEL")}
               </Button>
+              {!isEditMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending || isReadOnly}
+                  onClick={form.handleSubmit((data) => formSubmitHandler(data, true))}
+                >
+                  {t("GLOSSARY_EDITOR_SHEET.SAVE_AND_ADD_ANOTHER")}
+                </Button>
+              )}
               <Button type="submit" disabled={isPending || isReadOnly} className="sm:min-w-24">
                 {isPending && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {t("common:SAVE")}
@@ -1325,11 +1811,43 @@ interface GlossaryEditorSheetProps {
   onSelectExisting?: (glossary: IGlossary) => void;
   /** Lets a caller without `trigger` (the glossary picker) place focus after closing. */
   onCloseAutoFocus?: (event: Event) => void;
+  /** Keeps the sheet's click and key events from bubbling to the caller's React ancestors. */
+  isolateEvents?: boolean;
 }
 
+const stopPropagation = (event: SyntheticEvent) => event.stopPropagation();
+
 /**
- * Side-sheet editor for a glossary term. The form mounts only while open, so closing
- * discards unsaved changes and every open starts from the stored values.
+ * Holds the term the form edits for one open of the sheet. "Reload latest" swaps in the
+ * fetched term and remounts the form: it reads the stored fields once per mount, so a
+ * `form.reset` alone would keep stale read-only state, rule, variants and case-sensitivity.
+ */
+const GlossaryEditorBody: FC<Omit<GlossaryEditorFormProps, "onReloaded">> = ({
+  glossary,
+  ...props
+}) => {
+  const [current, setCurrent] = useState(glossary);
+  const [reloadCount, setReloadCount] = useState(0);
+
+  const handleReloaded = (latest: IGlossary) => {
+    setCurrent(latest);
+    setReloadCount((count) => count + 1);
+  };
+
+  return (
+    <GlossaryEditorForm
+      key={`${current?.itemId ?? "new"}:${current?.version ?? ""}:${reloadCount}`}
+      glossary={current}
+      onReloaded={handleReloaded}
+      {...props}
+    />
+  );
+};
+
+/**
+ * Side-sheet editor for a glossary term. The form mounts only while open, so every open starts
+ * from the stored values. Closing with unsaved changes (Escape, outside click, X or Cancel)
+ * asks first; a save or a vanished term closes at once.
  */
 const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   open,
@@ -1340,26 +1858,62 @@ const GlossaryEditorSheet: FC<GlossaryEditorSheetProps> = ({
   onSaved,
   onSelectExisting,
   onCloseAutoFocus,
-}) => (
-  <Sheet open={open} onOpenChange={onOpenChange}>
-    {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-    <SheetContent
-      side="right"
-      hideClose
-      className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
-      onCloseAutoFocus={onCloseAutoFocus}
-    >
-      {open && (
-        <GlossaryEditorForm
-          glossary={glossary}
-          onClose={() => onOpenChange(false)}
-          initialName={initialName}
-          onSaved={onSaved}
-          onSelectExisting={onSelectExisting}
-        />
-      )}
-    </SheetContent>
-  </Sheet>
-);
+  isolateEvents,
+}) => {
+  const { t } = useT("localization.glossary");
+  const isDirtyRef = useRef(false);
+  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+  }, []);
+
+  const close = () => {
+    isDirtyRef.current = false;
+    setIsConfirmingDiscard(false);
+    onOpenChange(false);
+  };
+  const requestClose = () => {
+    if (isDirtyRef.current) setIsConfirmingDiscard(true);
+    else close();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
+      <SheetContent
+        side="right"
+        hideClose
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+        onCloseAutoFocus={onCloseAutoFocus}
+        onClick={isolateEvents ? stopPropagation : undefined}
+        onKeyDown={isolateEvents ? stopPropagation : undefined}
+      >
+        {open && (
+          <GlossaryEditorBody
+            glossary={glossary}
+            onClose={close}
+            onRequestClose={requestClose}
+            onDirtyChange={handleDirtyChange}
+            initialName={initialName}
+            onSaved={onSaved}
+            onSelectExisting={onSelectExisting}
+          />
+        )}
+        <Dialog open={isConfirmingDiscard} onOpenChange={setIsConfirmingDiscard}>
+          <ConfirmationModal
+            onCancel={() => setIsConfirmingDiscard(false)}
+            onConfirm={close}
+            data={{
+              dialogTitle: t("GLOSSARY_EDITOR_SHEET.DISCARD_TITLE"),
+              dialogSubtitle: t("GLOSSARY_EDITOR_SHEET.DISCARD_DESCRIPTION"),
+              confirmButton: t("GLOSSARY_EDITOR_SHEET.DISCARD"),
+              cancelButton: t("GLOSSARY_EDITOR_SHEET.KEEP_EDITING"),
+            }}
+          />
+        </Dialog>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 export default GlossaryEditorSheet;

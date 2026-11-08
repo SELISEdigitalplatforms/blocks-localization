@@ -1,4 +1,4 @@
-﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Extension.DependencyInjection;
 using Blocks.Secrets;
 using Blocks.Genesis;
 using DomainService.Storage;
@@ -29,6 +29,7 @@ namespace Worker
             services.AddSingleton<IConsumer<UilmImportEvent>, UilmImportEventConsumer>();
             services.AddSingleton<IConsumer<UilmExportEvent>, UilmExportEventConsumer>();
             services.AddSingleton<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>();
+            services.AddSingleton<IConsumer<RecheckGlossaryViolationsEvent>, RecheckGlossaryViolationsEventConsumer>();
 
             services.AddSingleton<XlsxOutputGeneratorService>();
             services.AddSingleton<JsonOutputGeneratorService>();
@@ -55,16 +56,17 @@ namespace Worker
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IEnvironmentDataMigrationRepository, EnvironmentDataMigrationRepository>();
 
-            services.AddSingleton<IAssistantService, AssistantService>();
+            services.AddAssistantService();
 
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
+            services.AddGlossaryTerminology();
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
-            services.AddTransient<AwsS3CompatibleStorageService>();
+     
 
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IHttpHelperServices, HttpHelperServices>();

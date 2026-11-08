@@ -8,6 +8,7 @@ import ViewDetails from "./view-details";
 vi.mock("@seliseblocks/genesis-os", async () => ({
   ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
@@ -75,6 +76,22 @@ describe("components/view-details", () => {
     } as never);
     const { container } = renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
+  });
+
+  it("shows the default language first without reordering the cached list (SPEC15 H25)", () => {
+    const cached = [
+      { itemId: "fr", languageName: "French", languageCode: "fr-FR", isDefault: false },
+      { itemId: "de", languageName: "German", languageCode: "de-DE", isDefault: false },
+      { itemId: "en", languageName: "English", languageCode: "en-US", isDefault: true },
+    ];
+    const before = cached.map((language) => language.languageCode);
+    h.useGetLanguages.mockReturnValue({ isLoading: false, isFetching: false, data: cached } as never);
+    const { container } = renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
+
+    expect(cached.map((language) => language.languageCode)).toEqual(before);
+    const text = container.textContent ?? "";
+    expect(text.indexOf("English")).toBeLessThan(text.indexOf("French"));
+    expect(text.indexOf("French")).toBeLessThan(text.indexOf("German"));
   });
 
   it("should render translations, module, context and dates", () => {

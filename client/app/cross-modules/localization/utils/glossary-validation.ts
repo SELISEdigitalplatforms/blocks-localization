@@ -1,18 +1,43 @@
 import { tStatic } from "@seliseblocks/genesis-os/i18n";
+import { GLOSSARY_LIMITS } from "@blocks-localization/constants/glossary-limits";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
+import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+import { maskPlaceholders } from "@blocks-localization/utils/glossary-placeholders";
+import { normalizeGlossaryName } from "@blocks-localization/utils/glossary-name";
 import {
-  GlossaryMatch,
+  findCultureEntry,
   isNoSpaceCulture,
   isWordStart,
-} from "@blocks-localization/utils/glossary-matcher";
-import {
-  groupMatchesByGlossary,
-  MatchedGlossaryGroup,
-  sanitizePromptText,
-} from "@blocks-localization/utils/translation-prompt";
-
-import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
+  wordLettersAfter,
+  wordPrefixBefore,
+} from "@blocks-localization/utils/glossary-text";
 
 const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
+
+export const TRANSLATION_LENGTH_ERROR = `Translation must be ${GLOSSARY_LIMITS.value} characters or fewer`;
+export const FORBIDDEN_TRANSLATION_ERROR = "A translation can't also be forbidden";
+
+/** True when the forbidden `value` is the translation itself (case-insensitive, NFC). */
+export const isForbiddenTranslation = (value: string, translation: string | undefined) => {
+  const normalizedTranslation = normalizeGlossaryName(translation ?? "");
+  return !!normalizedTranslation && normalizeGlossaryName(value) === normalizedTranslation;
+};
+
+/** The editor's checks of one Translate-rule translation; inline edits reuse them. */
+export const getTranslationError = (
+  translation: string,
+  forbiddenValues: string[],
+): string | undefined => {
+  if (translation.trim().length > GLOSSARY_LIMITS.value) {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.TRANSLATION_TOO_LONG", {
+      max: GLOSSARY_LIMITS.value,
+    });
+  }
+  if (forbiddenValues.some((value) => isForbiddenTranslation(value, translation))) {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VALIDATION.TRANSLATION_FORBIDDEN");
+  }
+  return undefined;
+};
 
 /**
  * Whether the glossary says anything for this language: Keep and Forbidden always do; a
@@ -21,14 +46,13 @@ const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
  */
 export const hasRuleForCulture = (meta: GlossaryMeta, culture: string): boolean =>
   meta.rule !== "translate" ||
-  !!meta.translations[culture]?.trim() ||
-  (meta.forbidden[culture]?.length ?? 0) > 0;
+  !!findCultureEntry(meta.translations, culture)?.trim() ||
+  (findCultureEntry(meta.forbidden, culture)?.length ?? 0) > 0;
 
 export type GlossaryViolationKind = "missing-translation" | "missing-keep" | "forbidden-used";
 
 export interface GlossaryViolation {
   glossaryId: string;
-  /** The glossary name. */
   term: string;
   kind: GlossaryViolationKind;
   /** missing-translation: the approved value; missing-keep: the source surface to keep. */
@@ -37,6 +61,28 @@ export interface GlossaryViolation {
   found?: string;
 }
 
+interface MatchedGlossaryGroup {
+  matches: GlossaryMatch[];
+  /** Distinct matched source surfaces, in first-occurrence order. */
+  surfaces: string[];
+}
+
+/** Matches grouped per glossary in first-occurrence order. */
+const groupMatchesByGlossary = (matches: GlossaryMatch[]): MatchedGlossaryGroup[] => {
+  const groups = new Map<string, MatchedGlossaryGroup>();
+  for (const match of [...matches].sort((a, b) => a.start - b.start)) {
+    const id = match.glossary.itemId;
+    let group = groups.get(id);
+    if (!group) {
+      group = { matches: [], surfaces: [] };
+      groups.set(id, group);
+    }
+    group.matches.push(match);
+    if (!group.surfaces.includes(match.surface)) group.surfaces.push(match.surface);
+  }
+  return [...groups.values()];
+};
+
 interface Occurrence {
   start: number;
   length: number;
@@ -44,7 +90,7 @@ interface Occurrence {
 
 /**
  * Lower-cases one code point at a time. `map` gives the original index only where a lowered
- * code point starts, so a match starting or ending inside a case expansion ("İ" → "i̇") is
+ * code point starts, so a match starting or ending inside a case expansion is
  * rejected instead of covering half a character.
  */
 const lowerWithMap = (text: string, locale: string) => {
@@ -60,15 +106,19 @@ const lowerWithMap = (text: string, locale: string) => {
   return { lowered, map };
 };
 
-/** The Greek final sigma "ς" folds to "σ" (same length), as "Σ" lowers to "σ" on its own. */
+/**
+ * The Greek final sigma "ς" folds to "σ" (same length), as "Σ" lowers to "σ" on its own. "İ"
+ * lowers to "i" in every locale, as the server's culture lowering does.
+ */
 const lowerChar = (char: string, locale: string) => {
+  if (char === "İ") return "i";
   const lower = safeLower(char, locale);
   return lower === "ς" ? "σ" : lower;
 };
 
 const safeLower = (value: string, locale: string) => {
   try {
-    return value.toLocaleLowerCase(locale || undefined);
+    return value.toLocaleLowerCase(locale.replaceAll("_", "-") || undefined);
   } catch {
     return value.toLowerCase();
   }
@@ -106,25 +156,122 @@ const findAllInTarget = (text: string, value: string, options: FindOptions): Occ
   return occurrences;
 };
 
+/**
+ * Arabic letters written onto the next word: a conjunction (و, ف), then a preposition (ب, ك, ل),
+ * then the article ال; ل followed by ال is written لل.
+ */
+const ARABIC_PROCLITICS = /^[وف]?(?:[بكل]?ال|لل|[بكل])?$/u;
+/** Hebrew prefix letters (ו, ה, ב, כ, ל, מ, ש), up to three, written onto the next word. */
+const HEBREW_PROCLITICS = /^[והבכלמש]{0,3}$/u;
+/** Languages that write compounds as one word ("Standardarbeitsbereich"). */
+const COMPOUNDING_LANGUAGES: ReadonlySet<string> = new Set([
+  "de",
+  "nl",
+  "sv",
+  "da",
+  "nb",
+  "nn",
+  "no",
+  "is",
+  "fo",
+  "fi",
+  "et",
+  "af",
+  "lb",
+  "fy",
+]);
+/** A shorter approved translation must start a word, so "Tag" is not found inside "Vertrag". */
+export const MIN_COMPOUND_PART_LENGTH = 4;
+
+/** How the approved value may be attached to the end of a word in the target language. */
+const attachmentOf = (
+  approved: string,
+  targetCulture: string,
+): { core: string; allowsPrefix: (prefix: string) => boolean } | null => {
+  const language = targetCulture.split(/[-_]/)[0].toLowerCase();
+  if (language === "ar") {
+    // The article may be dropped or replaced by a preposition contraction: "الحساب" in "للحساب".
+    const core = approved.startsWith("ال") && approved.length > 3 ? approved.slice(2) : approved;
+    return { core, allowsPrefix: (prefix) => ARABIC_PROCLITICS.test(prefix) };
+  }
+  if (language === "he" || language === "iw") {
+    return { core: approved, allowsPrefix: (prefix) => HEBREW_PROCLITICS.test(prefix) };
+  }
+  if (COMPOUNDING_LANGUAGES.has(language) && [...approved].length >= MIN_COMPOUND_PART_LENGTH) {
+    return { core: approved, allowsPrefix: () => true };
+  }
+  return null;
+};
+
+/** `containsApprovedTranslation` on a text whose placeholders are already masked. */
+const containsApprovedIn = (searchable: string, approved: string, targetCulture: string) => {
+  const options: FindOptions = { caseInsensitive: true, targetCulture };
+  if (findAllInTarget(searchable, approved, options).length > 0) return true;
+  const attachment = attachmentOf(approved.normalize("NFC").trim(), targetCulture);
+  if (!attachment) return false;
+  return findAllInTarget(searchable, attachment.core, { ...options, anywhere: true }).some(
+    (occurrence) => attachment.allowsPrefix(wordPrefixBefore(searchable, occurrence.start)),
+  );
+};
+
+/**
+ * True when the approved translation is used in `text`: where it starts a word (inflected
+ * endings allowed, A11), or attached to the end of a word the target language builds that
+ * way — a compound ("Standardarbeitsbereich") or Arabic/Hebrew prefix letters ("بالحساب").
+ * Same rule as the server's `TranslationValidator.ContainsApprovedTranslation`.
+ */
+export const containsApprovedTranslation = (
+  text: string,
+  approved: string,
+  targetCulture: string,
+): boolean =>
+  containsApprovedIn(maskPlaceholders((text ?? "").normalize("NFC")), approved, targetCulture);
+
+/** A shorter forbidden value must be a whole word, so "App" does not flag "Application". */
+export const MIN_INFLECTED_FORBIDDEN_LENGTH = 4;
+/** Letters a longer forbidden value may take as an inflected ending ("Werkbereichs"). */
+export const MAX_FORBIDDEN_ENDING = 3;
+
+/**
+ * True when a forbidden `value` found at `occurrence` also ends there: a whole word, or (for a
+ * value of MIN_INFLECTED_FORBIDDEN_LENGTH letters or more) one followed by at most
+ * MAX_FORBIDDEN_ENDING letters. No-space languages: always. Same rule as the server's
+ * `TranslationValidator.EndsForbiddenWord`.
+ */
+const endsForbiddenWord = (
+  text: string,
+  occurrence: Occurrence,
+  value: string,
+  targetCulture: string,
+) => {
+  if (isNoSpaceCulture(targetCulture)) return true;
+  const ending = wordLettersAfter(text, occurrence.start + occurrence.length, MAX_FORBIDDEN_ENDING);
+  if (ending === 0) return true;
+  return (
+    ending <= MAX_FORBIDDEN_ENDING &&
+    [...value.normalize("NFC")].length >= MIN_INFLECTED_FORBIDDEN_LENGTH
+  );
+};
+
 const isWithin = (inner: Occurrence, outer: Occurrence) =>
   inner.start >= outer.start && inner.start + inner.length <= outer.start + outer.length;
 
 /**
  * Finds `value` in `text` where it starts a word; trailing letters are allowed so
  * inflected forms ("Arbeitsbereichs") count (A11). No-space languages: plain substring.
- * Returns the first occurrence as offsets into `text`.
+ * Returns the first occurrence as offsets into `text`. Never inside a placeholder or tag.
  */
 export const findInTarget = (
   text: string,
   value: string,
   options: FindOptions,
-): Occurrence | null => findAllInTarget(text, value, options)[0] ?? null;
+): Occurrence | null => findAllInTarget(maskPlaceholders(text), value, options)[0] ?? null;
 
 const alternativesOf = (match: GlossaryMatch) =>
   [match.glossary.name ?? "", ...match.meta.variants].map((value) => value.trim()).filter(Boolean);
 
-/** Every occurrence of `value` in the output, in order. */
 type FindValue = (value: string, caseInsensitive: boolean) => Occurrence[];
+type ContainsApproved = (value: string) => boolean;
 
 type ViolationBase = Pick<GlossaryViolation, "glossaryId" | "term">;
 
@@ -147,10 +294,10 @@ const translationViolations = (
   match: GlossaryMatch,
   targetCulture: string,
   base: ViolationBase,
-  find: FindValue,
+  containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
-  const expected = match.meta.translations[targetCulture]?.trim();
-  if (!expected || find(expected, true).length > 0) return [];
+  const expected = findCultureEntry(match.meta.translations, targetCulture)?.trim();
+  if (!expected || containsApproved(expected)) return [];
   return [{ ...base, kind: "missing-translation", expected }];
 };
 
@@ -165,20 +312,25 @@ const forbiddenViolations = (
   targetCulture: string,
   base: ViolationBase,
   find: FindValue,
+  findBanned: FindValue,
 ): GlossaryViolation[] => {
   const { meta } = match;
   const banned = [
     ...(meta.rule === "forbidden"
       ? alternativesOf(match).map((value) => ({ value, caseInsensitive: !meta.caseSensitive }))
       : []),
-    ...(meta.forbidden[targetCulture] ?? []).map((value) => ({ value, caseInsensitive: true })),
+    ...(findCultureEntry(meta.forbidden, targetCulture) ?? []).map((value) => ({
+      value,
+      caseInsensitive: true,
+    })),
   ].sort((a, b) => b.value.length - a.value.length);
-  const approved = meta.rule === "translate" ? meta.translations[targetCulture]?.trim() : "";
+  const approved =
+    meta.rule === "translate" ? findCultureEntry(meta.translations, targetCulture)?.trim() : "";
   const approvedSpans = approved ? find(approved, true) : [];
   const violations: GlossaryViolation[] = [];
   const reportedStarts = new Set<number>();
   for (const { value, caseInsensitive } of banned) {
-    const occurrence = find(value, caseInsensitive).find(
+    const occurrence = findBanned(value, caseInsensitive).find(
       (candidate) => !approvedSpans.some((span) => isWithin(candidate, span)),
     );
     if (!occurrence || reportedStarts.has(occurrence.start)) continue;
@@ -198,14 +350,18 @@ const glossaryViolations = (
   { matches: glossaryMatches, surfaces }: MatchedGlossaryGroup,
   targetCulture: string,
   find: FindValue,
+  findBanned: FindValue,
+  containsApproved: ContainsApproved,
 ): GlossaryViolation[] => {
   const [match] = glossaryMatches;
   const { glossary, meta } = match;
   const base: ViolationBase = { glossaryId: glossary.itemId, term: glossary.name };
   if (meta.rule === "keep") return keepViolations(surfaces, base, find);
   return [
-    ...(meta.rule === "translate" ? translationViolations(match, targetCulture, base, find) : []),
-    ...forbiddenViolations(text, match, targetCulture, base, find),
+    ...(meta.rule === "translate"
+      ? translationViolations(match, targetCulture, base, containsApproved)
+      : []),
+    ...forbiddenViolations(text, match, targetCulture, base, find, findBanned),
   ];
 };
 
@@ -221,12 +377,27 @@ export const validateTranslation = (
   const text = (output ?? "").normalize("NFC");
   if (!text.trim()) return [];
 
+  // Searched with placeholders and tags blanked out (same offsets); reported from the real text.
+  const searchable = maskPlaceholders(text);
   const find: FindValue = (value, caseInsensitive) =>
-    findAllInTarget(text, value, { caseInsensitive, targetCulture });
+    findAllInTarget(searchable, value, { caseInsensitive, targetCulture });
+  const findBanned: FindValue = (value, caseInsensitive) =>
+    find(value, caseInsensitive).filter((occurrence) =>
+      endsForbiddenWord(searchable, occurrence, value, targetCulture),
+    );
+  const containsApproved: ContainsApproved = (value) =>
+    containsApprovedIn(searchable, value, targetCulture);
   const violations: GlossaryViolation[] = [];
   const seen = new Set<string>();
   for (const group of groupMatchesByGlossary(matches)) {
-    for (const violation of glossaryViolations(text, group, targetCulture, find)) {
+    for (const violation of glossaryViolations(
+      text,
+      group,
+      targetCulture,
+      find,
+      findBanned,
+      containsApproved,
+    )) {
       const id = [
         violation.glossaryId,
         violation.kind,
@@ -252,7 +423,7 @@ export const getFixReplacement = (
   if (violation.kind !== "forbidden-used" || !violation.found) return null;
   const match = findGlossaryMatch(matches, violation.glossaryId);
   if (match?.meta.rule !== "translate") return null;
-  return match.meta.translations[targetCulture]?.trim() || null;
+  return findCultureEntry(match.meta.translations, targetCulture)?.trim() || null;
 };
 
 export const canApplyFix = (
@@ -278,13 +449,15 @@ export const applyFix = (
   const replacement = getFixReplacement(violation, matches, targetCulture);
   if (!replacement || !violation.found) return null;
   const normalized = (text ?? "").normalize("NFC");
+  // Placeholders and tags are never rewritten ("{user}" stays "{user}").
+  const searchable = maskPlaceholders(normalized);
   const options: FindOptions = { caseInsensitive: true, targetCulture };
-  const approvedSpans = findAllInTarget(normalized, replacement, { ...options, anywhere: true });
+  const approvedSpans = findAllInTarget(searchable, replacement, { ...options, anywhere: true });
   const replaceable = (candidate: Occurrence) =>
     !approvedSpans.some((span) => isWithin(candidate, span));
   const occurrence =
-    findAllInTarget(normalized, violation.found, options).find(replaceable) ??
-    findAllInTarget(normalized, violation.found, { ...options, anywhere: true }).find(replaceable);
+    findAllInTarget(searchable, violation.found, options).find(replaceable) ??
+    findAllInTarget(searchable, violation.found, { ...options, anywhere: true }).find(replaceable);
   if (!occurrence) return null;
   return (
     normalized.slice(0, occurrence.start) +
@@ -293,7 +466,6 @@ export const applyFix = (
   );
 };
 
-/** The message shown under the field for a violation. */
 export const formatViolationMessage = (violation: GlossaryViolation): string => {
   switch (violation.kind) {
     case "missing-translation":
@@ -310,22 +482,4 @@ export const formatViolationMessage = (violation: GlossaryViolation): string => 
         value: violation.found ?? violation.term,
       });
   }
-};
-
-/** The correction appended to the prompt for the single retry. */
-export const buildCorrectionPrompt = (prompt: string, violations: GlossaryViolation[]): string => {
-  const lines = violations.map((violation) => {
-    const term = sanitizePromptText(violation.term);
-    switch (violation.kind) {
-      case "missing-translation":
-        return `- Use "${sanitizePromptText(violation.expected)}" for "${term}".`;
-      case "missing-keep":
-        return `- Keep "${sanitizePromptText(violation.expected) || term}" exactly as written.`;
-      default:
-        return `- Do not use "${sanitizePromptText(violation.found)}".`;
-    }
-  });
-  return `${prompt}CORRECTION: Your previous answer broke these rules:\n${lines
-    .map((line) => `${line}\n`)
-    .join("")}Return only the corrected translation.\n`;
 };

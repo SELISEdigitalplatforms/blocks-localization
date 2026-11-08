@@ -122,14 +122,21 @@ namespace XUnitTest.Services.Key
         [Fact]
         public async Task A_bulk_save_reports_the_rejected_key_and_keeps_saving_the_rest()
         {
-            SaveRejectedFor("race-key");
+            _keyRepository.Setup(r => r.GetKeysByNameAndModuleAsync(It.IsAny<IReadOnlyCollection<(string KeyName, string ModuleId)>>()))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+            _keyRepository.Setup(r => r.BulkSaveKeysAsync(It.IsAny<IReadOnlyList<KeyBulkSave>>()))
+                .ReturnsAsync((IReadOnlyList<KeyBulkSave> saves) => saves
+                    .Select((save, index) => (save, index))
+                    .Where(x => x.save.Key.KeyName == "race-key")
+                    .Select(x => new KeyBulkSaveError(x.index, true, "E11000 duplicate key error"))
+                    .ToList());
 
             var response = await _service.SaveKeysAsync(new List<KeyModel> { NewKey("race-key", publish: false), NewKey("other-key", publish: false) });
 
             response.Success.Should().BeFalse();
             response.ErrorMessage.Should().Contain($"Key 'race-key' in Module 'm1': IsNewKey: {ExpectedKeyMessage}");
             response.ErrorMessage.Should().NotContain("E11000");
-            _keyRepository.Verify(r => r.SaveKeyAsync(It.Is<BlocksLanguageKey>(k => k.KeyName == "other-key")), Times.Once);
+            _keyRepository.Verify(r => r.BulkSaveKeysAsync(It.Is<IReadOnlyList<KeyBulkSave>>(s => s.Count == 2)), Times.Once);
             // Only the key that was saved gets a timeline entry.
             _timeline.Verify(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Once);
         }

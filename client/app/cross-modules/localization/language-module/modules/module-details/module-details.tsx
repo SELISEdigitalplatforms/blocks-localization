@@ -19,10 +19,17 @@ import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import {
   useGetLanguageModules,
+  useGetLanguages,
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
-import { IGlossary } from "@blocks-localization/models/language";
-import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
+import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import {
+  getTargetLanguages,
+  stripRuleMarker,
+} from "@blocks-localization/utils/glossary-rule-marker";
+import { isUnsupportedGlossaryNote, toGlossaryMeta } from "@blocks-localization/utils/glossary-display";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
+import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
 const hasDisplayValue = (value: unknown): value is string =>
@@ -68,9 +75,25 @@ type VisibleGlossaryColumns = {
   createDate: boolean;
 };
 
+/** "2 / 3 languages" for Translate terms; "—" for Keep, Forbidden or no target languages (H13). */
+export const getGlossaryCoverage = (
+  glossary: IGlossary,
+  languages: ILanguageConfig[] | undefined,
+  t: TFunction,
+): string => {
+  const meta = toGlossaryMeta(glossary);
+  const targets = getTargetLanguages(languages);
+  if (isUnsupportedGlossaryNote(glossary) || meta.rule !== "translate" || targets.length === 0) {
+    return "—";
+  }
+  const translated = targets.filter(({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim());
+  return t("MODULE_DETAILS.COVERAGE", { translated: translated.length, total: targets.length });
+};
+
 function renderGlossaryTable(
   items: IGlossary[],
   visibleColumns: VisibleGlossaryColumns,
+  languages: ILanguageConfig[] | undefined,
   t: TFunction,
 ) {
   return (
@@ -79,6 +102,12 @@ function renderGlossaryTable(
         <TableHeader>
           <TableRow className="border-none hover:bg-transparent">
             <TableHead className="font-bold text-medium-emphasis">{t("common:NAME")}</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("MODULE_DETAILS.COLUMN_RULE")}
+            </TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("MODULE_DETAILS.COLUMN_COVERAGE")}
+            </TableHead>
             {visibleColumns.language && (
               <TableHead className="font-bold text-medium-emphasis">
                 {t("MODULE_DETAILS.COLUMN_LANGUAGE")}
@@ -103,9 +132,22 @@ function renderGlossaryTable(
           {items.map((glossary) => (
             <TableRow key={glossary.itemId} className="font-normal text-medium-emphasis">
               <TableCell className="font-medium">{glossary.name}</TableCell>
+              <TableCell>
+                {isUnsupportedGlossaryNote(glossary) ? (
+                  "—"
+                ) : (
+                  <GlossaryRuleBadge rule={toGlossaryMeta(glossary).rule} />
+                )}
+              </TableCell>
+              <TableCell className="whitespace-nowrap">
+                {getGlossaryCoverage(glossary, languages, t)}
+              </TableCell>
               {visibleColumns.language && (
                 <TableCell>
-                  {hasDisplayValue(glossary.language) ? glossary.language : "—"}
+                  {hasDisplayValue(glossary.language)
+                    ? (languages?.find((language) => language.languageCode === glossary.language)
+                        ?.languageName ?? glossary.language)
+                    : "—"}
                 </TableCell>
               )}
               {visibleColumns.type && (
@@ -156,6 +198,7 @@ function ModuleDetailsContent({
 
   // Glossary tab - fetch glossaries for this module
   const { data: glossariesData, isLoading: isGlossariesLoading } = useGetModuleGlossaries(moduleId);
+  const { data: languageListData } = useGetLanguages();
   const { data: currentUser } = useCurrentUser();
   const visibleGlossaryColumns = useMemo(() => {
     const glossaries = glossariesData?.items ?? [];
@@ -178,7 +221,7 @@ function ModuleDetailsContent({
   };
 
   const glossaryTabContent = hasGlossaries ? (
-    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns, t)
+    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns, languageListData, t)
   ) : (
     <div className="flex h-24 items-center justify-center text-muted-foreground">
       {t("MODULE_DETAILS.NO_GLOSSARIES")}

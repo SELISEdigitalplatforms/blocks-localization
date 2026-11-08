@@ -68,6 +68,17 @@ namespace XUnitTest
             shouldSkip.Should().BeFalse();
         }
 
+        [Theory]
+        [InlineData("", true)]
+        [InlineData("  ", true)]
+        [InlineData("Cancel", false)] // equal to the key name, still real text
+        public void ShouldSkipResource_SkipsOnlyBlankDefaultText(string value, bool expected)
+        {
+            var defaultResource = new Resource { Culture = "en-US", Value = value };
+            KeyManagementService.ShouldSkipResource(defaultResource, "Cancel", new TranslateAllEvent { DefaultLanguage = "en-US" })
+                .Should().Be(expected);
+        }
+
         [Fact]
         public void GetMissingResources_ReturnsEmptyWhenAllPresent()
         {

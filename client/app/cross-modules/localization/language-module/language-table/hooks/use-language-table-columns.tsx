@@ -6,6 +6,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
 import { CopyableTableValue } from "@/components/copyable-table-value/copyable-table-value";
 import { FilterControls, type SortValue } from "@/components/filter-toolbar";
+import { GlossaryIssueBadge } from "../components/glossary-issue-badge";
 import type {
   IBlocksLanguageKey,
   ILanguageConfig,
@@ -184,6 +185,11 @@ interface UseLanguageTableColumnsOptions {
    * only the loaded rows of a progressively loaded view are selected.
    */
   selectAllLabel?: string;
+  /**
+   * Unticking the header checkbox clears the whole selection rather than only the shown rows, for
+   * a view whose selection can include rows that are no longer loaded.
+   */
+  clearSelectionOnUntickAll?: boolean;
 }
 
 const buildLanguageColumns = (
@@ -248,6 +254,7 @@ export const useLanguageTableColumns = ({
   sortQueryParams,
   translatingKeys,
   selectAllLabel,
+  clearSelectionOnUntickAll = false,
 }: UseLanguageTableColumnsOptions) => {
   const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return useMemo<ColumnDef<IBlocksLanguageKey>[]>(
@@ -262,7 +269,11 @@ export const useLanguageTableColumns = ({
           return (
             <Checkbox
               checked={checked}
-              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              onCheckedChange={(value) =>
+                !value && clearSelectionOnUntickAll
+                  ? table.resetRowSelection(true)
+                  : table.toggleAllPageRowsSelected(!!value)
+              }
               aria-label={selectAllLabel ?? t("USE_LANGUAGE_TABLE_COLUMNS.SELECT_ALL")}
               title={selectAllLabel}
             />
@@ -322,7 +333,15 @@ export const useLanguageTableColumns = ({
             />
           </div>
         ),
-        cell: ({ row }) => <KeyNameCell keyName={row.getValue("keyName")} />,
+        cell: ({ row }) => (
+          <div className="flex min-w-0 flex-col gap-1">
+            <KeyNameCell keyName={row.getValue("keyName")} />
+            <GlossaryIssueBadge
+              violations={row.original.glossaryViolations}
+              className="ml-2 sm:ml-0"
+            />
+          </div>
+        ),
       },
       {
         accessorKey: "moduleId",
@@ -426,6 +445,7 @@ export const useLanguageTableColumns = ({
       sortQueryParams,
       translatingKeys,
       selectAllLabel,
+      clearSelectionOnUntickAll,
       t,
     ],
   );

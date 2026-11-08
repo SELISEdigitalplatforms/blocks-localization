@@ -38,6 +38,9 @@ namespace XUnitTest
             AssertRegistration<IConsumer<UilmImportEvent>, UilmImportEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<UilmExportEvent>, UilmExportEventConsumer>(services, ServiceLifetime.Singleton);
             AssertRegistration<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IConsumer<RecheckGlossaryViolationsEvent>, RecheckGlossaryViolationsEventConsumer>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IGlossaryRecheckService, GlossaryRecheckService>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IGlossaryRecheckJobRepository, GlossaryRecheckJobRepository>(services, ServiceLifetime.Singleton);
 
             AssertRegistration<XlsxOutputGeneratorService, XlsxOutputGeneratorService>(services, ServiceLifetime.Singleton);
             AssertRegistration<JsonOutputGeneratorService, JsonOutputGeneratorService>(services, ServiceLifetime.Singleton);
@@ -63,7 +66,8 @@ namespace XUnitTest
             AssertRegistration<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>(services, ServiceLifetime.Singleton);
             AssertRegistration<IEnvironmentDataMigrationRepository, EnvironmentDataMigrationRepository>(services, ServiceLifetime.Singleton);
 
-            AssertRegistration<IAssistantService, AssistantService>(services, ServiceLifetime.Singleton);
+            // Built by a factory so it gets the named Azure OpenAI client (AddAssistantService).
+            services.Should().ContainSingle(d => d.ServiceType == typeof(IAssistantService) && d.ImplementationFactory != null && d.Lifetime == ServiceLifetime.Singleton);
 
             AssertRegistration<IGlossaryManagementService, GlossaryManagementService>(services, ServiceLifetime.Singleton);
             AssertRegistration<IGlossaryRepository, GlossaryRepository>(services, ServiceLifetime.Singleton);

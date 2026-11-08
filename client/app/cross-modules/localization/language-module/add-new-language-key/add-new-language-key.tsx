@@ -32,21 +32,16 @@ import {
 } from "@/components/ui-kits/tooltip/tooltip";
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { toast } from "@/hooks/use-toast";
+import { getHttpErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
 import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 import NewModule from "@blocks-localization/components/modals/new-module/new-module";
-import {
-  GlossaryUnavailableNote,
-  useGlossarySuggestionRows,
-} from "@blocks-localization/components/glossary/glossary-violation-list";
+import { useGlossarySuggestionRows } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { GlossaryTargetChecklist } from "@blocks-localization/components/glossary/glossary-target-checklist";
-import { useLoadAllGlossaries } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
 import {
-  LIVE_CHECK_DEBOUNCE_MS,
-  useApplicableGlossaryMatches,
-  useDebouncedValue,
-  useLoadedGlossaries,
+  NO_MATCHES,
+  useSourceGlossaryMatches,
 } from "@blocks-localization/hooks/use-live-glossary-check";
 import {
   useGetLanguageModules,
@@ -200,7 +195,6 @@ function AddNewLanguageKey() {
   const inputRef = useRef(null);
   const { isPending, mutateAsync } = useSaveBlocksLanguageKey();
 
-  const loadGlossaries = useLoadAllGlossaries();
   // One suggestion state per target language (C22); keyed by language code.
   const {
     request,
@@ -208,7 +202,7 @@ function AddNewLanguageKey() {
     getRow: getGlossaryRow,
     clearViolations,
     fix,
-  } = useGlossarySuggestionRows({ loadGlossaries });
+  } = useGlossarySuggestionRows();
 
   BREADCRUMB_CUSTOM_TITLES["/app/:itemId/services/language/translations/new-key"] = t("ADD_NEW_LANGUAGE_KEY.NEW_KEY_BREADCRUMB");
   const form = useForm<FormValues>({
@@ -241,16 +235,16 @@ function AddNewLanguageKey() {
   // Per-row glossary checklists (Phase 4). Resources follow sortedLanguages.
   const watchedResources = useWatch({ control: form.control, name: "resources" });
   const watchedModuleId = useWatch({ control: form.control, name: "moduleId" });
-  const glossaries = useLoadedGlossaries(loadGlossaries);
   const defaultLanguageCode = getDefaultLanguage(languageListData)?.languageCode ?? "";
-  const debouncedSource = useDebouncedValue(
-    watchedResources?.[0]?.value ?? "",
-    LIVE_CHECK_DEBOUNCE_MS,
-  );
-  const sourceMatches = useApplicableGlossaryMatches(glossaries, debouncedSource, {
+  // The key is not saved yet (no keyId): `/Glossary/Match` with the chosen module, 300 ms after
+  // the default value stops changing (C18).
+  const { matches, isCurrent } = useSourceGlossaryMatches({
+    text: watchedResources?.[0]?.value ?? "",
     sourceCulture: defaultLanguageCode,
     moduleId: watchedModuleId || undefined,
+    debounce: true,
   });
+  const sourceMatches = isCurrent ? matches : NO_MATCHES;
   const resourcePath = React.useCallback(
     (culture: string) => {
       const index = sortedLanguages?.findIndex((language) => language.languageCode === culture);
@@ -365,14 +359,6 @@ function AddNewLanguageKey() {
     const moduleId = form.getValues("moduleId") || undefined;
     const outcome = await request({
       requestKey: destinationLanguageCode ?? String(index),
-      legacyPayload: {
-        sourceText,
-        destinationLanguage: destination?.languageName || "English",
-        currentLanguage: defaultLanguage?.languageName ?? "English",
-        temperature: 0.1,
-        moduleId,
-        destinationLanguageCode,
-      },
       sourceText,
       defaultLanguage,
       targetLanguage: {
@@ -395,7 +381,10 @@ function AddNewLanguageKey() {
     toast({
       variant: "destructive",
       title: t(COMMON_ERROR),
-      description: JSON.stringify(outcome.status === "empty" ? outcome.errors : outcome.error),
+      description:
+        outcome.status === "error"
+          ? getHttpErrorMessage(outcome.error)
+          : t("ADD_NEW_LANGUAGE_KEY.NO_SUGGESTION"),
     });
   }
 
@@ -655,14 +644,10 @@ function AddNewLanguageKey() {
                                 <Wand className="h-3.5 w-3.5" />
                                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                                   {isLoading ? t("common:LOADING") : t("ADD_NEW_LANGUAGE_KEY.AUTO_TRANSLATE")}{" "}
-                                  {/* Show loading text */}
                                 </span>
                               </Button>
                             </div>
                           </div>
-                          {glossaryRow.glossaryUnavailable && (
-                            <GlossaryUnavailableNote className="-mt-1" />
-                          )}
                           <FormControl>
                             <Textarea
                               placeholder={t("ADD_NEW_LANGUAGE_KEY.TRANSLATION_PLACEHOLDER")}

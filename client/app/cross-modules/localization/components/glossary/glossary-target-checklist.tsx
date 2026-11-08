@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, CircleCheck, CircleDashed, Copy, TriangleAlert } from "lucide-react";
 import { type TFunction, useT } from "@seliseblocks/genesis-os/i18n";
-
 import { Button } from "@/components/ui-kits/button/button";
 import { cn } from "@/lib/utils";
 import { useGlossaryRuleLabels } from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { GlossaryRowState } from "@blocks-localization/components/glossary/glossary-violation-list";
 import { distinctGlossaryMatches } from "@blocks-localization/components/glossary/highlighted-source-text";
 import { useLiveGlossaryCheck } from "@blocks-localization/hooks/use-live-glossary-check";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import {
   applyFix,
   canApplyFix,
@@ -16,6 +15,7 @@ import {
   GlossaryViolation,
   hasRuleForCulture,
 } from "@blocks-localization/utils/glossary-validation";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
@@ -29,9 +29,9 @@ const termGuidance = (t: TFunction, match: GlossaryMatch, targetCulture: string)
     case "forbidden":
       return { value: null, note: t("GLOSSARY_TARGET_CHECKLIST.DO_NOT_USE") };
     default: {
-      const value = match.meta.translations[targetCulture]?.trim() || null;
+      const value = findCultureEntry(match.meta.translations, targetCulture)?.trim() || null;
       if (value) return { value, note: null };
-      const banned = match.meta.forbidden[targetCulture] ?? [];
+      const banned = findCultureEntry(match.meta.forbidden, targetCulture) ?? [];
       return {
         value,
         note:
@@ -44,7 +44,12 @@ const termGuidance = (t: TFunction, match: GlossaryMatch, targetCulture: string)
 };
 
 /** The short problem line under a term; the term row already shows the expected value. */
-const issueText = (t: TFunction, violation: GlossaryViolation) => {
+const issueText = (t: TFunction, violation: GlossaryViolation, draft: boolean) =>
+  draft
+    ? `${t("GLOSSARY_TARGET_CHECKLIST.DRAFT_PREFIX")} ${problemText(t, violation)}`
+    : problemText(t, violation);
+
+const problemText = (t: TFunction, violation: GlossaryViolation) => {
   switch (violation.kind) {
     case "missing-translation":
       return t("GLOSSARY_TARGET_CHECKLIST.NOT_USED_YET");
@@ -170,18 +175,26 @@ interface TermIssueProps {
   violation: GlossaryViolation;
   matches: GlossaryMatch[];
   culture: string;
+  draft: boolean;
   disabled: boolean;
   onFix: (violation: GlossaryViolation) => void;
 }
 
-const TermIssue = ({ violation, matches, culture, disabled, onFix }: Readonly<TermIssueProps>) => {
+const TermIssue = ({
+  violation,
+  matches,
+  culture,
+  draft,
+  disabled,
+  onFix,
+}: Readonly<TermIssueProps>) => {
   const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const fixable = canApplyFix(violation, matches, culture);
   const replacement = getFixReplacement(violation, matches, culture);
   return (
     <div className="ml-6 mt-1 flex items-center gap-2">
       <p className="min-w-0 flex-1 break-words text-xs text-warning-700">
-        {issueText(t, violation)}
+        {issueText(t, violation, draft)}
         {fixable &&
           replacement &&
           ` · ${t("GLOSSARY_TARGET_CHECKLIST.USE_REPLACEMENT", { replacement })}`}
@@ -261,6 +274,7 @@ const ChecklistTerm = ({
             violation={violation}
             matches={matches}
             culture={culture}
+            draft={match.status === "draft"}
             disabled={disabled}
             onFix={onFix}
           />
@@ -312,7 +326,15 @@ export const GlossaryTargetChecklist = ({
   const matches = fromSuggestion ? row.matches : liveMatches;
   const culture = fromSuggestion ? row.targetCulture : targetCulture;
   const violations = fromSuggestion ? row.violations : live.violations;
-  const terms = distinctGlossaryMatches(matches);
+  const suggestionIds = new Set([
+    ...row.matches.map((match) => match.glossary.itemId),
+    ...row.violations.map((violation) => violation.glossaryId),
+  ]);
+  const terms = distinctGlossaryMatches(
+    fromSuggestion
+      ? liveMatches.filter((match) => suggestionIds.has(match.glossary.itemId))
+      : liveMatches,
+  );
   const hasText = !!targetText.trim();
   const issueCount = violations.length;
   const canRetry = fromSuggestion && violations.some((v) => !canApplyFix(v, matches, culture));

@@ -11,6 +11,7 @@ const navigate = vi.fn();
 const setQueryParams = vi.fn();
 const setSortQueryParams = vi.fn();
 let duplicatesFilter = false;
+let glossaryIssuesFilter = false;
 
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
@@ -40,6 +41,7 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
       missingLanguages: [],
       resourceSearch: "",
       duplicates: duplicatesFilter,
+      glossaryIssues: glossaryIssuesFilter,
     },
     setQueryParams,
   }),
@@ -49,9 +51,19 @@ vi.mock("@blocks-localization/components/language-table-toolbar/language-table-t
     reset: vi.fn(),
   }),
 }));
-vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", () => ({
-  default: () => null,
-}));
+vi.mock("@blocks-localization/components/modals/auto-translate/auto-translate", async () => {
+  const { DialogContent, DialogTitle } = await import("@/components/ui-kits/dialog/dialog");
+  return {
+    default: ({ onClose }: { onClose?: () => void }) => (
+      <DialogContent>
+        <DialogTitle>Auto-translate stub</DialogTitle>
+        <button type="button" onClick={() => onClose?.()}>
+          Translate all succeeded
+        </button>
+      </DialogContent>
+    ),
+  };
+});
 vi.mock("@blocks-localization/components/modals/export-key/export-key", () => ({
   default: () => null,
 }));
@@ -61,9 +73,13 @@ vi.mock("../../components/import-language-file/import-file-modal", () => ({
 vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
-vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+vi.mock("@blocks-localization/hooks/use-language-manager", async (importOriginal) => ({
+  // Pure: the bulk "all matching" payload must carry the same filter the query sends.
+  buildKeyListFilter: (await importOriginal<typeof import("@blocks-localization/hooks/use-language-manager")>())
+    .buildKeyListFilter,
   // The duplicate chips have their own tests; here the summary simply has not loaded.
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useGetGlossaryIssueCount: vi.fn(() => ({ data: undefined })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
   useGetBlocksLanguageKeysInfinite: vi.fn(),
@@ -143,6 +159,7 @@ describe("language-module/language-table", () => {
     vi.clearAllMocks();
     setBaseMocks();
     duplicatesFilter = false;
+    glossaryIssuesFilter = false;
   });
 
   it("should render skeleton rows while loading", () => {
@@ -231,11 +248,67 @@ describe("language-module/language-table", () => {
   it("should ask for duplicate rows only while the duplicates filter is on", () => {
     h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
     renderWithProviders(<LanguageTable />);
-    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(false);
+    // onlyDuplicates is the 13th argument.
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.[12]).toBe(false);
 
     duplicatesFilter = true;
     renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.[12]).toBe(true);
+  });
+
+  it("should ask for keys with glossary violations only while the Glossary issues filter is on (H11)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(false);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(false);
+
+    glossaryIssuesFilter = true;
+    renderWithProviders(<LanguageTable />);
     expect(h.useGetBlocksLanguageKey.mock.calls.at(-1)?.at(-1)).toBe(true);
+    expect(h.useGetBlocksLanguageKeysInfinite.mock.lastCall?.[0].hasGlossaryViolations).toBe(true);
+  });
+
+  it("should show 'No keys with glossary issues' when the filter finds nothing (C9)", () => {
+    glossaryIssuesFilter = true;
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: { totalCount: 0, keys: [] },
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(screen.getByText("No keys with glossary issues")).toBeTruthy();
+    expect(screen.queryByText("No matching translation keys")).toBeNull();
+  });
+
+  it("should show the stored glossary issues on a row and none on a clean row (H11, C10)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: {
+        ...oneKey,
+        keys: [
+          {
+            ...oneKey.keys[0],
+            glossaryViolations: [
+              {
+                culture: "de-DE",
+                glossaryId: "g1",
+                term: "Workspace",
+                kind: "forbidden-used",
+                found: "Werkbereich",
+                detectedAt: "2026-10-28T00:00:00Z",
+              },
+            ],
+          },
+        ],
+      },
+    } as never);
+    const { unmount } = renderWithProviders(<LanguageTable />);
+    expect(screen.getByTestId("glossary-issue-badge").textContent).toBe("1 glossary issue");
+    unmount();
+
+    h.useGetBlocksLanguageKey.mockReturnValue({ isLoading: false, data: oneKey } as never);
+    renderWithProviders(<LanguageTable />);
+    expect(screen.getByText("greeting")).toBeTruthy();
+    expect(screen.queryByTestId("glossary-issue-badge")).toBeNull();
   });
 
   it.each([
@@ -395,6 +468,18 @@ describe("language-module/language-table", () => {
     expect(screen.getByText("Translations")).toBeTruthy();
   });
 
+  it("closes the auto-translate dialog through onClose once it succeeds (SPEC15 H24)", async () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByRole("button", { name: "Auto-translate all" }));
+    expect(screen.getByText("Auto-translate stub")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Translate all succeeded" }));
+    await waitFor(() => expect(screen.queryByText("Auto-translate stub")).toBeNull());
+  });
+
   it("should bulk-delete selected keys through the confirmation dialog", async () => {
     bulkDeleteAsync.mockResolvedValue({ isSuccess: true });
     h.useGetBlocksLanguageKey.mockReturnValue({
@@ -425,6 +510,25 @@ describe("language-module/language-table", () => {
     const translateButtons = screen.getAllByRole("button", { name: "Translate" });
     fireEvent.click(translateButtons[translateButtons.length - 1]);
     await waitFor(() => expect(bulkTranslateAsync).toHaveBeenCalled());
+  });
+
+  it("should count only the shown rows in paged mode (H12)", () => {
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: oneKey,
+    } as never);
+    const { rerender } = renderWithProviders(<LanguageTable />);
+    fireEvent.click(screen.getByLabelText("Select row"));
+    expect(screen.getByText("1 key selected")).toBeTruthy();
+
+    h.useGetBlocksLanguageKey.mockReturnValue({
+      isLoading: false,
+      data: { totalCount: 1, keys: [{ ...oneKey.keys[0], itemId: "k2", keyName: "farewell" }] },
+    } as never);
+    rerender(<LanguageTable />);
+
+    expect(screen.queryByText(/key selected/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Bulk edit" })).toBeNull();
   });
 
   it("should clear the selection", () => {
