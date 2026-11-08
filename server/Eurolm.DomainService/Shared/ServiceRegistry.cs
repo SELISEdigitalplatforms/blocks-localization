@@ -34,7 +34,6 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<StorageHelper>();
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
-            //services.AddTransient<AwsS3CompatibleStorageService>();
 
             services.AddSingleton<IKeyManagementService, KeyManagementService>();
             services.AddSingleton<IKeyRepository, KeyRepository>();
