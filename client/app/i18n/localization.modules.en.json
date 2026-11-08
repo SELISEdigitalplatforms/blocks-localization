@@ -36,6 +36,7 @@
   "EDIT_ROUTE.ADD_ROUTE": "Add Route",
   "EDIT_ROUTE.CLICK_TO_ADD": "Click here to add a route",
   "EDIT_ROUTE.EXAMPLE": "Example:",
+  "EDIT_ROUTE.HOSTNAME_TOKEN": "hostname/",
   "EDIT_ROUTE.NO_ROUTES": "No routes added yet",
   "EDIT_ROUTE.ROUTES_UPDATED": "Routes updated successfully",
   "EDIT_ROUTE.ROUTE_DELETED": "Route deleted successfully",
