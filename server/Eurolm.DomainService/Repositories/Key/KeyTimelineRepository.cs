@@ -307,10 +307,10 @@ namespace Eurolm.DomainService.Repositories
             var group = new BsonDocument
             {
                 { "_id", "$" + nameof(KeyTimeline.OperationId) },
-                { nameof(KeyTimeline.LogFrom), new BsonDocument("$first", "$" + nameof(KeyTimeline.LogFrom)) },
-                { nameof(KeyTimeline.UserId), new BsonDocument("$first", "$" + nameof(KeyTimeline.UserId)) },
-                { nameof(KeyTimeline.CreateDate), new BsonDocument("$first", "$" + nameof(KeyTimeline.CreateDate)) },
-                { FirstItemIdField, new BsonDocument("$first", "$_id") },
+                { nameof(KeyTimeline.LogFrom), First(nameof(KeyTimeline.LogFrom)) },
+                { nameof(KeyTimeline.UserId), First(nameof(KeyTimeline.UserId)) },
+                { nameof(KeyTimeline.CreateDate), First(nameof(KeyTimeline.CreateDate)) },
+                { FirstItemIdField, First("_id") },
                 { CountField, new BsonDocument("$sum", 1) }
             };
 
@@ -349,6 +349,9 @@ namespace Eurolm.DomainService.Repositories
                 : new List<OperationGroup>();
             return (totalCount, page);
         }
+
+        /// <summary>A $group accumulator taking <paramref name="field"/> from the group's first document.</summary>
+        private static BsonDocument First(string field) => new("$first", "$" + field);
 
         private static OperationGroup ToOperationGroup(BsonDocument group) => new(
             new LocalizationTimelineEntry
