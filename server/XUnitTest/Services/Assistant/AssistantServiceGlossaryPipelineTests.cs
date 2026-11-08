@@ -84,6 +84,34 @@ namespace XUnitTest.Services.Assistant
             AssistantService.GenerateSuggestTranslationContext(request,
                 AssistantService.BuildGlossaryContext(_repository.Object.GetGlobalAsync("").Result, request.DestinationLanguage));
 
+        [Theory]
+        [InlineData("")]
+        [InlineData("  ")]
+        [InlineData(null)]
+        public async Task Blank_source_text_returns_empty_without_calling_the_ai(string? sourceText)
+        {
+            var service = new ScriptedAssistantService(Config(true), _repository.Object, Cache(Workspace()), "should not be used");
+            var request = Request();
+            request.SourceText = sourceText;
+
+            var result = await service.SuggestTranslation(request);
+
+            result.Content.Should().BeNull();
+            service.Prompts.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task Empty_ai_answer_is_not_retried()
+        {
+            // A 200 with empty content is the model's answer; retrying used to cost 3 more calls and 15 s.
+            var service = new ScriptedAssistantService(Config(false), _repository.Object, Cache(Workspace()), "", "Öffnen Sie Ihren Arbeitsbereich");
+
+            var result = await service.SuggestTranslation(Request());
+
+            result.Content.Should().BeNull();
+            service.Prompts.Should().HaveCount(1);
+        }
+
         [Fact]
         public async Task Flag_off_sends_todays_prompt_exactly_and_returns_empty_arrays()
         {

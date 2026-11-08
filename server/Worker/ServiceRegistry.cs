@@ -1,4 +1,4 @@
-﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Extension.DependencyInjection;
 using Blocks.Secrets;
 using Blocks.Genesis;
 using DomainService.Storage;
@@ -66,7 +66,7 @@ namespace Worker
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
-            services.AddTransient<AwsS3CompatibleStorageService>();
+            //services.AddTransient<AwsS3CompatibleStorageService>();
 
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IHttpHelperServices, HttpHelperServices>();

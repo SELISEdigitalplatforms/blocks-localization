@@ -7,6 +7,7 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Moq;
 using Xunit;
+using XUnitTest.Shared;
 
 namespace XUnitTest.Repositories
 {
@@ -17,7 +18,7 @@ namespace XUnitTest.Repositories
 
         private static (Mock<IMongoCollection<BlocksGlossary>> Collection, Mock<IMongoIndexManager<BlocksGlossary>> Indexes) NewCollection()
         {
-            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>();
+            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BlocksGlossary>>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<string>());
@@ -67,7 +68,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task A_failure_is_logged_never_thrown_and_retried_on_the_next_call()
         {
-            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>();
+            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>().WithNoExistingIndexes();
             indexes
                 .SetupSequence(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BlocksGlossary>>>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("not authorized"))
@@ -95,7 +96,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task EnsureAsync_reports_failure_without_throwing()
         {
-            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>();
+            var indexes = new Mock<IMongoIndexManager<BlocksGlossary>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BlocksGlossary>>>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("boom"));
@@ -149,7 +150,7 @@ namespace XUnitTest.Repositories
             var tenant = NewTenant("repo-keys");
             XUnitTest.Shared.TestBlocksContext.Set(tenant);
             var (glossaries, _) = NewCollection();
-            var keyIndexes = new Mock<IMongoIndexManager<Eurolm.DomainService.Services.Key>>();
+            var keyIndexes = new Mock<IMongoIndexManager<Eurolm.DomainService.Services.Key>>().WithNoExistingIndexes();
             keyIndexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Eurolm.DomainService.Services.Key>>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<string>());

@@ -716,6 +716,13 @@ namespace Eurolm.DomainService.Services
             EmptyResourcesThatHasReservedKeywords(uilmResourceKeyList, resourceKey, resources, request.DefaultLanguage);
 
             var defaultResource = resources?.FirstOrDefault(x => x.Culture == request.DefaultLanguage);
+
+            // No default-language text means nothing to translate: the AI would answer "" for every language.
+            if (ShouldSkipResource(defaultResource, keyName, request))
+            {
+                return;
+            }
+
             List<Resource> missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage);
 
             CompareAndAddResources(missingResources, resources, languageSetting);
@@ -737,7 +744,8 @@ namespace Eurolm.DomainService.Services
 
         public static bool ShouldSkipResource(Resource defaultResource, string keyName, TranslateAllEvent request)
         {
-            return string.IsNullOrEmpty(defaultResource?.Value) || (defaultResource?.Value == keyName);
+            // A value equal to the key name ("Cancel" for key "Cancel") is real text and is still translated.
+            return string.IsNullOrWhiteSpace(defaultResource?.Value);
         }
 
         public static List<Resource> GetMissingResources(string keyName, List<Resource> resources, Resource defaultResource, string defaultLanguage)

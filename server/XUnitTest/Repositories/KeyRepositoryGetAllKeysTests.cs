@@ -395,7 +395,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task A_failed_index_build_is_logged_and_never_thrown()
         {
-            var indexes = new Mock<IMongoIndexManager<Key>>();
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("not authorized"));
@@ -415,7 +415,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task Indexes_are_ensured_once_per_tenant_per_process()
         {
-            var indexes = new Mock<IMongoIndexManager<Key>>();
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<string>());
@@ -434,7 +434,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task A_failed_index_build_is_retried_on_the_next_call_for_the_tenant()
         {
-            var indexes = new Mock<IMongoIndexManager<Key>>();
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
             indexes
                 .SetupSequence(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("not authorized"))

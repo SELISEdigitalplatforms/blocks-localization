@@ -1,4 +1,4 @@
-﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Extension.DependencyInjection;
 using Blocks.Secrets;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
@@ -34,7 +34,7 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<StorageHelper>();
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
-            services.AddTransient<AwsS3CompatibleStorageService>();
+            //services.AddTransient<AwsS3CompatibleStorageService>();
 
             services.AddSingleton<IKeyManagementService, KeyManagementService>();
             services.AddSingleton<IKeyRepository, KeyRepository>();

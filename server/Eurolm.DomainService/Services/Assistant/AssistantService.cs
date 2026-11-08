@@ -41,6 +41,12 @@ namespace Eurolm.DomainService.Services
 
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
         {
+            // Blank source: the system prompt makes the model answer "", so skip the paid call.
+            if (string.IsNullOrWhiteSpace(query.SourceText))
+            {
+                return new SuggestionResult();
+            }
+
             if (!GlossaryEnforcement.IsEnabled(_configuration) || _matcherCache == null)
             {
                 return new SuggestionResult { Content = await SuggestLegacyAsync(query) };
@@ -139,8 +145,8 @@ namespace Eurolm.DomainService.Services
         }
 
         /// <summary>
-        /// One logical AI attempt: the completion with today's empty-result retries (up to 3, 5 s apart),
-        /// formatted. Returns null when every try came back empty or formatting left nothing.
+        /// One logical AI attempt: the completion with failure retries (up to 3, 5 s apart), formatted.
+        /// Returns null when every try failed, the model answered empty, or formatting left nothing.
         /// </summary>
         private async Task<string?> CompleteAsync(string context, SuggestLanguageRequest query)
         {
@@ -151,16 +157,23 @@ namespace Eurolm.DomainService.Services
             var maxRetryCount = 3;
             var retryCount = 0;
 
-            while (string.IsNullOrEmpty(aiText) && retryCount < maxRetryCount)
+            // AiCompletion returns null on failure (exception or non-200). A 200 with empty content is the
+            // model's answer, and asking again gets the same answer, so only null is retried.
+            while (aiText == null && retryCount < maxRetryCount)
             {
                 await Task.Delay(5000);
 
                 aiText = await AiCompletion(aiCompletionRequest);
                 retryCount++;
             }
-            if (string.IsNullOrEmpty(aiText))
+            if (aiText == null)
             {
                 _logger.LogError("SuggestTranslation -> CallAiCompletion: Maximum Retry count reached");
+                return null;
+            }
+            if (aiText.Length == 0)
+            {
+                _logger.LogWarning("SuggestTranslation: the AI returned an empty translation; not retried");
                 return null;
             }
 

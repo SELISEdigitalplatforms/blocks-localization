@@ -97,6 +97,79 @@ namespace XUnitTest
             resourceKey.Resources.Any(r => r.Culture == "fr-FR" && r.Value == "Bonjour").Should().BeTrue();
         }
 
+        private static readonly List<Language> EnFr = new()
+        {
+            new Language { LanguageCode = "en-US", LanguageName = "English" },
+            new Language { LanguageCode = "fr-FR", LanguageName = "French" }
+        };
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData(null)]
+        public async Task ProcessResourceKey_SkipsKeyWithoutDefaultText_WithoutCallingAi(string? defaultValue)
+        {
+            var resourceKey = new BlocksLanguageKey
+            {
+                ItemId = "key-1",
+                KeyName = "welcome",
+                Resources = new[]
+                {
+                    new Resource { Culture = "en-US", Value = defaultValue },
+                    new Resource { Culture = "fr-FR", Value = "" }
+                }
+            };
+            var list = new List<BlocksLanguageKey>();
+
+            await _service.ProcessResourceKey(new TranslateAllEvent { DefaultLanguage = "en-US" }, resourceKey, EnFr, list);
+
+            list.Should().BeEmpty();
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessResourceKey_TranslatesValueEqualToKeyName()
+        {
+            var resourceKey = new BlocksLanguageKey
+            {
+                ItemId = "key-1",
+                KeyName = "Cancel",
+                Resources = new[]
+                {
+                    new Resource { Culture = "en-US", Value = "Cancel" },
+                    new Resource { Culture = "fr-FR", Value = "" }
+                }
+            };
+            var list = new List<BlocksLanguageKey>();
+
+            await _service.ProcessResourceKey(new TranslateAllEvent { DefaultLanguage = "en-US" }, resourceKey, EnFr, list);
+
+            list.Should().Contain(resourceKey);
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ProcessResourceKey_KeyMissingKeyword_IsStillSavedBlankedButNotTranslated()
+        {
+            var resourceKey = new BlocksLanguageKey
+            {
+                ItemId = "key-1",
+                KeyName = "welcome",
+                Resources = new[]
+                {
+                    new Resource { Culture = "en-US", Value = "KEY_MISSING" },
+                    new Resource { Culture = "fr-FR", Value = "Bonjour" }
+                }
+            };
+            var list = new List<BlocksLanguageKey>();
+
+            await _service.ProcessResourceKey(new TranslateAllEvent { DefaultLanguage = "en-US" }, resourceKey, EnFr, list);
+
+            list.Should().ContainSingle().Which.Should().BeSameAs(resourceKey);
+            resourceKey.Resources.Should().OnlyContain(r => r.Value == "");
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()), Times.Never);
+        }
+
         [Fact]
         public async Task ProcessChangeAll_AddsTranslationsForEachKey()
         {
