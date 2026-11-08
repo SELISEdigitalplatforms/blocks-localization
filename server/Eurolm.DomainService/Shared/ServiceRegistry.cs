@@ -1,4 +1,4 @@
-﻿using Blocks.Extension.DependencyInjection;
+using Blocks.Extension.DependencyInjection;
 using Blocks.Secrets;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
@@ -34,7 +34,6 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<StorageHelper>();
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
-            services.AddTransient<AwsS3CompatibleStorageService>();
 
             services.AddSingleton<IKeyManagementService, KeyManagementService>();
             services.AddSingleton<IKeyRepository, KeyRepository>();
@@ -45,13 +44,14 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IValidator<GetKeysRequest>, GetKeysRequestValidator>();
+            services.AddSingleton<IValidator<DeleteKeysRequest>, DeleteKeysRequestValidator>();
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
 
-            services.AddSingleton<IAssistantService, AssistantService>();
+            services.AddAssistantService();
 
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IHttpHelperServices, HttpHelperServices>();
@@ -61,6 +61,8 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IGlossaryManagementService, GlossaryManagementService>();
             services.AddSingleton<IGlossaryRepository, GlossaryRepository>();
             services.AddSingleton<IValidator<Glossary>, GlossaryValidator>();
+            services.AddSingleton<IGlossaryMigrationService, GlossaryMigrationService>();
+            services.AddGlossaryTerminology();
 
 
         }

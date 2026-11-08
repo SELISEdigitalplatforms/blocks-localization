@@ -1,4 +1,6 @@
 import React from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
+import { AlertTriangle } from "lucide-react";
 import {
   FilterChangeHandler,
   FilterToolbar,
@@ -35,8 +37,8 @@ export const useKeysFilterQueryParams = () => {
     lastUpdateStartDate: parseAsString.withDefault(""),
     lastUpdateEndDate: parseAsString.withDefault(""),
     resourceSearch: parseAsString.withDefault(""),
-    // Set by the duplicates chip in the Translations header: show only duplicate key rows.
     duplicates: parseAsBoolean.withDefault(false),
+    glossaryIssues: parseAsBoolean.withDefault(false),
   });
   return { queryParams, setQueryParams };
 };
@@ -46,12 +48,15 @@ export const useKeysSortQueryParams = () =>
 export function LanguageTableToolbar({
   languageModulesData,
   languagesData,
+  glossaryIssueCount,
   disabled = false,
-}: {
+}: Readonly<{
   languageModulesData: Array<{ itemId: string; moduleName: string }>;
   languagesData: Array<{ languageCode: string; languageName: string }>;
+  glossaryIssueCount?: number;
   disabled?: boolean;
-}) {
+}>) {
+  const { t } = useT("localization.language-table");
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
     search: string;
@@ -59,6 +64,7 @@ export function LanguageTableToolbar({
     missingLanguages: string[];
     createDate: { from?: Date; to?: Date } | null;
     lastUpdateDate: { from?: Date; to?: Date } | null;
+    glossaryIssues: boolean;
   }> = (key, value) => {
     if (key === "createDate") {
       const dateValue = value as { from?: Date; to?: Date } | null;
@@ -96,77 +102,96 @@ export function LanguageTableToolbar({
     setQueryParams(null);
   };
   return (
-    <fieldset disabled={disabled} className="m-0 min-w-0 border-0 p-0">
-      <FilterToolbar
-        filters={[
-          // { key: "search", type: "SearchInput", label: "label" },
-          {
-            key: "moduleIds",
-            type: "MultiSelect",
-            label: "Modules",
-            props: {
-              options: languageModulesData?.map((module) => ({
-                label: module.moduleName,
-                value: module.itemId,
-              })),
+    <fieldset
+      disabled={disabled}
+      className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0 md:flex-row md:flex-wrap md:items-center md:gap-4"
+    >
+      <div className="min-w-0 md:contents">
+        <FilterToolbar
+          filters={[
+            // { key: "search", type: "SearchInput", label: "label" },
+            {
+              key: "moduleIds",
+              type: "MultiSelect",
+              label: t("LANGUAGE_TABLE_TOOLBAR.MODULES"),
+              props: {
+                options: languageModulesData?.map((module) => ({
+                  label: module.moduleName,
+                  value: module.itemId,
+                })),
+              },
             },
-          },
-          {
-            key: "missingLanguages",
-            type: "MultiSelect",
-            label: "Missing Translations",
-            props: {
-              options: languagesData?.map((lang) => ({
-                label: lang.languageName,
-                value: lang.languageCode,
-              })),
+            {
+              key: "missingLanguages",
+              type: "MultiSelect",
+              label: t("LANGUAGE_TABLE_TOOLBAR.MISSING_TRANSLATIONS"),
+              props: {
+                options: languagesData?.map((lang) => ({
+                  label: lang.languageName,
+                  value: lang.languageCode,
+                })),
+              },
             },
-          },
-          {
-            key: "createDate",
-            type: "DateRange",
-            label: "Create Date",
-            props: {
-              disableFutureDates: true,
+            {
+              key: "createDate",
+              type: "DateRange",
+              label: t("LANGUAGE_TABLE_TOOLBAR.CREATE_DATE"),
+              props: {
+                disableFutureDates: true,
+              },
             },
-          },
-          {
-            key: "lastUpdateDate",
-            type: "DateRange",
-            label: "Last Update Date",
-            props: {
-              disableFutureDates: true,
+            {
+              key: "lastUpdateDate",
+              type: "DateRange",
+              label: t("LANGUAGE_TABLE_TOOLBAR.LAST_UPDATE_DATE"),
+              props: {
+                disableFutureDates: true,
+              },
             },
-          },
-        ]}
-        values={{
-          search: queryParams.search,
-          moduleIds: queryParams.moduleIds,
-          missingLanguages: queryParams.missingLanguages,
-          createDate: {
-            from: queryParams.createStartDate ? new Date(queryParams.createStartDate) : undefined,
-            to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
-          },
-          lastUpdateDate: {
-            from: queryParams.lastUpdateStartDate
-              ? new Date(queryParams.lastUpdateStartDate)
-              : undefined,
-            to: queryParams.lastUpdateEndDate ? new Date(queryParams.lastUpdateEndDate) : undefined,
-          },
-          resourceSearch: queryParams.resourceSearch,
-        }}
-        defaultValues={{
-          search: "",
-          moduleIds: [],
-          missingLanguages: [],
-          createDate: { from: undefined, to: undefined },
-          lastUpdateDate: { from: undefined, to: undefined },
-          resourceSearch: "",
-        }}
-        onChange={onChange}
-        onReset={onReset}
-        disabled={disabled}
-      />
+            {
+              key: "glossaryIssues",
+              type: "Toggle",
+              label: t("LANGUAGE_TABLE_TOOLBAR.GLOSSARY_ISSUES"),
+              props: {
+                icon: AlertTriangle,
+                count: glossaryIssueCount,
+                countVariant: "warning",
+              },
+            },
+          ]}
+          values={{
+            search: queryParams.search,
+            moduleIds: queryParams.moduleIds,
+            missingLanguages: queryParams.missingLanguages,
+            createDate: {
+              from: queryParams.createStartDate ? new Date(queryParams.createStartDate) : undefined,
+              to: queryParams.createEndDate ? new Date(queryParams.createEndDate) : undefined,
+            },
+            lastUpdateDate: {
+              from: queryParams.lastUpdateStartDate
+                ? new Date(queryParams.lastUpdateStartDate)
+                : undefined,
+              to: queryParams.lastUpdateEndDate
+                ? new Date(queryParams.lastUpdateEndDate)
+                : undefined,
+            },
+            resourceSearch: queryParams.resourceSearch,
+            glossaryIssues: queryParams.glossaryIssues,
+          }}
+          defaultValues={{
+            search: "",
+            moduleIds: [],
+            missingLanguages: [],
+            createDate: { from: undefined, to: undefined },
+            lastUpdateDate: { from: undefined, to: undefined },
+            resourceSearch: "",
+            glossaryIssues: false,
+          }}
+          onChange={onChange}
+          onReset={onReset}
+          disabled={disabled}
+        />
+      </div>
     </fieldset>
   );
 }

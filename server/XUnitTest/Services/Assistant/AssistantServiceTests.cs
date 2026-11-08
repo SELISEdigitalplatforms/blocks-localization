@@ -66,6 +66,48 @@ namespace XUnitTest
             );
         }
 
+        #region Placeholder Tests
+
+        [Theory]
+        [InlineData("Deleted {{count}} items", "{{count}} Einträge gelöscht", true)]
+        [InlineData("Hello {{ name }}", "Hallo {{name}}", true)]
+        [InlineData("{{a}} of {{b}}", "{{b}} von {{a}}", true)]
+        [InlineData("Save", "Speichern", true)]
+        [InlineData("Deleted {{count}} items", "{{Anzahl}} Einträge gelöscht", false)]
+        [InlineData("Deleted {{count}} items", "Einträge gelöscht", false)]
+        [InlineData("Hello {{name}}", "Hallo {{name}} {{name}}", false)]
+        [InlineData("Save", "{{x}} Speichern", false)]
+        [InlineData("Hello {{name}}", null, false)]
+        public void PlaceholdersMatch_ComparesPlaceholderNames(string source, string? translated, bool expected)
+        {
+            AssistantService.PlaceholdersMatch(source, translated).Should().Be(expected);
+        }
+
+        [Fact]
+        public void GenerateSuggestTranslationContext_WithPlaceholders_AsksToKeepThem()
+        {
+            var request = new SuggestLanguageRequest
+            {
+                SourceText = "{{count}} of {{total}} done, {{count}} left",
+                DestinationLanguage = "German",
+                CurrentLanguage = "English"
+            };
+
+            var result = AssistantService.GenerateSuggestTranslationContext(request);
+
+            result.Should().Contain("Keep these placeholders exactly as written, untranslated: {{count}}, {{total}}.");
+        }
+
+        [Fact]
+        public void GenerateSuggestTranslationContext_WithoutPlaceholders_HasNoPlaceholderRule()
+        {
+            var request = new SuggestLanguageRequest { SourceText = "Save", DestinationLanguage = "German", CurrentLanguage = "English" };
+
+            AssistantService.GenerateSuggestTranslationContext(request).Should().NotContain("placeholders");
+        }
+
+        #endregion
+
         #region GenerateSuggestTranslationContext Tests
 
         [Fact]
@@ -904,7 +946,9 @@ namespace XUnitTest
 
             var result = await service.SuggestTranslation(request);
 
-            result.Should().Be("Hola");
+            result.Content.Should().Be("Hola");
+            result.AppliedTerms.Should().BeEmpty();
+            result.GlossaryViolations.Should().BeEmpty();
             glossaryMock.Verify(g => g.GetGlobalAsync(It.IsAny<string>()), Times.Once);
             capturedRequest.Should().NotBeNull();
             capturedRequest!.RequestUri.Should().Be(new Uri(azureEndpoint));

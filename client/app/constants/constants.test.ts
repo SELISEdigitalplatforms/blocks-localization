@@ -8,7 +8,8 @@ import {
 } from "@/constants/breadcrumb-custom-title";
 import { environmentOptions } from "@/constants/environment-options";
 import { ModuleName } from "@/constants/modules.constants";
-import { navigationMenus } from "@/constants/navigation-menus";
+import { getNavigationMenus } from "@/constants/navigation-menus";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { MIGRATION_ENDPOINTS, PROJECT_ENDPOINTS } from "@/constants/projects";
 
 describe("constants/endpoint.constant", () => {
@@ -71,6 +72,7 @@ describe("constants/modules.constants", () => {
 });
 
 describe("constants/navigation-menus", () => {
+  const navigationMenus = getNavigationMenus((key) => tStatic("localization.shared", key));
   it("should include a Translations menu entry", () => {
     const translations = navigationMenus.find(
       (m) => m.type === "menu" && m.name === "Translations",

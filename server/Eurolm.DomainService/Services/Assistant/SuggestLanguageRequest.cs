@@ -7,7 +7,7 @@ namespace Eurolm.DomainService.Services
         public string? ElementType { get; set; }
         public string? ElementApplicationContext { get; set; }
         public string? ElementDetailContext { get; set; }
-        public double Temperature { get; set; }
+        public double? Temperature { get; set; }
         public int? MaxCharacterLength { get; set; } = 0;
         public string SourceText { get; set; }
         public string DestinationLanguage { get; set; }
@@ -15,5 +15,7 @@ namespace Eurolm.DomainService.Services
         public List<string>? GlossaryIds { get; set; }
         public string? ModuleId { get; set; }
         public string? DestinationLanguageCode { get; set; }
+        /// <summary>Source culture code; zh, ja, th, lo, km and my match glossary terms as substrings.</summary>
+        public string? CurrentLanguageCode { get; set; }
     }
 }

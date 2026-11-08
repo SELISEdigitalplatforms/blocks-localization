@@ -2,6 +2,7 @@ using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Shared;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 
@@ -12,17 +13,36 @@ namespace Eurolm.DomainService.Services
         private readonly IValidator<Glossary> _validator;
         private readonly ILogger<GlossaryManagementService> _logger;
         private readonly IGlossaryRepository _glossaryRepository;
+        private readonly IKeyRepository _keyRepository;
+        private readonly IGlossaryMatcherCache? _matcherCache;
+        private readonly IGlossaryRecheckService? _recheckService;
+
+        public const int MaxGetByIdsCount = 100;
+        public const int MaxUsagePageSize = 50;
+        public const int MaxGetsPageSize = 100;
+
+        internal const string VersionConflictMessage = "This glossary was changed by someone else. Reload and try again.";
+        public const string ItemNotFoundMessage = "Glossary item not found";
+        internal const string DuplicateNameMessage = "Glossary name must be unique.";
+        internal const string SaveFailedMessage = "Could not save the glossary. Try again.";
+        internal const string DeleteFailedMessage = "Could not delete the glossary. Try again.";
 
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a glossary.");
 
         public GlossaryManagementService(IValidator<Glossary> validator,
                                          ILogger<GlossaryManagementService> logger,
-                                         IGlossaryRepository glossaryRepository)
+                                         IGlossaryRepository glossaryRepository,
+                                         IKeyRepository keyRepository,
+                                         IGlossaryMatcherCache? matcherCache = null,
+                                         IGlossaryRecheckService? recheckService = null)
         {
             _validator = validator;
             _logger = logger;
             _glossaryRepository = glossaryRepository;
+            _keyRepository = keyRepository;
+            _matcherCache = matcherCache;
+            _recheckService = recheckService;
         }
 
         public async Task<ApiResponse> SaveGlossaryAsync(Glossary glossary)
@@ -34,13 +54,44 @@ namespace Eurolm.DomainService.Services
 
             try
             {
-                var repoGlossary = await MappedIntoRepoGlossaryAsync(glossary);
-                await _glossaryRepository.SaveAsync(repoGlossary);
+                if (string.IsNullOrEmpty(glossary.ItemId))
+                {
+                    var created = MapNewGlossary(glossary);
+                    await _glossaryRepository.InsertAsync(created);
+                    InvalidateMatcher();
+                    await TriggerRecheckAsync(created.ItemId);
+                    return new ApiResponse();
+                }
+
+                var existing = await _glossaryRepository.GetStoredByIdAsync(glossary.ItemId);
+                if (existing == null)
+                    return ValidationError(nameof(Glossary.ItemId), ItemNotFoundMessage);
+
+                // Clients that omit version (CLI, extension) skip the check.
+                if (glossary.Version.HasValue && glossary.Version.Value != existing.Version)
+                    return ValidationError(nameof(Glossary.Version), VersionConflictMessage);
+
+                var matched = await _glossaryRepository.ReplaceAsync(MapUpdatedGlossary(glossary, existing), glossary.Version);
+                if (!matched)
+                {
+                    // A concurrent save won the versioned replace, or the glossary was deleted meanwhile.
+                    return glossary.Version.HasValue
+                        ? ValidationError(nameof(Glossary.Version), VersionConflictMessage)
+                        : ValidationError(nameof(Glossary.ItemId), ItemNotFoundMessage);
+                }
+                InvalidateMatcher();
+                // Keys of the old scope too: a module it left, or the whole project if it was global.
+                await TriggerRecheckAsync(glossary.ItemId, existing.ModuleIds, existing.IsGlobal);
+            }
+            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
+            {
+                // A concurrent save took the name between the validator's check and the write.
+                return ValidationError(nameof(Glossary.Name), DuplicateNameMessage);
             }
             catch (Exception ex)
             {
                 _logger.LogError("Error while saving Glossary {ErrorMessage} : {StackTrace}", ex.Message, ex.StackTrace);
-                return new ApiResponse(ex.Message);
+                return new ApiResponse(SaveFailedMessage);
             }
 
             return new ApiResponse();
@@ -48,12 +99,48 @@ namespace Eurolm.DomainService.Services
 
         public async Task<GetGlossariesResponse> GetGlossariesAsync(GetGlossariesRequest request)
         {
+            // Limit(0) means no limit, and a negative skip throws.
+            request.PageSize = Math.Clamp(request.PageSize, 1, MaxGetsPageSize);
+            request.PageNumber = Math.Max(request.PageNumber, 0);
+            // Every searched field (name, variants, translations) is at most 200 characters, so longer text never matches.
+            if ((request.SearchText?.Trim().Length ?? 0) > GlossaryValidator.MaxValueLength) return new GetGlossariesResponse();
             return await _glossaryRepository.GetAllAsync(request);
         }
 
         public async Task<Glossary?> GetGlossaryByIdAsync(string itemId)
         {
             return await _glossaryRepository.GetByIdAsync(itemId);
+        }
+
+        public async Task<List<Glossary>> GetGlossariesByIdsAsync(IReadOnlyList<string> itemIds)
+        {
+            var stored = await _glossaryRepository.GetStoredByIdsAsync(itemIds);
+            var byId = stored.ToDictionary(g => g.ItemId, StringComparer.Ordinal);
+
+            // Request order, each id once; ids that don't exist (or belong to another tenant) are omitted.
+            return itemIds
+                .Distinct(StringComparer.Ordinal)
+                .Where(byId.ContainsKey)
+                .Select(id => GlossaryMapper.ToDto(byId[id]))
+                .ToList();
+        }
+
+        public async Task<GlossaryUsageResponse?> GetGlossaryUsageAsync(GlossaryUsageRequest request)
+        {
+            var glossary = await _glossaryRepository.GetStoredByIdAsync(request.ItemId);
+            if (glossary == null) return null;
+
+            var usage = await _keyRepository.GetGlossaryKeyUsageAsync(request.ItemId, request.PageNumber, request.PageSize);
+            var moduleIds = glossary.IsGlobal ? new List<string>() : glossary.ModuleIds ?? new List<string>();
+            return new GlossaryUsageResponse
+            {
+                KeyCount = usage.KeyCount,
+                Keys = usage.Keys,
+                ModuleIds = usage.ModuleIds,
+                ViolationKeyCount = usage.ViolationKeyCount,
+                AffectedKeyCount = await _keyRepository.CountKeysAffectedByGlossaryAsync(request.ItemId, glossary.IsGlobal, moduleIds),
+                IsGlobal = glossary.IsGlobal
+            };
         }
 
         public async Task<BaseMutationResponse> DeleteGlossaryAsync(DeleteGlossaryRequest request)
@@ -70,64 +157,233 @@ namespace Eurolm.DomainService.Services
                     IsSuccess = false,
                     Errors = new Dictionary<string, string>
                     {
-                        { "itemId", "Glossary item not found" }
+                        { "itemId", ItemNotFoundMessage }
                     }
                 };
             }
 
-            await _glossaryRepository.DeleteAsync(request.ItemId);
+            // Untag every key first, so no key is left pointing at a deleted glossary. Retrying after a
+            // failed delete below is safe: the pull is idempotent.
+            long modifiedKeys;
+            try
+            {
+                modifiedKeys = await _keyRepository.RemoveGlossaryIdFromKeysAsync(request.ItemId);
+                _logger.LogInformation("Deleting glossary -- removed from {ModifiedKeyCount} keys", modifiedKeys);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Deleting glossary end -- could not remove it from keys: {ErrorMessage}", ex.Message);
+
+                return new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "Error", "Could not remove the glossary from keys. Nothing was deleted." }
+                    }
+                };
+            }
+
+            try
+            {
+                await _glossaryRepository.DeleteAsync(request.ItemId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Deleting glossary end -- could not delete it after removing it from {ModifiedKeyCount} keys: {ErrorMessage}", modifiedKeys, ex.Message);
+                await TriggerRecheckAsync(request.ItemId, glossary.ModuleIds, glossary.IsGlobal || modifiedKeys > 0);
+
+                return new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "Error", DeleteFailedMessage }
+                    }
+                };
+            }
+
+            modifiedKeys += await RemoveLateTagsAsync(request.ItemId);
+            InvalidateMatcher();
+            // The untagged keys can't be found by glossary any more, and a global glossary may have hidden others
+            // on any key, so those cases re-check the whole project.
+            await TriggerRecheckAsync(request.ItemId, glossary.ModuleIds, glossary.IsGlobal || modifiedKeys > 0);
 
             _logger.LogInformation("Deleting glossary end -- Success");
             return new BaseMutationResponse { IsSuccess = true };
         }
 
-        private async Task<BlocksGlossary> MappedIntoRepoGlossaryAsync(Glossary glossary)
+        private static ApiResponse ValidationError(string propertyName, string message) =>
+            new(string.Empty, new List<ValidationFailure> { new(propertyName, message) });
+
+        private void InvalidateMatcher()
         {
-            BlocksGlossary repoGlossary;
+            var tenantId = BlocksContext.GetContext()?.TenantId;
+            if (!string.IsNullOrEmpty(tenantId)) _matcherCache?.Invalidate(tenantId);
+        }
 
-            if (!string.IsNullOrEmpty(glossary.ItemId))
+        /// <summary>
+        /// A key saved between the first pull and the delete may have kept the id; once the glossary is gone,
+        /// key saves reject it, so a second pull leaves nothing behind. A failure here only leaves a stale id.
+        /// </summary>
+        private async Task<long> RemoveLateTagsAsync(string glossaryId)
+        {
+            try
             {
-                var existing = await _glossaryRepository.GetByIdAsync(glossary.ItemId);
-                if (existing != null)
-                {
-                    repoGlossary = new BlocksGlossary
-                    {
-                        ItemId = existing.ItemId,
-                        CreateDate = existing.CreateDate,
-                        TenantId = CurrentTenantId
-                    };
-                }
-                else
-                {
-                    repoGlossary = new BlocksGlossary
-                    {
-                        ItemId = glossary.ItemId,
-                        CreateDate = DateTime.UtcNow,
-                        TenantId = CurrentTenantId
-                    };
-                }
+                return await _keyRepository.RemoveGlossaryIdFromKeysAsync(glossaryId);
             }
-            else
+            catch (Exception ex)
             {
-                repoGlossary = new BlocksGlossary
-                {
-                    ItemId = Guid.NewGuid().ToString(),
-                    CreateDate = DateTime.UtcNow,
-                    TenantId = CurrentTenantId
-                };
+                _logger.LogWarning(ex, "Deleting glossary -- second untag pass failed; the migration's stale-id cleanup removes leftovers");
+                return 0;
             }
+        }
 
-            repoGlossary.LastUpdateDate = DateTime.UtcNow;
-            repoGlossary.Name = glossary.Name;
+        /// <summary>Queues a coalesced violation re-check for the glossary (server flag on only; never throws).</summary>
+        private Task TriggerRecheckAsync(string glossaryId) =>
+            _recheckService?.TriggerAsync(new[] { glossaryId }) ?? Task.CompletedTask;
+
+        private Task TriggerRecheckAsync(string glossaryId, IReadOnlyCollection<string>? previousModuleIds, bool wholeProject) =>
+            _recheckService?.TriggerAsync(new[] { glossaryId }, previousModuleIds ?? new List<string>(), wholeProject) ?? Task.CompletedTask;
+
+        private static BlocksGlossary MapNewGlossary(Glossary glossary)
+        {
+            var now = DateTime.UtcNow;
+            var userId = BlocksContext.GetContext()?.UserId;
+            var repoGlossary = new BlocksGlossary
+            {
+                ItemId = Guid.NewGuid().ToString(),
+                CreateDate = now,
+                LastUpdateDate = now,
+                CreatedBy = userId,
+                LastUpdatedBy = userId,
+                TenantId = CurrentTenantId,
+                Version = 1,
+                Status = GlossaryStatus.Approved
+            };
+            CopyEditableFields(glossary, repoGlossary);
+            ApplyStructuredFields(glossary, repoGlossary);
+            ApplyDescriptiveFields(glossary, repoGlossary);
+            return repoGlossary;
+        }
+
+        private static BlocksGlossary MapUpdatedGlossary(Glossary glossary, BlocksGlossary existing)
+        {
+            var repoGlossary = new BlocksGlossary
+            {
+                ItemId = existing.ItemId,
+                CreateDate = existing.CreateDate,
+                CreatedBy = existing.CreatedBy,
+                LastUpdateDate = DateTime.UtcNow,
+                LastUpdatedBy = BlocksContext.GetContext()?.UserId,
+                TenantId = CurrentTenantId,
+                Version = existing.Version + 1,
+                // New fields are merged: omitted ones keep their stored values (old clients can't wipe them).
+                Rule = existing.Rule,
+                CaseSensitive = existing.CaseSensitive,
+                Variants = existing.Variants,
+                Translations = existing.Translations,
+                Status = existing.Status,
+                SchemaVersion = existing.SchemaVersion,
+                PartOfSpeech = existing.PartOfSpeech,
+                UsageExamples = existing.UsageExamples
+            };
+            CopyEditableFields(glossary, repoGlossary);
+            ApplyStructuredFields(glossary, repoGlossary, existing);
+            ApplyDescriptiveFields(glossary, repoGlossary);
+            return repoGlossary;
+        }
+
+        /// <summary>Existing fields keep replace semantics (for example <c>moduleIds: []</c> clears the modules).</summary>
+        private static void CopyEditableFields(Glossary glossary, BlocksGlossary repoGlossary)
+        {
+            repoGlossary.Name = Glossary.NormalizeName(glossary.Name);
+            repoGlossary.NormalizedName = GlossaryMapper.NormalizedName(glossary.Name);
             repoGlossary.Language = glossary.Language;
             repoGlossary.Type = glossary.Type;
             repoGlossary.Context = glossary.Context;
             repoGlossary.AdditionalNote = glossary.AdditionalNote;
             repoGlossary.IsGlobal = glossary.IsGlobal;
             repoGlossary.ModuleIds = glossary.ModuleIds;
-            repoGlossary.CreatedBy = BlocksContext.GetContext().UserId;
-            repoGlossary.LastUpdatedBy = BlocksContext.GetContext().UserId;
-            return repoGlossary;
         }
+
+        /// <summary>
+        /// Merges the structured fields (DATA CONTRACTS › Save): a structured save sets SchemaVersion 2 and, on the
+        /// first one, fills the fields it omits from the effective terminology. A save without structured fields
+        /// whose additionalNote is Track A v1 JSON copies that terminology into the stored fields (A12).
+        /// </summary>
+        private static void ApplyStructuredFields(Glossary glossary, BlocksGlossary repoGlossary, BlocksGlossary? existing = null)
+        {
+            if (glossary.HasStructuredFields())
+            {
+                MergeStructuredFields(glossary, repoGlossary, existing);
+                return;
+            }
+
+            var parsed = GlossaryMetaParser.Parse(glossary.AdditionalNote);
+            if (parsed.Status != GlossaryMetaStatus.Structured) return;
+
+            // Track A save: keep the structured fields in sync with the JSON the Track A UI edits.
+            repoGlossary.Rule = parsed.Meta.Rule;
+            repoGlossary.CaseSensitive = parsed.Meta.CaseSensitive;
+            repoGlossary.Variants = parsed.Meta.Variants.ToList();
+            repoGlossary.Translations = GlossaryTerminologyResolver.ToTranslations(parsed.Meta);
+        }
+
+        private static void MergeStructuredFields(Glossary glossary, BlocksGlossary repoGlossary, BlocksGlossary? existing)
+        {
+            if (repoGlossary.SchemaVersion < 2)
+            {
+                // Resolve from what is stored (or, on create, from this request's own note).
+                var effective = GlossaryTerminologyResolver.Resolve(existing ?? repoGlossary);
+                repoGlossary.Rule = effective.Rule;
+                repoGlossary.CaseSensitive = effective.CaseSensitive;
+                repoGlossary.Variants = effective.Variants;
+                repoGlossary.Translations = effective.Translations;
+                repoGlossary.Status ??= effective.Status;
+                repoGlossary.SchemaVersion = 2;
+            }
+
+            if (glossary.Rule != null && GlossaryWireValues.TryParseRule(glossary.Rule, out var rule))
+                repoGlossary.Rule = rule;
+            if (glossary.CaseSensitive != null)
+                repoGlossary.CaseSensitive = glossary.CaseSensitive;
+            if (glossary.Variants != null)
+                repoGlossary.Variants = NormalizeVariants(glossary.Variants);
+            if (glossary.Translations != null)
+                repoGlossary.Translations = NormalizeTranslations(glossary.Translations);
+            if (glossary.Status != null && GlossaryWireValues.TryParseStatus(glossary.Status, out var status))
+                repoGlossary.Status = status;
+        }
+
+        /// <summary>
+        /// Part of speech and usage examples merge on omit (C17): null keeps the stored value, "" or an empty list
+        /// clears it. They are not terminology, so they never change SchemaVersion.
+        /// </summary>
+        private static void ApplyDescriptiveFields(Glossary glossary, BlocksGlossary repoGlossary)
+        {
+            if (glossary.PartOfSpeech != null && GlossaryWireValues.TryParsePartOfSpeech(glossary.PartOfSpeech, out var partOfSpeech))
+                repoGlossary.PartOfSpeech = partOfSpeech;
+            if (glossary.UsageExamples != null)
+            {
+                var examples = glossary.UsageExamples.Select(GlossaryMapper.NormalizeValue).Where(e => e.Length > 0).ToList();
+                repoGlossary.UsageExamples = examples.Count > 0 ? examples : null;
+            }
+        }
+
+        private static List<string> NormalizeVariants(IEnumerable<string> variants) =>
+            variants.Select(GlossaryMapper.NormalizeValue).Where(v => v.Length > 0).ToList();
+
+        private static List<GlossaryTranslation> NormalizeTranslations(IEnumerable<GlossaryTranslationDto> translations) =>
+            translations
+                .Where(t => t != null)
+                .Select(t => new GlossaryTranslation
+                {
+                    Language = (t.Language ?? "").Trim(),
+                    Value = GlossaryMapper.NormalizeValue(t.Value),
+                    ForbiddenValues = (t.ForbiddenValues ?? new List<string>())
+                        .Select(GlossaryMapper.NormalizeValue).Where(v => v.Length > 0).ToList()
+                })
+                .ToList();
     }
 }

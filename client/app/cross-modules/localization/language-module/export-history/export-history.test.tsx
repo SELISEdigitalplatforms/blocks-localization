@@ -6,7 +6,8 @@ import { useGetExportHistory } from "@blocks-localization/hooks/use-language-man
 import { useGetFilesDownload } from "@blocks-storage/hooks/use-storage-file";
 import { ExportHistory } from "./export-history";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({

@@ -1,33 +1,43 @@
 import { useCallback, useState } from "react";
-import { Info, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 
 import { Button } from "@/components/ui-kits/button/button";
 import { cn } from "@/lib/utils";
-import { useLiveGlossaryCheck } from "@blocks-localization/hooks/use-live-glossary-check";
 import {
-  GLOSSARY_UNAVAILABLE_MESSAGE,
+  isDraftViolation,
+  useLiveGlossaryCheck,
+} from "@blocks-localization/hooks/use-live-glossary-check";
+import {
   GlossarySuggestionInput,
   GlossarySuggestionOutcome,
   useGlossaryAwareSuggestion,
-  UseGlossaryAwareSuggestionOptions,
 } from "@blocks-localization/hooks/use-glossary-aware-suggestion";
-import { GlossaryMatch } from "@blocks-localization/utils/glossary-matcher";
+import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
+import { IAppliedTerm, IMissingGlossaryTranslation } from "@blocks-localization/models/language";
 import {
   applyFix,
   canApplyFix,
+  containsApprovedTranslation,
+  findInTarget,
   formatViolationMessage,
   getFixReplacement,
   GlossaryViolation,
-  validateTranslation,
 } from "@blocks-localization/utils/glossary-validation";
+
+const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
 
 /** Glossary state of one target-language row after a suggestion. */
 export interface GlossaryRowState {
+  /** The server's `glossaryViolations` of the suggestion (re-checked after Fix). */
   violations: GlossaryViolation[];
+  /** The suggestion's applied terms as matches (Fix reads a Translate term's `expected`). */
   matches: GlossaryMatch[];
+  /** The server's applied terms of the suggestion; cleared by the user's first edit (H25). */
+  appliedTerms: IAppliedTerm[];
+  /** Matched Translate glossaries without a translation for this language; cleared with `appliedTerms`. */
+  missingTranslations?: IMissingGlossaryTranslation[];
   targetCulture: string;
-  /** C6: the glossary failed to load, so the suggestion was made without terminology rules. */
-  glossaryUnavailable: boolean;
   /**
    * True from a successful suggestion until the user's first edit of the row: until then the
    * suggestion's violations (with Retry) are shown, afterwards the live check (Phase 4).
@@ -38,18 +48,38 @@ export interface GlossaryRowState {
 const EMPTY_ROW: GlossaryRowState = {
   violations: [],
   matches: [],
+  appliedTerms: [],
   targetCulture: "",
-  glossaryUnavailable: false,
   fromSuggestion: false,
 };
 
 /**
- * `useGlossaryAwareSuggestion` plus per-row (per target language) violation state:
- * `request` stores the outcome's violations, `clearViolations` is for user edits (C11)
- * and `fix` applies a deterministic Fix and re-validates against the same matches.
+ * The server's violations that still hold in `text` (after a Fix): a forbidden value still
+ * used, or an expected value still missing. Only the server knows every rule, so nothing new
+ * is reported here; the live check takes over from the next edit.
  */
-export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOptions = {}) => {
-  const { suggest, cancel, isPending } = useGlossaryAwareSuggestion(options);
+export const recheckViolations = (
+  text: string,
+  violations: GlossaryViolation[],
+  targetCulture: string,
+): GlossaryViolation[] => {
+  const normalized = (text ?? "").normalize("NFC");
+  return violations.filter((violation) => {
+    if (violation.kind === "forbidden-used") {
+      return (
+        !violation.found ||
+        !!findInTarget(normalized, violation.found, { caseInsensitive: true, targetCulture })
+      );
+    }
+    if (!violation.expected) return true;
+    if (violation.kind === "missing-translation")
+      return !containsApprovedTranslation(normalized, violation.expected, targetCulture);
+    return !findInTarget(normalized, violation.expected, { caseInsensitive: false, targetCulture });
+  });
+};
+
+export const useGlossarySuggestionRows = () => {
+  const { suggest, cancel, isPending } = useGlossaryAwareSuggestion();
   const [rows, setRows] = useState<Record<string, GlossaryRowState>>({});
 
   const request = useCallback(
@@ -61,11 +91,12 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
             ? {
                 violations: outcome.violations,
                 matches: outcome.matches,
+                appliedTerms: outcome.appliedTerms,
+                missingTranslations: outcome.missingTranslations,
                 targetCulture: input.targetLanguage.languageCode,
-                glossaryUnavailable: outcome.glossaryUnavailable,
                 fromSuggestion: true,
               }
-            : { ...EMPTY_ROW, glossaryUnavailable: outcome.glossaryUnavailable };
+            : EMPTY_ROW;
         setRows((previous) => ({ ...previous, [input.requestKey]: row }));
       }
       return outcome;
@@ -82,7 +113,15 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
       if (!keys.some(isStale)) return previous;
       const next = { ...previous };
       for (const key of keys) {
-        if (next[key]) next[key] = { ...next[key], violations: [], fromSuggestion: false };
+        if (next[key]) {
+          next[key] = {
+            ...next[key],
+            violations: [],
+            appliedTerms: [],
+            missingTranslations: [],
+            fromSuggestion: false,
+          };
+        }
       }
       return next;
     });
@@ -95,7 +134,7 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
       if (!row) return null;
       const fixed = applyFix(text, violation, row.matches, row.targetCulture);
       if (fixed === null) return null;
-      const violations = validateTranslation(fixed, row.matches, row.targetCulture);
+      const violations = recheckViolations(fixed, row.violations, row.targetCulture);
       setRows((previous) => ({ ...previous, [requestKey]: { ...row, violations } }));
       return fixed;
     },
@@ -110,6 +149,11 @@ export const useGlossarySuggestionRows = (options: UseGlossaryAwareSuggestionOpt
   return { request, cancel, isPending, getRow, clearViolations, fix };
 };
 
+export const formatGlossaryIssue = (violation: GlossaryViolation, matches: GlossaryMatch[]) =>
+  isDraftViolation(violation, matches)
+    ? `${tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.DRAFT_PREFIX")} ${formatViolationMessage(violation)}`
+    : formatViolationMessage(violation);
+
 const violationKey = (violation: GlossaryViolation) =>
   `${violation.glossaryId}-${violation.kind}-${violation.found ?? violation.expected ?? ""}`;
 
@@ -117,7 +161,6 @@ interface GlossaryViolationListProps {
   violations: GlossaryViolation[];
   matches: GlossaryMatch[];
   targetCulture: string;
-  /** Disables Fix and Retry while the row's suggestion is running. */
   disabled?: boolean;
   onFix: (violation: GlossaryViolation) => void;
   /** Without it (live warnings) a violation with no deterministic Fix has no button. */
@@ -140,6 +183,7 @@ export const GlossaryViolationList = ({
   onRetry,
   className,
 }: GlossaryViolationListProps) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
   const hasViolations = violations.length > 0;
   const count = violations.length;
   return (
@@ -156,9 +200,11 @@ export const GlossaryViolationList = ({
           <p className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning-700" aria-hidden="true" />
             <span className="font-semibold text-high-emphasis">
-              {count === 1 ? "1 glossary issue" : `${count} glossary issues`}
+              {t("GLOSSARY_VIOLATION_LIST.ISSUES", { count })}
             </span>
-            <span className="text-medium-emphasis">You can still save.</span>
+            <span className="text-medium-emphasis">
+              {t("GLOSSARY_VIOLATION_LIST.CAN_STILL_SAVE")}
+            </span>
           </p>
           <ul className="space-y-1.5">
             {violations.map((violation) => {
@@ -173,10 +219,13 @@ export const GlossaryViolationList = ({
                   />
                   <p className="min-w-0 flex-1 break-words">
                     <span className="text-sm text-high-emphasis">
-                      {formatViolationMessage(violation)}
+                      {formatGlossaryIssue(violation, matches)}
                     </span>
                     {fixable && replacement && (
-                      <span className="text-sm text-medium-emphasis"> · use “{replacement}”</span>
+                      <span className="text-sm text-medium-emphasis">
+                        {" · "}
+                        {t("GLOSSARY_VIOLATION_LIST.USE_REPLACEMENT", { replacement })}
+                      </span>
                     )}
                   </p>
                   {showAction && (
@@ -192,7 +241,9 @@ export const GlossaryViolationList = ({
                         else onRetry?.();
                       }}
                     >
-                      {fixable ? "Fix" : "Retry"}
+                      {fixable
+                        ? t("GLOSSARY_VIOLATION_LIST.FIX")
+                        : t("GLOSSARY_VIOLATION_LIST.RETRY")}
                     </Button>
                   )}
                 </li>
@@ -206,7 +257,6 @@ export const GlossaryViolationList = ({
 };
 
 interface GlossaryTargetChecksProps {
-  /** The row's suggestion state (`useGlossarySuggestionRows().getRow`). */
   row: GlossaryRowState;
   targetText: string;
   targetCulture: string;
@@ -216,10 +266,47 @@ interface GlossaryTargetChecksProps {
   /** Fix of a suggestion violation (re-validated against the suggestion's matches). */
   onSuggestionFix: (violation: GlossaryViolation) => void;
   onRetry: () => void;
-  /** Writes a live Fix result into the field. */
   onLiveFix: (fixed: string) => void;
   className?: string;
 }
+
+/** "Workspace → Arbeitsbereich" under Translate, "SELISE (kept)" under Keep. */
+export const formatAppliedTerm = (term: IAppliedTerm): string => {
+  if (term.rule === "keep") {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.APPLIED_KEPT", {
+      term: term.term,
+    });
+  }
+  if (term.rule === "forbidden") {
+    return tStatic(LOCALIZATION_GLOSSARY_MODULE, "GLOSSARY_VIOLATION_LIST.APPLIED_AVOIDED", {
+      term: term.term,
+    });
+  }
+  return term.expected ? `${term.term} → ${term.expected}` : term.term;
+};
+
+export const GlossaryAppliedTerms = ({ terms }: Readonly<{ terms: IAppliedTerm[] }>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return terms.length > 0 ? (
+    <p className="text-xs text-medium-emphasis">
+      {t("GLOSSARY_VIOLATION_LIST.APPLIED", { terms: terms.map(formatAppliedTerm).join(", ") })}
+    </p>
+  ) : null;
+};
+
+/** The suggestion's glossaries the AI had no approved wording for in this language. */
+export const GlossaryMissingTranslations = ({
+  terms = [],
+}: Readonly<{ terms?: IMissingGlossaryTranslation[] }>) => {
+  const { t } = useT(LOCALIZATION_GLOSSARY_MODULE);
+  return terms.length > 0 ? (
+    <p className="text-xs text-low-emphasis">
+      {t("GLOSSARY_VIOLATION_LIST.MISSING_TRANSLATIONS", {
+        terms: terms.map((term) => term.term).join(", "),
+      })}
+    </p>
+  ) : null;
+};
 
 /**
  * The violation list under one target field. Right after a suggestion it shows that
@@ -245,15 +332,19 @@ export const GlossaryTargetChecks = ({
 
   if (row.fromSuggestion) {
     return (
-      <GlossaryViolationList
-        className={className}
-        violations={row.violations}
-        matches={row.matches}
-        targetCulture={row.targetCulture}
-        disabled={disabled}
-        onFix={onSuggestionFix}
-        onRetry={onRetry}
-      />
+      <>
+        <GlossaryAppliedTerms terms={row.appliedTerms} />
+        <GlossaryMissingTranslations terms={row.missingTranslations} />
+        <GlossaryViolationList
+          className={className}
+          violations={row.violations}
+          matches={row.matches}
+          targetCulture={row.targetCulture}
+          disabled={disabled}
+          onFix={onSuggestionFix}
+          onRetry={onRetry}
+        />
+      </>
     );
   }
 
@@ -273,11 +364,3 @@ export const GlossaryTargetChecks = ({
     />
   );
 };
-
-/** C6 info line, shown under the Auto-translate button. */
-export const GlossaryUnavailableNote = ({ className }: { className?: string }) => (
-  <output className={cn("flex items-center gap-1 text-xs text-low-emphasis", className)}>
-    <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-    {GLOSSARY_UNAVAILABLE_MESSAGE}
-  </output>
-);

@@ -9,8 +9,12 @@ import {
 import { Button } from "@/components/ui-kits/button/button";
 import { Card } from "@/components/ui-kits/card/card";
 import { getRuntimeEnv } from "@/lib/runtime-env";
-import { KEY_MODE_INSTRUCTIONS_MD, SETUP_STEPS } from "../../constants/extension-guides.constant";
+import { useT } from "@seliseblocks/genesis-os/i18n";
+import { KEY_MODE_INSTRUCTIONS_MD, getSetupSteps } from "../../constants/extension-guides.constant";
+import { renderRichText } from "../../utils/rich-text-slots";
 import { CopyableSnippet } from "@/components/copyable-snippet/copyable-snippet";
+
+const MODULE = "localization.tools";
 
 /**
  * Drops trailing slashes without a regex. `/\/+$/` is an anchored repeat, so a long run of
@@ -24,7 +28,14 @@ function trimTrailingSlashes(value: string): string {
   return value.slice(0, end);
 }
 
+const renderBold = (text: string) =>
+  renderRichText(text, {
+    b: (children) => <strong className="font-medium text-foreground">{children}</strong>,
+    code: (children) => <code className="font-medium text-foreground">{children}</code>,
+  });
+
 export const ExtensionGuides = () => {
+  const { t } = useT(MODULE);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const apiBaseUrl = getRuntimeEnv("BLOCKS_PUBLIC_API_BASE_URL");
   const blocksKey = getRuntimeEnv("BLOCKS_X_BLOCKS_KEY");
@@ -80,21 +91,17 @@ export const ExtensionGuides = () => {
       <div className="flex items-center gap-3">
         <FileText className="h-6 w-6 text-muted-foreground" />
         <div>
-          <h1 className="text-2xl font-semibold">Extension Guides</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Connect SELISE Blocks Assistant to a Blocks OS instance.
-          </p>
+          <h1 className="text-2xl font-semibold">{t("EXTENSION_GUIDES.TITLE")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("EXTENSION_GUIDES.SUBTITLE")}</p>
         </div>
       </div>
 
       <Card className="p-4 sm:p-6">
-        <h2 className="text-lg font-semibold">Set up a Blocks instance</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Follow these steps from the extension sign-in screen.
-        </p>
+        <h2 className="text-lg font-semibold">{t("EXTENSION_GUIDES.SETUP_TITLE")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("EXTENSION_GUIDES.SETUP_SUBTITLE")}</p>
 
         <Accordion type="multiple" className="mt-4">
-          {SETUP_STEPS.map((item, index) => (
+          {getSetupSteps().map((item, index) => (
             <AccordionItem
               key={item.title}
               value={`setup-step-${index + 1}`}
@@ -137,40 +144,28 @@ export const ExtensionGuides = () => {
       </Card>
 
       <Card className="p-4 sm:p-6">
-        <h2 className="text-lg font-semibold">Alternative setup options</h2>
+        <h2 className="text-lg font-semibold">{t("EXTENSION_GUIDES.ALTERNATIVE_TITLE")}</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Configure the Blocks OS V4 instance with JSON or enter the same values manually.
+          {t("EXTENSION_GUIDES.ALTERNATIVE_SUBTITLE")}
         </p>
 
         <div className="mt-5 rounded-lg border p-4 sm:p-5">
-          <h3 className="font-semibold">JSON setup</h3>
+          <h3 className="font-semibold">{t("EXTENSION_GUIDES.JSON_TITLE")}</h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Paste the complete configuration into the extension instead of entering each value
-            separately.
+            {t("EXTENSION_GUIDES.JSON_DESCRIPTION")}
           </p>
 
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
-            <li>
-              In the extension, enter an instance name and select{" "}
-              <strong className="font-medium text-foreground">V4 – Blocks OS</strong>.
-            </li>
-            <li>
-              Under <strong className="font-medium text-foreground">Setup Method</strong>, select{" "}
-              <strong className="font-medium text-foreground">JSON</strong>.
-            </li>
-            <li>
-              Copy the configuration below and paste it into{" "}
-              <strong className="font-medium text-foreground">Blocks OS Configuration JSON</strong>.
-            </li>
-            <li>
-              Select <strong className="font-medium text-foreground">Save</strong>.
-            </li>
+            <li>{renderBold(t("EXTENSION_GUIDES.JSON_STEP_1"))}</li>
+            <li>{renderBold(t("EXTENSION_GUIDES.JSON_STEP_2"))}</li>
+            <li>{renderBold(t("EXTENSION_GUIDES.JSON_STEP_3"))}</li>
+            <li>{renderBold(t("EXTENSION_GUIDES.JSON_STEP_4"))}</li>
           </ol>
 
           <div className="mt-4">
             <CopyableSnippet
               id="extension-config-json"
-              label="Blocks OS configuration (JSON)"
+              label={t("EXTENSION_GUIDES.JSON_SNIPPET_LABEL")}
               value={extensionConfig}
               copiedField={copiedField}
               onCopy={copyToClipboard}
@@ -182,11 +177,10 @@ export const ExtensionGuides = () => {
           <div className="flex gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold">Manual setup</h3>
+                <h3 className="font-semibold">{t("EXTENSION_GUIDES.MANUAL_TITLE")}</h3>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Select <strong className="font-medium text-foreground">Manual</strong> under Setup
-                Method, then copy the API Base URL and X-Blocks-Key into their matching fields.
+                {renderBold(t("EXTENSION_GUIDES.MANUAL_DESCRIPTION"))}
               </p>
             </div>
           </div>
@@ -194,7 +188,7 @@ export const ExtensionGuides = () => {
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <CopyableSnippet
               id="v4-api-base-url"
-              label="API Base URL"
+              label={t("EXTENSION_GUIDES.API_BASE_URL_LABEL")}
               value={apiBaseUrl}
               copiedField={copiedField}
               onCopy={copyToClipboard}
@@ -210,17 +204,14 @@ export const ExtensionGuides = () => {
         </div>
 
         <div className="mt-5 rounded-lg border p-4 sm:p-5">
-          <h3 className="font-semibold">Get the runtime configuration with curl</h3>
+          <h3 className="font-semibold">{t("EXTENSION_GUIDES.CURL_TITLE")}</h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Run this command in your terminal using your localization domain. In the response, find{" "}
-            <code className="font-medium text-foreground">BLOCKS_PUBLIC_API_BASE_URL</code> and{" "}
-            <code className="font-medium text-foreground">BLOCKS_X_BLOCKS_KEY</code> under the
-            runtime environment configuration. Use those values for either setup method above.
+            {renderBold(t("EXTENSION_GUIDES.CURL_DESCRIPTION"))}
           </p>
           <div className="mt-3">
             <CopyableSnippet
               id="runtime-config-curl"
-              label="Terminal command"
+              label={t("EXTENSION_GUIDES.TERMINAL_COMMAND_LABEL")}
               value={runtimeConfigCommand}
               copiedField={copiedField}
               onCopy={copyToClipboard}
@@ -230,32 +221,32 @@ export const ExtensionGuides = () => {
       </Card>
 
       <Card className="p-4 sm:p-6">
-        <h2 className="text-lg font-semibold">Manage saved instances</h2>
+        <h2 className="text-lg font-semibold">{t("EXTENSION_GUIDES.MANAGE_TITLE")}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="flex gap-3 rounded-lg border p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <h3 className="text-sm font-medium">Active instance</h3>
+              <h3 className="text-sm font-medium">{t("EXTENSION_GUIDES.ACTIVE_TITLE")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                The ACTIVE label identifies the instance currently selected for sign-in.
+                {t("EXTENSION_GUIDES.ACTIVE_DESCRIPTION")}
               </p>
             </div>
           </div>
           <div className="flex gap-3 rounded-lg border p-4">
             <Pencil className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <h3 className="text-sm font-medium">Edit details</h3>
+              <h3 className="text-sm font-medium">{t("EXTENSION_GUIDES.EDIT_TITLE")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Use the pencil button to update a saved instance configuration.
+                {t("EXTENSION_GUIDES.EDIT_DESCRIPTION")}
               </p>
             </div>
           </div>
           <div className="flex gap-3 rounded-lg border p-4">
             <Trash2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <h3 className="text-sm font-medium">Remove an instance</h3>
+              <h3 className="text-sm font-medium">{t("EXTENSION_GUIDES.REMOVE_TITLE")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Use the trash button to remove an instance you no longer need.
+                {t("EXTENSION_GUIDES.REMOVE_DESCRIPTION")}
               </p>
             </div>
           </div>
@@ -263,25 +254,21 @@ export const ExtensionGuides = () => {
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Plus className="h-4 w-4 text-primary" />
-          Need another environment? Return to Manage Instances and select
-          <span className="font-medium text-foreground">Add Cloud Instance</span>.
+          <span>{renderBold(t("EXTENSION_GUIDES.ADD_ENVIRONMENT"))}</span>
         </div>
       </Card>
 
       <Card className="p-4 sm:p-6">
-        <h2 className="text-lg font-semibold">Key/Value Mode Integration</h2>
+        <h2 className="text-lg font-semibold">{t("EXTENSION_GUIDES.KEY_MODE_TITLE")}</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Copy the prompt below into your AI coding agent (Claude Code, Cursor, GitHub Copilot,
-          etc.) to automatically configure Key Mode and Value Mode support in your codebase. This
-          instruction provides your AI agent with the extension&apos;s event contract and
-          framework-specific event listener implementations.
+          {t("EXTENSION_GUIDES.KEY_MODE_DESCRIPTION")}
         </p>
 
         <Button
           type="button"
           variant="outline"
           className="mt-4 gap-2"
-          aria-label="Copy Key Mode instructions"
+          aria-label={t("EXTENSION_GUIDES.COPY_KEY_MODE_ARIA")}
           onClick={() => copyToClipboard(KEY_MODE_INSTRUCTIONS_MD, "key-mode-instructions")}
         >
           {copiedField === "key-mode-instructions" ? (
@@ -289,7 +276,9 @@ export const ExtensionGuides = () => {
           ) : (
             <Copy className="h-4 w-4" />
           )}
-          {copiedField === "key-mode-instructions" ? "Copied" : "Copy instructions"}
+          {copiedField === "key-mode-instructions"
+            ? t("common:COPIED")
+            : t("EXTENSION_GUIDES.COPY_INSTRUCTIONS")}
         </Button>
       </Card>
     </div>

@@ -1,3 +1,5 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
 /** UILM export SSE payload shape (self-contained for Vite client). */
 export interface IUilmExportNotificationMessage {
   denormalizedPayload: string | { Message?: string; FileId?: string; fileId?: string };
@@ -26,6 +28,8 @@ export interface IBlocksLanguageKey {
   lastUpdateDate: string;
   createDate: string;
   context: string;
+  /** Rule violations the server stored for this key (per culture); recomputed on save. */
+  glossaryViolations?: IKeyGlossaryViolation[];
 }
 
 export interface IResource {
@@ -54,6 +58,8 @@ export interface ISaveBlocksLanguageKeyPayload {
   isPartiallyTranslated: boolean;
   isNewKey?: boolean;
   context?: string;
+  /** An existing key keeps its stored resources, routes and context; only glossaryIds is saved. */
+  glossaryIdsOnly?: boolean;
 }
 
 /** Duplicate keys (same module and key name) and duplicate module names for the tenant. */
@@ -200,6 +206,47 @@ export interface IBaseMutationResponse {
   isSuccess: boolean;
 }
 
+/** The Key/Gets filter without its paging fields: the keys a list shows, or a bulk action acts on. */
+export interface IKeyListFilter {
+  searchKey: string;
+  moduleIds: string[];
+  isPartiallyTranslated: boolean;
+  sortProperty: string;
+  isDescending: boolean;
+  createDateRange?: { startDate?: string; endDate?: string };
+  lastUpdateDateRange?: { startDate?: string; endDate?: string };
+  resourceSearchFilters?: { culture: string; searchText: string }[];
+  missingLanguages?: string[];
+  onlyDuplicates?: boolean;
+  hasGlossaryViolations?: boolean;
+}
+
+/** A bulk Delete or Translate response; `matchedCount` is how many keys the server acted on. */
+export interface IBulkKeyActionResponse extends IBaseMutationResponse {
+  matchedCount?: number | null;
+}
+
+/**
+ * Bulk delete by key IDs, or by filter: the server resolves the matching keys minus the excluded
+ * ones and refuses when they no longer number `expectedCount`.
+ */
+export type IDeleteKeysPayload =
+  | { itemIds: string[] }
+  | { filter: IKeyListFilter; excludedItemIds: string[]; expectedCount: number };
+
+interface ITranslateKeysOptions {
+  defaultLanguage: string;
+  messageCoRelationId?: string;
+  ProjectKey?: string;
+}
+
+/** Bulk translate by key IDs, or by filter (same rules as {@link IDeleteKeysPayload}). */
+export type ITranslateKeysPayload = ITranslateKeysOptions &
+  (
+    | { keyIds: string[] }
+    | { filter: IKeyListFilter; excludedKeyIds: string[]; expectedCount: number }
+  );
+
 export interface IGetTimelineResponse {
   totalCount: number;
   timelines: Array<{
@@ -276,13 +323,24 @@ export interface IGetTimelineByOperationIdResponse {
 export type GlossaryType =
   "Full form" | "Acronym" | "Abbreviation" | "Short form" | "Phrase" | "Variant";
 
+// The label is read through a getter so it is translated when it is shown, not at import time.
+const glossaryTypeOption = (
+  value: GlossaryType,
+  labelKey: string,
+): { value: GlossaryType; label: string } => ({
+  value,
+  get label() {
+    return tStatic("localization.shared", labelKey);
+  },
+});
+
 export const GLOSSARY_TYPE_OPTIONS: { value: GlossaryType; label: string }[] = [
-  { value: "Full form", label: "Full form" },
-  { value: "Acronym", label: "Acronym" },
-  { value: "Abbreviation", label: "Abbreviation" },
-  { value: "Short form", label: "Short form" },
-  { value: "Phrase", label: "Phrase" },
-  { value: "Variant", label: "Variant" },
+  glossaryTypeOption("Full form", "GLOSSARY_TYPE.FULL_FORM"),
+  glossaryTypeOption("Acronym", "GLOSSARY_TYPE.ACRONYM"),
+  glossaryTypeOption("Abbreviation", "GLOSSARY_TYPE.ABBREVIATION"),
+  glossaryTypeOption("Short form", "GLOSSARY_TYPE.SHORT_FORM"),
+  glossaryTypeOption("Phrase", "GLOSSARY_TYPE.PHRASE"),
+  glossaryTypeOption("Variant", "GLOSSARY_TYPE.VARIANT"),
 ];
 
 export interface IGlossary {
@@ -296,6 +354,164 @@ export interface IGlossary {
   moduleIds?: string[];
   createDate: string;
   lastUpdateDate: string;
+  /** Optimistic-concurrency version (0 for terms saved before versioning). */
+  version?: number;
+  /** Structured terminology, resolved by the server (also for terms not yet migrated). */
+  rule?: GlossaryRuleDto;
+  caseSensitive?: boolean;
+  variants?: string[];
+  translations?: IGlossaryTranslation[];
+  status?: GlossaryStatus;
+  /** 0 = legacy (terminology in `additionalNote`), 2 = structured fields stored. */
+  schemaVersion?: number;
+  /** Merge-on-omit like the structured fields: a save without them keeps the stored values. */
+  partOfSpeech?: GlossaryPartOfSpeech | null;
+  usageExamples?: string[] | null;
+}
+
+export type GlossaryPartOfSpeech = "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+
+export const GLOSSARY_PARTS_OF_SPEECH: readonly GlossaryPartOfSpeech[] = [
+  "noun",
+  "verb",
+  "adjective",
+  "adverb",
+  "phrase",
+  "other",
+];
+
+export const GLOSSARY_PART_OF_SPEECH_LABELS: Record<GlossaryPartOfSpeech, string> = {
+  noun: "Noun",
+  verb: "Verb",
+  adjective: "Adjective",
+  adverb: "Adverb",
+  phrase: "Phrase",
+  other: "Other",
+};
+
+export type GlossaryRuleDto = "translate" | "keep" | "forbidden";
+
+export type GlossaryStatus = "draft" | "approved" | "deprecated";
+
+export const GLOSSARY_STATUSES: readonly GlossaryStatus[] = ["draft", "approved", "deprecated"];
+
+export interface IGlossaryTranslation {
+  language: string;
+  value: string;
+  forbiddenValues: string[];
+}
+
+export type GlossaryViolationKindDto = "missing-translation" | "missing-keep" | "forbidden-used";
+
+/** A violation stored on a key by the server (Translate All or Key/Save recompute). */
+export interface IKeyGlossaryViolation {
+  culture: string;
+  glossaryId: string;
+  term: string;
+  kind: GlossaryViolationKindDto;
+  expected?: string;
+  found?: string;
+  detectedAt: string;
+}
+
+/** A term the server's prompt applied to a suggestion; `expected` only under Translate. */
+export interface IAppliedTerm {
+  glossaryId: string;
+  term: string;
+  rule: GlossaryRuleDto;
+  expected?: string;
+}
+
+/** A matched Translate glossary with no approved translation for the requested target. */
+export interface IMissingGlossaryTranslation {
+  glossaryId: string;
+  term: string;
+}
+
+/** A violation in a suggestion response (no culture: it is the requested target). */
+export interface IGlossaryViolationDto {
+  glossaryId: string;
+  term: string;
+  kind: GlossaryViolationKindDto;
+  expected?: string;
+  found?: string;
+}
+
+export interface IGlossaryFilters {
+  rule?: GlossaryRuleDto;
+  status?: GlossaryStatus;
+  /** Culture code: Translate terms without a translation for it. */
+  missingTranslation?: string;
+  /** Culture code of the term's own language. */
+  language?: string;
+  /** Exact type, case-insensitive. */
+  type?: string;
+  scope?: GlossaryScopeFilter;
+  sortBy?: GlossarySortBy;
+  /** Server default: true for dates, false for name. */
+  sortDescending?: boolean;
+}
+
+/** `project` = whole project; `modules` = tagged to specific modules. */
+export type GlossaryScopeFilter = "project" | "modules";
+
+export type GlossarySortBy = "name" | "createDate" | "lastUpdateDate";
+
+export interface IGetGlossariesByIdsResponse {
+  items: IGlossary[];
+}
+
+export interface IGlossaryUsageResponse {
+  keyCount: number;
+  keys: { itemId: string; keyName: string; moduleId: string }[];
+  moduleIds: string[];
+  violationKeyCount: number;
+  /** Keys the glossary applies to (its scope), not only those tagged with it. */
+  affectedKeyCount?: number;
+  isGlobal?: boolean;
+}
+
+export type GlossaryMatchScope = "key" | "module" | "global" | "other";
+
+/** One `/Glossary/Match` hit; `start`/`length` are UTF-16 offsets into the request text. */
+export interface IGlossaryMatchDto {
+  glossaryId: string;
+  start: number;
+  length: number;
+  surface: string;
+  term: string;
+  rule: GlossaryRuleDto;
+  status: GlossaryStatus;
+  caseSensitive: boolean;
+  variants?: string[];
+  scope: GlossaryMatchScope;
+  definition: string;
+  /** Only the values active under the term's rule. */
+  translations: IGlossaryTranslation[];
+  partOfSpeech?: GlossaryPartOfSpeech | null;
+  usageExamples?: string[] | null;
+}
+
+export interface IMatchGlossaryRequest {
+  text: string;
+  language: string;
+  moduleId?: string;
+  keyId?: string;
+  glossaryIds?: string[];
+  mode?: "applicable" | "all";
+}
+
+export interface IMatchGlossaryResponse {
+  matches: IGlossaryMatchDto[];
+}
+
+export interface ITranslationSuggestionResponse {
+  content: string;
+  appliedTerms?: IAppliedTerm[];
+  glossaryViolations?: IGlossaryViolationDto[];
+  missingGlossaryTranslations?: IMissingGlossaryTranslation[];
+  errors: unknown;
+  isSuccess: boolean;
 }
 
 export interface IGetGlossariesResponse {

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -7,8 +7,10 @@ import ViewDetails from "./view-details";
 
 const saveKey = vi.fn();
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
+  useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
@@ -80,7 +82,9 @@ describe("view-details (extra coverage)", () => {
     renderWithProviders(<ViewDetails keyDetails={keyDetails} />);
     expect(screen.getByText("GlobalTerm")).toBeTruthy();
     expect(screen.getByText("ModuleTerm")).toBeTruthy();
-    expect(screen.getAllByText(/Global & module glossaries/).length).toBeGreaterThan(0);
+    const list = screen.getByRole("list", { name: "Glossaries for this key" });
+    expect(within(list).getByText("Global")).toBeTruthy();
+    expect(within(list).getByText("Module")).toBeTruthy();
   });
 
   it("renders context glossaries alongside tagged glossaries", () => {

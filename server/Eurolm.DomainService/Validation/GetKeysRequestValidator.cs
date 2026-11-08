@@ -13,23 +13,28 @@ namespace Eurolm.DomainService.Validation
         public const int MaxSearchTextLength = 200;
         private const int MaxCursorLength = 2048;
 
-        public GetKeysRequestValidator()
-        {
-            RuleFor(request => request.PageSize)
-                .GreaterThanOrEqualTo(0).WithErrorCode(KeyListErrorCodes.InvalidPageSize)
-                .WithMessage("PageSize cannot be negative.");
+        public GetKeysRequestValidator() : this(validatePaging: true) { }
 
-            RuleFor(request => request.PageNumber)
-                .GreaterThanOrEqualTo(0).WithErrorCode(KeyListErrorCodes.InvalidPageNumber)
-                .WithMessage("PageNumber cannot be negative.");
+        public GetKeysRequestValidator(bool validatePaging)
+        {
+            if (validatePaging)
+            {
+                RuleFor(request => request.PageSize)
+                    .GreaterThanOrEqualTo(0).WithErrorCode(KeyListErrorCodes.InvalidPageSize)
+                    .WithMessage("PageSize cannot be negative.");
+
+                RuleFor(request => request.PageNumber)
+                    .GreaterThanOrEqualTo(0).WithErrorCode(KeyListErrorCodes.InvalidPageNumber)
+                    .WithMessage("PageNumber cannot be negative.");
+
+                RuleFor(request => request.Cursor)
+                    .MaximumLength(MaxCursorLength).WithErrorCode(KeyListErrorCodes.InvalidCursor)
+                    .WithMessage("Cursor is not valid.");
+            }
 
             RuleFor(request => request.SortProperty)
                 .Must(sort => KeyListCursor.ResolveSortField(sort) != null).WithErrorCode(KeyListErrorCodes.InvalidSortProperty)
                 .WithMessage($"SortProperty must be one of: {string.Join(", ", KeyListCursor.SortFields)}.");
-
-            RuleFor(request => request.Cursor)
-                .MaximumLength(MaxCursorLength).WithErrorCode(KeyListErrorCodes.InvalidCursor)
-                .WithMessage("Cursor is not valid.");
 
             RuleFor(request => request.KeySearchText)
                 .MaximumLength(MaxSearchTextLength).WithErrorCode(KeyListErrorCodes.SearchTextTooLong)

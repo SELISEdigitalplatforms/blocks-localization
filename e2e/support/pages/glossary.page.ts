@@ -1,6 +1,8 @@
 import { type Page, type Locator, expect } from "@playwright/test";
 import { expectActionsColumnIsLast } from "../table-helpers";
 
+export type GlossaryTableFilter = "Rule" | "Status" | "Language" | "Type" | "Scope";
+
 export class GlossaryPage {
   readonly page: Page;
 
@@ -19,7 +21,7 @@ export class GlossaryPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.heading = page.getByRole("heading", { name: "Glossary Management" });
+    this.heading = page.getByRole("heading", { name: "Glossary", exact: true });
     this.newGlossaryButton = page.getByRole("button", { name: "New Glossary" });
     this.glossaryDescription = page.getByText("Glossaries help keep");
     this.noGlossariesMessage = page.getByText("No glossaries yet");
@@ -27,7 +29,7 @@ export class GlossaryPage {
     this.addGlossaryDialog = page.getByRole("dialog", { name: "Add Glossary" });
     this.glossaryNameInput = page.getByRole("textbox", { name: "Name *" });
     this.definitionInput = page.getByRole("textbox", { name: "Definition" });
-    this.internalNoteInput = page.getByRole("textbox", { name: "Additional note" });
+    this.internalNoteInput = page.getByRole("textbox", { name: "Internal note" });
     this.editDialog = page.getByRole("dialog", { name: "Edit Glossary" });
     this.deleteDialog = page.getByRole("dialog", { name: "Delete Glossary Item" });
   }
@@ -82,7 +84,7 @@ export class GlossaryPage {
 
   async expectEditorSectionsInOrder() {
     const headings = this.editorSheet.getByRole("heading", { level: 3 });
-    await expect(headings).toHaveText(["Term", "Translations", "Meaning", "Scope"]);
+    await expect(headings).toHaveText(["Glossary", "Translations", "Meaning", "Scope"]);
     await expect(this.editorSheet.getByRole("button", { name: "Internal Note" })).toBeVisible();
   }
 
@@ -176,11 +178,6 @@ export class GlossaryPage {
     await this.variantsInput.press("Enter");
   }
 
-  /** Types the value followed by a comma, which adds it as a chip without Enter. */
-  async addVariantWithComma(value: string) {
-    await this.variantsInput.fill(`${value},`);
-  }
-
   async removeVariant(value: string) {
     await this.editorSheet
       .getByRole("button", { name: `Remove variant ${value}`, exact: true })
@@ -218,12 +215,22 @@ export class GlossaryPage {
     await this.internalNoteInput.fill(text);
   }
 
+  /** The "Discard unsaved changes?" prompt of a dirty editor sheet. */
+  get discardDialog() {
+    return this.page.getByRole("dialog", { name: "Discard unsaved changes?" });
+  }
+
   /**
    * Closes the editor without saving. The sheet focuses the first info icon on open, so its
-   * tooltip takes the first Escape; Cancel closes the sheet directly.
+   * tooltip takes the first Escape; Cancel closes the sheet directly. A dirty sheet asks first:
+   * `discard: true` answers "Discard".
    */
-  async cancelEditor() {
-    await this.editorSheet.getByRole("button", { name: "Cancel" }).click();
+  async cancelEditor(options: { discard?: boolean } = {}) {
+    await this.editorSheet.getByRole("button", { name: "Cancel", exact: true }).click();
+    if (options.discard) {
+      await expect(this.discardDialog).toBeVisible();
+      await this.discardDialog.getByRole("button", { name: "Discard", exact: true }).click();
+    }
     await expect(this.editorSheet).toBeHidden();
   }
 
@@ -231,7 +238,6 @@ export class GlossaryPage {
     await this.editorSheet.getByRole("button", { name: "Save" }).click();
   }
 
-  /** Saves and returns the body of the Glossary/Save request. */
   async saveAndCapturePayload(): Promise<Record<string, unknown>> {
     const requestPromise = this.page.waitForRequest(
       (request) => request.method() === "POST" && /\/Glossary\/Save/.test(request.url()),
@@ -244,12 +250,16 @@ export class GlossaryPage {
    * Creates a glossary whose stored `additionalNote` is exactly `additionalNote`, as another
    * client (extension, CLI) or an older UI would have written it. The term is created through
    * the UI, and its Glossary/Save request body is rewritten in flight, so the app's own
-   * authenticated request stores the fixture.
+   * authenticated request stores the fixture. The structured fields (SPEC7) are dropped, as an
+   * older client never sends them, so the server reads a v1 note as a Track A save (Phase 6 H17).
    */
   async createGlossaryWithStoredNote(name: string, additionalNote: string) {
     const pattern = /\/Glossary\/Save/;
     await this.page.route(pattern, async (route) => {
       const body = route.request().postDataJSON() as Record<string, unknown>;
+      for (const field of ["rule", "caseSensitive", "variants", "translations", "status"]) {
+        delete body[field];
+      }
       await route.continue({
         postData: JSON.stringify({ ...body, context: "", additionalNote }),
       });
@@ -267,7 +277,7 @@ export class GlossaryPage {
   async deleteGlossaryFromList(name: string) {
     await this.searchGlossaries(name);
     await this.openDeleteGlossaryDialog(name);
-    await this.confirmDeleteGlossary();
+    await this.confirmDeleteGlossary(name);
     await expect(
       this.page.getByText("Glossary item deleted successfully.", { exact: true }),
     ).toBeVisible({ timeout: 20_000 });
@@ -319,7 +329,7 @@ export class GlossaryPage {
     await expect(this.page.getByRole("heading", { name: "Details" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Definition" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: "Internal Note" })).toBeVisible();
-    await expect(this.page.getByRole("heading", { name: "Tagged Keys" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: "Keys", exact: true })).toBeVisible();
   }
 
   async clickEditButton() {
@@ -347,6 +357,26 @@ export class GlossaryPage {
       this.page.getByText("Glossary item updated successfully.", { exact: true }),
     ).toBeVisible({ timeout: 20_000 });
     await expect(this.page.getByRole("heading", { name: name })).toBeVisible({ timeout: 15_000 });
+  }
+
+  /** The editor's Alert after a save was rejected because someone else changed the term. */
+  async expectVersionConflict() {
+    await expect(
+      this.editorSheet.getByText(
+        "This glossary was changed by someone else. Reload the latest version and re-apply your changes.",
+        { exact: true },
+      ),
+    ).toBeVisible({ timeout: 20_000 });
+  }
+
+  async reloadLatest() {
+    await this.editorSheet.getByRole("button", { name: "Reload latest" }).click();
+  }
+
+  async expectEditName(name: string) {
+    await expect(this.editDialog.getByRole("textbox", { name: "Name *" })).toHaveValue(name, {
+      timeout: 15_000,
+    });
   }
 
   async goBackToList() {
@@ -385,19 +415,199 @@ export class GlossaryPage {
     await expect(this.deleteDialog).toBeVisible();
   }
 
-  async confirmDeleteGlossary() {
-    await this.deleteDialog.getByRole("button", { name: "Delete" }).click();
+  get deleteGlossaryDialog() {
+    return this.deleteDialog;
+  }
+
+  /** The type-to-confirm field, shown for 50+ keys or when the count is unavailable. */
+  get deleteConfirmInput() {
+    return this.deleteDialog.getByRole("textbox", { name: /^Type ".+" to confirm$/ });
+  }
+
+  get deleteConfirmButton() {
+    return this.deleteDialog.getByRole("button", { name: "Delete", exact: true });
+  }
+
+  /** Waits for the usage count, types the name when the dialog asks for it, then deletes. */
+  async confirmDeleteGlossary(name?: string) {
+    await expect(this.deleteDialog.getByText("Checking usage…")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    if (name && (await this.deleteConfirmInput.isVisible())) {
+      await this.deleteConfirmInput.fill(name);
+    }
+    await this.deleteConfirmButton.click();
+  }
+
+  /** SPEC15 CL01: Usage answered 403, so the dialog can't say how many keys are affected. */
+  async expectDeleteCountUnavailable() {
+    await expect(
+      this.deleteDialog.getByText(
+        "You can't see how many keys use this glossary. Deleting removes it from every key that uses it.",
+        { exact: true },
+      ),
+    ).toBeVisible({ timeout: 15_000 });
+  }
+
+  /**
+   * A missing translation chip shows only the code; "<code> is missing" is in its tooltip and,
+   * for screen readers, in its sr-only text.
+   */
+  async expectMissingTranslationChip(scope: Locator, code: string) {
+    const chip = scope.getByText(`${code} is missing`, { exact: true });
+    await expect(chip).toBeVisible();
+    const visibleText = await chip.evaluate((element) => {
+      const copy = element.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll(".sr-only").forEach((hidden) => hidden.remove());
+      return copy.textContent?.trim() ?? "";
+    });
+    expect(visibleText).toBe(code);
+    await chip.focus();
+    await expect(this.page.getByRole("tooltip").filter({ hasText: `${code} is missing` })).toBeVisible();
+    await chip.blur();
   }
 
   async expectNoTaggedKeys() {
     await expect(
-      this.page.getByText("No keys are tagged with this glossary.", { exact: true }),
+      // The wording depends on the glossary's scope (only tagged, global, or module).
+      this.page.getByText(/^No keys are tagged with this glossary( directly| or belong to its modules)?\.$/),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(this.page.getByText("Failed to load tagged keys.", { exact: true })).toBeHidden();
+    await expect(this.page.getByText("Failed to load keys.", { exact: true })).toBeHidden();
   }
 
   async expectDeleteUsage(text: string | RegExp) {
     await expect(this.deleteDialog.getByText(text)).toBeVisible({ timeout: 15_000 });
+  }
+
+  get statusSelect() {
+    return this.editorSheet.getByRole("combobox", { name: "Status" });
+  }
+
+  async setStatus(status: "Draft" | "Approved" | "Deprecated") {
+    await this.statusSelect.click();
+    await this.page.getByRole("option", { name: status, exact: true }).click();
+    await expect(this.statusSelect).toHaveText(status);
+  }
+
+  /** A glossary table toolbar filter select. */
+  tableFilter(name: GlossaryTableFilter) {
+    return this.page.getByRole("combobox", { name, exact: true });
+  }
+
+  async setTableFilter(name: GlossaryTableFilter, option: string) {
+    await this.tableFilter(name).click();
+    await this.page.getByRole("option", { name: option, exact: true }).click();
+    await expect(this.tableFilter(name)).toHaveText(option);
+  }
+
+  get resetFiltersButton() {
+    return this.page.getByRole("button", { name: "Reset", exact: true });
+  }
+
+  /** Shows or hides a column through the Columns menu (stored in localStorage). */
+  async setColumnVisible(column: string, visible: boolean) {
+    await this.page.getByRole("button", { name: "Columns", exact: true }).click();
+    const item = this.page.getByRole("menuitemcheckbox", { name: column, exact: true });
+    if ((await item.getAttribute("aria-checked")) !== String(visible)) await item.click();
+    await expect(item).toHaveAttribute("aria-checked", String(visible));
+    await this.page.keyboard.press("Escape");
+  }
+
+  columnHeader(name: string) {
+    return this.page.getByRole("columnheader", { name, exact: true });
+  }
+
+  async sortBy(column: "Name" | "Created" | "Last updated") {
+    await this.columnHeader(column).getByRole("button").click();
+  }
+
+  rowCheckbox(name: string) {
+    return this.page.getByRole("checkbox", { name: `Select ${name}`, exact: true });
+  }
+
+  async selectRows(names: string[]) {
+    for (const name of names) await this.rowCheckbox(name).check();
+  }
+
+  /** The bulk toolbar shown while rows are selected. */
+  get bulkToolbar() {
+    return this.page.getByRole("toolbar");
+  }
+
+  bulkAction(
+    name: "Approve" | "Deprecate" | "Tag to module" | "Set whole project" | "Delete",
+  ) {
+    return this.bulkToolbar.getByRole("button", { name, exact: true });
+  }
+
+  /** "Delete N glossaries" from the bulk toolbar. */
+  get bulkDeleteDialog() {
+    return this.page.getByRole("dialog", { name: /^Delete \d+ glossar(y|ies)$/ });
+  }
+
+  get bulkTagDialog() {
+    return this.page.getByRole("dialog", { name: /^Tag \d+ glossar(y|ies) to a module$/ });
+  }
+
+  /** The glossary cards shown below 768 px instead of the table. */
+  get mobileList() {
+    return this.page.getByRole("list", { name: "Glossaries", exact: true });
+  }
+
+  async saveAndAddAnother(): Promise<Record<string, unknown>> {
+    const requestPromise = this.page.waitForRequest(
+      (request) => request.method() === "POST" && /\/Glossary\/Save/.test(request.url()),
+    );
+    await this.editorSheet.getByRole("button", { name: "Save & add another" }).click();
+    return (await requestPromise).postDataJSON() as Record<string, unknown>;
+  }
+
+  suggestTranslationButton(languageName: string) {
+    return this.editorSheet.getByRole("button", { name: `Suggest ${languageName} translation` });
+  }
+
+  get suggestAllButton() {
+    return this.editorSheet.getByRole("button", { name: "Suggest all" });
+  }
+
+  translationField(code: string) {
+    return this.translationInput(code);
+  }
+
+  async setPartOfSpeech(label: string) {
+    await this.editorSheet.getByRole("combobox", { name: "Part of speech" }).click();
+    await this.page.getByRole("option", { name: label, exact: true }).click();
+  }
+
+  async addUsageExample(text: string) {
+    await this.editorSheet.getByRole("button", { name: "Add example" }).click();
+    await this.editorSheet.getByRole("textbox", { name: /^Usage example \d+$/ }).last().fill(text);
+  }
+
+  // --- Details page ---
+
+  get detailsKeySearch() {
+    return this.page.getByRole("textbox", { name: "Search keys" });
+  }
+
+  async setDetailsModuleFilter(moduleName: string) {
+    await this.page.getByRole("combobox", { name: "Module", exact: true }).click();
+    await this.page.getByRole("option", { name: moduleName, exact: true }).click();
+  }
+
+  async showTranslationIn(languageName: string) {
+    await this.page.getByRole("combobox", { name: "Show translation in" }).click();
+    await this.page.getByRole("option", { name: languageName, exact: true }).click();
+  }
+
+  async openDetailsMoreActions() {
+    await this.page.getByRole("button", { name: "More actions" }).click();
+  }
+
+  /** Inline edit of one translation on the details page. */
+  async editDetailsTranslation(languageName: string, value: string) {
+    await this.page.getByRole("button", { name: `Edit ${languageName} translation` }).click();
+    await this.page.getByRole("textbox", { name: `${languageName} translation` }).fill(value);
   }
 
   async expectDuplicateNameWarning(existingName: string) {

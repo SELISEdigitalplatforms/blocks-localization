@@ -1,0 +1,24 @@
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace Eurolm.DomainService.Repositories
+{
+    /// <summary>
+    /// The tenant's one pending violation re-check (coalescing marker). While it exists a job is queued; later
+    /// requests merge their scope into it instead of queueing another. The worker deletes it when the job starts.
+    /// </summary>
+    [BsonIgnoreExtraElements]
+    public class GlossaryRecheckJob
+    {
+        public const string MarkerId = "glossary-recheck";
+
+        [BsonId]
+        public string Id { get; set; } = MarkerId;
+        public DateTime QueuedAt { get; set; }
+        public bool WholeProject { get; set; }
+        public List<string> GlossaryIds { get; set; } = new();
+        /// <summary>Modules the glossaries were scoped to before the change, so their keys are re-checked too.</summary>
+        public List<string> ModuleIds { get; set; } = new();
+        /// <summary>Set when a run failed and put its scope back; the next request takes the marker over and publishes.</summary>
+        public bool Failed { get; set; }
+    }
+}

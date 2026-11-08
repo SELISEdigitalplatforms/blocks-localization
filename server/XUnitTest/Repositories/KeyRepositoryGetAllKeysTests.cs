@@ -171,6 +171,21 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task Resource_search_text_is_escaped_so_a_regex_metacharacter_is_matched_literally()
+        {
+            // Production 500s: an unescaped "(" or ")" here made Mongo reject the pattern.
+            var request = Request();
+            request.ResourceSearchFilters = new[]
+            {
+                new ResourceSearchFilter { Culture = "en-US", SearchText = "a.b(" }
+            };
+
+            await _repo.GetAllKeysAsync(request);
+
+            RenderedFilter().Should().Contain(@"a\\.b\\(");
+        }
+
+        [Fact]
         public async Task A_resource_search_filter_missing_either_half_is_skipped()
         {
             var request = Request();
@@ -380,7 +395,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task A_failed_index_build_is_logged_and_never_thrown()
         {
-            var indexes = new Mock<IMongoIndexManager<Key>>();
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("not authorized"));
@@ -400,7 +415,7 @@ namespace XUnitTest.Repositories
         [Fact]
         public async Task Indexes_are_ensured_once_per_tenant_per_process()
         {
-            var indexes = new Mock<IMongoIndexManager<Key>>();
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
             indexes
                 .Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<string>());
@@ -414,6 +429,29 @@ namespace XUnitTest.Repositories
 
             second.Should().BeSameAs(first);
             indexes.Verify(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task A_failed_index_build_is_retried_on_the_next_call_for_the_tenant()
+        {
+            var indexes = new Mock<IMongoIndexManager<Key>>().WithNoExistingIndexes();
+            indexes
+                .SetupSequence(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("not authorized"))
+                .ReturnsAsync(new List<string>());
+            var collection = new Mock<IMongoCollection<Key>>();
+            collection.Setup(x => x.Indexes).Returns(indexes.Object);
+            var tenant = "retry-" + Guid.NewGuid().ToString("N");
+
+            var failed = KeyIndexInitializer.EnsureStarted(tenant, collection.Object, NullLogger.Instance);
+            await failed.Invoking(t => t).Should().NotThrowAsync();
+            var retried = KeyIndexInitializer.EnsureStarted(tenant, collection.Object, NullLogger.Instance);
+            await retried;
+            var afterSuccess = KeyIndexInitializer.EnsureStarted(tenant, collection.Object, NullLogger.Instance);
+
+            retried.Should().NotBeSameAs(failed);
+            afterSuccess.Should().BeSameAs(retried);
+            indexes.Verify(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<Key>>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]

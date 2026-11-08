@@ -115,7 +115,9 @@ describe("components/language-table-toolbar filters", () => {
   });
 
   it("returns every filter to its default on reset", () => {
-    renderToolbar("?moduleIds=m1&pageNumber=3&createStartDate=2026-01-15T00:00:00.000Z");
+    renderToolbar(
+      "?moduleIds=m1&pageNumber=3&createStartDate=2026-01-15T00:00:00.000Z&glossaryIssues=true",
+    );
 
     fireEvent.click(screen.getByText("do-reset"));
 
@@ -123,6 +125,7 @@ describe("components/language-table-toolbar filters", () => {
       moduleIds: [],
       pageNumber: 0,
       createStartDate: "",
+      glossaryIssues: false,
     });
   });
 });

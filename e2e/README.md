@@ -195,6 +195,19 @@ config section. The key this suite cares about is
 | `E2E_NO_WEBSERVER=1`            | Don't auto-start the app. Required for remote or `:4000` Vite.                                     |
 | `E2E_PAUSE_MS`                  | How long the browser holds after **each** test. Defaults to 10 s headed, 0 headless; `0` disables. |
 | `E2E_SLOWMO`                    | Milliseconds of delay per action, to watch the steps themselves.                                   |
+| `E2E_RESTRICTED_USERNAME` / `_PASSWORD` | Member of the shared project without `key::gets` (SPEC15 CL01). Tests needing it skip when unset. |
+| `E2E_READONLY_USERNAME` / `_PASSWORD`   | Member of the shared project without `glossary::save` (403 cases). Skips when unset.        |
+| `E2E_VISUAL=1`                  | Runs the opt-in evidence specs (screenshots, keyboard walks, axe, table timing).                   |
+| `E2E_DE_REMOTE=1`               | SPEC15 German check uses the seeded dev dictionary instead of a pseudo-German stub.                |
+
+## Glossary evidence runs (SPEC15 §10, §12)
+
+None of these has been run yet; each needs `.env.e2e` and a dev deployment of the branch.
+
+1. Full suite before and after `POST /api/Glossary/Migrate` on the test tenant (EV14): `npm run test`, keep `playwright-report/`.
+2. Evidence (EV15): `E2E_VISUAL=1 npx playwright test tests/04-glossary/glossary-visual.spec.ts tests/04-glossary/glossary-spec4-evidence.spec.ts`; attach the screenshots, the axe JSON and `glossary-table-timing.json`.
+3. API timings (EV16), before (`1d6a785c`) and after, same dev resources: `node scripts/perf/glossary-queries.mjs` and `node scripts/perf/glossary-match.mjs` from the repo root (run without variables for the list of settings). Pass the "before" report as `PERF_BASELINE` to the "after" `glossary-queries` run.
+4. Two-worker re-check (EV17) and the per-tenant migration (EV18) are manual: follow SPEC15 §10 steps 5 and 6 and keep the log excerpts and `Migrate` reports (dry run, then real run).
 
 See `SPEC-multi-env.md` for Dev/Prod derivation rules and create-project flow notes.
 
@@ -219,7 +232,7 @@ e2e/
     01-overview/overview.spec.ts
     02-translations/translations.spec.ts
     03-modules/modules.spec.ts
-    04-glossary/glossary.spec.ts
+    04-glossary/glossary.spec.ts      # also glossary-spec7/8/15, visual and SPEC4 evidence specs
     05-configuration/configuration.spec.ts
     06-extension-guides/extension-guides.spec.ts
     07-wordpress-plugin-guide/wordpress-plugin-guide.spec.ts

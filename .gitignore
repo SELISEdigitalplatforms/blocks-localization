@@ -210,6 +210,7 @@ copilot-instructions.md
 
 # --- markdown policy: only standard docs tracked ---
 *.md
+/output/blocks-localization/*.md
 !README.md
 !LICENSE.md
 !CONTRIBUTING.md

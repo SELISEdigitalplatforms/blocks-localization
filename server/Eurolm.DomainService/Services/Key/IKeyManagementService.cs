@@ -20,17 +20,27 @@ namespace Eurolm.DomainService.Services
         Task<string> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key?> GetAsync(GetKeyRequest request);
         Task<BaseMutationResponse> DeleteAsync(DeleteKeyRequest request);
-        Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request);
+        /// <exception cref="BulkKeyTargetException">The filter-form target is over the cap or no longer has ExpectedCount keys.</exception>
+        /// <exception cref="Repositories.KeyListException">Resolving the filter timed out.</exception>
+        Task<BulkKeyActionResponse> DeleteKeysAsync(DeleteKeysRequest request);
         Task<GetSuggestedGlossariesResponse> GetSuggestedGlossariesAsync(GetSuggestedGlossariesRequest request);
         Task SendTranslateAllEvent(TranslateAllRequest request);
         Task SendTranslateBlocksLanguageKeyEvent(TranslateBlocksLanguageKeyRequest request);
-        Task SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request);
+        /// <exception cref="BulkKeyTargetException">The filter-form target is over the cap or no longer has ExpectedCount keys.</exception>
+        /// <exception cref="Repositories.KeyListException">Resolving the filter timed out.</exception>
+        Task<BulkKeyActionResponse> SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request);
         Task SendUilmImportEvent(UilmImportRequest request);
         Task SendUilmExportEvent(UilmExportRequest request);
         Task SendGenerateUilmFilesEvent(GenerateUilmFilesRequest request);
         Task<bool> ChangeAll(TranslateAllEvent request);
         Task<bool> TranslateBlocksLanguageKey(TranslateBlocksLanguageKeyEvent request);
         Task<bool> TranslateBlocksLanguageKeys(TranslateBlocksLanguageKeysEvent request);
+
+        /// <summary>
+        /// Records one finished batch of a split bulk translate. Returns null while other batches are still
+        /// running, otherwise whether every batch succeeded.
+        /// </summary>
+        Task<bool?> CompleteTranslateBlocksLanguageKeysBatchAsync(TranslateBlocksLanguageKeysEvent request, bool succeeded);
         Task<bool> ImportUilmFile(UilmImportEvent request);
         Task<bool> ExportUilmFile(UilmExportEvent request);
         Task PublishUilmExportNotification(bool response, string fileId, string? messageCoRelationId, string tenantId);

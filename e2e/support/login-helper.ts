@@ -38,8 +38,10 @@ export async function isLoginSurface(page: Page): Promise<boolean> {
   return false
 }
 
-async function fillCredentialsAndSubmit(page: Page) {
-  const { email, password } = e2eCredentials()
+type Credentials = { email: string; password: string }
+
+async function fillCredentialsAndSubmit(page: Page, credentials: Credentials = e2eCredentials()) {
+  const { email, password } = credentials
   const emailField = oidcEmailField(page)
   await emailField.fill(email)
   const passwordField = oidcPasswordField(page)
@@ -48,7 +50,10 @@ async function fillCredentialsAndSubmit(page: Page) {
   await page.getByRole("button", { name: "Login", exact: true }).click()
 }
 
-export async function loginThroughOidc(page: Page, options?: { loginPath?: string }) {
+export async function loginThroughOidc(
+  page: Page,
+  options?: { loginPath?: string; credentials?: Credentials },
+) {
   const base = e2eBaseUrl()
   const loginPath = options?.loginPath ?? `${base}/login`
 
@@ -81,7 +86,7 @@ export async function loginThroughOidc(page: Page, options?: { loginPath?: strin
       }
 
       if (await emailField.isVisible().catch(() => false)) {
-        await fillCredentialsAndSubmit(page)
+        await fillCredentialsAndSubmit(page, options?.credentials)
         await page.waitForURL(/\/app\/console/, { timeout: 45_000 })
         return
       }

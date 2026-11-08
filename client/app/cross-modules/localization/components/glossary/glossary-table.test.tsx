@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
@@ -11,12 +12,17 @@ vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => navigate,
 }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
+}));
+vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
+  default: ({ selected }: { selected: { name: string }[] }) =>
+    selected.length > 0 ? <div>bulk-{selected.map((g) => g.name).join(",")}</div> : null,
 }));
 vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
   default: ({
@@ -168,6 +174,44 @@ describe("components/glossary/glossary-table", () => {
     expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
   });
 
+  it("should open the term on a definition click but not on Enter or Space there", async () => {
+    const user = userEvent.setup();
+    mockGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g1", name: "Acme", context: "ctx", createDate: "2026-01-01" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    const definition = screen.getByRole("button", { name: "ctx" });
+    definition.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(navigate).not.toHaveBeenCalled();
+    await user.click(definition);
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
+  });
+
+  it("should toggle a row's checkbox without opening the term", async () => {
+    const user = userEvent.setup();
+    mockGlossaries.mockReturnValue({
+      data: {
+        items: [{ itemId: "g1", name: "Acme", createDate: "2026-01-01" }],
+        totalCount: 1,
+      },
+      isLoading: false,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    const checkbox = screen.getByRole("checkbox", { name: "Select Acme" });
+    await user.click(checkbox);
+    expect(screen.getByText("bulk-Acme")).toBeTruthy();
+    await user.click(checkbox.parentElement!);
+    expect(navigate).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Acme"));
+    expect(navigate).toHaveBeenCalledWith("/scoped/services/glossary/g1");
+  });
+
   it("should debounce the search input", () => {
     vi.useFakeTimers();
     mockFilterableGlossaries();
@@ -180,13 +224,14 @@ describe("components/glossary/glossary-table", () => {
     expect(mockGlossaries).toHaveBeenCalled();
   });
 
-  it("should open the New Glossary dialog", () => {
+  it("should open the New term sheet (H3)", () => {
     mockGlossaries.mockReturnValue({
       data: { items: [], totalCount: 0 },
       isLoading: false,
     } as never);
     renderWithProviders(<GlossaryTable />);
     expect(screen.queryByText("editor-open")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Glossary" })).toBeTruthy();
     fireEvent.click(screen.getByText("New Glossary"));
     expect(screen.getByText("editor-open")).toBeTruthy();
   });

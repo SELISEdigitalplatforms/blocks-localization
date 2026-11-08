@@ -18,7 +18,8 @@ let keyCountState: { data?: number; isLoading: boolean; refetch: () => void } = 
   refetch: refetchKeyCountMock,
 };
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));

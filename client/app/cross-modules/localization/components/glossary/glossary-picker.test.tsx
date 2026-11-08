@@ -7,12 +7,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui-kits/dialog/
 import { toast } from "@/hooks/use-toast";
 import { renderWithProviders } from "@/test-utils/render";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
-import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
-import GlossaryPicker, { CREATED_NOT_FOUND_MESSAGE, pickCreatedGlossary } from "./glossary-picker";
+import GlossaryPicker, { pickCreatedGlossary } from "./glossary-picker";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
@@ -23,6 +23,7 @@ vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useResolveGlossariesByIds: vi.fn(),
   useSaveGlossary: vi.fn(),
   useGetLanguageModules: vi.fn(),
+  useFetchLatestGlossary: vi.fn(() => vi.fn()),
 }));
 vi.mock("@blocks-localization/services/language-manager.service", () => ({
   languageManagerService: { fetchGlossaries: vi.fn() },
@@ -44,17 +45,17 @@ const glossary = (overrides: Partial<IGlossary>): IGlossary => ({
 const WORKSPACE = glossary({
   itemId: "g1",
   name: "Workspace",
-  additionalNote:
-    GLOSSARY_META_PREFIX +
-    JSON.stringify({
-      rule: "translate",
-      translations: { "de-DE": "Arbeitsbereich", "fr-FR": "Espace", "es-ES": "Espacio" },
-    }),
+  rule: "translate",
+  translations: [
+    { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+    { language: "fr-FR", value: "Espace", forbiddenValues: [] },
+    { language: "es-ES", value: "Espacio", forbiddenValues: [] },
+  ],
 });
 const SELISE = glossary({
   itemId: "g2",
   name: "SELISE",
-  additionalNote: GLOSSARY_META_PREFIX + JSON.stringify({ rule: "keep" }),
+  rule: "keep",
 });
 const FUTURE = glossary({
   itemId: "g3",
@@ -97,7 +98,7 @@ const Harness = ({ initial = [] as string[], known = [] as IGlossary[] }) => {
 
 const openPicker = () => fireEvent.click(screen.getByRole("combobox"));
 const typeQuery = (value: string) =>
-  fireEvent.change(screen.getByPlaceholderText("Search glossary..."), { target: { value } });
+  fireEvent.change(screen.getByPlaceholderText("Search glossaries…"), { target: { value } });
 
 describe("pickCreatedGlossary", () => {
   it("picks the exact, case-sensitive name; the latest createDate among several (C19)", () => {
@@ -128,15 +129,12 @@ describe("GlossaryPicker", () => {
     saveGlossaryAsync.mockResolvedValue({ success: true });
   });
 
-  it("shows the name, rule and up to 3 translation chips per row (H7, C16)", () => {
+  it("shows only the name and rule per row (H7, C16)", () => {
     renderWithProviders(<Harness />);
     openPicker();
     const workspace = screen.getByRole("option", { name: /Workspace/ });
     expect(within(workspace).getByText("Translate")).toBeTruthy();
-    expect(within(workspace).getByText("de-DE")).toBeTruthy();
-    expect(within(workspace).getByText("es-ES")).toBeTruthy();
-    expect(within(workspace).queryByText("it-IT missing")).toBeNull();
-    expect(within(workspace).getByText("+1")).toBeTruthy();
+    expect(within(workspace).queryByText("de-DE")).toBeNull();
     expect(within(screen.getByRole("option", { name: /SELISE/ })).getByText("Keep")).toBeTruthy();
     expect(within(screen.getByRole("option", { name: /Future/ })).getByText("—")).toBeTruthy();
   });
@@ -147,7 +145,6 @@ describe("GlossaryPicker", () => {
     await user.click(screen.getByRole("combobox"));
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onChangeSpy).toHaveBeenLastCalledWith(["g2"]);
-    // Backspace in the empty search keeps the chips.
     await user.keyboard("{Backspace}");
     expect(screen.getByRole("button", { name: "Remove SELISE" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remove SELISE" }));
@@ -239,7 +236,6 @@ describe("GlossaryPicker", () => {
         searchText: "Onboardng",
       });
       expect(screen.getByRole("button", { name: "Remove Onboardng" })).toBeTruthy();
-      // The tagging dialog stays open.
       expect(screen.getByText("Tag Glossary")).toBeTruthy();
     });
 
@@ -250,7 +246,9 @@ describe("GlossaryPicker", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       await waitFor(() =>
         expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({ description: CREATED_NOT_FOUND_MESSAGE }),
+          expect.objectContaining({
+            description: "Glossary created, but it couldn't be selected. Search for it.",
+          }),
         ),
       );
       expect(onChangeSpy).not.toHaveBeenCalled();
@@ -292,7 +290,7 @@ describe("GlossaryPicker", () => {
       expect(screen.getByText("Tag Glossary")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Remove Workspace" })).toBeTruthy();
       await waitFor(() =>
-        expect(document.activeElement).toBe(screen.getByPlaceholderText("Search glossary...")),
+        expect(document.activeElement).toBe(screen.getByPlaceholderText("Search glossaries…")),
       );
     });
   });

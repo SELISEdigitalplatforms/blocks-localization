@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { isValid as isValidDate, isBefore } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
@@ -18,23 +19,27 @@ export const formatDate = (date: Date, withoutTime?: boolean): string => {
 
 export const formatFullDate = (date: Date, withoutTime?: boolean): string => {
   const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_JAN"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_FEB"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_MAR"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_APR"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_MAY"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_JUN"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_JUL"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_AUG"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_SEP"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_OCT"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_NOV"),
+    tStatic(LOCALIZATION_SHARED_MODULE, "DATE.MONTH_DEC"),
   ];
-  const dateStr = `${monthNames[date.getMonth()]} ${pad(date.getDate())}, ${date.getFullYear()}`;
+  const dateStr = tStatic(LOCALIZATION_SHARED_MODULE, "DATE.FULL_DATE", {
+    month: monthNames[date.getMonth()],
+    day: pad(date.getDate()),
+    year: date.getFullYear(),
+  });
   const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   if (withoutTime) return dateStr;
-  return `${dateStr} at ${timeStr}`;
+  return tStatic(LOCALIZATION_SHARED_MODULE, "DATE.DATE_AT_TIME", { date: dateStr, time: timeStr });
 };
 
 export function parseDateString(dateString: string): Date {
@@ -48,6 +53,8 @@ export function compareDates(dateStringA: string, dateStringB: string): number {
 }
 
 import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
+
+const LOCALIZATION_SHARED_MODULE = "localization.shared";
 export {
   BREADCRUMB_CUSTOM_TITLES,
   BREADCRUMB_SKIP_PATHS,

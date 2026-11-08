@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "@/components/ui-kits/dialog/dialog";
@@ -220,6 +221,77 @@ describe("components/modals/auto-translate", () => {
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(translateAllAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("SPEC15 CL04 — the dialog closes only after the outcome", () => {
+    const Host = ({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) => {
+      const [open, setOpen] = useState(true);
+      const change = (value: boolean) => {
+        onOpenChange?.(value);
+        setOpen(value);
+      };
+      return (
+        <Dialog open={open} onOpenChange={change}>
+          {open && <AutoTranslate onClose={() => change(false)} />}
+        </Dialog>
+      );
+    };
+
+    it("stays open while sending, then closes with the processing toast (H24)", async () => {
+      let resolve: (value: unknown) => void = () => {};
+      translateAllAsync.mockImplementation(() => new Promise((r) => (resolve = r)));
+      render(<Host />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Yes" }));
+      expect(screen.getByText("Auto-translate all keys")).toBeTruthy();
+
+      resolve({ isSuccess: true });
+      await waitFor(() => expect(screen.queryByText("Auto-translate all keys")).toBeNull());
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "success", title: "Processing Translation" }),
+      );
+    });
+
+    it("stays open with Yes enabled again after a failure (C28)", async () => {
+      translateAllAsync.mockResolvedValue({ isSuccess: false, errors: { e: "Failed" } });
+      render(<Host />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Yes" }));
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
+      );
+      expect(screen.getByText("Auto-translate all keys")).toBeTruthy();
+      expect((screen.getByRole("button", { name: "Yes" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+
+    it("sends one request on a double click (C28)", async () => {
+      translateAllAsync.mockImplementation(() => new Promise(() => {}));
+      render(<Host />);
+
+      const yes = screen.getByRole("button", { name: "Yes" });
+      fireEvent.click(yes);
+      fireEvent.click(yes);
+      expect(translateAllAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("blocks Escape while sending and shows a spinner", () => {
+      vi.mocked(useTranslateAll).mockReturnValue({
+        isPending: true,
+        mutateAsync: translateAllAsync,
+      } as never);
+      const onOpenChange = vi.fn();
+      render(<Host onOpenChange={onOpenChange} />);
+
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(screen.getByText("Auto-translate all keys")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Yes" }).querySelector(".animate-spin")).toBeTruthy();
+      expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
     });
   });
 });

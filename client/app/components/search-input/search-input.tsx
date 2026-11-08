@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Input } from "@/components/ui-kits/input/input";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 interface SearchInputProps {
   // eslint-disable-next-line no-unused-vars
@@ -17,13 +18,14 @@ interface SearchInputProps {
 
 export const SearchInput: React.FC<SearchInputProps> = ({
   onSearch,
-  placeholder = "Search...",
+  placeholder,
   value,
   className = "",
   toggleable = false,
   isVisible,
   setIsVisible,
 }) => {
+  const { t } = useT("localization.shared");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     <div className="relative">
       <Input
         ref={inputRef}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("SEARCH_INPUT.PLACEHOLDER")}
         value={value}
         onChange={handleChange}
         className={`pr-8 ${className}`}

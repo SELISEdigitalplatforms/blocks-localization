@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, type ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -49,11 +49,13 @@ import {
 } from "@/components/ui-kits/dropdown-menu/dropdown-menu";
 import GptPrompt from "@blocks-localization/components/modals/gpt-prompt/gpt-prompt";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { toast } from "@/hooks/use-toast";
 import { shortGuidGenerator } from "@/components/create-project/utils";
 import { useParams } from "react-router";
 
 const KeyDetails = () => {
+  const { t } = useT("localization.keys");
   const { keyId } = useParams<{ keyId: string }>();
   const id = keyId ?? "";
   const { data: blocksLanguageKeyData } = useGetBlocksLanguageKeyById(id);
@@ -92,63 +94,69 @@ const KeyDetails = () => {
     isLoading: boolean;
   };
 
-  function getDescription(logFrom: string, userName: string): string {
-    switch (logFrom) {
-      case "TranslateAll":
-        return `Updated by translate all`;
-      case "TranslateKey":
-        return `Auto-translated by ${userName}`;
-      case "KeyController.Save":
-        return `Updated manually by ${userName}.`;
-      case "UilmImport.Update":
-        return `Updated by import by ${userName}.`;
-      case "UilmImport.Insert":
-        return `Inserted by import by ${userName}.`;
-      case "KeyController.Delete":
-        return `Key deleted by ${userName}.`;
-      case "KeyController.Create":
-        return `Key created by ${userName}.`;
-      case "KeyController.BulkMove":
-        return `Moved to another module by ${userName}.`;
-      case "Rollback":
-        return `Translate rolled back by ${userName}.`;
-      case "Published":
-        return `Key has been published by ${userName}.`;
-      case "PublishFailed":
-        return `Key failed to publish.`;
-      case "EnvironmentDataMigration":
-        return `Updated by environment data migration by ${userName}.`;
-      default:
-        return `A translation update action occurred.`;
-    }
-  }
+  const getDescription = useCallback(
+    (logFrom: string, userName: string): string => {
+      switch (logFrom) {
+        case "TranslateAll":
+          return t("KEY_DETAILS.LOG_TRANSLATE_ALL");
+        case "TranslateKey":
+          return t("KEY_DETAILS.LOG_TRANSLATE_KEY", { userName });
+        case "KeyController.Save":
+          return t("KEY_DETAILS.LOG_SAVE", { userName });
+        case "UilmImport.Update":
+          return t("KEY_DETAILS.LOG_IMPORT_UPDATE", { userName });
+        case "UilmImport.Insert":
+          return t("KEY_DETAILS.LOG_IMPORT_INSERT", { userName });
+        case "KeyController.Delete":
+          return t("KEY_DETAILS.LOG_DELETE", { userName });
+        case "KeyController.Create":
+          return t("KEY_DETAILS.LOG_CREATE", { userName });
+        case "KeyController.BulkMove":
+          return t("KEY_DETAILS.LOG_BULK_MOVE", { userName });
+        case "Rollback":
+          return t("KEY_DETAILS.LOG_ROLLBACK", { userName });
+        case "Published":
+          return t("KEY_DETAILS.LOG_PUBLISHED", { userName });
+        case "PublishFailed":
+          return t("KEY_DETAILS.LOG_PUBLISH_FAILED");
+        case "EnvironmentDataMigration":
+          return t("KEY_DETAILS.LOG_MIGRATION", { userName });
+        default:
+          return t("KEY_DETAILS.LOG_DEFAULT");
+      }
+    },
+    [t],
+  );
 
-  const mapTimelineEvents = useCallback((response: IGetTimelineResponse): TimelineEvents[] => {
-    if (!response || !response.timelines) return [];
+  const mapTimelineEvents = useCallback(
+    (response: IGetTimelineResponse): TimelineEvents[] => {
+      if (!response || !response.timelines) return [];
 
-    return response.timelines.map((e) => {
-      const dateObj = new Date(e.createDate);
+      return response.timelines.map((e) => {
+        const dateObj = new Date(e.createDate);
 
-      return {
-        id: e.itemId,
-        date: dateObj.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        time: dateObj.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        description: getDescription(e.logFrom, e.userName),
-        previousData: e.previousData,
-        currentData: e.currentData,
-        logFrom: e.logFrom,
-        userId: e.userId,
-      };
-    });
-  }, []);
+        return {
+          id: e.itemId,
+          date: dateObj.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+          time: dateObj.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          description: getDescription(e.logFrom, e.userName),
+          previousData: e.previousData,
+          currentData: e.currentData,
+          logFrom: e.logFrom,
+          userId: e.userId,
+        };
+      });
+    },
+    [getDescription],
+  );
 
   useEffect(() => {
     if (id) {
@@ -182,21 +190,21 @@ const KeyDetails = () => {
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Processing Translation",
-          description: "Key translation is in progress.",
+          title: t("KEY_DETAILS.PROCESSING_TITLE"),
+          description: t("KEY_DETAILS.PROCESSING_DESCRIPTION"),
         });
         setAutoTranslateModalOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("common:ERROR"),
           description: JSON.stringify(res?.errors),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: JSON.stringify(error),
       });
     }
@@ -235,6 +243,19 @@ const KeyDetails = () => {
     );
   }
 
+  let timelineContent: ReactNode;
+  if (isLoading) {
+    timelineContent = (
+      <div className="py-10 text-sm text-muted-foreground">{t("KEY_DETAILS.LOADING_TIMELINE")}</div>
+    );
+  } else if (events.length === 0) {
+    timelineContent = (
+      <div className="py-10 text-sm text-muted-foreground">{t("KEY_DETAILS.NO_CHANGES")}</div>
+    );
+  } else {
+    timelineContent = <Timeline events={events} />;
+  }
+
   return (
     <div>
       <div className="hidden md:flex">
@@ -245,10 +266,10 @@ const KeyDetails = () => {
         <div className="mb-5 flex justify-between text-base">
           <TabsList className="h-[42px] bg-blocks-primary-shades-300">
             <TabsTrigger onClick={() => setTabId("details")} value="details" className="h-8">
-              Details
+              {t("KEY_DETAILS.TAB_DETAILS")}
             </TabsTrigger>
             <TabsTrigger onClick={() => setTabId("history")} value="history" className="h-8">
-              History
+              {t("KEY_DETAILS.TAB_HISTORY")}
             </TabsTrigger>
           </TabsList>
           {tabId === "details" ? (
@@ -270,7 +291,9 @@ const KeyDetails = () => {
                       }}
                     >
                       <Wand className="h-3.5 w-3.5" />
-                      <p className="hover gap-2 border-none pl-0">Auto-translate</p>
+                      <p className="hover gap-2 border-none pl-0">
+                        {t("KEY_DETAILS.AUTO_TRANSLATE")}
+                      </p>
                     </DropdownMenuRadioItem>
                     {/* <DropdownMenuRadioItem
                         value="autoTranslate"
@@ -296,15 +319,15 @@ const KeyDetails = () => {
               <Dialog open={autoTranslateModalOpen} onOpenChange={setAutoTranslateModalOpen}>
                 <DialogContent>
                   <DialogHeader className="mb-4">
-                    <DialogTitle>Auto-translate this key?</DialogTitle>
+                    <DialogTitle>{t("KEY_DETAILS.AUTO_TRANSLATE_TITLE")}</DialogTitle>
                     <Label className="mt-[12px]! font-normal text-medium-emphasis">
-                      Are you sure you want to automatically translate this key?
+                      {t("KEY_DETAILS.AUTO_TRANSLATE_CONFIRM")}
                     </Label>
                   </DialogHeader>
                   <DialogFooter className="mt-6">
                     <DialogTrigger asChild>
                       <Button disabled={isTranslating} variant="secondary" className="min-w-[80px]">
-                        Cancel
+                        {t("common:CANCEL")}
                       </Button>
                     </DialogTrigger>
                     <DialogTrigger asChild>
@@ -313,7 +336,7 @@ const KeyDetails = () => {
                         className="min-w-[80px]"
                         onClick={handleTranslate}
                       >
-                        Yes
+                        {t("common:YES")}
                       </Button>
                     </DialogTrigger>
                   </DialogFooter>
@@ -334,7 +357,7 @@ const KeyDetails = () => {
                   <Button size="default" variant="outline" className="gap-2">
                     <Trash className="h-4 w-4 text-error" />
                     <span className="sr-only text-error sm:not-sr-only sm:whitespace-nowrap">
-                      Delete
+                      {t("common:DELETE")}
                     </span>
                   </Button>
                 </DialogTrigger>
@@ -364,22 +387,14 @@ const KeyDetails = () => {
           <Card className="mt-6 h-min rounded-sm shadow-none">
             {/* <ComingSoonPage message="Coming Soon" /> */}
             <CardHeader>
-              <CardTitle className="text-xl">Activity</CardTitle>
-              <CardDescription>View language value change timeline.</CardDescription>
+              <CardTitle className="text-xl">{t("KEY_DETAILS.ACTIVITY")}</CardTitle>
+              <CardDescription>{t("KEY_DETAILS.ACTIVITY_DESCRIPTION")}</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               {/* Scrollable timeline area */}
               <ScrollArea className="h-[calc(100vh-420px)] pr-2" ref={scrollRef as never}>
-                {isLoading ? (
-                  <div className="py-10 text-sm text-muted-foreground">Loading timeline…</div>
-                ) : events.length === 0 ? (
-                  <div className="py-10 text-sm text-muted-foreground">
-                    No changes found for this page.
-                  </div>
-                ) : (
-                  <Timeline events={events} />
-                )}
+                {timelineContent}
               </ScrollArea>
 
               {/* Pagination */}
