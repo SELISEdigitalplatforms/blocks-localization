@@ -20,6 +20,20 @@ namespace Eurolm.DomainService.Services
         private static readonly TimeSpan FailureRetryDelay = TimeSpan.FromSeconds(5);
         private const int MaxFailureRetries = 3;
 
+        /// <summary>Named HttpClient for Azure OpenAI; see <see cref="AssistantServiceRegistration"/>.</summary>
+        public const string HttpClientName = "AzureOpenAI";
+
+        /// <summary>Configuration key: AI suggestions this process runs at once (default 8, 1 to 64).</summary>
+        public const string MaxConcurrencyKey = "TranslationMaxConcurrency";
+        public const int DefaultMaxConcurrency = 8;
+
+        /// <summary>Configuration key: seconds one AI call may take before it is cancelled and retried (default 10, 1 to 30).</summary>
+        public const string AttemptTimeoutKey = "TranslationAttemptTimeoutSeconds";
+        public static readonly TimeSpan DefaultAttemptTimeLimit = TimeSpan.FromSeconds(10);
+
+        /// <summary>Longest wait taken from a 429 Retry-After, for the retry and for the pause of new suggestions.</summary>
+        public static readonly TimeSpan MaxThrottleWait = TimeSpan.FromSeconds(20);
+
         private readonly ILogger<AssistantService> _logger;
         private readonly IConfiguration _configuration;
         private readonly string _chatGptTemperature;
@@ -28,6 +42,12 @@ namespace Eurolm.DomainService.Services
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IGlossaryMatcherCache? _matcherCache;
         private readonly TimeProvider _timeProvider;
+        private readonly SemaphoreSlim _gate;
+        private readonly TimeSpan _attemptTimeLimit;
+        private long _throttledUntilUtcTicks;
+
+        public int MaxConcurrency { get; }
+        public TimeSpan AttemptTimeLimit => _attemptTimeLimit;
         public AssistantService(
             ILogger<AssistantService> logger,
             IConfiguration configuration,
@@ -46,6 +66,9 @@ namespace Eurolm.DomainService.Services
             _glossaryRepository = glossaryRepository;
             _matcherCache = matcherCache;
             _timeProvider = timeProvider ?? TimeProvider.System;
+            MaxConcurrency = ReadInt(_configuration?[MaxConcurrencyKey], DefaultMaxConcurrency, 1, 64);
+            _attemptTimeLimit = TimeSpan.FromSeconds(ReadInt(_configuration?[AttemptTimeoutKey], (int)DefaultAttemptTimeLimit.TotalSeconds, 1, 30));
+            _gate = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
         }
 
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)
@@ -56,17 +79,56 @@ namespace Eurolm.DomainService.Services
                 return new SuggestionResult();
             }
 
-            using var budget = new SuggestionBudget(_timeProvider);
+            // Callers may start many suggestions at once (Translate All); the gate caps the calls in flight
+            // across them. The time budget starts only once a slot is held, so queueing never uses it up.
+            await _gate.WaitAsync();
             try
             {
-                return await SuggestTranslation(query, budget);
+                await WaitWhileThrottledAsync();
+
+                using var budget = new SuggestionBudget(_timeProvider);
+                try
+                {
+                    return await SuggestTranslation(query, budget);
+                }
+                finally
+                {
+                    if (budget.Stopped)
+                        _logger.LogWarning("SuggestTranslation: stopped after {CallCount} AI calls in {ElapsedMs} ms (limit {LimitMs} ms)",
+                            budget.CallCount, (long)budget.Elapsed.TotalMilliseconds, (long)SuggestionTimeLimit.TotalMilliseconds);
+                }
             }
             finally
             {
-                if (budget.Stopped)
-                    _logger.LogWarning("SuggestTranslation: stopped after {CallCount} AI calls in {ElapsedMs} ms (limit {LimitMs} ms)",
-                        budget.CallCount, (long)budget.Elapsed.TotalMilliseconds, (long)SuggestionTimeLimit.TotalMilliseconds);
+                _gate.Release();
             }
+        }
+
+        private static int ReadInt(string? value, int fallback, int min, int max) =>
+            int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+                ? Math.Clamp(parsed, min, max)
+                : fallback;
+
+        /// <summary>After a 429, new suggestions wait out the Retry-After instead of adding to the throttling.</summary>
+        private async Task WaitWhileThrottledAsync()
+        {
+            var until = Interlocked.Read(ref _throttledUntilUtcTicks);
+            if (until == 0) return;
+            var wait = new DateTimeOffset(until, TimeSpan.Zero) - _timeProvider.GetUtcNow();
+            if (wait > TimeSpan.Zero)
+                await Delay(wait, CancellationToken.None);
+        }
+
+        private void NoteThrottled(TimeSpan retryAfter)
+        {
+            var wait = retryAfter > MaxThrottleWait ? MaxThrottleWait : retryAfter;
+            var until = (_timeProvider.GetUtcNow() + wait).UtcTicks;
+            long current;
+            do
+            {
+                current = Interlocked.Read(ref _throttledUntilUtcTicks);
+                if (current >= until) return;
+            } while (Interlocked.CompareExchange(ref _throttledUntilUtcTicks, until, current) != current);
         }
 
         private async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query, SuggestionBudget budget)
@@ -200,17 +262,19 @@ namespace Eurolm.DomainService.Services
             if (!budget.TryStartCall())
                 return null;
 
-            var aiText = await CallAiAsync(aiCompletionRequest, budget);
+            var call = await CallAiAsync(aiCompletionRequest, budget);
+            var aiText = call.Text;
 
-            // AiCompletion returns null on failure (exception or non-200). A 200 with empty content is the
-            // model's answer, and asking again gets the same answer, so only null is retried.
+            // AiCompletion returns null on failure (exception, non-200 or the per-call time limit). A 200 with
+            // empty content is the model's answer, and asking again gets the same answer, so only null is retried.
             var retryCount = 0;
             while (aiText == null && retryCount < MaxFailureRetries)
             {
-                if (!await DelayAsync(FailureRetryDelay, budget))
+                if (!await DelayAsync(RetryDelay(call.RetryAfter), budget))
                     return null;
 
-                aiText = await CallAiAsync(aiCompletionRequest, budget);
+                call = await CallAiAsync(aiCompletionRequest, budget);
+                aiText = call.Text;
                 retryCount++;
             }
             if (aiText == null)
@@ -236,18 +300,41 @@ namespace Eurolm.DomainService.Services
             return output;
         }
 
-        private async Task<string?> CallAiAsync(AiCompletionRequest aiCompletionRequest, SuggestionBudget budget)
+        /// <summary>The failure retry waits 5 s, or the 429 Retry-After when longer (at most <see cref="MaxThrottleWait"/>).</summary>
+        private static TimeSpan RetryDelay(TimeSpan? retryAfter) =>
+            retryAfter is { } wait && wait > FailureRetryDelay
+                ? (wait > MaxThrottleWait ? MaxThrottleWait : wait)
+                : FailureRetryDelay;
+
+        private readonly record struct AiCallResult(string? Text, TimeSpan? RetryAfter);
+
+        /// <summary>
+        /// One AI call, cancelled at the per-call limit (a hung connection then fails fast and is retried
+        /// instead of using up the whole suggestion budget) or at the suggestion deadline.
+        /// </summary>
+        private async Task<AiCallResult> CallAiAsync(AiCompletionRequest template, SuggestionBudget budget)
         {
             if (budget.Expired)
-                return null;
+                return default;
+
+            using var attemptLimit = new CancellationTokenSource(_attemptTimeLimit, _timeProvider);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(budget.Token, attemptLimit.Token);
+            var request = new AiCompletionRequest(template.Message, template.Temperature) { CancellationToken = linked.Token };
             try
             {
-                return await AiCompletion(aiCompletionRequest).WaitAsync(budget.Token);
+                var text = await AiCompletion(request).WaitAsync(linked.Token);
+                return new AiCallResult(text, request.RetryAfter);
             }
             catch (OperationCanceledException) when (budget.Token.IsCancellationRequested)
             {
                 budget.Stop();
-                return null;
+                return default;
+            }
+            catch (OperationCanceledException) when (attemptLimit.Token.IsCancellationRequested)
+            {
+                _logger.LogWarning("SuggestTranslation: an AI call got no answer within {AttemptLimitMs} ms; cancelled and retried",
+                    (long)_attemptTimeLimit.TotalMilliseconds);
+                return default;
             }
         }
 
@@ -459,6 +546,18 @@ namespace Eurolm.DomainService.Services
                     return responeMessage;
                 }
 
+                if (httpResponse?.HttpStatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    request.RetryAfter = httpResponse.RetryAfter;
+                    NoteThrottled(httpResponse.RetryAfter ?? FailureRetryDelay);
+                    _logger.LogWarning("AiCompletion: Azure OpenAI throttled the request (429); Retry-After {RetryAfterMs} ms",
+                        (long?)httpResponse.RetryAfter?.TotalMilliseconds);
+                }
+
+            }
+            catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
+            {
+                // Cancelled by the per-call or per-suggestion time limit: CallAiAsync logs that once, with no stack trace.
             }
             catch (Exception ex)
             {
@@ -621,6 +720,7 @@ namespace Eurolm.DomainService.Services
                 requestResponse = await _httpClient.SendAsync(httpRequestMessage, cancellationToken);
 
                 response.HttpStatusCode = requestResponse.StatusCode;
+                response.RetryAfter = ReadRetryAfter(requestResponse, _timeProvider.GetUtcNow());
                 response.ResponseData = await requestResponse.Content.ReadAsStringAsync(cancellationToken);
 
                 _logger.LogInformation("Completed processing the API request. MethodType: {MethodType}, EndpointHost: {EndpointHost}, HttpStatusCode: {HttpStatusCode}",
@@ -634,6 +734,23 @@ namespace Eurolm.DomainService.Services
             }
 
             return response;
+        }
+
+        /// <summary>Azure's <c>retry-after-ms</c>, else the standard Retry-After (seconds or a date); null when absent.</summary>
+        public static TimeSpan? ReadRetryAfter(HttpResponseMessage response, DateTimeOffset now)
+        {
+            if (response.Headers.TryGetValues("retry-after-ms", out var values) &&
+                double.TryParse(values.FirstOrDefault(), NumberStyles.Float, CultureInfo.InvariantCulture, out var ms) && ms > 0)
+            {
+                return TimeSpan.FromMilliseconds(ms);
+            }
+
+            var retryAfter = response.Headers.RetryAfter;
+            if (retryAfter?.Delta is { } delta && delta > TimeSpan.Zero)
+                return delta;
+            if (retryAfter?.Date is { } date && date > now)
+                return date - now;
+            return null;
         }
 
         public static void ApplyApiKeyHeader(HttpRequestMessage httpRequestMessage, string secret)

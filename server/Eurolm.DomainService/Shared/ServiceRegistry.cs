@@ -51,7 +51,7 @@ namespace Eurolm.DomainService.Shared
 
             services.AddTransient<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>();
 
-            services.AddSingleton<IAssistantService, AssistantService>();
+            services.AddAssistantService();
 
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IHttpHelperServices, HttpHelperServices>();

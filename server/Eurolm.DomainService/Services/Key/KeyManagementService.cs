@@ -837,6 +837,7 @@ namespace Eurolm.DomainService.Services
 
                 var uilmResourceKeyList = new List<BlocksLanguageKey>();
                 var originalResourceKeys = new Dictionary<string, BlocksLanguageKey>();
+                var keysToTranslate = new List<(TranslateAllEvent, BlocksLanguageKey)>();
 
                 foreach (var keyId in request.KeyIds)
                 {
@@ -865,8 +866,10 @@ namespace Eurolm.DomainService.Services
                         ModuleId = resourceKey.ModuleId
                     };
 
-                    await ProcessResourceKey(translateAllEvent, resourceKey, languageSetting, uilmResourceKeyList);
+                    keysToTranslate.Add((translateAllEvent, resourceKey));
                 }
+
+                await ProcessResourceKeysAsync(keysToTranslate, languageSetting, uilmResourceKeyList);
 
                 if (uilmResourceKeyList.Any())
                 {
@@ -913,45 +916,95 @@ namespace Eurolm.DomainService.Services
         public async Task<List<BlocksLanguageKey>> ProcessChangeAll(TranslateAllEvent request, IQueryable<BlocksLanguageKey> dbResourceKeys, List<Language> languageSetting)
         {
             var uilmResourceKeyList = new List<BlocksLanguageKey>();
-            foreach (var resourceKey in dbResourceKeys)
-            {
-                await ProcessResourceKey(request, resourceKey, languageSetting, uilmResourceKeyList);
-            }
+            await ProcessResourceKeysAsync(dbResourceKeys.AsEnumerable().Select(key => (request, key)).ToList(), languageSetting, uilmResourceKeyList);
             return uilmResourceKeyList;
         }
 
         public async Task ProcessResourceKey(TranslateAllEvent request, BlocksLanguageKey resourceKey, List<Language> languageSetting, List<BlocksLanguageKey> uilmResourceKeyList)
         {
+            await ProcessResourceKeysAsync(new List<(TranslateAllEvent, BlocksLanguageKey)> { (request, resourceKey) }, languageSetting, uilmResourceKeyList);
+        }
+
+        /// <summary>What translating one key needs: worked out before any AI call, applied after all of them.</summary>
+        private sealed class KeyTranslationPlan
+        {
+            public required TranslateAllEvent Request { get; init; }
+            public required BlocksLanguageKey Key { get; init; }
+            public List<Resource>? Resources { get; init; }
+            public Resource? DefaultResource { get; init; }
+            public List<BlocksLanguageKey> ReservedKeywordKeys { get; } = new();
+            public List<Resource> MissingResources { get; init; } = new();
+        }
+
+        private readonly record struct MissingResourceTranslation(bool Translated, SuggestionResult? Suggestion);
+
+        /// <summary>
+        /// Translates the missing resources of several keys. All the AI calls are started together and the
+        /// assistant caps how many run at once; the answers are then applied one at a time, in key and
+        /// language order, exactly as the one-call-at-a-time loop applied them. Only the waiting overlaps.
+        /// </summary>
+        private async Task ProcessResourceKeysAsync(IReadOnlyList<(TranslateAllEvent Request, BlocksLanguageKey Key)> items,
+            List<Language> languageSetting, List<BlocksLanguageKey> uilmResourceKeyList)
+        {
+            var plans = items.Select(item => PlanResourceKey(item.Request, item.Key, languageSetting)).ToList();
+
+            var translations = await Task.WhenAll(plans.SelectMany(plan => plan.MissingResources.Select(missing =>
+                FetchMissingResourceAsync(plan.Request, plan.Key, plan.DefaultResource, missing, languageSetting))));
+
+            var next = 0;
+            foreach (var plan in plans)
+            {
+                uilmResourceKeyList.AddRange(plan.ReservedKeywordKeys);
+                if (plan.MissingResources.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var missingResource in plan.MissingResources)
+                {
+                    var translation = translations[next++];
+                    if (translation.Translated)
+                    {
+                        ApplyMissingResource(plan.Key, missingResource, plan.Resources!, translation.Suggestion);
+                    }
+                }
+
+                plan.Key.Resources = plan.Resources!.ToArray();
+                plan.Key.LastUpdateDate = DateTime.Now;
+                plan.Key.ItemId = string.IsNullOrWhiteSpace(plan.Key.ItemId) ? Guid.NewGuid().ToString() : plan.Key.ItemId;
+
+                uilmResourceKeyList.Add(plan.Key);
+            }
+        }
+
+        private KeyTranslationPlan PlanResourceKey(TranslateAllEvent request, BlocksLanguageKey resourceKey, List<Language> languageSetting)
+        {
             var keyName = resourceKey.KeyName;
             var resources = resourceKey.Resources?.ToList();
+            var reservedKeywordKeys = new List<BlocksLanguageKey>();
 
-            EmptyResourcesThatHasReservedKeywords(uilmResourceKeyList, resourceKey, resources, request.DefaultLanguage);
+            EmptyResourcesThatHasReservedKeywords(reservedKeywordKeys, resourceKey, resources, request.DefaultLanguage);
 
             var defaultResource = resources?.FirstOrDefault(x => x.Culture == request.DefaultLanguage);
 
             // No default-language text means nothing to translate: the AI would answer "" for every language.
-            if (ShouldSkipResource(defaultResource, keyName, request))
+            var missingResources = new List<Resource>();
+            if (!ShouldSkipResource(defaultResource, keyName, request))
             {
-                return;
+                missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage);
+                CompareAndAddResources(missingResources, resources, languageSetting);
             }
 
-            List<Resource> missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage);
-
-            CompareAndAddResources(missingResources, resources, languageSetting);
-
-            if (missingResources.Any())
+            var plan = new KeyTranslationPlan
             {
-                foreach (var missingResource in missingResources)
-                {
-                    await ProcessMissingResource(request, resourceKey, defaultResource, missingResource, resources, languageSetting);
-                }
-
-                resourceKey.Resources = resources.ToArray();
-                resourceKey.LastUpdateDate = DateTime.Now;
-                resourceKey.ItemId = string.IsNullOrWhiteSpace(resourceKey.ItemId) ? Guid.NewGuid().ToString() : resourceKey.ItemId;
-
-                uilmResourceKeyList.Add(resourceKey);
-            }
+                Request = request,
+                Key = resourceKey,
+                Resources = resources,
+                DefaultResource = defaultResource,
+                MissingResources = missingResources
+            };
+            plan.ReservedKeywordKeys.AddRange(reservedKeywordKeys);
+            return plan;
         }
 
         public static bool ShouldSkipResource(Resource defaultResource, string keyName, TranslateAllEvent request)
@@ -987,15 +1040,32 @@ namespace Eurolm.DomainService.Services
 
         public async Task ProcessMissingResource(TranslateAllEvent request, BlocksLanguageKey resourceKey, Resource defaultResource, Resource missingResource, List<Resource> resources, List<Language> languageSetting)
         {
+            var translation = await FetchMissingResourceAsync(request, resourceKey, defaultResource, missingResource, languageSetting);
+            if (translation.Translated)
+            {
+                ApplyMissingResource(resourceKey, missingResource, resources, translation.Suggestion);
+            }
+        }
+
+        /// <summary>The AI call for one missing resource; reads the key, changes nothing, so calls can overlap.</summary>
+        private async Task<MissingResourceTranslation> FetchMissingResourceAsync(TranslateAllEvent request, BlocksLanguageKey resourceKey,
+            Resource? defaultResource, Resource missingResource, List<Language> languageSetting)
+        {
             var languageName = languageSetting?.FirstOrDefault(x => x.LanguageCode == missingResource.Culture)?.LanguageName;
 
             if (string.IsNullOrEmpty(languageName))
             {
                 _logger.LogError("ChangeAll: No language name found for languageCode {MisssingResourceCulture}", missingResource.Culture);
-                return;
+                return new MissingResourceTranslation(false, null);
             }
 
             var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
+            return new MissingResourceTranslation(true, suggestion);
+        }
+
+        /// <summary>Puts one answer on the key; runs one at a time, as it changes the key's resources and violations.</summary>
+        private void ApplyMissingResource(BlocksLanguageKey resourceKey, Resource missingResource, List<Resource> resources, SuggestionResult? suggestion)
+        {
             missingResource.Value = suggestion?.Content;
 
             if (TerminologyService?.IsEnforcementEnabled == true && suggestion?.Validated == true && !string.IsNullOrEmpty(suggestion.Content))
@@ -1068,24 +1138,30 @@ namespace Eurolm.DomainService.Services
             translateAllOperationId ??= Guid.NewGuid().ToString();
             var updateCount = await _keyRepository.UpdateUilmResourceKeysForChangeAll(resourceKeys);
 
-            // Create timeline entries for updated keys
-            foreach (var resourceKey in resourceKeys)
+            // One timeline entry per updated key, against the original key when there is one, written in one batch.
+            try
             {
-                try
+                var context = BlocksContext.GetContext();
+                var timelines = resourceKeys.Select(resourceKey => new KeyTimeline
                 {
-                    // Use the original key for timeline comparison if available
-                    BlocksLanguageKey? previousKey = null;
-                    if (originalResourceKeys != null && originalResourceKeys.ContainsKey(resourceKey.ItemId))
-                    {
-                        previousKey = originalResourceKeys[resourceKey.ItemId];
-                    }
+                    EntityId = resourceKey.ItemId ?? "",
+                    CurrentData = resourceKey,
+                    PreviousData = originalResourceKeys != null && resourceKey.ItemId != null && originalResourceKeys.TryGetValue(resourceKey.ItemId, out var previousKey)
+                        ? previousKey
+                        : null,
+                    LogFrom = logFrom,
+                    UserId = context?.UserId ?? SystemUserId,
+                    CreateDate = DateTime.UtcNow,
+                    LastUpdateDate = DateTime.UtcNow,
+                    OperationId = translateAllOperationId
+                }).ToList();
 
-                    await CreateKeyTimelineEntryAsync(previousKey, resourceKey, logFrom, translateAllOperationId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to create timeline entry for Key {KeyId} during TranslateAll: {Error}", resourceKey.ItemId, ex.Message);
-                }
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, context?.TenantId ?? "");
+            }
+            catch (Exception ex)
+            {
+                // The keys are already saved; a timeline failure must not fail the translation.
+                _logger.LogError(ex, "Failed to create timeline entries for {Count} Keys during TranslateAll: {Error}", resourceKeys.Count, ex.Message);
             }
 
             _logger.LogInformation("ChangeAll: Uilm Resource key updated: {UpdateCount}", updateCount);

@@ -8,7 +8,7 @@ using System.IO.Compression;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Utilities;
 using Eurolm.DomainService.Utilities;
-using SeliseBlocks.ConfigurationDriver;
+
 
 var serviceName = Constants.ServiceName;
 var vaultType = ApplicationConfigurations.ResolveVaultType();
@@ -22,13 +22,15 @@ ApplicationConfigurations.ConfigureApiEnv(builder, args);
 // "Secrets" document keyed by "blocks-secret-localization" is merged into
 // IConfiguration, exposing the "FrontendRuntime" section consumed below
 // plus AzureAIEndpoint / AzureOpenAIEncryptedSecret / AzureAIEncryptionKey for translation.
-builder.Configuration.AddMongoDbConfiguration(options =>
-{
-    options.ConnectionString = secret.DatabaseConnectionString;
-    options.DatabaseName     = secret.RootDatabaseName;
-    options.CollectionName   = "Secrets";
-    options.SecretKey        = "blocks-secret-localization";
-});
+builder.Configuration.AddKeyValueConfiguration(secret, "blocks-secret-localization");
+
+//builder.Configuration.AddMongoDbConfiguration(options =>
+//{
+//    options.ConnectionString = secret.DatabaseConnectionString;
+//    options.DatabaseName     = secret.RootDatabaseName;
+//    options.CollectionName   = "Secrets";
+//    options.SecretKey        = "blocks-secret-localization";
+//});
 
 ApplicationConfigurations.ConfigureServices(builder.Services, Constants.GetMessageConfiguration(secret.MessageConnectionString));
 

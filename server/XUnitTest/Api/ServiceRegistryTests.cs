@@ -52,7 +52,8 @@ namespace XUnitTest
 
             AssertRegistration<IValidator<UpdateFileRequest>, UpdateFileRequestValidator>(services, ServiceLifetime.Transient);
 
-            AssertRegistration<IAssistantService, AssistantService>(services, ServiceLifetime.Singleton);
+            // Built by a factory so it gets the named Azure OpenAI client (AddAssistantService).
+            services.Should().ContainSingle(d => d.ServiceType == typeof(IAssistantService) && d.ImplementationFactory != null && d.Lifetime == ServiceLifetime.Singleton);
 
             AssertRegistration<INotificationService, NotificationService>(services, ServiceLifetime.Singleton);
             AssertRegistration<IHttpHelperServices, HttpHelperServices>(services, ServiceLifetime.Singleton);

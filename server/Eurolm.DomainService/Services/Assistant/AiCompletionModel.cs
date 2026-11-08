@@ -34,5 +34,8 @@ namespace Eurolm.DomainService.Services
     {
         public HttpStatusCode HttpStatusCode { set; get; }
         public dynamic ResponseData { get; set; }
+
+        /// <summary>How long the server asked the caller to wait (429 Retry-After); null when it did not say.</summary>
+        public TimeSpan? RetryAfter { get; set; }
     }
 }

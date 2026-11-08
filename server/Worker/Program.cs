@@ -4,7 +4,7 @@ using Eurolm.DomainService.Shared.Utilities;
 using Worker;
 using Worker.Configuration;
 using Worker.Consumers;
-using SeliseBlocks.ConfigurationDriver;
+
 
 const string _serviceName = "blocks-localization-worker";
 
@@ -24,13 +24,15 @@ IHostBuilder CreateHostBuilder(string[] args) =>
             // SecretKey as the Api) so KeyPairs values such as RootTenantId,
             // NotificationServiceUrl, Salt, AzureAIEndpoint,
             // AzureOpenAIEncryptedSecret, and AzureAIEncryptionKey are read from the DB.
-            builder.AddMongoDbConfiguration(options =>
-            {
-                options.ConnectionString = secret.DatabaseConnectionString;
-                options.DatabaseName     = secret.RootDatabaseName;
-                options.CollectionName   = "Secrets";
-                options.SecretKey        = "blocks-secret-localization";
-            });
+            //builder.AddMongoDbConfiguration(options =>
+            //{
+            //    options.ConnectionString = secret.DatabaseConnectionString;
+            //    options.DatabaseName     = secret.RootDatabaseName;
+            //    options.CollectionName   = "Secrets";
+            //    options.SecretKey        = "blocks-secret-localization";
+            //});
+            builder.AddKeyValueConfiguration(secret, "blocks-secret-localization");
+
         })
         .ConfigureServices((services) =>
         {

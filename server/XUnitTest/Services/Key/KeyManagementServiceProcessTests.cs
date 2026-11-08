@@ -221,6 +221,78 @@ namespace XUnitTest
         }
 
         [Fact]
+        public async Task ProcessChangeAll_StartsEveryAiCallTogether_AndPutsEachAnswerOnItsOwnKeyAndLanguage()
+        {
+            var request = new TranslateAllEvent { DefaultLanguage = "en-US", ProjectKey = "proj" };
+            var languages = new List<Language>
+            {
+                new Language { LanguageCode = "en-US", LanguageName = "English" },
+                new Language { LanguageCode = "fr-FR", LanguageName = "French" },
+                new Language { LanguageCode = "de-DE", LanguageName = "German" }
+            };
+            var resourceKeys = new[] { "Hello", "Bye", "Save" }.Select((text, i) => new BlocksLanguageKey
+            {
+                ItemId = $"key-{i}",
+                ModuleId = "module-1",
+                KeyName = text,
+                Resources = new[]
+                {
+                    new Resource { Culture = "en-US", Value = text },
+                    new Resource { Culture = "fr-FR", Value = "" }
+                    // de-DE has no resource yet: it is added for the language setting.
+                }
+            }).ToList();
+
+            var pending = new List<(SuggestLanguageRequest Query, TaskCompletionSource<SuggestionResult> Answer)>();
+            _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
+                .Returns((SuggestLanguageRequest query) =>
+                {
+                    var answer = new TaskCompletionSource<SuggestionResult>();
+                    pending.Add((query, answer));
+                    return answer.Task;
+                });
+
+            var processing = _service.ProcessChangeAll(request, resourceKeys.AsQueryable(), languages);
+
+            // Every call has started before any has answered: 3 keys x 2 languages.
+            pending.Should().HaveCount(6);
+            processing.IsCompleted.Should().BeFalse();
+
+            // Answer in reverse order; each answer must still land on the key and language it was asked for.
+            foreach (var (query, answer) in Enumerable.Reverse(pending))
+            {
+                answer.SetResult(new SuggestionResult { Content = $"{query.SourceText}@{query.DestinationLanguageCode}" });
+            }
+            var result = await processing;
+
+            result.Select(k => k.ItemId).Should().Equal("key-0", "key-1", "key-2");
+            foreach (var key in result)
+            {
+                key.Resources.Select(r => r.Culture).Should().Equal("en-US", "fr-FR", "de-DE");
+                key.Resources.Single(r => r.Culture == "fr-FR").Value.Should().Be($"{key.KeyName}@fr-FR");
+                key.Resources.Single(r => r.Culture == "de-DE").Value.Should().Be($"{key.KeyName}@de-DE");
+            }
+        }
+
+        [Fact]
+        public async Task ProcessChangeAll_KeepsTheReservedKeywordKeyAndSkipsTheBlankOne_WithoutCallingAi()
+        {
+            var request = new TranslateAllEvent { DefaultLanguage = "en-US" };
+            var resourceKeys = new List<BlocksLanguageKey>
+            {
+                new() { ItemId = "reserved", KeyName = "r", Resources = new[] { new Resource { Culture = "en-US", Value = "KEY_MISSING" }, new Resource { Culture = "fr-FR", Value = "x" } } },
+                new() { ItemId = "blank", KeyName = "b", Resources = new[] { new Resource { Culture = "en-US", Value = " " }, new Resource { Culture = "fr-FR", Value = "" } } },
+                new() { ItemId = "done", KeyName = "d", Resources = new[] { new Resource { Culture = "en-US", Value = "Hi" }, new Resource { Culture = "fr-FR", Value = "Salut" } } }
+            };
+
+            var result = await _service.ProcessChangeAll(request, resourceKeys.AsQueryable(), EnFr);
+
+            result.Select(k => k.ItemId).Should().Equal("reserved");
+            result[0].Resources.Should().OnlyContain(r => r.Value == "");
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()), Times.Never);
+        }
+
+        [Fact]
         public async Task UpdateResourceKey_CreatesTimelines()
         {
             var resourceKey = new BlocksLanguageKey
@@ -233,12 +305,12 @@ namespace XUnitTest
 
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1);
-            _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
-                .Returns(Task.CompletedTask);
-
             await _service.UpdateResourceKey(new List<BlocksLanguageKey> { resourceKey }, new TranslateAllEvent(), new Dictionary<string, BlocksLanguageKey>());
 
-            _keyTimelineRepositoryMock.Verify(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Once);
+            _keyTimelineRepositoryMock.Verify(t => t.BulkSaveKeyTimelinesAsync(
+                It.Is<List<KeyTimeline>>(l => l.Count == 1 && l[0].EntityId == "id-1" && l[0].CurrentData == resourceKey),
+                It.IsAny<string>()), Times.Once);
+            _keyTimelineRepositoryMock.Verify(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Never);
         }
 
         [Fact]

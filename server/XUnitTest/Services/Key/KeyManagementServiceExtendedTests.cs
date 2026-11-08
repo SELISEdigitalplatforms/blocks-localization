@@ -1714,7 +1714,9 @@ namespace XUnitTest
 
             await _service.UpdateResourceKey(resourceKeys, new TranslateAllEvent(), originals);
 
-            _keyTimelineRepositoryMock.Verify(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Once);
+            _keyTimelineRepositoryMock.Verify(t => t.BulkSaveKeyTimelinesAsync(
+                It.Is<List<KeyTimeline>>(l => l.Count == 1 && l[0].PreviousData == originals["k1"] && l[0].CurrentData == resourceKeys[0]),
+                It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
@@ -1732,7 +1734,9 @@ namespace XUnitTest
 
             await _service.UpdateResourceKey(resourceKeys, new TranslateAllEvent(), null);
 
-            _keyTimelineRepositoryMock.Verify(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()), Times.Once);
+            _keyTimelineRepositoryMock.Verify(t => t.BulkSaveKeyTimelinesAsync(
+                It.Is<List<KeyTimeline>>(l => l.Count == 1 && l[0].PreviousData == null && l[0].EntityId == "k1"),
+                It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
@@ -1740,7 +1744,7 @@ namespace XUnitTest
         {
             _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
                 .ReturnsAsync(1L);
-            _keyTimelineRepositoryMock.Setup(t => t.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
+            _keyTimelineRepositoryMock.Setup(t => t.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
                 .ThrowsAsync(new Exception("timeline fail"));
 
             var resourceKeys = new List<BlocksLanguageKey>
