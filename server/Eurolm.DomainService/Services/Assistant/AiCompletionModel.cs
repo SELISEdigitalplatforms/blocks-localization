@@ -16,7 +16,7 @@ namespace Eurolm.DomainService.Services
                 messages = new List<Message>
                 {
                     new Message { role = "system", 
-                                content = "You are a translator for UI text. Output EXACTLY the translated UI text and NOTHING ELSE. No quotes, no explanation, no metadata, no JSON wrappers, no punctuation beyond what belongs to the translated text itself. If the original text is blank, return an empty string. Preserve casing and punctuation only as appropriate for the UI element. Do not include surrounding whitespace or newlines." },
+                                content = "You are a translator for UI text. Output EXACTLY the translated UI text and NOTHING ELSE. No quotes, no explanation, no metadata, no JSON wrappers, no punctuation beyond what belongs to the translated text itself. If the original text is blank, return an empty string. Preserve casing and punctuation only as appropriate for the UI element. Do not include surrounding whitespace or newlines. Keep every placeholder in double curly braces, like {{count}} or {{name}}, exactly as written: never translate, rename, reorder its name, or remove it." },
                     new Message { role = "user", content = content }
                 },
                 temperature = temperature
@@ -34,5 +34,8 @@ namespace Eurolm.DomainService.Services
     {
         public HttpStatusCode HttpStatusCode { set; get; }
         public dynamic ResponseData { get; set; }
+
+        /// <summary>How long the server asked the caller to wait (429 Retry-After); null when it did not say.</summary>
+        public TimeSpan? RetryAfter { get; set; }
     }
 }

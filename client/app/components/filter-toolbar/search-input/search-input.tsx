@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui-kits/button/button";
 import { Input } from "@/components/ui-kits/input/input";
 import { cn, debounce } from "@/lib/utils";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
 interface SearchInputProps {
   onChange: (value: string) => void;
@@ -14,11 +15,12 @@ interface SearchInputProps {
 
 export const SearchInput: React.FC<SearchInputProps> = ({
   onChange,
-  placeholder = "Search...",
+  placeholder,
   value,
   className = "",
   disabled = false,
 }) => {
+  const { t } = useT("localization.shared");
   const [state, setState] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +69,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
       <Search className="mr-2 h-4 w-4 text-muted-foreground" />
       <Input
         ref={inputRef}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("FILTER_SEARCH_INPUT.PLACEHOLDER")}
         value={state}
         onChange={handleChange}
         disabled={disabled}
@@ -83,7 +85,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         size="xs"
         className={cn("h-full p-1 pr-0 hover:bg-transparent", !state && "invisible")}
         onClick={handleClear}
-        aria-label="Clear search"
+        aria-label={t("FILTER_SEARCH_INPUT.CLEAR_SEARCH")}
         disabled={disabled}
       >
         <X className="h-4 w-4 text-muted-foreground" />

@@ -3,13 +3,18 @@ import { Slot } from "@radix-ui/react-slot";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useT } from "@seliseblocks/genesis-os/i18n";
+import { SrOnlyText } from "@/components/sr-only-text/sr-only-text";
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
   React.ComponentPropsWithoutRef<"nav"> & {
     separator?: React.ReactNode;
   }
->(({ ...props }, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />);
+>(({ ...props }, ref) => {
+  const { t } = useT("localization.shared");
+  return <nav ref={ref} aria-label={t("BREADCRUMB_NAV.LABEL")} {...props} />;
+});
 Breadcrumb.displayName = "Breadcrumb";
 
 const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
@@ -79,7 +84,7 @@ const BreadcrumbEllipsis = ({ className, ...props }: React.ComponentProps<"span"
     {...props}
   >
     <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">More</span>
+    <SrOnlyText textKey="BREADCRUMB_ELLIPSIS.MORE" />
   </span>
 );
 BreadcrumbEllipsis.displayName = "BreadcrumbElipssis";

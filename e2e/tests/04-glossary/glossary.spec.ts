@@ -1,16 +1,14 @@
 import { test, expect } from "../../support/test-base";
 import { GlossaryPage } from "../../support/pages/glossary.page";
 import { ModulesPage } from "../../support/pages/modules.page";
-import { LocalizationApi, TranslationsPage } from "../../support/pages/translations.page";
-import { openGlossary, openModules } from "../../support/localization-helpers";
+import {
+  LocalizationApi,
+  TranslationsPage,
+  mockTranslationSuggestions,
+} from "../../support/pages/translations.page";
+import { openGlossary, openModules, openNewKey } from "../../support/localization-helpers";
 
 const META_PREFIX = "@@glossary-meta:v1@@";
-
-const parseMeta = (additionalNote: unknown) => {
-  const text = String(additionalNote);
-  expect(text.startsWith(META_PREFIX)).toBe(true);
-  return JSON.parse(text.slice(META_PREFIX.length));
-};
 
 test.describe("Glossary", () => {
   test("Glossary — full flow", async ({ page }) => {
@@ -19,7 +17,7 @@ test.describe("Glossary", () => {
 
     const glossary = new GlossaryPage(page);
 
-    await test.step("Glossary Management page loads", async () => {
+    await test.step("Glossary page loads", async () => {
       await glossary.expectPageLoaded();
     });
 
@@ -62,27 +60,29 @@ test.describe("Glossary", () => {
       await glossary.fillInternalNote("This is Additional Notes");
     });
 
-    await test.step("Add glossary and verify the saved terminology data (H3, H11)", async () => {
+    await test.step("Add glossary and verify the saved structured fields (SPEC7 H1, H2)", async () => {
       const payload = await glossary.saveAndCapturePayload();
       await glossary.expectAddSuccess(glossaryName);
 
-      const meta = parseMeta(payload.additionalNote);
-      expect(meta.rule).toBe("translate");
+      // SPEC7: real fields; no JSON in additionalNote and no marker in context.
+      expect(payload.rule).toBe("translate");
+      expect(payload.status).toBe("approved");
+      expect(payload.caseSensitive).toBe(false);
       // No variants were entered, so the new term stores none.
-      expect(meta.variants ?? []).toEqual([]);
-      expect(meta.note).toBe("This is Additional Notes");
+      expect(payload.variants ?? []).toEqual([]);
+      expect(payload.additionalNote).toBe("This is Additional Notes");
+      expect(String(payload.additionalNote)).not.toContain("@@glossary-meta");
+      expect(payload.context).toBe("This is a Testing context.");
       expect(payload.isGlobal).toBe(false);
       expect((payload.moduleIds as string[]).length).toBe(1);
 
       if (translationCodes.length > 0) {
         const [code] = translationCodes;
-        expect(meta.translations).toEqual({ [code]: "Arbeitsbereich" });
-        expect(meta.forbidden).toEqual({ [code]: ["Werkbereich"] });
-        expect(payload.context).toBe(
-          `This is a Testing context. ⟦rule: ${code}→Arbeitsbereich; avoid ${code}: Werkbereich⟧`,
-        );
+        expect(payload.translations).toEqual([
+          { language: code, value: "Arbeitsbereich", forbiddenValues: ["Werkbereich"] },
+        ]);
       } else {
-        expect(payload.context).toBe("This is a Testing context.");
+        expect(payload.translations ?? []).toEqual([]);
       }
     });
 
@@ -93,7 +93,7 @@ test.describe("Glossary", () => {
       if (translationCodes.length > 0) {
         await expect(row.getByText(translationCodes[0], { exact: true })).toBeVisible();
         for (const code of translationCodes.slice(1, 4)) {
-          await expect(row.getByText(`${code} missing`, { exact: true })).toBeVisible();
+          await glossary.expectMissingTranslationChip(row, code);
         }
       }
       await expect(row.getByText("This is Additional Notes")).toHaveCount(0);
@@ -185,7 +185,7 @@ test.describe("Glossary", () => {
 
       page.off("request", onRequest);
       expect(saveRequests).toBe(0);
-      await glossary.editorSheet.getByRole("button", { name: "Cancel" }).click();
+      await glossary.cancelEditor({ discard: true });
     });
 
     await test.step("Saving unchanged sends the same terminology data (H5)", async () => {
@@ -199,7 +199,7 @@ test.describe("Glossary", () => {
       expect(second.context).toBe(first.context);
     });
 
-    await test.step("Keep hides translations and writes the keep marker (H10, H11)", async () => {
+    await test.step("Keep hides translations and saves the structured rule (H10, H11)", async () => {
       await glossary.clickEditButton();
       await glossary.setRule("Keep");
       await expect(glossary.editorSheet.getByRole("heading", { name: "Translations" })).toHaveCount(
@@ -208,9 +208,9 @@ test.describe("Glossary", () => {
       await glossary.setScope("Whole project");
       const payload = await glossary.saveAndCapturePayload();
       await glossary.expectEditSuccess(glossaryName);
-      expect(String(payload.context).endsWith("⟦rule: keep as-is in all languages⟧")).toBe(true);
+      expect(payload.context).toBe("This is a Testing context.");
       expect(payload).toMatchObject({ isGlobal: true, moduleIds: [] });
-      expect(parseMeta(payload.additionalNote).rule).toBe("keep");
+      expect(payload.rule).toBe("keep");
       await expect(page.getByText("Kept as-is in all languages.")).toBeVisible();
     });
 
@@ -233,17 +233,91 @@ test.describe("Glossary", () => {
       };
       page.on("request", onRequest);
       await glossary.openDeleteGlossaryDialog(updatedName);
-      // An untagged glossary is deleted directly, with no SaveKeys request.
-      await glossary.expectDeleteUsage("Not used by any keys.");
-      await glossary.confirmDeleteGlossary();
+      // Whole project since the Keep step: the dialog counts every key, and no SaveKeys is sent.
+      await glossary.expectDeleteUsage(/^Applies to every key in the project \(\d+ keys?\)\.$/);
+      await glossary.confirmDeleteGlossary(updatedName);
       await expect(
         page.getByText("Glossary item deleted successfully.", { exact: true }),
       ).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByRole("heading", { name: "Glossary Management" })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "Glossary", exact: true })).toBeVisible({
         timeout: 15_000,
       });
       page.off("request", onRequest);
       expect(cascadeRequests).toEqual(["Glossary/Delete"]);
+    });
+  });
+
+  test("Glossary — server search escaping and version conflicts (SPEC5)", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openGlossary(page);
+    const glossary = new GlossaryPage(page);
+    await glossary.expectPageLoaded();
+
+    const stamp = Date.now();
+    const searchText = `C++ (beta) ${stamp}`;
+    const name = `E2E ${searchText}`;
+    const otherTabName = `${name} tab1`;
+
+    await test.step("Create a glossary whose name has regex characters", async () => {
+      await glossary.openNewGlossaryDialog();
+      await glossary.fillGlossaryName(name);
+      await glossary.clickSaveButton();
+      await glossary.expectAddSuccess(name);
+    });
+
+    await test.step("Search sends the raw text and finds the glossary (H1, H2)", async () => {
+      const searchRequest = page.waitForRequest(
+        (request) =>
+          /\/Glossary\/Gets/.test(request.url()) &&
+          new URL(request.url()).searchParams.get("SearchText") === searchText,
+      );
+      await glossary.searchGlossaries(searchText);
+      await searchRequest;
+      await glossary.expectGlossaryRowVisible(name);
+    });
+
+    await test.step("A stale save shows the conflict Alert; Reload latest shows the newer values (H11, C2)", async () => {
+      await glossary.openGlossaryDetail(name);
+      await glossary.clickEditButton();
+
+      // A second tab saves first, so the first tab's editor is now stale.
+      const otherPage = await page.context().newPage();
+      try {
+        await openGlossary(otherPage);
+        const other = new GlossaryPage(otherPage);
+        await other.expectPageLoaded();
+        await other.searchGlossaries(searchText);
+        await other.openGlossaryDetail(name);
+        await other.clickEditButton();
+        await other.fillEditName(otherTabName);
+        await other.clickUpdateButton();
+        await other.expectEditSuccess(otherTabName);
+      } finally {
+        await otherPage.close();
+      }
+
+      const saveResponse = page.waitForResponse((response) =>
+        /\/Glossary\/Save/.test(response.url()),
+      );
+      await glossary.fillEditName(`${name} tab2`);
+      await glossary.clickUpdateButton();
+      // Still HTTP 200, with the Version error in validationErrors.
+      const response = await saveResponse;
+      expect(response.status()).toBe(200);
+      expect((await response.json()).validationErrors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ propertyName: "Version" })]),
+      );
+      await glossary.expectVersionConflict();
+
+      await glossary.reloadLatest();
+      await glossary.expectEditName(otherTabName);
+      await glossary.clickUpdateButton();
+      await glossary.expectEditSuccess(otherTabName);
+    });
+
+    await test.step("Clean up", async () => {
+      await glossary.goBackToList();
+      await glossary.deleteGlossaryFromList(otherTabName);
     });
   });
 
@@ -264,7 +338,7 @@ test.describe("Glossary", () => {
     });
 
     try {
-      await test.step("A plain note opens unchanged as a Translate term (H4)", async () => {
+      await test.step("A plain note opens unchanged as a Translate glossary (H4)", async () => {
         await glossary.openEditFromList(legacyName);
         await expect(glossary.editorSheet.getByRole("radio", { name: "Translate" })).toBeChecked();
         await glossary.expectInternalNote("legacy note");
@@ -275,7 +349,7 @@ test.describe("Glossary", () => {
 
       await test.step("Saving twice without edits sends the same data (H5)", async () => {
         const first = await glossary.saveAndCapturePayload();
-        expect(parseMeta(first.additionalNote)).toEqual({ rule: "translate", note: "legacy note" });
+        expect(first).toMatchObject({ rule: "translate", additionalNote: "legacy note" });
         await expect(
           page.getByText("Glossary item updated successfully.", { exact: true }),
         ).toBeVisible({ timeout: 20_000 });
@@ -285,16 +359,17 @@ test.describe("Glossary", () => {
         expect(second.additionalNote).toBe(first.additionalNote);
       });
 
-      await test.step("Corrupt data warns, keeps the raw text and saves fresh JSON (C1)", async () => {
+      await test.step("Corrupt data warns and opens with an empty Internal Note (C1)", async () => {
         await glossary.openEditFromList(corruptName);
         await expect(
           glossary.editorSheet.getByText(
             "Stored terminology data could not be read. Saving will replace it.",
           ),
         ).toBeVisible();
-        await glossary.expectInternalNote(corruptNote);
+        await glossary.expectInternalNote("");
         const payload = await glossary.saveAndCapturePayload();
-        expect(parseMeta(payload.additionalNote)).toEqual({ rule: "translate", note: corruptNote });
+        expect(payload).toMatchObject({ rule: "translate", additionalNote: "" });
+        expect(String(payload.additionalNote)).not.toContain(META_PREFIX);
       });
     } finally {
       await test.step("Clean up fixtures", async () => {
@@ -337,7 +412,7 @@ test.describe("Glossary", () => {
         // C16: a variant equal to the term (normalized) is rejected.
         await glossary.addVariant(variantName.toLowerCase());
         await glossary.clickSaveButton();
-        await glossary.expectFieldError("Variant can't be the same as the term");
+        await glossary.expectFieldError("Variant can't be the same as the glossary");
         await glossary.removeVariant(variantName.toLowerCase());
 
         // C16: two variants that differ only in case are duplicates.
@@ -351,13 +426,15 @@ test.describe("Glossary", () => {
         expect(saveRequests).toBe(0);
       });
 
-      await test.step("Comma adds a chip and chips are removable (H13)", async () => {
-        await glossary.addVariantWithComma(`${variantName}es`);
+      await test.step("Enter adds one chip with a comma in its value; chips are removable (H13)", async () => {
+        await glossary.addVariant("Inc., Ltd");
         await expect(glossary.variantsInput).toHaveValue("");
         const chipRemove = glossary.editorSheet.getByRole("button", {
-          name: `Remove variant ${variantName}es`,
+          name: "Remove variant Inc., Ltd",
+          exact: true,
         });
-        await expect(chipRemove).toBeVisible();
+        await expect(chipRemove).toHaveCount(1);
+        await expect(glossary.editorSheet.getByRole("button", { name: /^Remove variant Inc\.?$/ })).toHaveCount(0);
         await chipRemove.click();
         await expect(chipRemove).toHaveCount(0);
       });
@@ -371,10 +448,24 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(variantName);
         await glossary.expectAddSuccess(variantName);
-        const meta = parseMeta(payload.additionalNote);
-        // H13: the chip entered with Enter is saved in `variants`.
-        expect(meta.variants).toEqual([`${variantName}s`]);
-        expect(meta.caseSensitive ?? false).toBe(false);
+        expect(payload.variants).toEqual([`${variantName}s`]);
+        expect(payload.caseSensitive).toBe(false);
+      });
+
+      await test.step("Reopen shows the stored variant and saving keeps it (C17)", async () => {
+        await glossary.openEditFromList(variantName);
+        await expect(
+          glossary.editorSheet.getByRole("button", {
+            name: `Remove variant ${variantName}s`,
+            exact: true,
+          }),
+        ).toBeVisible();
+        const payload = await glossary.saveAndCapturePayload();
+        await expect(
+          page.getByText("Glossary item updated successfully.", { exact: true }),
+        ).toBeVisible({ timeout: 20_000 });
+        expect(payload.variants).toEqual([`${variantName}s`]);
+        await glossary.clearSearch();
       });
 
       await test.step("Case-sensitive on is saved (H14)", async () => {
@@ -386,15 +477,12 @@ test.describe("Glossary", () => {
         const payload = await glossary.saveAndCapturePayload();
         created.push(caseName);
         await glossary.expectAddSuccess(caseName);
-        const meta = parseMeta(payload.additionalNote);
-        // H14: the switch is saved as `caseSensitive`.
-        expect(meta).toMatchObject({ rule: "keep", caseSensitive: true });
+        expect(payload).toMatchObject({ rule: "keep", caseSensitive: true });
       });
 
       await test.step("Details pages show the variant chips and the badge (H13, H14)", async () => {
         await glossary.searchGlossaries(variantName);
         await glossary.openGlossaryDetail(variantName);
-        // H13: the details page lists the variants as chips.
         await expect(page.getByText("Variants:", { exact: true })).toBeVisible();
         await expect(page.getByText(`${variantName}s`, { exact: true })).toBeVisible();
         await expect(page.getByText("Case-sensitive", { exact: true })).toHaveCount(0);
@@ -402,7 +490,6 @@ test.describe("Glossary", () => {
 
         await glossary.searchGlossaries(caseName);
         await glossary.openGlossaryDetail(caseName);
-        // H14: the "Case-sensitive" badge is shown when set; no variants row without variants.
         await expect(page.getByText("Case-sensitive", { exact: true })).toBeVisible();
         await expect(page.getByText("Variants:", { exact: true })).toHaveCount(0);
         await glossary.goBackToList();
@@ -459,13 +546,13 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         ids.module = await api.createModule(names.module);
         ids.term = await api.createGlossary({
           name: names.term,
-          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "translate" })}`,
+          rule: "translate",
           isGlobal: false,
           moduleIds: [ids.module],
         });
         ids.second = await api.createGlossary({
           name: names.second,
-          additionalNote: `${META_PREFIX}${JSON.stringify({ rule: "keep" })}`,
+          rule: "keep",
           isGlobal: true,
         });
         ids.key = await api.createKey({
@@ -478,9 +565,9 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         });
       });
 
-      await test.step("Step 4: module tagging creates a missing term and saves it (H7-H9)", async () => {
+      await test.step("Step 4: module tagging creates a missing glossary and saves it (H7-H9)", async () => {
         await openModuleTagging();
-        // H14: the seed shows the module's tagged term.
+        // H14: the seed shows the module's tagged glossary.
         await expect(tagDialog.getByRole("button", { name: `Remove ${names.term}` })).toBeVisible({
           timeout: 15_000,
         });
@@ -612,7 +699,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         await glossary.openNewGlossaryDialog();
         await glossary.fillGlossaryName(names.second.toLowerCase());
         await glossary.expectDuplicateNameWarning(names.second);
-        await glossary.cancelEditor();
+        await glossary.cancelEditor({ discard: true });
       });
 
       await test.step("Steps 8 and 13: row keyboard navigation (H11, C17)", async () => {
@@ -627,7 +714,6 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
         await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
         expect(page.url()).toBe(listUrl);
         await page.keyboard.press("Escape");
-        // H11: Enter on the focused row opens the details page.
         await page.getByRole("row").filter({ hasText: names.term }).focus();
         await page.keyboard.press("Enter");
         await expect(page.getByRole("heading", { name: names.term })).toBeVisible({
@@ -641,7 +727,8 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
       });
 
       await test.step("Step 6: unknown tagged glossary and search error (C7, C9)", async () => {
-        // Force the key's tags to resolve through Glossary/Get, and make one of them fail.
+        // Force the key's tags to resolve through Glossary/GetByIds, and leave one of them out
+        // of its response, as the server does for a deleted glossary (SPEC7 C7).
         const emptyLists = (route: import("@playwright/test").Route) => {
           const url = new URL(route.request().url());
           if (url.searchParams.get("ModuleId") || url.searchParams.get("IsGlobal")) {
@@ -652,12 +739,16 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           }
           return route.fulfill({ json: { items: [], totalCount: 0 } });
         };
-        const missing = (route: import("@playwright/test").Route) =>
-          new URL(route.request().url()).searchParams.get("itemId") === ids.term
-            ? route.fulfill({ status: 404, json: {} })
-            : route.continue();
+        const missing = async (route: import("@playwright/test").Route) => {
+          const response = await route.fetch();
+          const body = (await response.json()) as { items: { itemId: string }[] };
+          await route.fulfill({
+            response,
+            json: { items: body.items.filter((item) => item.itemId !== ids.term) },
+          });
+        };
         await page.route(/\/Glossary\/Gets/, emptyLists);
-        await page.route(/\/Glossary\/Get\?/, missing);
+        await page.route(/\/Glossary\/GetByIds/, missing);
         try {
           await translations.openKeyDetails(ids.key);
           await page.getByRole("button", { name: "Tag Glossary" }).click();
@@ -665,7 +756,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
             keyTagDialog.getByRole("button", { name: "Remove Unknown glossary" }),
           ).toBeVisible({ timeout: 15_000 });
           await keyTagDialog.getByRole("combobox").click();
-          await keyTagDialog.getByPlaceholder("Search glossary...").fill(names.second);
+          await keyTagDialog.getByPlaceholder("Search glossaries…").fill(names.second);
           await expect(keyTagDialog.getByText("Couldn't search glossaries")).toBeVisible({
             timeout: 20_000,
           });
@@ -676,7 +767,7 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
           await keyTagDialog.getByRole("button", { name: "Cancel" }).click();
         } finally {
           await page.unroute(/\/Glossary\/Gets/, emptyLists);
-          await page.unroute(/\/Glossary\/Get\?/, missing);
+          await page.unroute(/\/Glossary\/GetByIds/, missing);
         }
       });
 
@@ -703,6 +794,254 @@ test.describe("Glossary — shared picker and keyboard (SPEC4)", () => {
       await test.step("Clean up fixtures", async () => {
         if (ids.key) await api.deleteKey(ids.key);
         for (const id of [ids.term, ids.second, ...extraGlossaries]) {
+          if (id) await api.deleteGlossary(id);
+        }
+        if (ids.module) await api.deleteModule(ids.module);
+      });
+    }
+  });
+});
+
+const randomTag = () =>
+  Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join(
+    "",
+  );
+
+test.describe("Glossary — keys card, delete and new-key suggestion (SPEC1 steps 2-7)", () => {
+  test("Paging, delete counts and failures, duplicate names and the suggestion payload", async ({
+    page,
+  }) => {
+    test.setTimeout(600_000);
+    const api = await LocalizationApi.capture(page);
+    const glossary = new GlossaryPage(page);
+    const translations = new TranslationsPage(page);
+    const languages = await api.languages();
+    const source = languages.find((language) => language.isDefault) ?? languages[0];
+    const tag = randomTag();
+    const names = {
+      module: `e2e-mod-${tag}`,
+      global: `E2E Global ${tag}`,
+      other: `E2E Other ${tag}`,
+      many: `E2E Many ${tag}`,
+      global2: `E2E Global2 ${tag}`,
+      k1: `e2e.k1.${tag}`,
+      k2: `e2e.k2.${tag}`,
+      manyPrefix: `e2e.many.${tag}.`,
+    };
+    const ids = { module: "", global: "", other: "", many: "", global2: "" };
+    const glossaryRequests = (pattern: RegExp) => {
+      const urls: string[] = [];
+      const onRequest = (request: import("@playwright/test").Request) => {
+        if (pattern.test(request.url())) urls.push(request.url());
+      };
+      page.on("request", onRequest);
+      return { urls, stop: () => page.off("request", onRequest) };
+    };
+
+    try {
+      await test.step("Create fixtures (250 keys through Key/SaveKeys)", async () => {
+        ids.module = await api.createModule(names.module);
+        ids.global = await api.createGlossary({ name: names.global, isGlobal: true });
+        ids.other = await api.createGlossary({ name: names.other, isGlobal: true });
+        ids.many = await api.createGlossary({
+          name: names.many,
+          isGlobal: false,
+          moduleIds: [ids.module],
+        });
+        ids.global2 = await api.createGlossary({ name: names.global2, isGlobal: true });
+        for (const keyName of [names.k1, names.k2]) {
+          await api.createKey({
+            keyName,
+            moduleId: ids.module,
+            culture: source.languageCode,
+            value: `Value of ${keyName}`,
+            glossaryIds: [ids.global, ids.other],
+          });
+        }
+        await api.saveKeys(
+          Array.from({ length: 250 }, (_, index) => ({
+            keyName: `${names.manyPrefix}${String(index + 1).padStart(3, "0")}`,
+            moduleId: ids.module,
+            culture: source.languageCode,
+            value: `Many ${index + 1}`,
+            glossaryIds: [ids.many],
+          })),
+        );
+      });
+
+      await test.step("Step 2: the Keys card sends glossaryModuleIds and pages one request at a time (H3, H13)", async () => {
+        await openGlossary(page);
+        await glossary.expectPageLoaded();
+        await glossary.searchGlossaries(names.many);
+        const keyGets: Record<string, unknown>[] = [];
+        const onRequest = (request: import("@playwright/test").Request) => {
+          if (request.method() !== "POST" || !/\/Key\/Gets/.test(request.url())) return;
+          const body = request.postDataJSON() as Record<string, unknown>;
+          if (body?.glossaryId === ids.many) keyGets.push(body);
+        };
+        page.on("request", onRequest);
+        try {
+          await glossary.openGlossaryDetail(names.many);
+          const manyRows = page.getByRole("row").filter({ hasText: names.manyPrefix });
+          await expect(manyRows).toHaveCount(10, { timeout: 20_000 });
+          await expect(page.getByText("252 keys total", { exact: true })).toBeVisible();
+          expect(keyGets).toHaveLength(1);
+          expect(keyGets[0]).toMatchObject({
+            pageNumber: 0,
+            pageSize: 10,
+            glossaryModuleIds: [ids.module],
+          });
+          await expect(manyRows.first().getByText(/^(Tagged|Module)$/)).toBeVisible();
+
+          await page.getByRole("button", { name: "Go to next page" }).click();
+          await expect.poll(() => keyGets.length).toBe(2);
+          expect(keyGets[1]).toMatchObject({ pageNumber: 1, pageSize: 10 });
+
+          await page.getByText("Rows per page").locator("..").getByRole("combobox").click();
+          await page.getByRole("option", { name: "50", exact: true }).click();
+          await expect.poll(() => keyGets.length).toBe(3);
+          expect(keyGets[2]).toMatchObject({ pageNumber: 0, pageSize: 50 });
+          await expect(manyRows).toHaveCount(50, { timeout: 20_000 });
+          await page.waitForTimeout(1_000);
+          expect(keyGets).toHaveLength(3);
+        } finally {
+          page.off("request", onRequest);
+        }
+      });
+
+      await test.step("Step 3: deleting a global glossary counts every key and sends no SaveKeys (H5-H7, H12)", async () => {
+        const affected = (await api.glossaryUsage(ids.global)).affectedKeyCount ?? 0;
+        expect(affected).toBeGreaterThanOrEqual(252);
+        await openGlossary(page);
+        await glossary.expectPageLoaded();
+        await glossary.searchGlossaries(names.global);
+        const requests = glossaryRequests(/\/(Glossary\/Usage|Glossary\/Delete|Key\/SaveKeys)/);
+        try {
+          await glossary.openDeleteGlossaryDialog(names.global);
+          await glossary.expectDeleteUsage(
+            `Applies to every key in the project (${affected} keys).`,
+          );
+          await expect(glossary.deleteConfirmInput).toBeVisible();
+          await expect(glossary.deleteConfirmButton).toBeDisabled();
+          await glossary.deleteConfirmInput.fill(names.global.toUpperCase());
+          await expect(glossary.deleteConfirmButton).toBeDisabled();
+          await glossary.deleteConfirmInput.fill(` ${names.global} `);
+          await glossary.deleteConfirmButton.click();
+          await expect(
+            page.getByText("Glossary item deleted successfully.", { exact: true }),
+          ).toBeVisible({ timeout: 20_000 });
+          ids.global = "";
+          const kinds = requests.urls.map((url) => /(Usage|Delete|SaveKeys)/.exec(url)?.[1]);
+          expect(kinds.slice(0, 2)).toEqual(["Usage", "Delete"]);
+          expect(kinds).not.toContain("SaveKeys");
+        } finally {
+          requests.stop();
+        }
+        const k1 = await api.findKey(names.k1, ids.module);
+        expect(k1?.glossaryIds).toEqual([ids.other]);
+        expect(k1?.resources).toEqual([
+          expect.objectContaining({ culture: source.languageCode, value: `Value of ${names.k1}` }),
+        ]);
+        await glossary.searchGlossaries(names.global);
+        await glossary.expectNoMatchingGlossaries();
+      });
+
+      await test.step("Step 4: a failed delete shows the reason, keeps the dialog and recounts; a retry deletes (C3, C7)", async () => {
+        const fail = (route: import("@playwright/test").Route) =>
+          route.fulfill({
+            status: 400,
+            json: { isSuccess: false, errors: { Error: "Scripted delete failure" } },
+          });
+        await page.route(/\/Glossary\/Delete/, fail);
+        const usage = glossaryRequests(/\/Glossary\/Usage/);
+        try {
+          await glossary.searchGlossaries(names.many);
+          await glossary.openDeleteGlossaryDialog(names.many);
+          await glossary.confirmDeleteGlossary(names.many);
+          await expect(page.getByText("Scripted delete failure").first()).toBeVisible({
+            timeout: 15_000,
+          });
+          await expect(glossary.deleteGlossaryDialog).toBeVisible();
+          await expect.poll(() => usage.urls.length).toBe(2);
+        } finally {
+          usage.stop();
+          await page.unroute(/\/Glossary\/Delete/, fail);
+        }
+        await glossary.confirmDeleteGlossary(names.many);
+        await expect(
+          page.getByText("Glossary item deleted successfully.", { exact: true }),
+        ).toBeVisible({ timeout: 20_000 });
+        await expect.poll(() => api.findGlossaryId(names.many)).toBeUndefined();
+        ids.many = "";
+      });
+
+      await test.step("Step 5: a forbidden delete shows the permission message and keeps the glossary (C4)", async () => {
+        const forbid = (route: import("@playwright/test").Route) =>
+          route.fulfill({ status: 403, json: {} });
+        await page.route(/\/Glossary\/Delete/, forbid);
+        try {
+          await glossary.searchGlossaries(names.other);
+          await glossary.openDeleteGlossaryDialog(names.other);
+          await glossary.confirmDeleteGlossary(names.other);
+          await expect(
+            page
+              .getByText(
+                "You don't have permission to perform this action. Contact your administrator for access.",
+              )
+              .first(),
+          ).toBeVisible({ timeout: 15_000 });
+          await glossary.deleteGlossaryDialog.getByRole("button", { name: "Cancel" }).click();
+        } finally {
+          await page.unroute(/\/Glossary\/Delete/, forbid);
+        }
+        expect(await api.findGlossaryId(names.other)).toBe(ids.other);
+      });
+
+      await test.step("Step 6: duplicate-name warning with another case and spaces; none for a prefix or its own name (H8, H9, C10)", async () => {
+        await glossary.clearSearch();
+        await glossary.openNewGlossaryDialog();
+        await glossary.fillGlossaryName(`${names.global2.toLowerCase()} `);
+        await glossary.expectDuplicateNameWarning(names.global2);
+        await glossary.fillGlossaryName(names.global2.toLowerCase().slice(0, -4));
+        await glossary.expectNoDuplicateNameWarning();
+        await glossary.fillGlossaryName(names.global2.toLowerCase());
+        await glossary.expectDuplicateNameWarning(names.global2);
+        await glossary.openDuplicateGlossary();
+        await expect(glossary.editorSheet).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: names.global2 })).toBeVisible({
+          timeout: 15_000,
+        });
+        await glossary.clickEditButton();
+        await glossary.expectNoDuplicateNameWarning();
+        await glossary.cancelEditor();
+      });
+
+      await test.step("Step 7: new-key auto-translate sends the default language, module and target code (H10)", async () => {
+        const ai = await mockTranslationSuggestions(page);
+        try {
+          ai.script({ content: "Übersetzt" });
+          await openNewKey(page);
+          await translations.fillKeyName(`e2e.newkey.${tag}`);
+          await translations.selectModule(names.module);
+          await translations.fillDefaultValue("Open the workspace");
+          await page.getByRole("button", { name: "Auto-Translate" }).first().click();
+          await expect.poll(() => ai.requests.length).toBe(1);
+          const targets = languages.filter((language) => !language.isDefault);
+          expect(ai.requests[0]).toMatchObject({
+            sourceText: "Open the workspace",
+            currentLanguage: source.languageName,
+            moduleId: ids.module,
+          });
+          expect(targets.map((language) => language.languageCode)).toContain(
+            ai.requests[0].destinationLanguageCode,
+          );
+        } finally {
+          await ai.stop();
+        }
+      });
+    } finally {
+      await test.step("Clean up fixtures", async () => {
+        for (const id of [ids.global, ids.other, ids.many, ids.global2]) {
           if (id) await api.deleteGlossary(id);
         }
         if (ids.module) await api.deleteModule(ids.module);

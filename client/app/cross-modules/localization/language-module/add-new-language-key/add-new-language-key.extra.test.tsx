@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "@/test-utils/render";
 import { toast } from "@/hooks/use-toast";
+import { FORBIDDEN_ERROR_MESSAGE } from "@/lib/error";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
 import { AddNewLanguageKey } from "./add-new-language-key";
 
@@ -15,7 +16,8 @@ vi.mock("react-router", async (importOriginal) => ({
   useNavigate: () => navigate,
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
@@ -203,7 +205,9 @@ describe("add-new-language-key (extra coverage)", () => {
       sourceText: "Hello",
       destinationLanguage: "English",
       currentLanguage: "German",
+      currentLanguageCode: "de-DE",
       temperature: 0.1,
+      glossaryIds: [],
       moduleId: "m1",
       destinationLanguageCode: "en-US",
     });
@@ -244,7 +248,12 @@ describe("add-new-language-key (extra coverage)", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          description: "No suggestion came back. Try again.",
+        }),
+      ),
     );
   });
 
@@ -256,8 +265,26 @@ describe("add-new-language-key (extra coverage)", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })),
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive", description: "boom" }),
+      ),
     );
+  });
+
+  it("shows the shared permission message, not JSON, on a 403 (SPEC15 C29)", async () => {
+    autoTranslateAsync.mockRejectedValue({ status: 403, errors: {} });
+    renderWithProviders(<AddNewLanguageKey />, { route });
+    fireEvent.change(screen.getByPlaceholderText("Enter default value"), {
+      target: { value: "Hello" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /Auto-Translate/ }));
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive", description: FORBIDDEN_ERROR_MESSAGE }),
+      ),
+    );
+    const descriptions = vi.mocked(toast).mock.calls.map(([arg]) => String(arg.description));
+    expect(descriptions.some((d) => d.startsWith("{"))).toBe(false);
   });
 
   it("adds and removes a route field", () => {

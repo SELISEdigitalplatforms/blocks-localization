@@ -1,4 +1,5 @@
 import React from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -27,17 +28,19 @@ import {
 interface NewModuleProps {
   onClose: (value?: boolean) => void;
 }
-const schema = z.object({
-  moduleName: z
-    .string()
-    .trim()
-    .min(1, { message: "Module name is required" })
-    .max(50, { message: "Module name must be less than 50 characters" }),
-});
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  moduleName: string;
+}
 
 const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
+  const { t } = useT("localization.modules");
+  const schema = z.object({
+    moduleName: z
+      .string()
+      .trim()
+      .min(1, { message: t("NEW_MODULE.NAME_REQUIRED") })
+      .max(50, { message: t("NEW_MODULE.NAME_TOO_LONG") }),
+  });
   const { isPending, mutateAsync } = useSaveLanguageModule();
 
   const form = useForm<FormValues>({
@@ -57,8 +60,8 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
       if (res?.success) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "New module added",
+          title: t("common:SUCCESS"),
+          description: t("NEW_MODULE.ADDED"),
         });
         form.reset();
         onClose(false);
@@ -74,7 +77,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common:ERROR"),
         description: formatErrorMessage(error),
       });
     }
@@ -86,7 +89,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
         {" "}
         <form onSubmit={form.handleSubmit(formSubmitHandler)}>
           <DialogHeader className="mb-4">
-            <DialogTitle>New module</DialogTitle>
+            <DialogTitle>{t("NEW_MODULE.TITLE")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <FormField
@@ -95,12 +98,12 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-left font-medium text-high-emphasis">
-                    Module name <span className="text-destructive">*</span>
+                    {t("NEW_MODULE.NAME_LABEL")} <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       id="moduleName"
-                      placeholder="Enter Module name"
+                      placeholder={t("NEW_MODULE.NAME_PLACEHOLDER")}
                       className="border-default col-span-3 mt-1 border shadow-none"
                       {...field}
                     />
@@ -113,10 +116,10 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
           <DialogFooter className="mt-6">
             <DialogTrigger asChild>
               <Button disabled={isPending} variant="secondary">
-                Cancel
+                {t("common:CANCEL")}
               </Button>
             </DialogTrigger>
-            <Button disabled={isPending || !form.formState.isValid}>Create</Button>
+            <Button disabled={isPending || !form.formState.isValid}>{t("common:CREATE")}</Button>
           </DialogFooter>
         </form>
       </Form>

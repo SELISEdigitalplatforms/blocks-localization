@@ -12,12 +12,17 @@ vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => navigate,
 }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useGetGlossaries: vi.fn(),
   useGetLanguages: vi.fn(),
+}));
+vi.mock("@blocks-localization/components/glossary/glossary-bulk-actions", () => ({
+  default: ({ selected }: { selected: { name: string }[] }) =>
+    selected.length > 0 ? <div>bulk-{selected.map((g) => g.name).join(",")}</div> : null,
 }));
 vi.mock("@blocks-localization/components/modals/glossary/glossary-editor-sheet", () => ({
   default: ({ open, glossary }: { open: boolean; glossary?: { name: string } }) =>
@@ -62,6 +67,33 @@ describe("glossary-table (extra coverage)", () => {
     } as never);
   });
 
+  it("shows a load error with Retry instead of the empty state when the list fails", async () => {
+    const refetch = vi.fn();
+    mockGlossaries.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByRole("alert").textContent).toContain("Couldn’t load glossaries");
+    expect(screen.queryByText("No glossaries yet")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("keeps showing the last page when a refetch fails", () => {
+    mockGlossaries.mockReturnValue({
+      data: { items: [row], totalCount: 1 },
+      isLoading: false,
+      isError: true,
+    } as never);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Acme")).toBeTruthy();
+    expect(screen.queryByText("Couldn’t load glossaries")).toBeNull();
+  });
+
   it("renders every populated column value", () => {
     setData([row]);
     renderWithProviders(<GlossaryTable />);
@@ -76,31 +108,35 @@ describe("glossary-table (extra coverage)", () => {
     setData([row]);
     renderWithProviders(<GlossaryTable />);
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+    // The select column is first; Created is hidden by default, Last updated is shown (Phase 8).
     expect(headers).toEqual([
+      "",
       "Name",
       "Rule",
+      "Status",
       "Translations",
       "Language",
       "Type",
       "Definition",
-      "Created",
+      "Last updated",
       "Actions",
     ]);
   });
 
-  it("shows the rule badge and a chip per non-default language, warning when missing (H6, H7)", () => {
+  it("shows the rule badge and a chip per non-default language, warning when missing (H6, H7, H14)", () => {
     setData([
       {
         ...row,
-        additionalNote:
-          '@@glossary-meta:v1@@{"rule":"translate","translations":{"de-DE":"Arbeitsbereich"}}',
+        rule: "translate",
+        translations: [{ language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] }],
       },
     ]);
     renderWithProviders(<GlossaryTable />);
     expect(screen.getByText("Translate")).toBeTruthy();
     expect(screen.getByText("de-DE")).toBeTruthy();
-    expect(screen.getByText("fr-FR missing")).toBeTruthy();
-    expect(screen.queryByText("en-US missing")).toBeNull();
+    // A missing language shows only its code; "is missing" is for screen readers and the tooltip.
+    expect(screen.getByText("fr-FR").textContent).toBe("fr-FR is missing");
+    expect(screen.queryByText("en-US")).toBeNull();
   });
 
   it("shows a dash instead of chips for Keep and Forbidden terms", () => {
@@ -109,13 +145,13 @@ describe("glossary-table (extra coverage)", () => {
         ...row,
         itemId: "k",
         name: "SELISE",
-        additionalNote: '@@glossary-meta:v1@@{"rule":"keep"}',
+        rule: "keep",
       },
       {
         ...row,
         itemId: "f",
         name: "Werk",
-        additionalNote: '@@glossary-meta:v1@@{"rule":"forbidden"}',
+        rule: "forbidden",
       },
     ]);
     renderWithProviders(<GlossaryTable />);
@@ -123,6 +159,99 @@ describe("glossary-table (extra coverage)", () => {
     expect(screen.getByText("Forbidden")).toBeTruthy();
     expect(screen.queryByText(/missing/)).toBeNull();
     expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("shows a migrated term's real rule and translations from the API fields, not 'missing' (C15)", () => {
+    setData([
+      {
+        ...row,
+        additionalNote: "Approved by marketing",
+        schemaVersion: 2,
+        rule: "translate",
+        translations: [
+          { language: "de-DE", value: "Arbeitsbereich", forbiddenValues: [] },
+          { language: "fr-FR", value: "Espace de travail", forbiddenValues: [] },
+        ],
+      },
+    ]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Translate")).toBeTruthy();
+    expect(screen.getByText("de-DE")).toBeTruthy();
+    expect(screen.getByText("fr-FR")).toBeTruthy();
+    expect(screen.queryByText(/missing/)).toBeNull();
+  });
+
+  it("shows the Status badge, Approved for terms without a status (C12)", () => {
+    setData([
+      { ...row, itemId: "a", name: "A" },
+      { ...row, itemId: "d", name: "D", status: "draft" },
+      { ...row, itemId: "x", name: "X", status: "deprecated" },
+    ]);
+    renderWithProviders(<GlossaryTable />);
+    expect(screen.getByText("Approved")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Deprecated")).toBeTruthy();
+  });
+
+  it("sends the Rule and Status filters and resets to page 0 (H12)", async () => {
+    const user = userEvent.setup();
+    setData([row], 100);
+    const { container } = renderWithProviders(<GlossaryTable />);
+    const footer = container.querySelector(".mt-5") as HTMLElement;
+    const next = Array.from(footer.querySelectorAll("button")).find(
+      (b) => b.querySelector(".lucide-chevron-right") && !(b as HTMLButtonElement).disabled,
+    );
+    fireEvent.click(next!);
+    expect(mockGlossaries).toHaveBeenLastCalledWith(1, 20, "", {
+      rule: undefined,
+      status: undefined,
+    });
+
+    await user.click(screen.getByRole("combobox", { name: "Status" }));
+    await user.click(await screen.findByRole("option", { name: "Draft" }));
+    expect(mockGlossaries).toHaveBeenLastCalledWith(0, 20, "", {
+      rule: undefined,
+      status: "draft",
+    });
+
+    await user.click(screen.getByRole("combobox", { name: "Rule" }));
+    await user.click(await screen.findByRole("option", { name: "Keep" }));
+    expect(mockGlossaries).toHaveBeenLastCalledWith(0, 20, "", { rule: "keep", status: "draft" });
+
+    await user.click(screen.getByRole("combobox", { name: "Rule" }));
+    await user.click(await screen.findByRole("option", { name: "All rules" }));
+    expect(mockGlossaries).toHaveBeenLastCalledWith(0, 20, "", {
+      rule: undefined,
+      status: "draft",
+    });
+  });
+
+  it("steps back to the last page when deletes leave the current page empty", () => {
+    setData([row], 45);
+    const { container, rerender } = renderWithProviders(<GlossaryTable />);
+    const nextButton = () =>
+      Array.from((container.querySelector(".mt-5") as HTMLElement).querySelectorAll("button")).find(
+        (b) => b.querySelector(".lucide-chevron-right") && !(b as HTMLButtonElement).disabled,
+      )!;
+    fireEvent.click(nextButton());
+    fireEvent.click(nextButton());
+    expect(mockGlossaries).toHaveBeenLastCalledWith(2, 20, "", expect.anything());
+
+    setData([], 25);
+    rerender(<GlossaryTable />);
+    expect(mockGlossaries).toHaveBeenLastCalledWith(1, 20, "", expect.anything());
+  });
+
+  it("shows the filtered empty state and keeps search enabled when filters match nothing", async () => {
+    const user = userEvent.setup();
+    setData([]);
+    renderWithProviders(<GlossaryTable />);
+    await user.click(screen.getByRole("combobox", { name: "Status" }));
+    await user.click(await screen.findByRole("option", { name: "Deprecated" }));
+    expect(screen.getByText("No glossaries match the selected filters.")).toBeTruthy();
+    expect((screen.getByPlaceholderText("Search glossary...") as HTMLInputElement).disabled).toBe(
+      false,
+    );
   });
 
   it("limits chips to 4 and summarizes the rest", () => {

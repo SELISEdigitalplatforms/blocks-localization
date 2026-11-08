@@ -9,9 +9,12 @@ import {
 } from "@/components/ui-kits/dialog/dialog";
 import { Button } from "@/components/ui-kits/button/button";
 import { useProjectStore, useScopedPath } from "@seliseblocks/genesis-os";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { useDeleteLanguageKey } from "@blocks-localization/hooks/use-language-manager";
 import { toast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router";
+
+const COMMON_ERROR = "common:ERROR";
 
 /**
  * The query string the Translations table had when it opened this key, so a delete returns to
@@ -22,12 +25,24 @@ export const getReturnSearch = (state: unknown): string => {
   return typeof returnSearch === "string" && returnSearch.startsWith("?") ? returnSearch : "";
 };
 
+/** The first readable message in a failed response's errors (array or field map), else the fallback. */
+const deleteErrorMessage = (rawErrors: unknown, fallback: string): string => {
+  if (!rawErrors || typeof rawErrors !== "object") return fallback;
+  if (Array.isArray(rawErrors)) {
+    return rawErrors.length > 0 ? (rawErrors as string[]).join(", ") : fallback;
+  }
+  if (Object.keys(rawErrors).length === 0) return fallback;
+  const firstError = Object.values(rawErrors)[0];
+  return typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
+};
+
 interface DeleteLanguageKeyProps {
   itemId: string;
   onClose: () => void;
 }
 
 const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }) => {
+  const { t } = useT("localization.keys");
   const navigate = useNavigate();
   const location = useLocation();
   const scoped = useScopedPath();
@@ -38,8 +53,8 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
     if (!tenantId || !itemId) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Missing project or key identifier. Please try again.",
+        title: t(COMMON_ERROR),
+        description: t("DELETE_LANGUAGE_KEY.MISSING_IDENTIFIER"),
       });
       return;
     }
@@ -49,33 +64,24 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Key deleted successfully.",
+          title: t("common:SUCCESS"),
+          description: t("DELETE_LANGUAGE_KEY.DELETED"),
         });
         navigate(scoped("services/language") + getReturnSearch(location.state), { replace: true });
         onClose();
       } else {
-        const rawErrors = res?.errors;
-        let errorMessage = "Failed to delete key. Please try again.";
-        if (rawErrors && typeof rawErrors === "object") {
-          if (Array.isArray(rawErrors) && rawErrors.length > 0) {
-            errorMessage = (rawErrors as string[]).join(", ");
-          } else if (!Array.isArray(rawErrors) && Object.keys(rawErrors).length > 0) {
-            const firstError = Object.values(rawErrors)[0];
-            errorMessage = typeof firstError === "string" ? firstError : JSON.stringify(rawErrors);
-          }
-        }
         toast({
           variant: "destructive",
-          title: "Error",
-          description: errorMessage,
+          title: t(COMMON_ERROR),
+          description: deleteErrorMessage(res?.errors, t("DELETE_LANGUAGE_KEY.DELETE_FAILED")),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        title: t(COMMON_ERROR),
+        description:
+          error instanceof Error ? error.message : t("DELETE_LANGUAGE_KEY.UNEXPECTED_ERROR"),
       });
     }
   };
@@ -83,9 +89,9 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
   return (
     <DialogContent className="rounded-md sm:max-w-[450px]">
       <DialogHeader>
-        <DialogTitle className="text-left">Delete Key</DialogTitle>
+        <DialogTitle className="text-left">{t("DELETE_LANGUAGE_KEY.TITLE")}</DialogTitle>
         <DialogDescription className="mt-4 text-left">
-          <div>Are you sure you’d like to delete this key?</div>
+          <div>{t("DELETE_LANGUAGE_KEY.CONFIRM")}</div>
           <span className="opacity-0">{itemId}</span>
         </DialogDescription>
       </DialogHeader>
@@ -93,11 +99,11 @@ const DeleteLanguageKey: React.FC<DeleteLanguageKeyProps> = ({ itemId, onClose }
       <DialogFooter className="flex gap-2">
         <DialogTrigger>
           <Button variant="outline" size="default" className="w-full sm:w-auto" disabled={false}>
-            Cancel
+            {t("common:CANCEL")}
           </Button>
         </DialogTrigger>
         <Button size="default" className="bg-error" onClick={deleteKey} disabled={isPending}>
-          Delete Key
+          {t("DELETE_LANGUAGE_KEY.TITLE")}
         </Button>
       </DialogFooter>
     </DialogContent>

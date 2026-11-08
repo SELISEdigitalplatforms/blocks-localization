@@ -10,9 +10,11 @@ namespace Worker.Consumers
     {
         private readonly IKeyManagementService _keyManagementService;
         private readonly IWebHookService _webHookService;
+        private readonly IActionPublisher _actionPublisher;
 
-        public TranslateAllEventConsumer(IKeyManagementService keyManagementService, IWebHookService webHookService)
+        public TranslateAllEventConsumer(IKeyManagementService keyManagementService, IWebHookService webHookService, IActionPublisher actionPublisher)
         {
+            _actionPublisher = actionPublisher;
             _keyManagementService = keyManagementService;
             _webHookService = webHookService;
         }
@@ -30,6 +32,13 @@ namespace Worker.Consumers
                         Response = response
                     }
                     );
+            await _actionPublisher.PublishAsync("localization.translation.completed", new
+            {
+                moduleId = @event.ModuleId,
+                projectKey = @event.ProjectKey,
+                defaultLanguage = @event.DefaultLanguage,
+                isSuccess = response
+            });
         }
     }
 }

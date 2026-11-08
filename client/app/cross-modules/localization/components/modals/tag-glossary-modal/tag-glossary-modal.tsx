@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { Button } from "@/components/ui-kits/button/button";
 import {
   DialogContent,
@@ -22,17 +23,18 @@ interface TagGlossaryModalProps {
   onClose: (open: boolean) => void;
 }
 
-const getTagGlossaryErrorMessage = (error: unknown) => {
+const getTagGlossaryErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
   if (Array.isArray(error) && error.length > 0) return error.join(", ");
   if (error && typeof error === "object" && Object.keys(error).length > 0) {
     return formatErrorMessage(error);
   }
-  return "Failed to update glossaries. Please try again.";
+  return fallback;
 };
 
 const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) => {
+  const { t } = useT("localization.glossary");
   // `Module/TagGlossary` untags every module glossary missing from the request, so the
   // selection starts from all of them and Save waits for the full seed (A8, C15).
   const {
@@ -64,22 +66,22 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
       if (res?.isSuccess) {
         toast({
           variant: "success",
-          title: "Success",
-          description: "Glossaries updated",
+          title: t("common:SUCCESS"),
+          description: t("TAG_GLOSSARY_MODAL.UPDATED"),
         });
         onClose(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Failed to update glossaries",
+          title: t("common:ERROR"),
+          description: t("TAG_GLOSSARY_MODAL.UPDATE_FAILED"),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: getTagGlossaryErrorMessage(error),
+        title: t("common:ERROR"),
+        description: getTagGlossaryErrorMessage(error, t("TAG_GLOSSARY_MODAL.UPDATE_FAILED_RETRY")),
       });
     }
   };
@@ -99,16 +101,18 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
     if (isSeedError && !isSeedFetching) {
       return (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-error">
-          Couldn&apos;t load this module&apos;s glossaries
+          {t("TAG_GLOSSARY_MODAL.LOAD_FAILED")}
           <Button type="button" variant="outline" size="sm" onClick={() => void refetchSeed()}>
-            Retry
+            {t("common:RETRY")}
           </Button>
         </div>
       );
     }
     return (
       <div className="grid gap-3">
-        <output className="block text-sm text-medium-emphasis">Loading tagged glossaries…</output>
+        <output className="block text-sm text-medium-emphasis">
+          {t("TAG_GLOSSARY_MODAL.LOADING")}
+        </output>
         <div className="flex gap-1.5" aria-hidden="true">
           <Skeleton className="h-7 w-24 rounded-full" />
           <Skeleton className="h-7 w-32 rounded-full" />
@@ -119,13 +123,18 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
     );
   };
 
+  const [descBefore, descAfter] = t("TAG_GLOSSARY_MODAL.DESCRIPTION", { name: "\u0000" }).split(
+    "\u0000",
+  );
+
   return (
     <DialogContent className="w-[calc(100vw-2rem)] rounded-lg sm:max-w-[520px]">
       <DialogHeader className="space-y-1.5">
-        <DialogTitle className="text-left text-xl">Tag Glossary</DialogTitle>
+        <DialogTitle className="text-left text-xl">{t("TAG_GLOSSARY_MODAL.TITLE")}</DialogTitle>
         <DialogDescription className="text-left text-sm text-medium-emphasis">
-          Tagged terms guide AI translation and glossary checks for every key in{" "}
-          <span className="font-medium text-high-emphasis">{module.moduleName}</span>.
+          {descBefore}
+          <span className="font-medium text-high-emphasis">{module.moduleName}</span>
+          {descAfter}
         </DialogDescription>
       </DialogHeader>
 
@@ -140,7 +149,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
           size="default"
           className="flex-1 sm:flex-1"
         >
-          Cancel
+          {t("common:CANCEL")}
         </Button>
         <Button
           disabled={isPending || !isSeeded}
@@ -148,7 +157,7 @@ const TagGlossaryModal: React.FC<TagGlossaryModalProps> = ({ module, onClose }) 
           size="default"
           className="flex-1 sm:flex-1"
         >
-          {isPending ? "Saving…" : "Save"}
+          {isPending ? t("TAG_GLOSSARY_MODAL.SAVING") : t("common:SAVE")}
         </Button>
       </DialogFooter>
     </DialogContent>

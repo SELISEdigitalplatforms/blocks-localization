@@ -35,39 +35,44 @@ import {
 import useIsMobile from "@/hooks/use-is-mobile";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { Clock, FileX, History } from "lucide-react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 
-function getOperationDescription(logFrom: string, userName: string): string {
+const MODULE = "localization.tools";
+
+type Translate = (key: string, values?: Record<string, string | number>) => string;
+
+function getOperationDescription(logFrom: string, userName: string, t: Translate): string {
   switch (logFrom) {
     case "TranslateAll":
-      return `Translate all by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_TRANSLATE_ALL", { userName });
     case "TranslateKey":
-      return `Auto-translated by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_TRANSLATE_KEY", { userName });
     case "KeyController.Save":
-      return `Updated manually by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_SAVE", { userName });
     case "KeyController.BulkSave":
-      return `Bulk updated by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_BULK_SAVE", { userName });
     case "KeyController.Create":
-      return `Key created by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_CREATE", { userName });
     case "KeyController.BulkCreate":
-      return `Bulk created by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_BULK_CREATE", { userName });
     case "KeyController.BulkMove":
-      return `Moved to another module by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_BULK_MOVE", { userName });
     case "UilmImport.Update":
-      return `Updated by import by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_IMPORT_UPDATE", { userName });
     case "UilmImport.Insert":
-      return `Inserted by import by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_IMPORT_INSERT", { userName });
     case "KeyController.Delete":
-      return `Key deleted by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_KEY_DELETE", { userName });
     case "Rollback":
-      return `Rolled back by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_ROLLBACK", { userName });
     case "Published":
-      return `Published by ${userName}`;
-    case "PublishFailed":
-      return `Publish failed`;
+      return t("LOCALIZATION_TIMELINE.OP_PUBLISHED", { userName });
     case "EnvironmentDataMigration":
-      return `Environment data migration by ${userName}`;
+      return t("LOCALIZATION_TIMELINE.OP_ENVIRONMENT_MIGRATION", { userName });
+    case "PublishFailed":
+      return t("LOCALIZATION_TIMELINE.OP_PUBLISH_FAILED");
     default:
-      return `A translation action occurred`;
+      return t("LOCALIZATION_TIMELINE.OP_DEFAULT");
   }
 }
 
@@ -185,6 +190,7 @@ function OperationDetailsContent({
   pageSize,
   onPageChange,
 }: Readonly<OperationDetailsContentProps>) {
+  const { t } = useT(MODULE);
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -199,8 +205,10 @@ function OperationDetailsContent({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <FileX className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
-        <p className="text-sm font-medium text-medium-emphasis">No details found</p>
-        <p className="text-xs">No details available for this operation.</p>
+        <p className="text-sm font-medium text-medium-emphasis">
+          {t("LOCALIZATION_TIMELINE.NO_DETAILS_TITLE")}
+        </p>
+        <p className="text-xs">{t("LOCALIZATION_TIMELINE.NO_DETAILS_DESCRIPTION")}</p>
       </div>
     );
   }
@@ -215,8 +223,10 @@ function OperationDetailsContent({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Clock className="mb-2 h-10 w-10 text-low-emphasis" strokeWidth={1.5} />
-        <p className="text-sm font-medium text-medium-emphasis">No changes published</p>
-        <p className="text-xs">This publish operation had no changes.</p>
+        <p className="text-sm font-medium text-medium-emphasis">
+          {t("LOCALIZATION_TIMELINE.NO_CHANGES_TITLE")}
+        </p>
+        <p className="text-xs">{t("LOCALIZATION_TIMELINE.NO_CHANGES_DESCRIPTION")}</p>
       </div>
     );
   }
@@ -226,9 +236,9 @@ function OperationDetailsContent({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Key</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Changes</TableHead>
+            <TableHead>{t("LOCALIZATION_TIMELINE.COLUMN_KEY")}</TableHead>
+            <TableHead>{t("LOCALIZATION_TIMELINE.COLUMN_DATE")}</TableHead>
+            <TableHead>{t("LOCALIZATION_TIMELINE.COLUMN_CHANGES")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -261,6 +271,7 @@ function OperationDetailModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT(MODULE);
   const [detailPage, setDetailPage] = useState(0);
   const detailPageSize = 10;
 
@@ -272,8 +283,8 @@ function OperationDetailModal({
 
   const dialogTitle =
     data && data.timelines.length > 0
-      ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName)
-      : "Operation Details";
+      ? getOperationDescription(data.timelines[0].logFrom, data.timelines[0].userName, t)
+      : t("LOCALIZATION_TIMELINE.OPERATION_DETAILS");
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -309,8 +320,9 @@ function TimelineEntry({
   isMobile,
   onSelect,
 }: Readonly<TimelineEntryProps>) {
+  const { t } = useT(MODULE);
   const { date, time } = formatDate(entry.createDate);
-  const description = getOperationDescription(entry.logFrom, entry.userName);
+  const description = getOperationDescription(entry.logFrom, entry.userName, t);
   const selectEntry = () => onSelect(entry.operationId);
 
   return (
@@ -351,7 +363,7 @@ function TimelineEntry({
             <div className="flex items-center gap-2">
               {entry.affectedKeysCount > 1 && (
                 <Badge variant="secondary" className="text-xs">
-                  {entry.affectedKeysCount} keys
+                  {t("LOCALIZATION_TIMELINE.AFFECTED_KEYS", { count: entry.affectedKeysCount })}
                 </Badge>
               )}
             </div>
@@ -414,6 +426,7 @@ type TimelineContentProps = {
 };
 
 function TimelineContent({ data, isLoading, isMobile, onSelect }: Readonly<TimelineContentProps>) {
+  const { t } = useT(MODULE);
   if (isLoading) {
     return <TimelineSkeleton isMobile={isMobile} />;
   }
@@ -422,8 +435,10 @@ function TimelineContent({ data, isLoading, isMobile, onSelect }: Readonly<Timel
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <History className="mb-3 h-12 w-12 text-low-emphasis" strokeWidth={1.5} />
-        <p className="mb-1 text-base font-medium text-medium-emphasis">No history found</p>
-        <p className="text-sm">Your localization activity will appear here.</p>
+        <p className="mb-1 text-base font-medium text-medium-emphasis">
+          {t("LOCALIZATION_TIMELINE.NO_HISTORY_TITLE")}
+        </p>
+        <p className="text-sm">{t("LOCALIZATION_TIMELINE.NO_HISTORY_DESCRIPTION")}</p>
       </div>
     );
   }
@@ -458,9 +473,10 @@ export type LocalizationTimelineProps = {
 
 export default function LocalizationTimeline({
   timelineQuery,
-  cardTitle = "History",
-  cardDescription = "View all localization changes.",
+  cardTitle,
+  cardDescription,
 }: LocalizationTimelineProps = {}) {
+  const { t } = useT(MODULE);
   const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   const pageSize = 10;
@@ -480,8 +496,12 @@ export default function LocalizationTimeline({
     <>
       <Card className="mt-6 h-min rounded-sm shadow-none">
         <CardHeader>
-          <CardTitle className="text-xl">{cardTitle}</CardTitle>
-          <CardDescription>{cardDescription}</CardDescription>
+          <CardTitle className="text-xl">
+            {cardTitle ?? t("LOCALIZATION_TIMELINE.DEFAULT_TITLE")}
+          </CardTitle>
+          <CardDescription>
+            {cardDescription ?? t("LOCALIZATION_TIMELINE.DEFAULT_DESCRIPTION")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="h-[calc(100vh-420px)] overflow-y-auto pr-2">

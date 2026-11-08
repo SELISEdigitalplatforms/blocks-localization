@@ -1,4 +1,16 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  Fragment,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useNavigate } from "react-router";
 import { useQueryState } from "nuqs";
 import { v4 as uuidv4 } from "uuid";
@@ -99,21 +111,36 @@ import {
 } from "./hooks/use-language-import-progress";
 import {
   areAllRowsSelected,
+  BULK_KEY_SET_CHANGED,
+  BULK_TOO_MANY_KEYS,
+  getBulkKeyTargetError,
   getDeleteKeyErrorMessage,
   getDeleteKeysErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
   getResourceSearchFilters,
   getSelectedKeysLabel,
+  getSelectedRowIds,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
+  getUpdatedExclusions,
+  KEY_LIST_QUERY_TIMEOUT,
+  MAX_BULK_KEY_SELECTION,
   parseResourceSearch,
   TABLE_ROW_HEIGHT_ESTIMATE,
   toKeyPageSize,
   updateResourceSearchValue,
+  withoutRow,
   withRowsSelected,
 } from "./language-table.utils";
+import { tStatic, useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
+
+const LOCALIZATION_LANGUAGE_TABLE_MODULE = "localization.language-table";
+const COMMON_DELETE = "common:DELETE";
+const COMMON_CANCEL = "common:CANCEL";
+const LANGUAGE_TABLE_TRANSLATE = "LANGUAGE_TABLE.TRANSLATE";
+const COMMON_SUCCESS = "common:SUCCESS";
 
 // The virtualizer is only needed in the All view, so it stays out of the main bundle.
 const VirtualKeyRows = lazy(() => import("./components/virtual-key-rows"));
@@ -167,6 +194,7 @@ const hasActiveKeyFilters = (
     queryParams.lastUpdateStartDate ||
     queryParams.lastUpdateEndDate ||
     queryParams.duplicates ||
+    queryParams.glossaryIssues ||
     resourceSearchFilterCount > 0,
   );
 
@@ -195,7 +223,11 @@ const getRowCountTargets = (
 };
 
 const getSelectAllLabel = (isAllView: boolean, loadedCount: number) =>
-  isAllView ? `Select all loaded (${loadedCount})` : undefined;
+  isAllView
+    ? tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "LANGUAGE_TABLE.SELECT_ALL_LOADED", {
+        count: loadedCount,
+      })
+    : undefined;
 
 /** Where the paged table and the All view differ: scrolling, sticky header, row count and footer. */
 const getKeyTableLayout = ({
@@ -228,7 +260,7 @@ const getKeyTableLayout = ({
 const showErrorToast = (description: string) => {
   toast({
     variant: "destructive",
-    title: "Error",
+    title: tStatic(LOCALIZATION_LANGUAGE_TABLE_MODULE, "common:ERROR"),
     description,
   });
 };
@@ -243,12 +275,14 @@ async function runKeyAction({
   onSuccess,
   describeErrors,
   describeException,
+  onException,
 }: {
   request: () => Promise<IBaseMutationResponse | undefined>;
   success: { title: string; description: string };
   onSuccess: () => void;
   describeErrors: (errors: unknown) => string;
   describeException: (error: unknown) => string;
+  onException?: (error: unknown) => void;
 }) {
   try {
     const res = await request();
@@ -264,6 +298,7 @@ async function runKeyAction({
     }
   } catch (error) {
     showErrorToast(describeException(error));
+    onException?.(error);
   }
 }
 
@@ -284,18 +319,27 @@ const removeKeysFromSet = (keys: Set<string>, keyIds: Iterable<string>) => {
 
 function LanguageTableEmptyState({
   hasActiveFilters,
+  isGlossaryIssuesFilterOn,
   importProgress,
 }: Readonly<{
   hasActiveFilters: boolean;
+  isGlossaryIssuesFilterOn: boolean;
   importProgress: LanguageImportProgress | null;
 }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
+  if (isGlossaryIssuesFilterOn && !importProgress) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_GLOSSARY_ISSUES")}</p>
+      </div>
+    );
+  }
+
   if (hasActiveFilters && !importProgress) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
-        <p className="font-medium text-high-emphasis">No matching translation keys</p>
-        <p className="text-muted-foreground">
-          No keys match your current filters. Try adjusting your search criteria.
-        </p>
+        <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_MATCHING_KEYS")}</p>
+        <p className="text-muted-foreground">{t("LANGUAGE_TABLE.NO_MATCHING_KEYS_HINT")}</p>
       </div>
     );
   }
@@ -306,18 +350,206 @@ function LanguageTableEmptyState({
 
   return (
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4 py-12">
-      <p className="font-medium text-high-emphasis">No translation keys yet</p>
-      <p className="text-muted-foreground">Create your first translation key to get started.</p>
+      <p className="font-medium text-high-emphasis">{t("LANGUAGE_TABLE.NO_KEYS_YET")}</p>
+      <p className="text-muted-foreground">{t("LANGUAGE_TABLE.NO_KEYS_YET_HINT")}</p>
+    </div>
+  );
+}
+
+/** Renders the part of a translated text between `<0>` and `</0>` in bold. */
+const withBoldPart = (text: string) => {
+  const match = /^(.*)<0>(.*)<\/0>(.*)$/s.exec(text);
+  if (!match) return text;
+  return (
+    <>
+      {match[1]}
+      <strong>{match[2]}</strong>
+      {match[3]}
+    </>
+  );
+};
+
+const getBulkEditDisabledReason = (
+  isAllMatchingSelected: boolean,
+  hasUnloadedSelectedKeys: boolean,
+  t: TFunction,
+): string | undefined => {
+  if (isAllMatchingSelected) return t("LANGUAGE_TABLE.BULK_EDIT_MATCHING");
+  if (hasUnloadedSelectedKeys) return t("LANGUAGE_TABLE.BULK_EDIT_LOADED_ONLY");
+  return undefined;
+};
+
+/** A bulk action that may be disabled; the reason shows on hover and keyboard focus. */
+function BulkActionReason({ reason, children }: Readonly<{ reason?: string; children: ReactNode }>) {
+  const reasonId = useId();
+  if (!reason) return children;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <span className="relative inline-flex rounded-sm">
+          {children}
+          <TooltipTrigger
+            type="button"
+            aria-disabled="true"
+            aria-label={reason}
+            aria-describedby={reasonId}
+            className="absolute inset-0 z-10 cursor-not-allowed rounded-sm bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </span>
+        <TooltipContent>{reason}</TooltipContent>
+      </Tooltip>
+      <span id={reasonId} className="sr-only">
+        {reason}
+      </span>
+    </TooltipProvider>
+  );
+}
+
+interface BulkSelectionBarProps {
+  selectedCount: number;
+  selectedKeysCount: number;
+  isAllMatchingSelected: boolean;
+  isAllView: boolean;
+  allViewTotalCount: number;
+  canEscalateToAllMatching: boolean;
+  isAllMatchingOverLimit: boolean;
+  overLimitText: string;
+  isBulkActionPending: boolean;
+  bulkEditDisabledReason?: string;
+  bulkActionLimitReason?: string;
+  onClearSelection: () => void;
+  onSelectAllMatching: () => void;
+  onSelectLoadedOnly: () => void;
+  onBulkEdit: () => void;
+  onBulkTranslate: () => void;
+  onBulkDelete: () => void;
+}
+
+function BulkSelectionBar({
+  selectedCount,
+  selectedKeysCount,
+  isAllMatchingSelected,
+  isAllView,
+  allViewTotalCount,
+  canEscalateToAllMatching,
+  isAllMatchingOverLimit,
+  overLimitText,
+  isBulkActionPending,
+  bulkEditDisabledReason,
+  bulkActionLimitReason,
+  onClearSelection,
+  onSelectAllMatching,
+  onSelectLoadedOnly,
+  onBulkEdit,
+  onBulkTranslate,
+  onBulkDelete,
+}: Readonly<BulkSelectionBarProps>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
+  if (selectedCount <= 0) return null;
+  const totalForLabel = isAllView ? allViewTotalCount : undefined;
+  const selectionLabel = isAllMatchingSelected
+    ? withBoldPart(
+        t("LANGUAGE_TABLE.ALL_MATCHING_SELECTED", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        }),
+      )
+    : getSelectedKeysLabel(selectedKeysCount, totalForLabel);
+
+  return (
+    <div className="mb-4 flex items-center justify-between gap-2 rounded bg-blocks-primary-shades-300 px-4 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          aria-label={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
+          title={t("LANGUAGE_TABLE.CLEAR_SELECTION")}
+          onClick={onClearSelection}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium" aria-live="polite">{selectionLabel}</span>
+        {canEscalateToAllMatching && !isAllMatchingOverLimit && (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto p-0"
+            disabled={isBulkActionPending}
+            onClick={onSelectAllMatching}
+          >
+            {t("LANGUAGE_TABLE.SELECT_ALL_MATCHING", {
+              count: allViewTotalCount,
+              formatted: allViewTotalCount.toLocaleString(),
+            })}
+          </Button>
+        )}
+        {canEscalateToAllMatching && isAllMatchingOverLimit && (
+          <span className="text-sm text-medium-emphasis">{overLimitText}</span>
+        )}
+        {isAllMatchingSelected && (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto p-0"
+            disabled={isBulkActionPending}
+            onClick={onSelectLoadedOnly}
+          >
+            {t("LANGUAGE_TABLE.SELECT_LOADED_ONLY")}
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <BulkActionReason reason={bulkEditDisabledReason}>
+          <Button
+            size="sm"
+            variant="default"
+            disabled={!!bulkEditDisabledReason || isBulkActionPending}
+            onClick={onBulkEdit}
+          >
+            <PencilLine className="h-4 w-4 lg:mr-1" />
+            <span className="sr-only lg:not-sr-only">{t("LANGUAGE_TABLE.BULK_EDIT")}</span>
+          </Button>
+        </BulkActionReason>
+        <BulkActionReason reason={bulkActionLimitReason}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!bulkActionLimitReason || isBulkActionPending}
+            onClick={onBulkTranslate}
+            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Languages className="lg:mr-1 h-4 w-4" />
+            <span className="sr-only lg:not-sr-only">{t(LANGUAGE_TABLE_TRANSLATE)}</span>
+          </Button>
+        </BulkActionReason>
+        <BulkActionReason reason={bulkActionLimitReason}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!!bulkActionLimitReason || isBulkActionPending}
+            onClick={onBulkDelete}
+            className="border-error text-error hover:bg-error hover:text-primary-foreground"
+          >
+            <Trash className="lg:mr-1 h-4 w-4" />
+            <span className="sr-only lg:not-sr-only">{t(COMMON_DELETE)}</span>
+          </Button>
+        </BulkActionReason>
+      </div>
     </div>
   );
 }
 
 function AllViewLoadError({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   return (
     <div className="flex items-center justify-center gap-3">
-      <span className="text-sm text-medium-emphasis">Couldn&apos;t load more keys.</span>
+      <span className="text-sm text-medium-emphasis">{t("LANGUAGE_TABLE.LOAD_MORE_FAILED")}</span>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        Retry
+        {t("common:RETRY")}
       </Button>
     </div>
   );
@@ -328,25 +560,24 @@ function ImportProgressState({
 }: Readonly<{
   importProgress: LanguageImportProgress;
 }>) {
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const isFailed = importProgress.status === "failed";
   const isDelayed = importProgress.status === "delayed";
   const isFinalizing = importProgress.status === "finalizing";
   const isProcessing = !isFailed && !isDelayed;
 
   const getImportTitle = () => {
-    if (isFailed) return "Import couldn't be completed";
-    if (isDelayed) return "This import is taking longer than expected";
-    if (isFinalizing) return "Finalizing your import";
-    return "Importing translation keys";
+    if (isFailed) return t("LANGUAGE_TABLE.IMPORT_FAILED_TITLE");
+    if (isDelayed) return t("LANGUAGE_TABLE.IMPORT_DELAYED_TITLE");
+    if (isFinalizing) return t("LANGUAGE_TABLE.IMPORT_FINALIZING_TITLE");
+    return t("LANGUAGE_TABLE.IMPORT_PROCESSING_TITLE");
   };
 
   const getImportDescription = () => {
-    if (isFailed) return "The uploaded file could not be processed. Please try importing it again.";
-    if (isDelayed)
-      return "Your keys are still being processed. You can leave this page and return later.";
-    if (isFinalizing)
-      return "The import completed successfully. We're loading the new translation keys now.";
-    return "Your file has been uploaded and is being processed. Large imports may take a few minutes. The keys will appear here automatically when they're ready.";
+    if (isFailed) return t("LANGUAGE_TABLE.IMPORT_FAILED_DESCRIPTION");
+    if (isDelayed) return t("LANGUAGE_TABLE.IMPORT_DELAYED_DESCRIPTION");
+    if (isFinalizing) return t("LANGUAGE_TABLE.IMPORT_FINALIZING_DESCRIPTION");
+    return t("LANGUAGE_TABLE.IMPORT_PROCESSING_DESCRIPTION");
   };
 
   const title = getImportTitle();
@@ -378,9 +609,106 @@ function ImportProgressState({
     </div>
   );
 }
+
+interface LanguageTableRowsProps {
+  isAllView: boolean;
+  showLoadingSkeleton: boolean;
+  rows: Row<IBlocksLanguageKey>[];
+  renderSkeletonRows: () => ReactNode;
+  renderKeyRow: (row: Row<IBlocksLanguageKey>, ariaRowIndex?: number) => ReactNode;
+  scrollElementRef: RefObject<HTMLDivElement | null>;
+  headerRef: RefObject<HTMLTableSectionElement | null>;
+  headerRowCount: number;
+  colSpan: number;
+  headCursor: string | number | null | undefined;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
+  isAllViewError: boolean;
+  onLoadMore: () => void;
+  onBackToTop: () => void;
+  onRefetchAllView: () => void;
+  hasActiveFilters: boolean;
+  isGlossaryIssuesFilterOn: boolean;
+  importProgress: LanguageImportProgress | null;
+}
+
+function LanguageTableRows({
+  isAllView,
+  showLoadingSkeleton,
+  rows,
+  renderSkeletonRows,
+  renderKeyRow,
+  scrollElementRef,
+  headerRef,
+  headerRowCount,
+  colSpan,
+  headCursor,
+  hasNextPage,
+  isFetchingNextPage,
+  isFetchNextPageError,
+  isAllViewError,
+  onLoadMore,
+  onBackToTop,
+  onRefetchAllView,
+  hasActiveFilters,
+  isGlossaryIssuesFilterOn,
+  importProgress,
+}: Readonly<LanguageTableRowsProps>) {
+  if (isAllView && !showLoadingSkeleton && rows.length > 0) {
+    return (
+      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
+        <VirtualKeyRows
+          rows={rows}
+          scrollElementRef={scrollElementRef}
+          headerRef={headerRef}
+          headerRowCount={headerRowCount}
+          colSpan={colSpan}
+          renderKeyRow={renderKeyRow}
+          headCursor={headCursor}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          isFetchNextPageError={isFetchNextPageError}
+          onLoadMore={onLoadMore}
+          onBackToTop={onBackToTop}
+          loadError={<AllViewLoadError onRetry={onLoadMore} />}
+        />
+      </Suspense>
+    );
+  }
+
+  if (showLoadingSkeleton) return <TableBody>{renderSkeletonRows()}</TableBody>;
+  if (rows.length > 0) {
+    return (
+      <TableBody>
+        {rows.map((row) => <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>)}
+      </TableBody>
+    );
+  }
+
+  return (
+    <TableBody>
+      <TableRow>
+        <TableCell colSpan={colSpan} className="h-24 text-center">
+          {isAllView && isAllViewError ? (
+            <AllViewLoadError onRetry={onRefetchAllView} />
+          ) : (
+            <LanguageTableEmptyState
+              hasActiveFilters={hasActiveFilters}
+              isGlossaryIssuesFilterOn={isGlossaryIssuesFilterOn}
+              importProgress={importProgress}
+            />
+          )}
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  );
+}
+
 export function LanguageTable() {
   "use no memo";
 
+  const { t } = useT(LOCALIZATION_LANGUAGE_TABLE_MODULE);
   const {
     selectedLanguages,
     setSelectedLanguages,
@@ -451,6 +779,7 @@ export function LanguageTable() {
     allViewQuery,
     allViewKeys,
     allViewTotalCount,
+    allViewFilter,
     pagedData: blocksLanguageKeyData,
     isLoading,
     isFetching,
@@ -458,6 +787,7 @@ export function LanguageTable() {
     currentTotalCount,
     refetchLanguageKeys,
     showDuplicatesTruncatedNote,
+    glossaryIssueCount,
   } = useLanguageKeysQueries({ queryParams, sortQueryParams, resourceSearchFilters });
 
   const {
@@ -500,9 +830,29 @@ export function LanguageTable() {
   // In the All view, while every loaded row is selected, the rows of later chunks are selected as
   // they load, so select-all keeps covering the list while scrolling.
   const isSelectingAllLoadedRef = useRef(false);
+  // "Select all N matching": bulk Delete and Translate send the All view's filter instead of IDs,
+  // and the rows unticked meanwhile are sent as exclusions.
+  const [isAllMatchingSelected, setIsAllMatchingSelected] = useState(false);
+  const [excludedKeyIds, setExcludedKeyIds] = useState<ReadonlySet<string>>(() => new Set());
+  const leaveAllMatching = useCallback(() => {
+    setIsAllMatchingSelected(false);
+    setExcludedKeyIds((current) => (current.size > 0 ? new Set() : current));
+  }, []);
   const setRowSelection = useCallback<OnChangeFn<RowSelectionState>>(
     (updater) => {
       const next = typeof updater === "function" ? updater(rowSelectionState) : updater;
+      if (isAllMatchingSelected && Object.keys(next).length === 0) {
+        leaveAllMatching();
+      } else if (isAllMatchingSelected) {
+        setExcludedKeyIds((current) =>
+          getUpdatedExclusions(
+            current,
+            allViewKeys.map((key) => key.itemId),
+            rowSelectionState,
+            next,
+          ),
+        );
+      }
       isSelectingAllLoadedRef.current =
         isAllView &&
         areAllRowsSelected(
@@ -511,7 +861,7 @@ export function LanguageTable() {
         );
       setRowSelectionState(next);
     },
-    [rowSelectionState, isAllView, allViewKeys],
+    [rowSelectionState, isAllView, allViewKeys, isAllMatchingSelected, leaveAllMatching],
   );
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkTranslateDialogOpen, setIsBulkTranslateDialogOpen] = useState(false);
@@ -571,24 +921,24 @@ export function LanguageTable() {
   }, [tenantId, setQueryParams]);
 
   const deleteLanguageKeyModalData = {
-    dialogTitle: "Delete language key?",
-    dialogSubtitle: "Are you sure you want to delete this language key?",
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.DELETE_KEY_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.DELETE_KEY_SUBTITLE"),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const publishChangesModalData = {
-    dialogTitle: "Publish changes?",
-    dialogSubtitle: "Are you sure you want to publish the changes?",
-    confirmButton: "Publish",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.PUBLISH_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.PUBLISH_SUBTITLE"),
+    confirmButton: t("LANGUAGE_TABLE.PUBLISH"),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const translateKeyModalData = {
-    dialogTitle: "Auto-translate this key?",
-    dialogSubtitle: "Are you sure you want to automatically translate this language key?",
-    confirmButton: "Translate",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_TITLE"),
+    dialogSubtitle: t("LANGUAGE_TABLE.TRANSLATE_KEY_SUBTITLE"),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onDeleteClick = (itemId: string) => {
@@ -616,7 +966,10 @@ export function LanguageTable() {
 
     await runKeyAction({
       request: () => translateKeyAsync(payload),
-      success: { title: "Processing Translation", description: "Key translation in progress." },
+      success: {
+        title: t("LANGUAGE_TABLE.PROCESSING_TRANSLATION"),
+        description: t("LANGUAGE_TABLE.TRANSLATION_IN_PROGRESS"),
+      },
       onSuccess: () => {
         setPollingKeyId(selectedLanguageKeyId);
         setTranslatingKeys((prev) => new Set(prev).add(selectedLanguageKeyId));
@@ -629,16 +982,22 @@ export function LanguageTable() {
 
   const onConfirmDelete = async () => {
     if (!tenantId || !selectedLanguageKeyId) {
-      showErrorToast("Missing project or key identifier. Please try again.");
+      showErrorToast(t("LANGUAGE_TABLE.MISSING_IDENTIFIER"));
       return;
     }
     await runKeyAction({
       request: () => deleteAsync({ itemId: selectedLanguageKeyId }),
-      success: { title: "Success", description: "Deleted successfully" },
-      onSuccess: () => setIsDeleteDialogOpen(false),
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.DELETED_SUCCESSFULLY"),
+      },
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        setRowSelectionState((current) => withoutRow(current, selectedLanguageKeyId));
+      },
       describeErrors: getDeleteKeyErrorMessage,
       describeException: (error) =>
-        error instanceof Error ? error.message : "An unexpected error occurred.",
+        error instanceof Error ? error.message : t("LANGUAGE_TABLE.UNEXPECTED_ERROR"),
     });
   };
 
@@ -711,6 +1070,7 @@ export function LanguageTable() {
     sortQueryParams,
     translatingKeys,
     selectAllLabel: getSelectAllLabel(isAllView, allViewKeys.length),
+    clearSelectionOnUntickAll: isAllView,
   });
 
   const tableData = useMemo(() => {
@@ -776,6 +1136,8 @@ export function LanguageTable() {
     queryParams.search,
     queryParams.moduleIds,
     queryParams.missingLanguages,
+    queryParams.duplicates,
+    queryParams.glossaryIssues,
     createDateRange,
     lastUpdateDateRange,
     resourceSearchFilters,
@@ -792,11 +1154,22 @@ export function LanguageTable() {
     isSelectingAllLoadedRef.current = false;
   }, [isAllView, allViewFiltersHash]);
 
+  // The All view counts selected keys that are no longer loaded, so a selection made under other
+  // filters could include keys the new list hides.
   useEffect(() => {
-    if (!isSelectingAllLoadedRef.current) return;
-    const loadedKeyIds = allViewKeys.map((key) => key.itemId);
+    leaveAllMatching();
+    if (!isAllView) return;
+    setRowSelectionState((current) => (Object.keys(current).length > 0 ? {} : current));
+  }, [isAllView, allViewFiltersHash, tenantId, leaveAllMatching]);
+
+  useEffect(() => {
+    // While all matching keys are selected, every loaded row is ticked unless it was excluded.
+    if (!isAllMatchingSelected && !isSelectingAllLoadedRef.current) return;
+    const loadedKeyIds = allViewKeys
+      .map((key) => key.itemId)
+      .filter((itemId) => !excludedKeyIds.has(itemId));
     setRowSelectionState((current) => withRowsSelected(current, loadedKeyIds));
-  }, [allViewKeys]);
+  }, [allViewKeys, isAllMatchingSelected, excludedKeyIds]);
 
   const allViewErrorCode = getKeyListErrorCode(allViewQuery.error);
   useEffect(() => {
@@ -813,35 +1186,122 @@ export function LanguageTable() {
     }
   }, [queryParams.pageSize, setQueryParams]);
 
-  const selectedKeys = table.getSelectedRowModel().rows.map((row) => row.original.itemId);
-  const selectedKeyRows = table.getSelectedRowModel().rows.map((row) => row.original);
+  const loadedSelectedRows = table.getSelectedRowModel().rows.map((row) => row.original);
+  // The All view drops its oldest chunks while scrolling; their selected keys still count.
+  const selectedKeys = isAllView
+    ? getSelectedRowIds(rowSelectionState)
+    : loadedSelectedRows.map((row) => row.itemId);
+  const allMatchingCount = allViewTotalCount - excludedKeyIds.size;
+  const selectedCount = isAllMatchingSelected ? allMatchingCount : selectedKeys.length;
+  // Offered once every loaded row is selected and more keys match; not when the total is unknown
+  // or the duplicates list was cut short, since the server then can't resolve the same set.
+  const canEscalateToAllMatching =
+    isAllView &&
+    !isAllMatchingSelected &&
+    !showDuplicatesTruncatedNote &&
+    allViewTotalCount > selectedKeys.length &&
+    areAllRowsSelected(
+      allViewKeys.map((key) => key.itemId),
+      rowSelectionState,
+    );
+  const isAllMatchingOverLimit = allViewTotalCount > MAX_BULK_KEY_SELECTION;
+  const isBulkActionPending = isBulkDeletingKeys || isBulkTranslatingKeys;
+  const bulkEditDisabledReason = getBulkEditDisabledReason(
+    isAllMatchingSelected,
+    selectedKeys.length > loadedSelectedRows.length,
+    t,
+  );
+  const bulkActionLimitReason =
+    selectedCount > MAX_BULK_KEY_SELECTION
+      ? t("LANGUAGE_TABLE.BULK_SELECTION_LIMIT", {
+          formatted: MAX_BULK_KEY_SELECTION.toLocaleString(),
+        })
+      : undefined;
+  const overLimitText = t("LANGUAGE_TABLE.ALL_MATCHING_OVER_LIMIT", {
+    formatted: MAX_BULK_KEY_SELECTION.toLocaleString(),
+  });
+
+  const selectAllMatching = () => {
+    setExcludedKeyIds(new Set());
+    setIsAllMatchingSelected(true);
+  };
+
+  /** The toast for a refused "all matching" action; a changed key set also reloads the list. */
+  const describeAllMatchingError = (fallback: (error: unknown) => string) => (error: unknown) => {
+    const targetError = getBulkKeyTargetError(error);
+    if (targetError?.code === BULK_KEY_SET_CHANGED) {
+      return t("LANGUAGE_TABLE.ALL_MATCHING_CHANGED", {
+        formatted: (targetError.matchedCount ?? 0).toLocaleString(),
+      });
+    }
+    if (targetError?.code === BULK_TOO_MANY_KEYS) return overLimitText;
+    if (targetError?.code === KEY_LIST_QUERY_TIMEOUT) return t("LANGUAGE_TABLE.ALL_MATCHING_TIMEOUT");
+    return fallback(error);
+  };
+
+  const onAllMatchingException = (error: unknown) => {
+    if (getBulkKeyTargetError(error)?.code !== BULK_KEY_SET_CHANGED) return;
+    leaveAllMatching();
+    resetAllView();
+  };
 
   const bulkDeleteModalData = {
-    dialogTitle: "Delete language keys?",
-    dialogSubtitle: `Are you sure you want to delete ${selectedKeys.length} selected language key(s)?`,
-    confirmButton: "Delete",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.BULK_DELETE_TITLE"),
+    dialogSubtitle: isAllMatchingSelected
+      ? t("LANGUAGE_TABLE.BULK_DELETE_MATCHING_SUBTITLE", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        })
+      : t("LANGUAGE_TABLE.BULK_DELETE_SUBTITLE", { count: selectedCount }),
+    confirmButton: t(COMMON_DELETE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const bulkTranslateModalData = {
-    dialogTitle: "Auto-translate selected keys?",
-    dialogSubtitle: `Are you sure you want to automatically translate ${selectedKeys.length} selected language key(s)?`,
-    confirmButton: "Translate",
-    cancelButton: "Cancel",
+    dialogTitle: t("LANGUAGE_TABLE.BULK_TRANSLATE_TITLE"),
+    dialogSubtitle: isAllMatchingSelected
+      ? t("LANGUAGE_TABLE.BULK_TRANSLATE_MATCHING_SUBTITLE", {
+          count: selectedCount,
+          formatted: selectedCount.toLocaleString(),
+        })
+      : t("LANGUAGE_TABLE.BULK_TRANSLATE_SUBTITLE", { count: selectedCount }),
+    confirmButton: t(LANGUAGE_TABLE_TRANSLATE),
+    cancelButton: t(COMMON_CANCEL),
   };
 
   const onConfirmBulkDelete = async () => {
-    if (!tenantId || selectedKeys.length === 0) return;
+    if (!tenantId || selectedCount <= 0 || bulkActionLimitReason) return;
 
+    const wasAllMatching = isAllMatchingSelected;
     await runKeyAction({
-      request: () => bulkDeleteAsync({ itemIds: selectedKeys }),
-      success: { title: "Success", description: "Keys deleted successfully" },
+      request: () =>
+        bulkDeleteAsync(
+          wasAllMatching
+            ? {
+                filter: allViewFilter,
+                excludedItemIds: [...excludedKeyIds],
+                expectedCount: allMatchingCount,
+              }
+            : { itemIds: selectedKeys },
+        ),
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.KEYS_DELETED_SUCCESSFULLY"),
+      },
       onSuccess: () => {
         setIsBulkDeleteDialogOpen(false);
         setRowSelection({});
+        if (wasAllMatching) resetAllView();
       },
       describeErrors: getDeleteKeysErrorMessage,
-      describeException: getDeleteKeysErrorMessage,
+      describeException: wasAllMatching
+        ? describeAllMatchingError(getDeleteKeysErrorMessage)
+        : getDeleteKeysErrorMessage,
+      onException: (error) => {
+        if (!wasAllMatching) return;
+        setIsBulkDeleteDialogOpen(false);
+        onAllMatchingException(error);
+      },
     });
   };
 
@@ -850,31 +1310,45 @@ export function LanguageTable() {
   };
 
   const onConfirmBulkTranslate = async () => {
-    if (!tenantId || selectedKeys.length === 0) return;
+    if (!tenantId || selectedCount <= 0 || bulkActionLimitReason) return;
 
-    const payload = {
-      keyIds: selectedKeys,
+    const wasAllMatching = isAllMatchingSelected;
+    const options = {
       ProjectKey: tenantId,
       messageCoRelationId: shortGuidGenerator(8),
       defaultLanguage: defaultLanguageCode,
     };
+    const payload = wasAllMatching
+      ? {
+          ...options,
+          filter: allViewFilter,
+          excludedKeyIds: [...excludedKeyIds],
+          expectedCount: allMatchingCount,
+        }
+      : { ...options, keyIds: selectedKeys };
 
     await runKeyAction({
       request: () => bulkTranslateAsync(payload),
       success: {
-        title: "Processing Translation",
-        description: "Key translation in progress for selected keys.",
+        title: t("LANGUAGE_TABLE.PROCESSING_TRANSLATION"),
+        description: t("LANGUAGE_TABLE.BULK_TRANSLATION_IN_PROGRESS"),
       },
       onSuccess: () => {
         const keysToTranslate = new Set(selectedKeys);
         setTranslatingKeys((prev) => addKeysToSet(prev, selectedKeys));
         setIsBulkTranslateDialogOpen(false);
         setRowSelection({});
+        if (wasAllMatching) resetAllView();
 
         setTimeout(() => clearTranslatingKeys(keysToTranslate), 60000);
       },
       describeErrors: stringifyError,
-      describeException: stringifyError,
+      describeException: wasAllMatching ? describeAllMatchingError(stringifyError) : stringifyError,
+      onException: (error) => {
+        if (!wasAllMatching) return;
+        setIsBulkTranslateDialogOpen(false);
+        onAllMatchingException(error);
+      },
     });
   };
 
@@ -912,7 +1386,10 @@ export function LanguageTable() {
   async function generateUilmFiles() {
     await runKeyAction({
       request: () => mutateAsync({ guid: uuidv4() }),
-      success: { title: "Success", description: "File generation is in progress." },
+      success: {
+        title: t(COMMON_SUCCESS),
+        description: t("LANGUAGE_TABLE.FILE_GENERATION_IN_PROGRESS"),
+      },
       onSuccess: () => setIsPublishChangesDialogOpen(false),
       describeErrors: stringifyError,
       describeException: stringifyError,
@@ -986,7 +1463,9 @@ export function LanguageTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">Configure keys</h3>
+            <h3 className="text-2xl font-bold tracking-tight">
+              {t("LANGUAGE_TABLE.CONFIGURE_KEYS")}
+            </h3>
           </div>
         </div>
         <Tabs value={tabId} className="mt-[18px] flex w-full flex-col md:mt-[24px]">
@@ -997,14 +1476,14 @@ export function LanguageTable() {
                 value="keys"
                 className="h-8 whitespace-nowrap"
               >
-                Translation Keys
+                {t("LANGUAGE_TABLE.TAB_TRANSLATION_KEYS")}
               </TabsTrigger>
               <TabsTrigger
                 onClick={() => setTabId("history")}
                 value="history"
                 className="h-8 whitespace-nowrap"
               >
-                History
+                {t("LANGUAGE_TABLE.TAB_HISTORY")}
               </TabsTrigger>
             </TabsList>
             {tabId === "keys" ? (
@@ -1028,7 +1507,7 @@ export function LanguageTable() {
                       }}
                     >
                       <FolderInput className="mr-2 h-4 w-4" />
-                      <span>Import keys</span>
+                      <span>{t("LANGUAGE_TABLE.IMPORT_KEYS")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
@@ -1038,21 +1517,21 @@ export function LanguageTable() {
                       }}
                     >
                       <FolderOutput className="mr-2 h-4 w-4" />
-                      <span>Export keys</span>
+                      <span>{t("LANGUAGE_TABLE.EXPORT_KEYS")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => navigate(scoped("services/language/export-history"))}
                     >
                       <History className="mr-2 h-4 w-4" />
-                      <span>Export History</span>
+                      <span>{t("LANGUAGE_TABLE.EXPORT_HISTORY")}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                   {isImportDialogOpen && (
                     <ImportFileModal
-                      dialogTitle="Import Keys"
+                      dialogTitle={t("LANGUAGE_TABLE.IMPORT_KEYS_TITLE")}
                       data={[]}
                       projectKey={tenantId}
                       onClose={() => setIsImportDialogOpen(false)}
@@ -1075,7 +1554,9 @@ export function LanguageTable() {
                   disabled={areLanguageKeyActionsDisabled}
                 >
                   <Rocket className="h-5 w-5 lg:mr-2" />
-                  <span className="sr-only lg:not-sr-only">Publish Changes</span>
+                  <span className="sr-only lg:not-sr-only">
+                    {t("LANGUAGE_TABLE.PUBLISH_CHANGES")}
+                  </span>
                 </Button>
                 <Button
                   size="default"
@@ -1084,7 +1565,7 @@ export function LanguageTable() {
                   onClick={() => navigate(scoped("services/language/translations/new-key"))}
                 >
                   <Plus className="h-5 w-5 lg:mr-2" />
-                  <span className="sr-only lg:not-sr-only">New Key</span>
+                  <span className="sr-only lg:not-sr-only">{t("LANGUAGE_TABLE.NEW_KEY")}</span>
                 </Button>
               </div>
             ) : (
@@ -1095,23 +1576,31 @@ export function LanguageTable() {
             <Card className="rounded shadow-none">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-xl text-high-emphasis">Translations</CardTitle>
+                  <CardTitle className="text-xl text-high-emphasis">
+                    {t("LANGUAGE_TABLE.TRANSLATIONS")}
+                  </CardTitle>
                   {!isLoading && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger
                           type="button"
                           className="inline-flex cursor-default rounded-full"
-                          aria-label={`${stableTotalCount.toLocaleString()} keys. Total keys`}
+                          aria-label={t("LANGUAGE_TABLE.TOTAL_KEYS_ARIA", {
+                            count: stableTotalCount,
+                            formatted: stableTotalCount.toLocaleString(),
+                          })}
                         >
                           <Badge
                             variant="outline"
                             className="rounded-full border-transparent bg-secondary text-secondary-foreground"
                           >
-                            {stableTotalCount.toLocaleString()} keys
+                            {t("LANGUAGE_TABLE.KEYS_COUNT", {
+                              count: stableTotalCount,
+                              formatted: stableTotalCount.toLocaleString(),
+                            })}
                           </Badge>
                         </TooltipTrigger>
-                        <TooltipContent>Total keys</TooltipContent>
+                        <TooltipContent>{t("LANGUAGE_TABLE.TOTAL_KEYS")}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
@@ -1125,13 +1614,15 @@ export function LanguageTable() {
                     disabled={areLanguageKeyActionsDisabled}
                   >
                     <Wand className="h-5 w-5 lg:mr-2" />
-                    <span className="sr-only lg:not-sr-only">Auto-translate all</span>
+                    <span className="sr-only lg:not-sr-only">
+                      {t("LANGUAGE_TABLE.AUTO_TRANSLATE_ALL")}
+                    </span>
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline">
                         <Settings2 className="h-4 w-4 lg:mr-2" />
-                        <span className="sr-only lg:not-sr-only">View</span>
+                        <span className="sr-only lg:not-sr-only">{t("common:VIEW")}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -1142,7 +1633,7 @@ export function LanguageTable() {
                             checked={selectedLanguages.length === languageListData?.length}
                             onCheckedChange={selectAll}
                           />
-                          <label htmlFor="terms">Languages</label>
+                          <label htmlFor="terms">{t("LANGUAGE_TABLE.LANGUAGES")}</label>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -1161,75 +1652,43 @@ export function LanguageTable() {
                         checked={selectedOptionalColumns.includes("completeness")}
                         onCheckedChange={() => toggleOptionalColumn("completeness")}
                       >
-                        Completeness
+                        {t("LANGUAGE_TABLE.COMPLETENESS")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={selectedOptionalColumns.includes("createDate")}
                         onCheckedChange={() => toggleOptionalColumn("createDate")}
                       >
-                        Created Date
+                        {t("LANGUAGE_TABLE.CREATED_DATE")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={selectedOptionalColumns.includes("lastUpdateDate")}
                         onCheckedChange={() => toggleOptionalColumn("lastUpdateDate")}
                       >
-                        Last Updated Date
+                        {t("LANGUAGE_TABLE.LAST_UPDATED_DATE")}
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </CardHeader>
-              {selectedKeys.length > 0 && (
-                <div className="mb-4 flex items-center justify-between rounded bg-blocks-primary-shades-300 px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-9 w-9 shrink-0"
-                      aria-label="Clear selection"
-                      title="Clear selection"
-                      onClick={() => setRowSelection({})}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium">
-                      {getSelectedKeysLabel(
-                        selectedKeys.length,
-                        isAllView ? allViewTotalCount : undefined,
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => setIsBulkEditDialogOpen(true)}
-                    >
-                      <PencilLine className="h-4 w-4 lg:mr-1" />
-                      <span className="sr-only lg:not-sr-only">Bulk edit</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsBulkTranslateDialogOpen(true)}
-                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <Languages className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">Translate</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsBulkDeleteDialogOpen(true)}
-                      className="border-error text-error hover:bg-error hover:text-primary-foreground"
-                    >
-                      <Trash className="lg:mr-1 h-4 w-4" />
-                      <span className="sr-only lg:not-sr-only">Delete</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <BulkSelectionBar
+                selectedCount={selectedCount}
+                selectedKeysCount={selectedKeys.length}
+                isAllMatchingSelected={isAllMatchingSelected}
+                isAllView={isAllView}
+                allViewTotalCount={allViewTotalCount}
+                canEscalateToAllMatching={canEscalateToAllMatching}
+                isAllMatchingOverLimit={isAllMatchingOverLimit}
+                overLimitText={overLimitText}
+                isBulkActionPending={isBulkActionPending}
+                bulkEditDisabledReason={bulkEditDisabledReason}
+                bulkActionLimitReason={bulkActionLimitReason}
+                onClearSelection={() => setRowSelection({})}
+                onSelectAllMatching={selectAllMatching}
+                onSelectLoadedOnly={leaveAllMatching}
+                onBulkEdit={() => setIsBulkEditDialogOpen(true)}
+                onBulkTranslate={() => setIsBulkTranslateDialogOpen(true)}
+                onBulkDelete={() => setIsBulkDeleteDialogOpen(true)}
+              />
               <div className="mb-4">
                 {isLanguageModulesLoading ? (
                   <div className="flex flex-wrap items-center gap-4">
@@ -1237,11 +1696,13 @@ export function LanguageTable() {
                     <Skeleton className="h-8 w-[180px] rounded border-dashed" />
                     <Skeleton className="h-8 w-[140px] rounded border-dashed" />
                     <Skeleton className="h-8 w-[160px] rounded border-dashed" />
+                    <Skeleton className="h-8 w-[170px] rounded border-dashed" />
                   </div>
                 ) : (
                   <LanguageTableToolbar
                     languageModulesData={languageModules || []}
                     languagesData={languageListData || []}
+                    glossaryIssueCount={glossaryIssueCount}
                     disabled={areTableFiltersDisabled}
                   />
                 )}
@@ -1252,7 +1713,7 @@ export function LanguageTable() {
                     className="mb-2 text-sm text-medium-emphasis"
                     data-testid="duplicates-truncated-note"
                   >
-                    Showing the first 10,000 duplicate rows.
+                    {t("LANGUAGE_TABLE.DUPLICATES_TRUNCATED")}
                   </p>
                 )}
                 <div
@@ -1305,7 +1766,7 @@ export function LanguageTable() {
                                   <FilterControls.SearchInput
                                     value={keySearch}
                                     onChange={updateKeySearch}
-                                    placeholder="Search..."
+                                    placeholder={t("LANGUAGE_TABLE.SEARCH_PLACEHOLDER")}
                                     className="h-7 w-full text-xs"
                                     disabled={areTableFiltersDisabled}
                                   />
@@ -1325,7 +1786,7 @@ export function LanguageTable() {
                                   <FilterControls.SearchInput
                                     value={resourceSearchMap[lang] ?? ""}
                                     onChange={(value) => updateResourceSearch(lang, value)}
-                                    placeholder="Search..."
+                                    placeholder={t("LANGUAGE_TABLE.SEARCH_PLACEHOLDER")}
                                     className="h-7 w-full text-xs"
                                     disabled={areTableFiltersDisabled}
                                   />
@@ -1343,55 +1804,28 @@ export function LanguageTable() {
                         <TableHead aria-hidden="true" className="p-0" />
                       </TableRow>
                     </TableHeader>
-                    {isAllView && !showLoadingSkeleton && tableRows.length > 0 ? (
-                      <Suspense fallback={<TableBody>{renderSkeletonRows()}</TableBody>}>
-                        <VirtualKeyRows
-                          rows={tableRows}
-                          scrollElementRef={tableViewportRef}
-                          headerRef={tableHeaderRef}
-                          headerRowCount={headerRowCount}
-                          colSpan={tableColSpan}
-                          renderKeyRow={renderKeyRow}
-                          headCursor={allViewQuery.data?.pageParams[0]}
-                          hasNextPage={allViewQuery.hasNextPage}
-                          isFetchingNextPage={allViewQuery.isFetchingNextPage}
-                          isFetchNextPageError={allViewQuery.isFetchNextPageError}
-                          onLoadMore={loadNextAllViewChunk}
-                          onBackToTop={resetAllView}
-                          loadError={<AllViewLoadError onRetry={loadNextAllViewChunk} />}
-                        />
-                      </Suspense>
-                    ) : (
-                      <TableBody>
-                        {showLoadingSkeleton
-                          ? renderSkeletonRows()
-                          : (() => {
-                              return tableRows?.length ? (
-                                tableRows.map((row) => (
-                                  <Fragment key={row.id}>{renderKeyRow(row)}</Fragment>
-                                ))
-                              ) : (
-                                <TableRow>
-                                  <TableCell
-                                    colSpan={table.getVisibleLeafColumns().length + 1}
-                                    className="h-24 text-center"
-                                  >
-                                    {isAllView && allViewQuery.isError ? (
-                                      <AllViewLoadError
-                                        onRetry={() => void allViewQuery.refetch()}
-                                      />
-                                    ) : (
-                                      <LanguageTableEmptyState
-                                        hasActiveFilters={hasActiveFilters}
-                                        importProgress={importProgress}
-                                      />
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })()}
-                      </TableBody>
-                    )}
+                    <LanguageTableRows
+                      isAllView={isAllView}
+                      showLoadingSkeleton={showLoadingSkeleton}
+                      rows={tableRows}
+                      renderSkeletonRows={renderSkeletonRows}
+                      renderKeyRow={renderKeyRow}
+                      scrollElementRef={tableViewportRef}
+                      headerRef={tableHeaderRef}
+                      headerRowCount={headerRowCount}
+                      colSpan={tableColSpan}
+                      headCursor={allViewQuery.data?.pageParams[0]}
+                      hasNextPage={allViewQuery.hasNextPage}
+                      isFetchingNextPage={allViewQuery.isFetchingNextPage}
+                      isFetchNextPageError={allViewQuery.isFetchNextPageError}
+                      isAllViewError={allViewQuery.isError}
+                      onLoadMore={loadNextAllViewChunk}
+                      onBackToTop={resetAllView}
+                      onRefetchAllView={() => void allViewQuery.refetch()}
+                      hasActiveFilters={hasActiveFilters}
+                      isGlossaryIssuesFilterOn={queryParams.glossaryIssues}
+                      importProgress={importProgress}
+                    />
                   </Table>
                 </div>
               </CardContent>
@@ -1414,7 +1848,7 @@ export function LanguageTable() {
               )}
             </Card>
             <Dialog open={isAutoTranslateDialogOpen} onOpenChange={setIsAutoTranslateDialogOpen}>
-              <AutoTranslate />
+              <AutoTranslate onClose={() => setIsAutoTranslateDialogOpen(false)} />
             </Dialog>
           </TabsContent>
           <TabsContent value="history">
@@ -1463,7 +1897,7 @@ export function LanguageTable() {
           <Dialog open={isBulkEditDialogOpen} onOpenChange={setIsBulkEditDialogOpen}>
             {isBulkEditDialogOpen && (
               <BulkEditKeysDialog
-                keys={selectedKeyRows}
+                keys={loadedSelectedRows}
                 languages={languageListData ?? []}
                 onCancel={() => setIsBulkEditDialogOpen(false)}
                 onSaved={() => {

@@ -54,6 +54,53 @@ namespace XUnitTest.Repositories
             _repo = new KeyRepository(_dbContextProvider.Object);
         }
 
+        #region RemoveGlossaryIdFromKeysAsync
+
+        [Fact]
+        public async Task RemoveGlossaryIdFromKeysAsync_PullsIdFromEveryTaggedKey()
+        {
+            TestBlocksContext.Set("key-tenant");
+            FilterDefinition<BlocksLanguageKey>? filter = null;
+            UpdateDefinition<BlocksLanguageKey>? update = null;
+            _blkCollection.Setup(x => x.UpdateManyAsync(
+                    It.IsAny<FilterDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                    It.IsAny<UpdateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<BlocksLanguageKey>, UpdateDefinition<BlocksLanguageKey>, UpdateOptions, CancellationToken>((f, u, _, _) => { filter = f; update = u; })
+                .ReturnsAsync(new UpdateResult.Acknowledged(500, 500, null));
+
+            var modified = await _repo.RemoveGlossaryIdFromKeysAsync("g1");
+
+            modified.Should().Be(500);
+            _dbContextProvider.Verify(x => x.GetDatabase("key-tenant"), Times.Once);
+            var registry = BsonSerializer.SerializerRegistry;
+            var args = new RenderArgs<BlocksLanguageKey>(registry.GetSerializer<BlocksLanguageKey>(), registry);
+            filter!.Render(args).ToJson().Should().Be(BsonDocument.Parse(
+                "{ $or: [ { GlossaryIds: 'g1' }, { GlossaryViolations: { $elemMatch: { GlossaryId: 'g1' } } } ] }").ToJson());
+            var rendered = update!.Render(args).AsBsonDocument;
+            rendered.Names.Should().BeEquivalentTo(new[] { "$pull", "$set" });
+            rendered["$pull"].AsBsonDocument.ToJson().Should().Be(BsonDocument.Parse(
+                "{ GlossaryIds: 'g1', GlossaryViolations: { GlossaryId: 'g1' } }").ToJson());
+            rendered["$set"].AsBsonDocument.Names.Should().Equal("LastUpdateDate");
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task RemoveGlossaryIdFromKeysAsync_BlankId_Throws(string? glossaryId)
+        {
+            var act = () => _repo.RemoveGlossaryIdFromKeysAsync(glossaryId!);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+            _blkCollection.Verify(x => x.UpdateManyAsync(
+                It.IsAny<FilterDefinition<BlocksLanguageKey>>(), It.IsAny<UpdateDefinition<BlocksLanguageKey>>(),
+                It.IsAny<UpdateOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region SaveKeyAsync
 
         [Fact]
@@ -686,7 +733,7 @@ namespace XUnitTest.Repositories
             };
             MockCursorHelper.SetupFindAsync(_blkCollection, keys);
 
-            var result = await _repo.GetUilmResourceKeysWithPage(0, 10);
+            var result = await _repo.GetUilmResourceKeysWithPage(0, 10, null);
 
             result.Should().NotBeNull();
             result.Count().Should().Be(1);
@@ -920,6 +967,24 @@ namespace XUnitTest.Repositories
 
             var result = await _repo.GetUilmExportedFilesAsync(request);
             result.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task GetUilmExportedFilesAsync_EscapesSearchText_SoRegexMetacharactersMatchLiterally()
+        {
+            FilterDefinition<UilmExportedFile>? captured = null;
+            MockCursorHelper.SetupFindAsync(_exportedFileCollection, new List<UilmExportedFile>());
+            _exportedFileCollection
+                .Setup(x => x.CountDocumentsAsync(It.IsAny<FilterDefinition<UilmExportedFile>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<UilmExportedFile>, CountOptions, CancellationToken>((f, _, _) => captured = f)
+                .ReturnsAsync(0L);
+
+            await _repo.GetUilmExportedFilesAsync(new GetUilmExportedFilesRequest { PageNumber = 0, PageSize = 10, SearchText = "a.b(" });
+
+            var rendered = captured!
+                .Render(new RenderArgs<UilmExportedFile>(BsonSerializer.SerializerRegistry.GetSerializer<UilmExportedFile>(), BsonSerializer.SerializerRegistry))
+                .ToString();
+            rendered.Should().Contain(@"a\\.b\\(");
         }
 
         [Fact]

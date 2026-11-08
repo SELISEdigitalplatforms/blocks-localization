@@ -21,7 +21,8 @@ vi.mock("react-router", async (importOriginal) => ({
   useNavigate: () => navigate,
 }));
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (p: string) => `/scoped/${p}`,
 }));
@@ -56,9 +57,13 @@ vi.mock("../../components/import-language-file/import-file-modal", () => ({
 vi.mock("../localization-timeline/localization-timeline", () => ({
   default: () => null,
 }));
-vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
+vi.mock("@blocks-localization/hooks/use-language-manager", async (importOriginal) => ({
+  // Pure: the bulk "all matching" payload must carry the same filter the query sends.
+  buildKeyListFilter: (await importOriginal<typeof import("@blocks-localization/hooks/use-language-manager")>())
+    .buildKeyListFilter,
   // The duplicate chips have their own tests; here the summary simply has not loaded.
   useGetDuplicateSummary: vi.fn(() => ({ data: undefined, isError: false })),
+  useGetGlossaryIssueCount: vi.fn(() => ({ data: undefined })),
   useEnforceUniqueness: vi.fn(() => ({ mutate: vi.fn() })),
   useGetBlocksLanguageKey: vi.fn(),
   useGetBlocksLanguageKeysInfinite: vi.fn(),

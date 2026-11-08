@@ -36,11 +36,12 @@ const ROUTE_NAV_LINK: Record<Exclude<LocalizationRoute, "dashboard">, string> = 
   "services/wordpress-plugin-guide": "WordPress Plugin Guide",
 }
 
-const ROUTE_HEADING: Record<LocalizationRoute, string | null> = {
+// The glossary list heading is just "Glossary", so it must match exactly (term pages contain it too).
+const ROUTE_HEADING: Record<LocalizationRoute, string | RegExp | null> = {
   dashboard: "Project Details",
   "services/language": "Configure keys",
   "services/modules": "Language Modules",
-  "services/glossary": "Glossary Management",
+  "services/glossary": /^Glossary$/,
   "services/configure": "Configure Languages",
   "services/extension-guides": "Extension Guides",
   "services/wordpress-plugin-guide": "WordPress Plugin Guide",

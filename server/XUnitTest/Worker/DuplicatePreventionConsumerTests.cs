@@ -147,7 +147,7 @@ namespace XUnitTest.Worker
         // ---- Import ----
 
         private UilmImportEventConsumer ImportConsumer(Mock<IWebHookService> webhook) =>
-            new(_keyManagementService.Object, webhook.Object, _uniqueness.Object, new Mock<ILogger<UilmImportEventConsumer>>().Object);
+            new(_keyManagementService.Object, webhook.Object, _uniqueness.Object, new Mock<ILogger<UilmImportEventConsumer>>().Object, Mock.Of<IActionPublisher>());
 
         [Fact]
         public async Task The_import_ensures_the_context_tenant_indexes_before_importing()

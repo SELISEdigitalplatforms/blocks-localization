@@ -3,10 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta";
 import { IGlossary } from "@blocks-localization/models/language";
-import { buildGlossaryMatcher } from "@blocks-localization/utils/glossary-matcher";
+import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
 import { distinctGlossaryMatches, HighlightedSourceText } from "./highlighted-source-text";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 
@@ -26,11 +27,7 @@ const G1 = term("g1", "Workspace", {
 const G2 = term("g2", "SELISE", { rule: "keep" });
 const G3 = term("g3", "Portal", { rule: "forbidden" });
 
-const matches = (text: string) =>
-  buildGlossaryMatcher([G1, G2, G3]).match(text, {
-    scopeMode: "applicable",
-    sourceCulture: "en-US",
-  });
+const matches = (text: string) => findGlossaryMatches([G1, G2, G3], text);
 
 const SOURCE = "Open your Workspace and SELISE portal";
 
@@ -44,8 +41,8 @@ describe("HighlightedSourceText", () => {
     expect(container.textContent).toBe(SOURCE);
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual(["Workspace", "SELISE", "portal"]);
-    expect(buttons[0].getAttribute("aria-label")).toBe("Glossary term Workspace: Translate");
-    expect(buttons[1].getAttribute("aria-label")).toBe("Glossary term SELISE: Keep");
+    expect(buttons[0].getAttribute("aria-label")).toBe("Glossary Workspace: Translate");
+    expect(buttons[1].getAttribute("aria-label")).toBe("Glossary SELISE: Keep");
     expect(buttons[0].className).toContain("decoration-dotted");
   });
 
@@ -53,6 +50,43 @@ describe("HighlightedSourceText", () => {
     const { container } = render(<HighlightedSourceText text={SOURCE} matches={[]} />);
     expect(container.textContent).toBe(SOURCE);
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("sorts matches and leaves out-of-range or overlapping ones as plain text", () => {
+    const [workspace, selise, portal] = matches(SOURCE);
+    const overlapping = { ...workspace, start: workspace.start + 2 };
+    const outOfRange = { ...portal, start: SOURCE.length - 2 };
+    const { container } = render(
+      <HighlightedSourceText
+        text={SOURCE}
+        matches={[selise, outOfRange, overlapping, workspace]}
+      />,
+    );
+    expect(container.textContent).toBe(SOURCE);
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Workspace",
+      "SELISE",
+    ]);
+  });
+
+  it("marks a term the target already uses, and leaves the others to do", () => {
+    render(
+      <HighlightedSourceText
+        text={SOURCE}
+        matches={matches(SOURCE)}
+        targetLanguage={{ languageCode: "de-DE", languageName: "German" }}
+        targetText="Öffne deinen Arbeitsbereich"
+      />,
+    );
+    const workspace = screen.getByRole("button", { name: /Glossary Workspace/ });
+    expect(workspace.getAttribute("aria-label")).toBe(
+      "Glossary Workspace: Translate, used in the translation",
+    );
+    expect(workspace.className).toContain("decoration-success");
+    expect(workspace.textContent).toBe("Workspace");
+    const selise = screen.getByRole("button", { name: /Glossary SELISE/ });
+    expect(selise.getAttribute("aria-label")).not.toContain("used in the translation");
+    expect(selise.className).not.toContain("decoration-success");
   });
 
   it("opens the popover for the editor's target and inserts (Example 1)", async () => {
@@ -65,9 +99,9 @@ describe("HighlightedSourceText", () => {
         onInsert={onInsert}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Glossary term Workspace/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Glossary Workspace/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Insert" }));
-    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich");
+    expect(onInsert).toHaveBeenCalledWith("Arbeitsbereich", "Workspace");
   });
 });
 
@@ -80,14 +114,14 @@ describe("HighlightedSourceText without a rule for the target", () => {
         targetLanguage={{ languageCode: "bn-BD", languageName: "Bengali" }}
       />,
     );
-    const workspace = screen.getByRole("button", { name: /Glossary term Workspace/ });
+    const workspace = screen.getByRole("button", { name: /Glossary Workspace/ });
     expect(workspace.getAttribute("aria-label")).toBe(
-      "Glossary term Workspace: Translate, no Bengali wording in the glossary",
+      "Glossary Workspace: Translate, no Bengali wording in the glossary",
     );
     expect(workspace.className).toContain("decoration-low-emphasis/50");
     // Keep and Forbidden apply to every language.
-    const selise = screen.getByRole("button", { name: /Glossary term SELISE/ });
-    expect(selise.getAttribute("aria-label")).toBe("Glossary term SELISE: Keep");
+    const selise = screen.getByRole("button", { name: /Glossary SELISE/ });
+    expect(selise.getAttribute("aria-label")).toBe("Glossary SELISE: Keep");
     expect(selise.className).toContain("decoration-primary/70");
   });
 });

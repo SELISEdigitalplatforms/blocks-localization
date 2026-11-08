@@ -66,6 +66,9 @@ namespace Eurolm.DomainService.Repositories
             && ex.WriteErrors.Count > 0
             && ex.WriteErrors.All(error => IsConcurrentInsertConflict(error.Category, error.Code));
 
+        public static bool IsDuplicateKey(WriteError error) =>
+            error != null && IsConcurrentInsertConflict(error.Category, error.Code);
+
         public static bool IsDuplicateKey(Exception ex) =>
             ex is MongoWriteException { WriteError: { } error } && IsConcurrentInsertConflict(error.Category, error.Code);
     }

@@ -10,11 +10,16 @@ import EditKeyGlossary from "./edit-key-glossary/edit-key-glossary";
 const saveKeyAsync = vi.fn();
 const autoTranslateAsync = vi.fn();
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "t1" } }),
   useScopedPath: () => (sub: string) => `/app/p1/${sub}`,
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+vi.mock("@blocks-localization/hooks/use-glossary-match", () => ({
+  MATCH_DEBOUNCE_MS: 300,
+  useGlossaryMatch: () => ({ matches: [], isLoading: false, isError: false }),
+}));
 vi.mock("@blocks-localization/hooks/use-language-manager", () => ({
   useSaveBlocksLanguageKey: vi.fn(),
   useGetTranslationSuggestion: vi.fn(),
@@ -348,6 +353,7 @@ describe("modals/edit-key-glossary", () => {
       glossaryIds: ["g2"],
       isPartiallyTranslated: true,
       context: "Formal tone.",
+      glossaryIdsOnly: true,
     });
   });
 });

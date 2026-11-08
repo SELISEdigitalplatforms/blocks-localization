@@ -6,13 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui-kits/tooltip/tooltip";
 import type { IDuplicateSummary } from "@blocks-localization/models/language";
 import * as hooks from "@blocks-localization/hooks/use-language-manager";
-import {
-  DUPLICATE_MODULES_TOOLTIP,
-  DuplicateKeysChips,
-  enforceUniquenessFlag,
-} from "./duplicate-keys-chips";
+import { DuplicateKeysChips, enforceUniquenessFlag } from "./duplicate-keys-chips";
 
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => ({ selectedProject: { tenantId: "tenant-1" } }),
 }));
 
@@ -145,7 +142,11 @@ describe("DuplicateKeysChips", () => {
     const badge = screen.getByTestId("duplicate-modules-badge");
     expect(badge.textContent).toBe(text);
     expect(badge.tagName).not.toBe("BUTTON");
-    expect(screen.getByLabelText(`${text}. ${DUPLICATE_MODULES_TOOLTIP}`)).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        `${text}. Some module names are used by more than one module. Keys may be split between them.`,
+      ),
+    ).toBeTruthy();
   });
 
   it("never brings back the removed partial-translation badge", () => {

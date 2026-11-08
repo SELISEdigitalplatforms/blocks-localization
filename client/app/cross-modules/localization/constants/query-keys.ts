@@ -1,3 +1,5 @@
+import { IGlossaryFilters } from "@blocks-localization/models/language";
+
 /** Filters of the "All" view's chunked list; each one is part of its query key. */
 export interface LanguageKeyInfiniteFilters {
   searchKey: string;
@@ -11,7 +13,14 @@ export interface LanguageKeyInfiniteFilters {
   resourceSearchFilters: { culture: string; searchText: string }[];
   missingLanguages: string[];
   onlyDuplicates?: boolean;
+  hasGlossaryViolations?: boolean;
 }
+
+/** The keys-table filters (other than "Glossary issues") that the glossary-issue count follows. */
+export type LanguageKeyIssueCountFilters = Omit<
+  LanguageKeyInfiniteFilters,
+  "sortProperty" | "isDescending" | "hasGlossaryViolations"
+>;
 
 export const localizationQueryKeys = {
   languageKeys: {
@@ -32,6 +41,7 @@ export const localizationQueryKeys = {
       resourceSearchFilters: { culture: string; searchText: string }[],
       missingLanguages: string[],
       onlyDuplicates = false,
+      hasGlossaryViolations = false,
     ) =>
       [
         "get-blocksLanguageKeys",
@@ -50,6 +60,7 @@ export const localizationQueryKeys = {
         JSON.stringify(resourceSearchFilters),
         JSON.stringify(missingLanguages),
         onlyDuplicates,
+        hasGlossaryViolations,
       ] as const,
     /**
      * The "All" view's chunked list. Under the `all` prefix so broad invalidation still reaches it;
@@ -69,6 +80,7 @@ export const localizationQueryKeys = {
         resourceSearchFilters,
         missingLanguages,
         onlyDuplicates = false,
+        hasGlossaryViolations = false,
       }: LanguageKeyInfiniteFilters,
     ) =>
       [
@@ -86,12 +98,16 @@ export const localizationQueryKeys = {
         JSON.stringify(resourceSearchFilters),
         JSON.stringify(missingLanguages),
         onlyDuplicates,
+        hasGlossaryViolations,
       ] as const,
     infinitePrefix: ["get-blocksLanguageKeys", "infinite"] as const,
     // Sits under `all`, so every key save or delete that refreshes the list refreshes the summary too.
     duplicateSummary: (tenantId: string) =>
       ["get-blocksLanguageKeys", "duplicate-summary", tenantId] as const,
     duplicateSummaryPrefix: ["get-blocksLanguageKeys", "duplicate-summary"] as const,
+    // Under `all` too, so key saves, deletes and glossary changes refresh the count.
+    glossaryIssueCount: (tenantId: string, filters: LanguageKeyIssueCountFilters) =>
+      ["get-blocksLanguageKeys", "glossary-issue-count", tenantId, JSON.stringify(filters)] as const,
     detail: (tenantId: string, itemId: string) =>
       ["get-blocksLanguageKey", tenantId, itemId] as const,
     detailPrefix: ["get-blocksLanguageKey"] as const,
@@ -128,7 +144,13 @@ export const localizationQueryKeys = {
       pageNumber: number,
       pageSize: number,
     ) => ["get-timeline-by-operation", tenantId, operationId, pageNumber, pageSize] as const,
-    byGlossary: (tenantId: string, glossaryId: string, pageNumber: number, pageSize: number) =>
+    byGlossary: (
+      tenantId: string,
+      glossaryId: string,
+      pageNumber: number,
+      pageSize: number,
+      filters: { searchKey?: string; moduleIds?: string[]; glossaryModuleIds?: string[] } = {},
+    ) =>
       [
         "get-blocksLanguageKeys",
         "by-glossary",
@@ -136,9 +158,10 @@ export const localizationQueryKeys = {
         glossaryId,
         pageNumber,
         pageSize,
+        filters.searchKey ?? "",
+        JSON.stringify(filters.moduleIds ?? []),
+        JSON.stringify(filters.glossaryModuleIds ?? []),
       ] as const,
-    glossaryUsage: (tenantId: string, glossaryId: string) =>
-      ["get-glossary-usage-count", tenantId, glossaryId] as const,
     countByModule: (tenantId: string, moduleId: string) =>
       ["get-blocksLanguageKeys", tenantId, "count-by-module", moduleId] as const,
   },
@@ -165,10 +188,44 @@ export const localizationQueryKeys = {
   },
   glossaries: {
     all: ["get-glossaries"] as const,
-    list: (tenantId: string, pageNumber: number, pageSize: number, searchText: string) =>
-      ["get-glossaries", tenantId, pageNumber, pageSize, searchText] as const,
-    /** Every term of the project (paged load); under `all`, so glossary writes refresh it. */
-    allTerms: (tenantId: string) => ["get-glossaries", "all-terms", tenantId] as const,
+    list: (
+      tenantId: string,
+      pageNumber: number,
+      pageSize: number,
+      searchText: string,
+      filters: IGlossaryFilters = {},
+    ) =>
+      [
+        "get-glossaries",
+        tenantId,
+        pageNumber,
+        pageSize,
+        searchText,
+        filters.rule ?? "",
+        filters.status ?? "",
+        filters.missingTranslation ?? "",
+        filters.language ?? "",
+        filters.type ?? "",
+        filters.scope ?? "",
+        filters.sortBy ?? "",
+        filters.sortDescending ?? "",
+      ] as const,
+    /** `Glossary/Usage` (delete dialog count); under `all`, so glossary writes refresh it. */
+    usage: (tenantId: string, glossaryId: string) =>
+      ["get-glossaries", "usage", tenantId, glossaryId] as const,
+    /** One `GetByIds` chunk; under `all`, so glossary writes refresh it. */
+    byIds: (tenantId: string, itemIds: string[]) =>
+      ["get-glossaries", "by-ids", tenantId, itemIds.join(",")] as const,
+    /** `/Glossary/Match` for one source text; under `all`, so glossary writes refresh it. */
+    match: (
+      tenantId: string,
+      sourceCulture: string,
+      keyId: string,
+      moduleId: string,
+      text: string,
+      glossaryIds = "",
+    ) => ["get-glossaries", "match", tenantId, sourceCulture, keyId, moduleId, glossaryIds, text] as const,
+    matchPrefix: ["get-glossaries", "match"] as const,
     global: (tenantId: string) => ["get-glossaries-global", tenantId] as const,
     globalPrefix: ["get-glossaries-global"] as const,
     module: (tenantId: string, moduleId: string) =>

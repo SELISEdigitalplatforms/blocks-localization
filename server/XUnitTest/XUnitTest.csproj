@@ -12,6 +12,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="../../testdata/glossary/**" Link="testdata/glossary/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Api\Api.csproj" />
     <ProjectReference Include="..\Worker\Worker.csproj" />
     <ProjectReference Include="..\Eurolm.DomainService\Eurolm.DomainService.csproj" />

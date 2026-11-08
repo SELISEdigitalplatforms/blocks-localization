@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { projectService } from "@blocks-identifier/services/project.service";
@@ -186,7 +187,9 @@ export const useProjectForm = () => {
         applicationContexts,
       });
       if (response?.isSuccess) {
-        showSuccessToast({ description: "Your project has been created." });
+        showSuccessToast({
+          description: tStatic("localization.shared", "USE_PROJECT.PROJECT_CREATED"),
+        });
         setTenantGroup(response.tenantGroupId);
 
         try {

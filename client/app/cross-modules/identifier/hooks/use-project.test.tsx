@@ -16,7 +16,8 @@ const projectStore = {
 };
 
 vi.mock("react-router", () => ({ useNavigate: () => navigate }));
-vi.mock("@seliseblocks/genesis-os", () => ({
+vi.mock("@seliseblocks/genesis-os", async () => ({
+  ...(await import("@/test-utils/i18n-mock")).i18nMock,
   useProjectStore: () => projectStore,
 }));
 vi.mock("@/hooks/use-toast", () => ({

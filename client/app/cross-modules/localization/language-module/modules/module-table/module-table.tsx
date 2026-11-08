@@ -33,6 +33,7 @@ import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 import { getModuleBadgeStyle } from "../../language-table/hooks/use-language-table-columns";
 import { getPageSizeOptions } from "../../language-table/language-table.utils";
 import { useScopedPath } from "@seliseblocks/genesis-os";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 
 const compareStrings = (a: string, b: string): number => {
   if (a < b) return -1;
@@ -74,6 +75,7 @@ interface RenderModuleRowsParams {
   scoped: (path: string) => string;
   navigate: (path: string) => void | Promise<void>;
   searchText: string;
+  t: TFunction;
   onEditModule: (module: IModuleGets) => void;
   onTagGlossaryModule: (module: IModuleGets) => void;
   onDeleteModule: (module: IModuleGets) => void;
@@ -86,6 +88,7 @@ function renderModuleRows({
   scoped,
   navigate,
   searchText,
+  t,
   onEditModule,
   onTagGlossaryModule,
   onDeleteModule,
@@ -94,9 +97,7 @@ function renderModuleRows({
     return (
       <TableRow>
         <TableCell colSpan={4} className="h-24 text-center">
-          {searchText
-            ? "No modules match your search."
-            : "No modules found. Create your first module to get started."}
+          {searchText ? t("MODULE_TABLE.NO_MATCH") : t("MODULE_TABLE.EMPTY")}
         </TableCell>
       </TableRow>
     );
@@ -147,55 +148,59 @@ const RowActionsCell = ({
   onEdit: () => void;
   onTagGlossary: () => void;
   onDelete: () => void;
-}) => (
-  <DropdownMenu modal={false}>
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="ghost"
-        className="h-8 w-8 p-0"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <EllipsisVertical width={20} height={20} />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-      <DropdownMenuItem
-        className="cursor-pointer"
-        onClick={(e) => {
-          e.preventDefault();
-          onEdit();
-        }}
-      >
-        <Pencil className="mr-2 h-4 w-4" />
-        <span>Edit</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        className="cursor-pointer"
-        onClick={(e) => {
-          e.preventDefault();
-          onTagGlossary();
-        }}
-      >
-        <Tag className="mr-2 h-4 w-4" />
-        <span>Tag glossary</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        className="cursor-pointer text-error"
-        onClick={(e) => {
-          e.preventDefault();
-          onDelete();
-        }}
-      >
-        <Trash className="mr-2 h-4 w-4" />
-        <span>Delete</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+}) => {
+  const { t } = useT("localization.modules");
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <EllipsisVertical width={20} height={20} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            onEdit();
+          }}
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          <span>{t("common:EDIT")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            onTagGlossary();
+          }}
+        >
+          <Tag className="mr-2 h-4 w-4" />
+          <span>{t("MODULE_TABLE.TAG_GLOSSARY")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer text-error"
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete();
+          }}
+        >
+          <Trash className="mr-2 h-4 w-4" />
+          <span>{t("common:DELETE")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 export function ModuleTable() {
+  const { t } = useT("localization.modules");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const scoped = useScopedPath();
@@ -287,7 +292,7 @@ export function ModuleTable() {
       <div className="flex w-full flex-col">
         <div className="flex w-full justify-between text-high-emphasis">
           <div className="item-center flex gap-2">
-            <h3 className="text-2xl font-bold tracking-tight">Modules</h3>
+            <h3 className="text-2xl font-bold tracking-tight">{t("MODULE_TABLE.TITLE")}</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -297,14 +302,16 @@ export function ModuleTable() {
               onClick={handleNewModuleClick}
             >
               <Plus className="h-5 w-5 lg:mr-2" />
-              <span className="sr-only lg:not-sr-only">New Module</span>
+              <span className="sr-only lg:not-sr-only">{t("MODULE_TABLE.NEW_MODULE")}</span>
             </Button>
           </div>
         </div>
 
         <Card className="mt-[18px] rounded shadow-none md:mt-[24px]">
           <CardHeader>
-            <CardTitle className="text-xl text-high-emphasis">Language Modules</CardTitle>
+            <CardTitle className="text-xl text-high-emphasis">
+              {t("MODULE_TABLE.CARD_TITLE")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-4">
@@ -312,7 +319,7 @@ export function ModuleTable() {
                 <FilterControls.SearchInput
                   value={searchValue}
                   onChange={onSearchChangeHandler}
-                  placeholder="Search modules..."
+                  placeholder={t("MODULE_TABLE.SEARCH_PLACEHOLDER")}
                   className="h-9 w-full"
                   disabled={isUnfilteredEmpty}
                 />
@@ -323,16 +330,16 @@ export function ModuleTable() {
                 <TableHeader>
                   <TableRow className="border-none hover:bg-transparent">
                     <TableHead className="w-[220px] font-bold text-medium-emphasis">
-                      Module Name
+                      {t("MODULE_TABLE.COLUMN_MODULE_NAME")}
                     </TableHead>
                     <TableHead className="w-[220px] font-bold text-medium-emphasis">
-                      Created By
+                      {t("MODULE_TABLE.COLUMN_CREATED_BY")}
                     </TableHead>
                     <TableHead className="w-[180px] font-bold text-medium-emphasis">
-                      Created Date
+                      {t("MODULE_TABLE.COLUMN_CREATED_DATE")}
                     </TableHead>
                     <TableHead className="w-[100px] font-bold text-medium-emphasis">
-                      Actions
+                      {t("common:ACTIONS")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -354,6 +361,7 @@ export function ModuleTable() {
                         scoped,
                         navigate,
                         searchText: searchValue,
+                        t,
                         onEditModule: setEditTarget,
                         onTagGlossaryModule: setTagTarget,
                         onDeleteModule: setDeleteTarget,

@@ -1,5 +1,16 @@
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
+
+const LOCALIZATION_SHARED_MODULE = "localization.shared";
+
+// English text of ERROR.FORBIDDEN in i18n/localization.shared.en.json; tests compare against it.
+// The code below shows the translated text via forbiddenText().
 export const FORBIDDEN_ERROR_MESSAGE =
   "You don't have permission to perform this action. Contact your administrator for access.";
+
+const forbiddenText = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.FORBIDDEN");
+const somethingWentWrong = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.SOMETHING_WENT_WRONG");
+const unexpectedError = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.UNEXPECTED");
+const unexpectedErrorTryAgain = () => tStatic(LOCALIZATION_SHARED_MODULE, "ERROR.UNEXPECTED_TRY_AGAIN");
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -71,7 +82,7 @@ export const getForbiddenErrorMessage = (error: unknown): string | null => {
   if (!records.some((record) => getStatusCode(record) === 403)) return null;
 
   const backendMessages = getBackendErrorMessages(records);
-  return backendMessages.length > 0 ? backendMessages.join(" ") : FORBIDDEN_ERROR_MESSAGE;
+  return backendMessages.length > 0 ? backendMessages.join(" ") : forbiddenText();
 };
 
 export const getErrorMessage = (
@@ -79,7 +90,7 @@ export const getErrorMessage = (
   messageMap: Record<string, string> = {},
 ): string | string[] => {
   if (!error || Object.keys(error).length === 0) {
-    return "Something went wrong.";
+    return somethingWentWrong();
   }
 
   const messages: string[] = [];
@@ -99,7 +110,7 @@ export const getErrorMessage = (
     }
   }
 
-  return messages.length ? messages : "Something went wrong.";
+  return messages.length ? messages : somethingWentWrong();
 };
 
 export const isErrorWithErrors = (
@@ -126,10 +137,8 @@ export const handleErrorMessages = (
     return getErrorMessage(errors as Record<string, string | string[]>, customMessages);
   }
 
-  return "An unexpected error occurred.";
+  return unexpectedError();
 };
-
-const UNEXPECTED_ERROR_MESSAGE = "An unexpected error occurred. Please try again.";
 
 const joinStringValues = (value: unknown): string => {
   if (typeof value === "string") return value.trim();
@@ -168,13 +177,13 @@ const formatRecordError = (error: Record<string, unknown>): string => {
   const joined = joinStringValues(error);
   if (joined) return joined;
 
-  return UNEXPECTED_ERROR_MESSAGE;
+  return unexpectedErrorTryAgain();
 };
 
 export const formatErrorMessage = (error: unknown): string => {
-  if (typeof error === "string") return error.trim() || UNEXPECTED_ERROR_MESSAGE;
+  if (typeof error === "string") return error.trim() || unexpectedErrorTryAgain();
 
-  if (error instanceof Error) return error.message.trim() || UNEXPECTED_ERROR_MESSAGE;
+  if (error instanceof Error) return error.message.trim() || unexpectedErrorTryAgain();
 
   if (Array.isArray(error)) {
     const joined = joinStringValues(error);
@@ -185,7 +194,7 @@ export const formatErrorMessage = (error: unknown): string => {
     return formatRecordError(error);
   }
 
-  return UNEXPECTED_ERROR_MESSAGE;
+  return unexpectedErrorTryAgain();
 };
 
 export const getHttpErrorMessage = (error: unknown): string => {

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useT, type TFunction } from "@seliseblocks/genesis-os/i18n";
 import { useParams } from "react-router";
 import { useQueryState } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
@@ -18,10 +19,17 @@ import { BREADCRUMB_CUSTOM_TITLES } from "@/constants/breadcrumb-custom-title";
 import { userLookupService } from "@blocks-localization/services/user-lookup.service";
 import {
   useGetLanguageModules,
+  useGetLanguages,
   useGetModuleGlossaries,
 } from "@blocks-localization/hooks/use-language-manager";
-import { IGlossary } from "@blocks-localization/models/language";
-import { stripRuleMarker } from "@blocks-localization/utils/glossary-rule-marker";
+import { IGlossary, ILanguageConfig } from "@blocks-localization/models/language";
+import {
+  getTargetLanguages,
+  stripRuleMarker,
+} from "@blocks-localization/utils/glossary-rule-marker";
+import { isUnsupportedGlossaryNote, toGlossaryMeta } from "@blocks-localization/utils/glossary-display";
+import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
+import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
 
 const hasDisplayValue = (value: unknown): value is string =>
@@ -67,24 +75,56 @@ type VisibleGlossaryColumns = {
   createDate: boolean;
 };
 
-function renderGlossaryTable(items: IGlossary[], visibleColumns: VisibleGlossaryColumns) {
+/** "2 / 3 languages" for Translate terms; "—" for Keep, Forbidden or no target languages (H13). */
+export const getGlossaryCoverage = (
+  glossary: IGlossary,
+  languages: ILanguageConfig[] | undefined,
+  t: TFunction,
+): string => {
+  const meta = toGlossaryMeta(glossary);
+  const targets = getTargetLanguages(languages);
+  if (isUnsupportedGlossaryNote(glossary) || meta.rule !== "translate" || targets.length === 0) {
+    return "—";
+  }
+  const translated = targets.filter(({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim());
+  return t("MODULE_DETAILS.COVERAGE", { translated: translated.length, total: targets.length });
+};
+
+function renderGlossaryTable(
+  items: IGlossary[],
+  visibleColumns: VisibleGlossaryColumns,
+  languages: ILanguageConfig[] | undefined,
+  t: TFunction,
+) {
   return (
     <div className="w-full overflow-x-auto">
       <Table className="text-sm">
         <TableHeader>
           <TableRow className="border-none hover:bg-transparent">
-            <TableHead className="font-bold text-medium-emphasis">Name</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">{t("common:NAME")}</TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("MODULE_DETAILS.COLUMN_RULE")}
+            </TableHead>
+            <TableHead className="font-bold text-medium-emphasis">
+              {t("MODULE_DETAILS.COLUMN_COVERAGE")}
+            </TableHead>
             {visibleColumns.language && (
-              <TableHead className="font-bold text-medium-emphasis">Language</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.COLUMN_LANGUAGE")}
+              </TableHead>
             )}
             {visibleColumns.type && (
-              <TableHead className="font-bold text-medium-emphasis">Type</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">{t("common:TYPE")}</TableHead>
             )}
             {visibleColumns.context && (
-              <TableHead className="font-bold text-medium-emphasis">Context</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.COLUMN_CONTEXT")}
+              </TableHead>
             )}
             {visibleColumns.createDate && (
-              <TableHead className="font-bold text-medium-emphasis">Created Date</TableHead>
+              <TableHead className="font-bold text-medium-emphasis">
+                {t("MODULE_DETAILS.CREATED_DATE")}
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -92,9 +132,22 @@ function renderGlossaryTable(items: IGlossary[], visibleColumns: VisibleGlossary
           {items.map((glossary) => (
             <TableRow key={glossary.itemId} className="font-normal text-medium-emphasis">
               <TableCell className="font-medium">{glossary.name}</TableCell>
+              <TableCell>
+                {isUnsupportedGlossaryNote(glossary) ? (
+                  "—"
+                ) : (
+                  <GlossaryRuleBadge rule={toGlossaryMeta(glossary).rule} />
+                )}
+              </TableCell>
+              <TableCell className="whitespace-nowrap">
+                {getGlossaryCoverage(glossary, languages, t)}
+              </TableCell>
               {visibleColumns.language && (
                 <TableCell>
-                  {hasDisplayValue(glossary.language) ? glossary.language : "—"}
+                  {hasDisplayValue(glossary.language)
+                    ? (languages?.find((language) => language.languageCode === glossary.language)
+                        ?.languageName ?? glossary.language)
+                    : "—"}
                 </TableCell>
               )}
               {visibleColumns.type && (
@@ -138,12 +191,14 @@ function ModuleDetailsContent({
     { firstName: string; lastName: string; email: string; userName: string }
   >;
 }) {
+  const { t } = useT("localization.modules");
   const [activeTab, setActiveTab] = useQueryState("moduleTab", {
     defaultValue: "details",
   });
 
   // Glossary tab - fetch glossaries for this module
   const { data: glossariesData, isLoading: isGlossariesLoading } = useGetModuleGlossaries(moduleId);
+  const { data: languageListData } = useGetLanguages();
   const { data: currentUser } = useCurrentUser();
   const visibleGlossaryColumns = useMemo(() => {
     const glossaries = glossariesData?.items ?? [];
@@ -166,10 +221,10 @@ function ModuleDetailsContent({
   };
 
   const glossaryTabContent = hasGlossaries ? (
-    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns)
+    renderGlossaryTable(glossariesData.items, visibleGlossaryColumns, languageListData, t)
   ) : (
     <div className="flex h-24 items-center justify-center text-muted-foreground">
-      No glossaries tagged to this module
+      {t("MODULE_DETAILS.NO_GLOSSARIES")}
     </div>
   );
 
@@ -178,31 +233,39 @@ function ModuleDetailsContent({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="w-full">
         <TabsList className="h-[42px] bg-blocks-primary-shades-300">
           <TabsTrigger value="details" className="h-8">
-            Details
+            {t("common:DETAILS")}
           </TabsTrigger>
           <TabsTrigger value="glossary" className="h-8">
-            Glossary
+            {t("MODULE_DETAILS.TAB_GLOSSARY")}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="details" className="mt-4">
           <Card className="rounded-sm border border-border shadow-none">
             <CardHeader>
-              <CardTitle className="text-lg text-high-emphasis">About</CardTitle>
+              <CardTitle className="text-lg text-high-emphasis">
+                {t("MODULE_DETAILS.ABOUT")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Module Name</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.MODULE_NAME")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">{module.moduleName}</p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created Date</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.CREATED_DATE")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {module.createDate ? new Date(module.createDate).toLocaleDateString() : "—"}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last Update Date</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.LAST_UPDATE_DATE")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {module.lastUpdateDate
                       ? new Date(module.lastUpdateDate).toLocaleDateString()
@@ -212,13 +275,17 @@ function ModuleDetailsContent({
               </div>
               <div className="grid gap-4">
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Created By</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.CREATED_BY")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayNameById(module.createdBy)}
                   </p>
                 </div>
                 <div className="grid gap-1">
-                  <h3 className="text-sm font-medium text-low-emphasis">Last Updated By</h3>
+                  <h3 className="text-sm font-medium text-low-emphasis">
+                    {t("MODULE_DETAILS.LAST_UPDATED_BY")}
+                  </h3>
                   <p className="text-base font-normal text-high-emphasis">
                     {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
@@ -231,7 +298,7 @@ function ModuleDetailsContent({
           <Card className="rounded-sm border border-border shadow-none">
             <CardHeader>
               <CardTitle className="text-lg text-high-emphasis">
-                Tagged Glossaries ({glossariesData?.totalCount ?? 0})
+                {t("MODULE_DETAILS.TAGGED_GLOSSARIES", { count: glossariesData?.totalCount ?? 0 })}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -253,6 +320,7 @@ function ModuleDetailsContent({
 }
 
 export function ModuleDetails() {
+  const { t } = useT("localization.modules");
   const { moduleId } = useParams<{ moduleId: string }>();
 
   const { data: modules, isLoading: isModulesLoading } = useGetLanguageModules();
@@ -284,7 +352,7 @@ export function ModuleDetails() {
   if (!moduleId) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Invalid module ID</p>
+        <p className="text-muted-foreground">{t("MODULE_DETAILS.INVALID_MODULE_ID")}</p>
       </div>
     );
   }
@@ -305,7 +373,7 @@ export function ModuleDetails() {
   if (!module) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Module not found</p>
+        <p className="text-muted-foreground">{t("MODULE_DETAILS.MODULE_NOT_FOUND")}</p>
       </div>
     );
   }
