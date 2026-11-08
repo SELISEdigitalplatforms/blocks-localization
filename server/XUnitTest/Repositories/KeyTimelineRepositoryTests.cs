@@ -733,6 +733,21 @@ namespace XUnitTest.Repositories
             data[1]["$limit"].Should().Be(new BsonInt32(pageSize));
         }
 
+        [Theory]
+        [InlineData(1, 1000, 0L, 1000)]
+        [InlineData(1, 1001, 0L, 1000)]
+        [InlineData(3, 5000, 2000L, 1000)]
+        [InlineData(2, int.MaxValue, 1000L, 1000)]
+        [InlineData(int.MaxValue, int.MaxValue, 2147483646000L, 1000)]
+        public async Task GetLocalizationTimelineAsync_PageSizeAboveMax_IsClampedForLimitAndSkip(int pageNumber, int pageSize, long expectedSkip, int expectedLimit)
+        {
+            var stages = await RenderedStagesFor(new GetLocalizationTimelineRequest { PageNumber = pageNumber, PageSize = pageSize });
+
+            var data = stages[4]["$facet"]["Data"].AsBsonArray;
+            data[0]["$skip"].Should().Be(new BsonInt64(expectedSkip));
+            data[1]["$limit"].Should().Be(new BsonInt32(expectedLimit));
+        }
+
         [Fact]
         public async Task GetLocalizationTimelineAsync_PageNumberMaxValue_ReturnsTotalWithEmptyPage()
         {

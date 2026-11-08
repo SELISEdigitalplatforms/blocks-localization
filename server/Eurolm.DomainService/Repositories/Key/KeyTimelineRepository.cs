@@ -20,6 +20,12 @@ namespace Eurolm.DomainService.Repositories
         private const string TotalField = "Total";
         private const string DataField = "Data";
 
+        /// <summary>
+        /// The largest overview page; a larger PageSize is clamped to it. The page and the total come back in one
+        /// $facet document, which must stay under MongoDB's 16 MB document limit.
+        /// </summary>
+        public const int MaxOverviewPageSize = 1000;
+
         /// <summary>Supports the overview's $sort on CreateDate before grouping.</summary>
         public static IReadOnlyList<CreateIndexModel<KeyTimeline>> OverviewIndexes { get; } = new[]
         {
@@ -308,16 +314,18 @@ namespace Eurolm.DomainService.Repositories
                 { CountField, new BsonDocument("$sum", 1) }
             };
 
-            // Same paging as the former in-memory Skip/Take: PageNumber <= 0 is page 1 and PageSize <= 0 returns
-            // the total only (MongoDB rejects $limit: 0). The skip is a long, so large page numbers cannot overflow.
+            // PageNumber <= 0 is page 1 and PageSize <= 0 returns the total only (MongoDB rejects $limit: 0), as
+            // with the former in-memory Skip/Take. Unlike before, the skip is a long, so large page numbers don't overflow.
+            // A PageSize above MaxOverviewPageSize pages as if it were MaxOverviewPageSize.
             var facet = new BsonDocument(TotalField, new BsonArray { new BsonDocument("$count", CountField) });
             if (query.PageSize > 0)
             {
-                var skip = Math.Max(query.PageNumber - 1L, 0L) * query.PageSize;
+                var pageSize = Math.Min(query.PageSize, MaxOverviewPageSize);
+                var skip = Math.Max(query.PageNumber - 1L, 0L) * pageSize;
                 facet.Add(DataField, new BsonArray
                 {
                     new BsonDocument("$skip", skip),
-                    new BsonDocument("$limit", query.PageSize)
+                    new BsonDocument("$limit", pageSize)
                 });
             }
 

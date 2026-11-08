@@ -137,6 +137,24 @@ public class LocalizationTimelineQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task PageSizeAboveMax_IsClampedTo1000_AndLaterPagesFollowTheClampedSize()
+    {
+        // 1,005 single-entry operations, op-0000 newest.
+        await DevTimelines.InsertManyAsync(Enumerable.Range(0, 1005)
+            .Select(i => Entry($"c{i}", $"op-{i:D4}", LogFromConstants.Published, T0.AddSeconds(-i))));
+
+        var first = await _repository.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest { PageNumber = 1, PageSize = 5000 });
+        var second = await _repository.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest { PageNumber = 2, PageSize = 5000 });
+
+        Assert.Equal(1005, first.TotalCount);
+        Assert.Equal(1000, first.Operations.Count);
+        Assert.Equal("op-0000", first.Operations[0].OperationId);
+        Assert.Equal("op-0999", first.Operations[^1].OperationId);
+        Assert.Equal(1005, second.TotalCount);
+        Assert.Equal(new[] { "op-1000", "op-1001", "op-1002", "op-1003", "op-1004" }, second.Operations.Select(o => o.OperationId));
+    }
+
+    [Fact]
     public async Task E6_NoEntries_ReturnsZero()
     {
         var result = await _repository.GetLocalizationTimelineAsync(new GetLocalizationTimelineRequest());
