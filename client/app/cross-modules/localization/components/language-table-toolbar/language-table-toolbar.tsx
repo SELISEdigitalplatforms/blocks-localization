@@ -1,7 +1,6 @@
 import React from "react";
 import { useT } from "@seliseblocks/genesis-os/i18n";
-import { Checkbox } from "@/components/ui-kits/checkbox/checkbox";
-import { Label } from "@/components/ui-kits/label/label";
+import { AlertTriangle } from "lucide-react";
 import {
   FilterChangeHandler,
   FilterToolbar,
@@ -38,9 +37,7 @@ export const useKeysFilterQueryParams = () => {
     lastUpdateStartDate: parseAsString.withDefault(""),
     lastUpdateEndDate: parseAsString.withDefault(""),
     resourceSearch: parseAsString.withDefault(""),
-    // Set by the duplicates chip in the Translations header: show only duplicate key rows.
     duplicates: parseAsBoolean.withDefault(false),
-    // "Glossary issues": only keys with violations the server stored.
     glossaryIssues: parseAsBoolean.withDefault(false),
   });
   return { queryParams, setQueryParams };
@@ -51,12 +48,14 @@ export const useKeysSortQueryParams = () =>
 export function LanguageTableToolbar({
   languageModulesData,
   languagesData,
+  glossaryIssueCount,
   disabled = false,
-}: {
+}: Readonly<{
   languageModulesData: Array<{ itemId: string; moduleName: string }>;
   languagesData: Array<{ languageCode: string; languageName: string }>;
+  glossaryIssueCount?: number;
   disabled?: boolean;
-}) {
+}>) {
   const { t } = useT("localization.language-table");
   const { queryParams, setQueryParams } = useKeysFilterQueryParams();
   const onChange: FilterChangeHandler<{
@@ -101,13 +100,6 @@ export function LanguageTableToolbar({
   };
   const onReset = () => {
     setQueryParams(null);
-  };
-  const onGlossaryIssuesChange = (checked: boolean) => {
-    setQueryParams((prev) => ({
-      ...prev,
-      glossaryIssues: checked,
-      pageNumber: 0,
-    }));
   };
   return (
     <fieldset
@@ -156,6 +148,16 @@ export function LanguageTableToolbar({
                 disableFutureDates: true,
               },
             },
+            {
+              key: "glossaryIssues",
+              type: "Toggle",
+              label: t("LANGUAGE_TABLE_TOOLBAR.GLOSSARY_ISSUES"),
+              props: {
+                icon: AlertTriangle,
+                count: glossaryIssueCount,
+                countVariant: "warning",
+              },
+            },
           ]}
           values={{
             search: queryParams.search,
@@ -189,17 +191,6 @@ export function LanguageTableToolbar({
           onReset={onReset}
           disabled={disabled}
         />
-      </div>
-      <div className="flex h-8 items-center gap-2">
-        <Checkbox
-          id="language-table-glossary-issues"
-          checked={queryParams.glossaryIssues}
-          onCheckedChange={(checked) => onGlossaryIssuesChange(checked === true)}
-          disabled={disabled}
-        />
-        <Label htmlFor="language-table-glossary-issues" className="cursor-pointer">
-          {t("LANGUAGE_TABLE_TOOLBAR.GLOSSARY_ISSUES")}
-        </Label>
       </div>
     </fieldset>
   );

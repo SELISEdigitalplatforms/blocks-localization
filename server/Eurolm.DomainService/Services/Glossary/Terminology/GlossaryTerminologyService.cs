@@ -58,6 +58,31 @@ namespace Eurolm.DomainService.Services
             return ComputeKeyViolations(key, matcher, defaultCulture, DateTime.UtcNow);
         }
 
+        public async Task<List<List<KeyGlossaryViolation>?>?> ComputeKeyViolationsAsync(IReadOnlyList<BlocksLanguageKey> keys)
+        {
+            ArgumentNullException.ThrowIfNull(keys);
+            if (!IsEnforcementEnabled) return null;
+            if (keys.Count == 0) return new List<List<KeyGlossaryViolation>?>();
+
+            var defaultCulture = (await _keyRepository.GetLanguageSettingAsync(TenantId))?.LanguageCode;
+            if (string.IsNullOrEmpty(defaultCulture))
+                return keys.Select(_ => (List<KeyGlossaryViolation>?)new List<KeyGlossaryViolation>()).ToList();
+
+            var matcher = await _matcherCache.GetAsync(TenantId);
+            var now = DateTime.UtcNow;
+            return keys.Select(key =>
+            {
+                try
+                {
+                    return ComputeKeyViolations(key, matcher, defaultCulture, now);
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }).ToList();
+        }
+
         /// <summary>
         /// The key's violations for every non-default culture with a value, with the default culture's value as
         /// the source (matcher and validator only, no AI). Shared by Key/Save and the re-check job.

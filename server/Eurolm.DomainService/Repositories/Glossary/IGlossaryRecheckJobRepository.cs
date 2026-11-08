@@ -4,10 +4,16 @@ namespace Eurolm.DomainService.Repositories
     {
         /// <summary>
         /// Adds the scope (<paramref name="glossaryIds"/> plus <paramref name="moduleIds"/>, or the whole project when
-        /// <paramref name="glossaryIds"/> is null) to the tenant's pending job. True when this call created the marker, or took over one older than <paramref name="staleAfter"/>
-        /// (its message was lost): the caller must then publish the event. False when merged into a queued job.
+        /// <paramref name="glossaryIds"/> is null) to the tenant's pending job. True when this call created the marker, or took over one marked failed or older than
+        /// <paramref name="staleAfter"/> (its message was lost): the caller must then publish the event. False when merged into a queued job.
         /// </summary>
         Task<bool> TryEnqueueAsync(string tenantId, IReadOnlyCollection<string>? glossaryIds, IReadOnlyCollection<string>? moduleIds, DateTime now, TimeSpan staleAfter);
+
+        /// <summary>
+        /// Puts a failed run's scope back into the tenant's pending job and marks it failed, so the next
+        /// <see cref="TryEnqueueAsync"/> takes it over and publishes. Never takes a marker over itself.
+        /// </summary>
+        Task RequeueFailedAsync(string tenantId, IReadOnlyCollection<string>? glossaryIds, IReadOnlyCollection<string>? moduleIds, DateTime now);
 
         /// <summary>Removes and returns the pending job, or null when none is queued.</summary>
         Task<GlossaryRecheckJob?> ClaimAsync(string tenantId);

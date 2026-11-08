@@ -91,7 +91,7 @@ test.describe("Glossary — visual evidence", () => {
             await glossary.openNewGlossaryDialog();
             await glossary.setRule(rule);
             await shoot(page, testInfo, `sheet-${rule.toLowerCase()}-${suffix}`);
-            await page.keyboard.press("Escape");
+            await glossary.cancelEditor({ discard: rule !== "Translate" });
           }
 
           await glossary.openEditFromList(names.corrupt);
@@ -171,8 +171,10 @@ test.describe("Glossary — visual evidence", () => {
       await expect(remove).toHaveCount(0);
     }
 
-    // Escape closes the sheet and focus returns to the trigger.
+    // The rule changed, so Escape asks first; Discard closes the sheet and focus returns.
     await page.keyboard.press("Escape");
+    await expect(glossary.discardDialog).toBeVisible();
+    await glossary.discardDialog.getByRole("button", { name: "Discard", exact: true }).click();
     await expect(sheet).toHaveCount(0);
     await expect(trigger).toBeFocused();
   });
@@ -236,12 +238,51 @@ test.describe("Glossary — visual evidence", () => {
     }
   });
 
-  test("timing: glossary table render scripting time", async ({ page }, testInfo) => {
+  test("timing: glossary table render scripting time, 50 rows x 10 languages (SPEC2 §5)", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(120_000);
+    const codes = ["de-DE", "fr-FR", "es-ES", "it-IT", "nl-NL", "pt-PT", "pl-PL", "sv-SE", "da-DK", "fi-FI"];
+    const languages = [
+      { languageName: "English", languageCode: "en-US", isDefault: true },
+      ...codes.map((code) => ({ languageName: code, languageCode: code, isDefault: false })),
+    ];
+    const items = Array.from({ length: 50 }, (_, index) => ({
+      itemId: `e2e-timing-${index}`,
+      name: `E2E Timing ${index}`,
+      language: "en-US",
+      type: "",
+      context: `Definition ${index}`,
+      additionalNote: "",
+      isGlobal: true,
+      moduleIds: [],
+      rule: "translate",
+      status: "approved",
+      caseSensitive: false,
+      variants: [],
+      version: 1,
+      translations: codes
+        .filter((_, code) => (index + code) % 3 !== 0)
+        .map((language) => ({ language, value: `${language} ${index}`, forbiddenValues: [] })),
+      createDate: new Date().toISOString(),
+      lastUpdateDate: new Date().toISOString(),
+    }));
+    await page.route(/\/Language\/GetLanguagesForCurrentTenant/, (route) =>
+      route.fulfill({ json: languages }),
+    );
+    await page.route(/\/Glossary\/Gets(\?|$)/, (route) => {
+      const search = new URL(route.request().url()).searchParams.get("SearchText") ?? "";
+      return route.fulfill({
+        json: search.startsWith("no-such")
+          ? { items: [], totalCount: 0 }
+          : { items, totalCount: items.length },
+      });
+    });
     await openGlossary(page);
     const glossary = new GlossaryPage(page);
     await glossary.expectPageLoaded();
     const rows = page.getByRole("row");
+    await expect(rows).toHaveCount(51, { timeout: 15_000 });
 
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Performance.enable");
@@ -257,7 +298,7 @@ test.describe("Glossary — visual evidence", () => {
       await glossary.expectNoMatchingGlossaries();
       const before = await scriptSeconds();
       await glossary.clearSearch();
-      await expect(rows.nth(1)).toBeVisible();
+      await expect(rows).toHaveCount(51);
       await page.waitForTimeout(300); // let the deferred chip/tooltip work finish
       samples.push((await scriptSeconds()) - before);
     }
@@ -273,5 +314,7 @@ test.describe("Glossary — visual evidence", () => {
       contentType: "application/json",
     });
     console.log("[glossary-timing]", JSON.stringify(result));
+    expect(result.renderedRows).toBe(50);
+    expect(result.medianScriptMs, "scripting per render (budget 16 ms)").toBeLessThanOrEqual(16);
   });
 });

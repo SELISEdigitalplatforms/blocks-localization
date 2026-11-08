@@ -16,7 +16,7 @@ namespace Eurolm.DomainService.Services
     {
         public const int PageSize = 1000;
         /// <summary>A pending marker older than this is assumed lost and is published again.</summary>
-        public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
+        public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(5);
         /// <summary>How long a running job holds the tenant's lease without renewing it (renewed every page).</summary>
         public static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
 
@@ -108,8 +108,50 @@ namespace Eurolm.DomainService.Services
         public async Task<GlossaryRecheckResult> RecheckAsync(RecheckGlossaryViolationsEvent @event)
         {
             ArgumentNullException.ThrowIfNull(@event);
+            var contextTenantId = BlocksContext.GetContext()?.TenantId;
+            var projectKey = @event.ProjectKey;
+
+            if (string.IsNullOrEmpty(contextTenantId))
+            {
+                if (string.IsNullOrEmpty(projectKey))
+                {
+                    _logger.LogWarning("Glossary re-check skipped: the event has no tenant");
+                    return new GlossaryRecheckResult();
+                }
+                return await BlocksContext.ExecuteInContext(TenantContext(projectKey), () => RecheckTenantAsync(projectKey, @event.GlossaryId));
+            }
+
+            if (!string.IsNullOrEmpty(projectKey) && !string.Equals(contextTenantId, projectKey, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Glossary re-check skipped: context tenant {ContextTenantId} does not match event project {ProjectKey}", contextTenantId, projectKey);
+                return new GlossaryRecheckResult();
+            }
+
+            return await RecheckTenantAsync(contextTenantId, @event.GlossaryId);
+        }
+
+        private static BlocksContext TenantContext(string tenantId) => BlocksContext.Create(
+            tenantId: tenantId,
+            roles: Array.Empty<string>(),
+            userId: "",
+            isAuthenticated: false,
+            requestUri: "",
+            organizationId: "",
+            expireOn: DateTime.UtcNow.Add(LeaseDuration),
+            email: "",
+            permissions: Array.Empty<string>(),
+            userName: "",
+            phoneNumber: "",
+            displayName: "",
+            oauthToken: "",
+            originalTenantId: tenantId,
+            applicationDomain: "",
+            impersonated: false,
+            impersonationSessionId: "");
+
+        private async Task<GlossaryRecheckResult> RecheckTenantAsync(string tenantId, string? glossaryId)
+        {
             var result = new GlossaryRecheckResult();
-            var tenantId = BlocksContext.GetContext()?.TenantId ?? @event.ProjectKey ?? "";
 
             if (!IsEnabled)
             {
@@ -119,7 +161,7 @@ namespace Eurolm.DomainService.Services
             }
 
             var owner = Guid.NewGuid().ToString("N");
-            var eventGlossaryId = @event.GlossaryId;
+            var eventGlossaryId = glossaryId;
             while (await _jobRepository.TryAcquireLeaseAsync(tenantId, owner, DateTime.UtcNow, LeaseDuration))
             {
                 bool keptLease;
@@ -150,16 +192,23 @@ namespace Eurolm.DomainService.Services
             // Claim after taking the lease, so glossary edits made while a job runs queue the next one.
             for (var job = await _jobRepository.ClaimAsync(tenantId); job != null; job = await _jobRepository.ClaimAsync(tenantId))
             {
+                var completed = false;
+                bool keptLease;
                 try
                 {
-                    if (!await RunAsync(tenantId, owner, job, eventGlossaryId, result)) return false;
+                    keptLease = await RunAsync(tenantId, owner, job, eventGlossaryId, result);
+                    completed = true;
                 }
-                catch
+                finally
                 {
-                    // Put the claimed scope back so a retry (or the next request) still covers it.
-                    await _jobRepository.TryEnqueueAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow, StaleAfter);
-                    throw;
+                    // A failed run puts the claimed scope back so a retry (or the next request) still covers it.
+                    if (!completed)
+                    {
+                        await _jobRepository.RequeueFailedAsync(tenantId, job.WholeProject ? null : job.GlossaryIds, job.ModuleIds, DateTime.UtcNow);
+                        _logger.LogWarning("Glossary re-check failed for tenant {TenantId}; scope queued again and marked failed", tenantId);
+                    }
                 }
+                if (!keptLease) return false;
                 eventGlossaryId = null;
             }
             return true;

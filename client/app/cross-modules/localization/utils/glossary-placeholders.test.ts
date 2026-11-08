@@ -27,6 +27,32 @@ describe("utils/glossary-placeholders maskPlaceholders", () => {
     expect(masked(text)).toBe(blanked(text, "{count, plural, one", "other"));
   });
 
+  it("blanks ICU select option names but keeps their branch text", () => {
+    const text = "{role, select, admin {Admin panel} other {Panel}}";
+    const result = masked(text);
+    expect(result).toHaveLength(text.length);
+    expect(result).toBe(blanked(text, "{role, select,", "admin", "other", "{Panel}"));
+    expect(result.slice(0, 14).trim()).toBe("");
+    expect(result.slice(15, 20)).toBe("     ");
+    expect(result.slice(22, 27)).toBe("Admin");
+  });
+
+  it("blanks only option names at the select's own depth", () => {
+    const text = "{role, select, admin {Hi admin now} other {All admins}} and admin {y}";
+    expect(masked(text)).toBe(
+      blanked(text, "{role, select,", "admin", "other").replace("{y}", "   "),
+    );
+  });
+
+  it("masks option names of a select nested in a plural branch", () => {
+    const text = "{n, plural, one {{g, select, admin {Admin area} other {All areas}}} other {# items}}";
+    const result = masked(text);
+    expect(result).toHaveLength(text.length);
+    expect(result).not.toMatch(/\badmin\b/);
+    expect(result).toContain("Admin area");
+    expect(result).toContain("All areas");
+  });
+
   it("leaves plain text and stray symbols alone", () => {
     expect(masked("50% off, a < b > c, {not closed")).toBe("50% off, a < b > c, {not closed");
     expect(masked("One other thing")).toBe("One other thing");

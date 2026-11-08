@@ -98,7 +98,7 @@ const Harness = ({ initial = [] as string[], known = [] as IGlossary[] }) => {
 
 const openPicker = () => fireEvent.click(screen.getByRole("combobox"));
 const typeQuery = (value: string) =>
-  fireEvent.change(screen.getByPlaceholderText("Search glossary..."), { target: { value } });
+  fireEvent.change(screen.getByPlaceholderText("Search glossaries…"), { target: { value } });
 
 describe("pickCreatedGlossary", () => {
   it("picks the exact, case-sensitive name; the latest createDate among several (C19)", () => {
@@ -290,7 +290,7 @@ describe("GlossaryPicker", () => {
       expect(screen.getByText("Tag Glossary")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Remove Workspace" })).toBeTruthy();
       await waitFor(() =>
-        expect(document.activeElement).toBe(screen.getByPlaceholderText("Search glossary...")),
+        expect(document.activeElement).toBe(screen.getByPlaceholderText("Search glossaries…")),
       );
     });
   });

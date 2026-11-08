@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using XUnitTest.Shared;
 
 namespace XUnitTest.Services.Glossary
 {
@@ -47,7 +48,7 @@ namespace XUnitTest.Services.Glossary
 
         private static GlossaryRecheckJob WholeProject => new() { WholeProject = true };
 
-        private GlossaryRecheckService NewService(bool enabled = true) => new(
+        private GlossaryRecheckService NewService(bool enabled = true, ILogger<GlossaryRecheckService>? logger = null) => new(
             _jobs.Object,
             _glossaryRepository.Object,
             _keyRepository.Object,
@@ -56,7 +57,7 @@ namespace XUnitTest.Services.Glossary
             new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?> { [GlossaryEnforcement.EnabledKey] = enabled ? "true" : "false" })
                 .Build(),
-            new Mock<ILogger<GlossaryRecheckService>>().Object);
+            logger ?? new Mock<ILogger<GlossaryRecheckService>>().Object);
 
         private void SetupEnqueue(bool created) =>
             _jobs.Setup(j => j.TryEnqueueAsync("recheck-tenant", It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<DateTime>(), GlossaryRecheckService.StaleAfter))
@@ -414,8 +415,9 @@ namespace XUnitTest.Services.Glossary
             var act = () => NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant", GlossaryId = "g1" });
 
             await act.Should().ThrowAsync<InvalidOperationException>();
-            _jobs.Verify(j => j.TryEnqueueAsync("recheck-tenant", It.Is<IReadOnlyCollection<string>?>(ids => ids!.SequenceEqual(new[] { "g1" })),
-                It.Is<IReadOnlyCollection<string>?>(m => m!.SequenceEqual(new[] { "m-old" })), It.IsAny<DateTime>(), GlossaryRecheckService.StaleAfter), Times.Once);
+            _jobs.Verify(j => j.RequeueFailedAsync("recheck-tenant", It.Is<IReadOnlyCollection<string>?>(ids => ids!.SequenceEqual(new[] { "g1" })),
+                It.Is<IReadOnlyCollection<string>?>(m => m!.SequenceEqual(new[] { "m-old" })), It.IsAny<DateTime>()), Times.Once);
+            _jobs.Verify(j => j.TryEnqueueAsync(It.IsAny<string>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<DateTime>(), It.IsAny<TimeSpan>()), Times.Never);
             _published.Should().BeEmpty("the retry or a later request runs it, not a new message");
             _jobs.Verify(j => j.ReleaseLeaseAsync("recheck-tenant", It.IsAny<string>()), Times.Once);
         }
@@ -475,5 +477,86 @@ namespace XUnitTest.Services.Glossary
         }
 
         #endregion
+
+        #region SPEC15 tenant guard and failed runs
+
+        [Fact]
+        public async Task H10_an_event_without_a_context_tenant_runs_in_the_events_project()
+        {
+            BlocksContext.ClearContext();
+            Queue(WholeProject);
+            _glossaries.Add(Term("g1", "Workspace"));
+            var pageTenants = new List<string?>();
+            _keyRepository.Setup(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), GlossaryRecheckService.PageSize))
+                .Callback(() => pageTenants.Add(BlocksContext.GetContext()?.TenantId))
+                .ReturnsAsync(new List<BlocksLanguageKey>());
+
+            var result = await NewService().RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+
+            result.Ran.Should().BeTrue();
+            _jobs.Verify(j => j.TryAcquireLeaseAsync("recheck-tenant", It.IsAny<string>(), It.IsAny<DateTime>(), GlossaryRecheckService.LeaseDuration), Times.AtLeastOnce);
+            _jobs.Verify(j => j.ClaimAsync("recheck-tenant"), Times.AtLeastOnce);
+            pageTenants.Should().NotBeEmpty().And.OnlyContain(t => t == "recheck-tenant");
+        }
+
+        [Fact]
+        public async Task C14_an_event_with_no_tenant_at_all_touches_nothing()
+        {
+            BlocksContext.ClearContext();
+            var logger = new Mock<ILogger<GlossaryRecheckService>>();
+
+            var result = await NewService(logger: logger.Object).RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = null });
+
+            result.Ran.Should().BeFalse();
+            _jobs.VerifyNoOtherCalls();
+            _keyRepository.Verify(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()), Times.Never);
+            logger.VerifyLog(LogLevel.Warning, "Glossary re-check skipped: the event has no tenant");
+        }
+
+        [Fact]
+        public async Task C15_an_event_for_another_project_than_the_context_is_skipped()
+        {
+            var logger = new Mock<ILogger<GlossaryRecheckService>>();
+
+            var result = await NewService(logger: logger.Object).RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "other-tenant" });
+
+            result.Ran.Should().BeFalse();
+            _jobs.VerifyNoOtherCalls();
+            logger.VerifyLog(LogLevel.Warning, "Glossary re-check skipped: context tenant recheck-tenant does not match event project other-tenant");
+        }
+
+        [Fact]
+        public async Task A_failed_run_marks_its_scope_failed_and_logs_counts_and_ids_only()
+        {
+            Queue(WholeProject);
+            _keyRepository.Setup(r => r.GetKeysForGlossaryRecheckAsync(It.IsAny<GlossaryRecheckKeyScope?>(), It.IsAny<string?>(), It.IsAny<int>()))
+                .ThrowsAsync(new InvalidOperationException("db down"));
+            var logger = new Mock<ILogger<GlossaryRecheckService>>();
+
+            var act = () => NewService(logger: logger.Object).RecheckAsync(new RecheckGlossaryViolationsEvent { ProjectKey = "recheck-tenant" });
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            _jobs.Verify(j => j.RequeueFailedAsync("recheck-tenant", null, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<DateTime>()), Times.Once);
+            logger.VerifyLog(LogLevel.Warning, "Glossary re-check failed for tenant recheck-tenant; scope queued again and marked failed");
+        }
+
+        [Fact]
+        public async Task H18_a_trigger_that_takes_over_a_failed_marker_publishes_in_the_same_request()
+        {
+            SetupEnqueue(created: true);
+
+            await NewService().TriggerAsync(new[] { "g1" });
+
+            _published.Should().ContainSingle();
+        }
+
+        [Fact]
+        public void C20_a_marker_is_taken_over_after_five_minutes()
+        {
+            GlossaryRecheckService.StaleAfter.Should().Be(TimeSpan.FromMinutes(5));
+        }
+
+        #endregion
+
     }
 }

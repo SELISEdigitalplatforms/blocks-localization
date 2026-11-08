@@ -29,7 +29,7 @@ namespace XUnitTest
 
             
             var httpContext = new DefaultHttpContext();
-            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object, _validatorsMock.Object, new GetKeysRequestValidator())
+            _controller = new KeyController(_keyManagementServiceMock.Object, _validatorMock.Object, _validatorsMock.Object, new GetKeysRequestValidator(), new DeleteKeysRequestValidator())
             {
                 ControllerContext = new ControllerContext
                 {
@@ -1190,7 +1190,7 @@ namespace XUnitTest
         {
             var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1", "k2" } };
             _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
-                .ReturnsAsync(new BaseMutationResponse { IsSuccess = true });
+                .ReturnsAsync(new BulkKeyActionResponse { IsSuccess = true });
 
             var result = await _controller.DeleteKeys(request);
 
@@ -1210,11 +1210,175 @@ namespace XUnitTest
         {
             var request = new DeleteKeysRequest { ItemIds = new List<string> { "k1" } };
             _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
-                .ReturnsAsync(new BaseMutationResponse { IsSuccess = false });
+                .ReturnsAsync(new BulkKeyActionResponse { IsSuccess = false });
 
             var result = await _controller.DeleteKeys(request);
 
             result.Should().BeOfType<BadRequestObjectResult>();
         }
-    }
+
+        #region Bulk key target (SPEC14)
+
+        private static DeleteKeysRequest FilterDelete(long expectedCount = 935) => new()
+        {
+            ItemIds = new List<string>(),
+            Filter = new GetKeysRequest { ModuleIds = new[] { "m1" } },
+            ExcludedItemIds = new List<string>(),
+            ExpectedCount = expectedCount
+        };
+
+        private static TranslateBlocksLanguageKeysRequest FilterTranslate() => new()
+        {
+            Filter = new GetKeysRequest { ModuleIds = new[] { "m1" } },
+            ExpectedCount = 935,
+            MessageCoRelationId = "c1",
+            ProjectKey = "p1",
+            DefaultLanguage = "en"
+        };
+
+        private static (int Status, BaseMutationResponse Body) StatusAndBody(IActionResult result)
+        {
+            var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+            return (objectResult.StatusCode ?? 200, objectResult.Value.Should().BeAssignableTo<BaseMutationResponse>().Subject);
+        }
+
+        [Fact]
+        public async Task DeleteKeys_FilterForm_ReturnsOkWithMatchedCount()
+        {
+            var request = FilterDelete();
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ReturnsAsync(new BulkKeyActionResponse { IsSuccess = true, MatchedCount = 935 });
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(200);
+            ((BulkKeyActionResponse)body).MatchedCount.Should().Be(935);
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WhenTheKeySetChanged_Returns409WithTheNewCount()
+        {
+            var request = FilterDelete();
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ThrowsAsync(new BulkKeyTargetException(BulkKeyTarget.KeySetChanged, 409, 936));
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(409);
+            body.Errors![BulkKeyTarget.Field].Should().Be("KEY_SET_CHANGED");
+            body.Errors![BulkKeyTarget.MatchedCountField].Should().Be("936");
+            ((BulkKeyActionResponse)body).MatchedCount.Should().Be(936);
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WhenTooManyKeysMatch_Returns400TooManyKeys()
+        {
+            var request = FilterDelete(12_400);
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ThrowsAsync(new BulkKeyTargetException(BulkKeyTarget.TooManyKeys, 400, 10_001));
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(400);
+            body.Errors![BulkKeyTarget.Field].Should().Be("TOO_MANY_KEYS");
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WhenResolvingTimesOut_Returns503QueryTimeout()
+        {
+            var request = FilterDelete();
+            _keyManagementServiceMock.Setup(x => x.DeleteKeysAsync(request))
+                .ThrowsAsync(new KeyListException(KeyListErrorCodes.QueryTimeout, BulkKeyTarget.Field, 503));
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(503);
+            body.Errors![BulkKeyTarget.Field].Should().Be("QUERY_TIMEOUT");
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WithBothIdsAndFilter_Returns400TargetError()
+        {
+            var request = FilterDelete();
+            request.ItemIds = new List<string> { "k1" };
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(400);
+            body.Errors![BulkKeyTarget.Field].Should().Be(BulkKeyTarget.TargetRequiredMessage);
+            _keyManagementServiceMock.Verify(x => x.DeleteKeysAsync(It.IsAny<DeleteKeysRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteKeys_WithMoreThan10000Ids_Returns400TooManyKeys()
+        {
+            var request = new DeleteKeysRequest { ItemIds = Enumerable.Range(0, 10_001).Select(i => $"k{i}").ToList() };
+
+            var (status, body) = StatusAndBody(await _controller.DeleteKeys(request));
+
+            status.Should().Be(400);
+            body.Errors![BulkKeyTarget.Field].Should().Be("TOO_MANY_KEYS");
+            _keyManagementServiceMock.Verify(x => x.DeleteKeysAsync(It.IsAny<DeleteKeysRequest>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TranslateKeys_FilterForm_ReturnsTheServiceResponse()
+        {
+            var request = FilterTranslate();
+            _validatorsMock.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _keyManagementServiceMock.Setup(x => x.SendTranslateBlocksLanguageKeysEvent(request))
+                .ReturnsAsync(new BulkKeyActionResponse { IsSuccess = true, MatchedCount = 935 });
+
+            var (status, body) = StatusAndBody(await _controller.TranslateKeys(request));
+
+            status.Should().Be(200);
+            ((BulkKeyActionResponse)body).MatchedCount.Should().Be(935);
+        }
+
+        [Fact]
+        public async Task TranslateKeys_WhenTheKeySetChanged_Returns409()
+        {
+            var request = FilterTranslate();
+            _validatorsMock.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
+            _keyManagementServiceMock.Setup(x => x.SendTranslateBlocksLanguageKeysEvent(request))
+                .ThrowsAsync(new BulkKeyTargetException(BulkKeyTarget.KeySetChanged, 409, 936));
+
+            var (status, body) = StatusAndBody(await _controller.TranslateKeys(request));
+
+            status.Should().Be(409);
+            body.Errors![BulkKeyTarget.Field].Should().Be("KEY_SET_CHANGED");
+        }
+
+        [Fact]
+        public async Task TranslateKeys_WithTwoFailuresOnOneProperty_ReturnsBadRequestInsteadOfThrowing()
+        {
+            var request = FilterTranslate();
+            _validatorsMock.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult(new[]
+                {
+                    new FluentValidation.Results.ValidationFailure("KeyIds", "first"),
+                    new FluentValidation.Results.ValidationFailure("KeyIds", "second")
+                }));
+
+            var (status, body) = StatusAndBody(await _controller.TranslateKeys(request));
+
+            status.Should().Be(400);
+            body.Errors!["KeyIds"].Should().Be("first");
+        }
+
+        [Theory]
+        [InlineData(nameof(KeyController.DeleteKeys), "::key::deletekeys")]
+        [InlineData(nameof(KeyController.TranslateKeys), "::key::translatekeys")]
+        public void BulkActions_KeepTheirPermissionForBothForms(string action, string permissionSuffix)
+        {
+            var attribute = typeof(KeyController).GetMethod(action)!.CustomAttributes
+                .Single(a => a.AttributeType == typeof(ProtectedEndPointAttribute));
+
+            ((string)attribute.ConstructorArguments[0].Value!).Should().EndWith(permissionSuffix);
+        }
+
+        #endregion
+}
 }

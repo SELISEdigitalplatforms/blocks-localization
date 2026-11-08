@@ -45,6 +45,7 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IValidator<GetKeysRequest>, GetKeysRequestValidator>();
+            services.AddSingleton<IValidator<DeleteKeysRequest>, DeleteKeysRequestValidator>();
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();

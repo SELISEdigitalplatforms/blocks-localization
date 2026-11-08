@@ -20,10 +20,52 @@ const ICU_HEADER = /\{[ \t]*[\p{L}\p{N}_]+[ \t]*,[ \t]*(?:plural|selectordinal)[
 
 const ICU_SELECTOR = /(?:=\d+|\b(?:zero|one|two|few|many|other))(?=[ \t]*\{)/gu;
 
+const ICU_SELECT_HEADER = /\{[ \t]*[\p{L}\p{N}_]+[ \t]*,[ \t]*select[ \t]*,/gu;
+
+const OPTION_WORD = /[\p{L}\p{N}_]+/uy;
+
+const BEFORE_BRANCH = /[ \t]*\{/y;
+
 const blank = (match: string) => " ".repeat(match.length);
+
+const blankOptionAt = (text: string, units: string[], i: number): number => {
+  OPTION_WORD.lastIndex = i;
+  const word = OPTION_WORD.exec(text);
+  if (!word) return i + 1;
+  const end = i + word[0].length;
+  BEFORE_BRANCH.lastIndex = end;
+  if (BEFORE_BRANCH.test(text)) units.fill(" ", i, end);
+  return end;
+};
+
+const blankSelectBody = (text: string, units: string[], start: number): void => {
+  let depth = 1;
+  let i = start;
+  while (i < text.length && depth > 0) {
+    const char = text[i];
+    if (char === "{") depth++;
+    else if (char === "}") depth--;
+    else if (depth === 1) {
+      i = blankOptionAt(text, units, i);
+      continue;
+    }
+    i++;
+  }
+};
+
+const blankSelectOptions = (text: string, masked: string): string => {
+  const headers = [...text.matchAll(ICU_SELECT_HEADER)];
+  if (headers.length === 0) return masked;
+  const units = masked.split("");
+  for (const header of headers) {
+    blankSelectBody(text, units, header.index + header[0].length);
+  }
+  return units.join("");
+};
 
 export const maskPlaceholders = (text: string): string => {
   if (!text || !/[{<%]/.test(text)) return text ?? "";
-  const masked = text.replaceAll(PLACEHOLDER, blank);
-  return ICU_HEADER.test(text) ? masked.replaceAll(ICU_SELECTOR, blank) : masked;
+  let masked = text.replaceAll(PLACEHOLDER, blank);
+  if (ICU_HEADER.test(text)) masked = masked.replaceAll(ICU_SELECTOR, blank);
+  return blankSelectOptions(text, masked);
 };

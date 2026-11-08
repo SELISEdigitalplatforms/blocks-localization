@@ -425,7 +425,8 @@ namespace XUnitTest
         {
             _glossaryManagementServiceMock.Setup(x => x.GetGlossaryUsageAsync(It.IsAny<GlossaryUsageRequest>())).ReturnsAsync((GlossaryUsageResponse?)null);
 
-            (await _controller.Usage(new GlossaryUsageRequest { ItemId = "x" })).Should().BeOfType<NotFoundObjectResult>();
+            var result = (await _controller.Usage(new GlossaryUsageRequest { ItemId = "x" })).Should().BeOfType<NotFoundObjectResult>().Subject;
+            ((BaseMutationResponse)result.Value!).Errors.Should().Contain("ItemId", "Glossary item not found");
         }
 
         [Fact]

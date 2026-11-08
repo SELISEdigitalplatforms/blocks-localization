@@ -6,7 +6,11 @@ import { GLOSSARY_META_PREFIX } from "@blocks-localization/models/glossary-meta"
 import { IGlossary } from "@blocks-localization/models/language";
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { findGlossaryMatches } from "@blocks-localization/test-utils/helpers/glossary-matches";
-import GlossaryTermPopover, { getGlossaryTermValue } from "./glossary-term-popover";
+import { validateTranslation } from "@blocks-localization/utils/glossary-validation";
+import GlossaryTermPopover, {
+  getGlossaryTermValue,
+  isGlossaryMatchUsed,
+} from "./glossary-term-popover";
 
 vi.mock("@seliseblocks/genesis-os", async () => ({
   ...(await import("@/test-utils/i18n-mock")).i18nMock,
@@ -75,6 +79,27 @@ describe("getGlossaryTermValue", () => {
   });
 });
 
+describe("isGlossaryMatchUsed", () => {
+  it("counts a Keep glossary as used only in the exact case (H23)", () => {
+    const match = matchOf(G2);
+    expect(isGlossaryMatchUsed(match, "Willkommen bei SELISE", "de-DE")).toBe(true);
+    expect(validateTranslation("Willkommen bei SELISE", [match], "de-DE")).toEqual([]);
+  });
+
+  it("agrees with the live check when a Keep surface differs in case (C26)", () => {
+    const match = matchOf(G2);
+    expect(isGlossaryMatchUsed(match, "Willkommen bei selise", "de-DE")).toBe(false);
+    expect(validateTranslation("Willkommen bei selise", [match], "de-DE")).toEqual([
+      expect.objectContaining({ kind: "missing-keep", expected: "SELISE" }),
+    ]);
+  });
+
+  it("keeps the case-insensitive rule for a Translate glossary (C26)", () => {
+    expect(isGlossaryMatchUsed(matchOf(G1), "Ihr arbeitsbereich", "de-DE")).toBe(true);
+    expect(isGlossaryMatchUsed(matchOf(G1), "Ihr Bereich", "de-DE")).toBe(false);
+  });
+});
+
 describe("GlossaryTermPopover", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -135,7 +160,7 @@ describe("GlossaryTermPopover", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     expect(
-      await screen.findByText("The glossary has no French translation for this glossary yet."),
+      await screen.findByText("No French translation in the glossary yet."),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Insert/ })).toBeNull();
     fireEvent.click(

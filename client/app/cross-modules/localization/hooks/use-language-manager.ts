@@ -1,5 +1,8 @@
 import { useProjectStore } from "@seliseblocks/genesis-os";
-import { localizationQueryKeys } from "../constants/query-keys";
+import {
+  localizationQueryKeys,
+  type LanguageKeyIssueCountFilters,
+} from "../constants/query-keys";
 import {
   ExportHistoryFilters,
   IBlocksLanguageKeyResponse,
@@ -8,6 +11,7 @@ import {
   IGlossary,
   IGlossaryFilters,
   ILanguageConfig,
+  IKeyListFilter,
   IKeyUilmExport,
 } from "@blocks-localization/models/language";
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
@@ -26,6 +30,7 @@ import {
   allViewRefreshAfterSave,
   refreshKeysAfterGlossaryChange,
   refreshLanguageKeyLists,
+  removeGlossaryFromLanguageKeyRows,
   removeLanguageKeyRows,
   replaceLanguageKeyRows,
   savedLanguageKeyRow,
@@ -137,6 +142,32 @@ export interface LanguageKeysInfiniteOptions {
   hasGlossaryViolations?: boolean;
 }
 
+/** The Key/Gets filter of the All view; its query and its "all matching" bulk actions both send it. */
+export const buildKeyListFilter = ({
+  searchKey,
+  moduleIds,
+  sortProperty,
+  isDescending,
+  createDateRange,
+  lastUpdateDateRange,
+  resourceSearchFilters,
+  missingLanguages,
+  onlyDuplicates = false,
+  hasGlossaryViolations = false,
+}: Omit<LanguageKeysInfiniteOptions, "enabled">): IKeyListFilter => ({
+  searchKey,
+  moduleIds,
+  isPartiallyTranslated: false,
+  sortProperty,
+  isDescending,
+  createDateRange,
+  lastUpdateDateRange,
+  resourceSearchFilters,
+  missingLanguages,
+  ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
+  ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
+});
+
 /**
  * The All view: keys in chunks of {@link LANGUAGE_KEY_CHUNK_SIZE} through the keyset cursor, at most
  * {@link MAX_LOADED_LANGUAGE_KEY_CHUNKS} chunks in memory. Only the first chunk asks for the total;
@@ -189,17 +220,18 @@ export const useGetBlocksLanguageKeysInfinite = ({
         {
           pageNumber: typeof pageParam === "number" ? pageParam : 0,
           pageSize: LANGUAGE_KEY_CHUNK_SIZE,
-          searchKey,
-          moduleIds,
-          isPartiallyTranslated: false,
-          sortProperty,
-          isDescending,
-          createDateRange,
-          lastUpdateDateRange,
-          resourceSearchFilters,
-          missingLanguages,
-          ...(onlyDuplicates ? { onlyDuplicates: true } : {}),
-          ...(hasGlossaryViolations ? { hasGlossaryViolations: true } : {}),
+          ...buildKeyListFilter({
+            searchKey,
+            moduleIds,
+            sortProperty,
+            isDescending,
+            createDateRange,
+            lastUpdateDateRange,
+            resourceSearchFilters,
+            missingLanguages,
+            onlyDuplicates,
+            hasGlossaryViolations,
+          }),
           cursor: typeof pageParam === "string" ? pageParam : undefined,
           includeTotalCount: pageParam === null,
         },
@@ -239,6 +271,46 @@ export const useGetDuplicateSummary = () => {
     retry: false,
   });
 };
+
+/** Keys with stored glossary violations under the table's other filters; one row is fetched for the total. */
+export const useGetGlossaryIssueCount = (filters: LanguageKeyIssueCountFilters) => {
+  const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
+  return useQuery({
+    queryKey: localizationQueryKeys.languageKeys.glossaryIssueCount(tenantId, filters),
+    queryFn: ({ signal }) =>
+      languageManagerService.fetchBlocksLanguageKey(
+        {
+          pageNumber: 0,
+          pageSize: 1,
+          searchKey: filters.searchKey,
+          moduleIds: filters.moduleIds,
+          isPartiallyTranslated: false,
+          sortProperty: "KeyName",
+          isDescending: false,
+          createDateRange: optionalDateRange(filters.createStartDate, filters.createEndDate),
+          lastUpdateDateRange: optionalDateRange(
+            filters.lastUpdateStartDate,
+            filters.lastUpdateEndDate,
+          ),
+          resourceSearchFilters:
+            filters.resourceSearchFilters.length > 0 ? filters.resourceSearchFilters : undefined,
+          missingLanguages: filters.missingLanguages,
+          ...(filters.onlyDuplicates ? { onlyDuplicates: true } : {}),
+          hasGlossaryViolations: true,
+        },
+        { signal },
+      ),
+    select: (data) => data.totalCount ?? 0,
+    enabled: !!tenantId,
+    placeholderData: keepPreviousData,
+    staleTime: LANGUAGE_KEY_PAGE_STALE_TIME,
+    // A failed count only hides the badge; it is not worth retrying or surfacing.
+    retry: false,
+  });
+};
+
+const optionalDateRange = (startDate: string, endDate: string) =>
+  startDate || endDate ? { startDate, endDate } : undefined;
 
 export const useEnforceUniqueness = () => {
   const queryClient = useQueryClient();
@@ -569,10 +641,9 @@ export const useDeleteLanguageKeys = () => {
     mutationKey: ["language-keys", "bulk-delete"],
     mutationFn: languageManagerService.deleteLanguageKeys,
     onSuccess: (response, payload) => {
-      refreshLanguageKeyLists(
-        queryClient,
-        response?.isSuccess ? removeLanguageKeyRows(payload.itemIds) : "keep",
-      );
+      // A filter-form delete names no rows; the All view reloads instead.
+      const allView = "itemIds" in payload ? removeLanguageKeyRows(payload.itemIds) : "reset";
+      refreshLanguageKeyLists(queryClient, response?.isSuccess ? allView : "keep");
     },
   });
 };
@@ -828,18 +899,6 @@ export const useSaveGlossary = () => {
   return useMutation({
     mutationKey: ["save-glossary"],
     mutationFn: languageManagerService.saveGlossary,
-    onSuccess: () => {
-      GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
-      refreshKeysAfterGlossaryChange(queryClient);
-    },
-  });
-};
-
-export const useDeleteGlossary = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: ["glossary", "delete"],
-    mutationFn: languageManagerService.deleteGlossary,
     onSuccess: () => {
       GLOSSARY_CACHE_PREFIXES.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
       refreshKeysAfterGlossaryChange(queryClient);
@@ -1134,8 +1193,11 @@ export const useDeleteGlossaryWithCascade = () => {
   const queryClient = useQueryClient();
   const tenantId = useProjectStore()?.selectedProject?.tenantId || "";
 
-  const invalidateKeys = () => {
-    refreshLanguageKeyLists(queryClient, "reset");
+  const invalidateKeys = (deletedGlossaryId?: string) => {
+    refreshLanguageKeyLists(
+      queryClient,
+      deletedGlossaryId ? removeGlossaryFromLanguageKeyRows(deletedGlossaryId) : "keep",
+    );
     queryClient.invalidateQueries({ queryKey: localizationQueryKeys.languageKeys.detailPrefix });
   };
 
@@ -1160,9 +1222,9 @@ export const useDeleteGlossaryWithCascade = () => {
     },
     // Also after a failure: "not found" means it is already gone, and a delete that failed after
     // untagging has changed keys.
-    onSettled: () => {
+    onSettled: (result, _error, { glossaryId }) => {
       invalidateGlossaries();
-      invalidateKeys();
+      invalidateKeys(result?.status === "deleted" ? glossaryId : undefined);
       refreshKeysAfterGlossaryChange(queryClient);
     },
   });

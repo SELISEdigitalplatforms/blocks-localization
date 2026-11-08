@@ -46,6 +46,7 @@ namespace Eurolm.DomainService.Services
             ?? throw new InvalidOperationException("A tenant context is required to save a key.");
         private const string DateTimeFormat = "yyyyMMddHHmmss";
         private const string ItemIdErrorKey = "ItemId";
+        private const string SystemUserId = "System";
 
         private const string ItemIdColumn = "ItemId";
         private const string ModuleIdColumn = "ModuleId";
@@ -105,8 +106,9 @@ namespace Eurolm.DomainService.Services
                 }
 
                 var repoKey = await MappedIntoRepoKeyAsync(key);
-                await RecomputeGlossaryViolationsAsync(repoKey);
-                await _keyRepository.SaveKeyAsync(repoKey);
+                var violationsRecomputed = await RecomputeGlossaryViolationsAsync(repoKey);
+                if (isNewKey || key.GlossaryIdsOnly != true || !await _keyRepository.SetGlossaryIdsAsync(repoKey, violationsRecomputed))
+                    await _keyRepository.SaveKeyAsync(repoKey);
                 if (key != null && key.ShouldPublish == true)
                 {
                     var request = new GenerateUilmFilesRequest
@@ -150,6 +152,10 @@ namespace Eurolm.DomainService.Services
             return new ApiResponse();
         }
 
+        public const int SaveKeysBatchSize = 500;
+
+        private sealed record PlannedKeySave(int Index, Key Key, BlocksLanguageKey? PreviousKey, BlocksLanguageKey RepoKey, bool GlossaryIdsOnly);
+
         public async Task<ApiResponse> SaveKeysAsync(List<Key> keys)
         {
             if (keys == null || !keys.Any())
@@ -157,28 +163,41 @@ namespace Eurolm.DomainService.Services
                 return new ApiResponse("Keys list cannot be null or empty.");
             }
 
-            var errors = new List<string>();
-            var successCount = 0;
+            var errors = new string?[keys.Count];
             var bulkOperationId = Guid.NewGuid().ToString();
+            var existingGlossaryIds = await LoadExistingGlossaryIdsAsync(keys.SelectMany(k => k.GlossaryIds ?? new List<string>()));
 
-            foreach (var key in keys)
+            // The last entry for a KeyName + ModuleId is the one stored; an earlier one counts as saved.
+            var planned = new Dictionary<(string KeyName, string ModuleId), PlannedKeySave>();
+            foreach (var chunk in Enumerable.Range(0, keys.Count).Chunk(SaveKeysBatchSize))
             {
-                var error = await SaveKeyInBulkAsync(key, bulkOperationId);
-                if (error != null)
+                foreach (var save in await PlanKeySavesAsync(keys, chunk, existingGlossaryIds, errors))
                 {
-                    errors.Add(error);
-                }
-                else
-                {
-                    successCount++;
+                    var name = (save.Key.KeyName, save.Key.ModuleId);
+                    if (save.Key.GlossaryIdsOnly == true && planned.TryGetValue(name, out var earlier) && earlier.Key.GlossaryIdsOnly != true)
+                    {
+                        // A tag-only entry after a full save of the same key keeps that save's resources.
+                        earlier.RepoKey.GlossaryIds = save.RepoKey.GlossaryIds;
+                        continue;
+                    }
+                    planned[name] = save;
                 }
             }
 
-            _logger.LogInformation("Bulk save completed. Success: {SuccessCount}, Errors: {ErrorCount}", successCount, errors.Count);
-
-            if (errors.Any())
+            var saves = planned.Values.OrderBy(save => save.Index).ToList();
+            var violationsRecomputed = await RecomputeGlossaryViolationsAsync(saves.Select(save => save.RepoKey).ToList());
+            for (var start = 0; start < saves.Count; start += SaveKeysBatchSize)
             {
-                var errorMessage = string.Format("Bulk save completed with {0} errors out of {1} keys:\n{2}", errors.Count, keys.Count, string.Join("\n", errors));
+                var batch = saves.Skip(start).Take(SaveKeysBatchSize).ToList();
+                await WriteKeySavesAsync(batch, violationsRecomputed.Skip(start).Take(batch.Count).ToList(), errors, bulkOperationId);
+            }
+
+            var errorLines = errors.Where(error => error != null).ToList();
+            _logger.LogInformation("Bulk save completed. Success: {SuccessCount}, Errors: {ErrorCount}", keys.Count - errorLines.Count, errorLines.Count);
+
+            if (errorLines.Any())
+            {
+                var errorMessage = string.Format("Bulk save completed with {0} errors out of {1} keys:\n{2}", errorLines.Count, keys.Count, string.Join("\n", errorLines));
                 return new ApiResponse(errorMessage);
             }
 
@@ -186,59 +205,151 @@ namespace Eurolm.DomainService.Services
         }
 
         /// <summary>
-        /// Validates and saves a single key as part of a bulk save.
-        /// Returns the error line for the bulk response, or null when the key was saved.
+        /// Validates one chunk of a bulk save against one read of its stored keys and maps the valid keys.
+        /// Error lines go into <paramref name="errors"/> at the key's index.
         /// </summary>
-        private async Task<string?> SaveKeyInBulkAsync(Key key, string bulkOperationId)
+        private async Task<List<PlannedKeySave>> PlanKeySavesAsync(List<Key> keys, int[] chunk, HashSet<string>? existingGlossaryIds, string?[] errors)
         {
+            var planned = new List<PlannedKeySave>();
+            List<BlocksLanguageKey> stored;
             try
             {
-                var validationResult = await _validator.ValidateAsync(key);
-
-                if (!validationResult.IsValid)
-                {
-                    var validationErrors = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
-                    return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {validationErrors}";
-                }
-
-                // Get existing key for timeline tracking
-                var previousKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
-
-                var repoKey = await MappedIntoRepoKeyAsync(key);
-                await RecomputeGlossaryViolationsAsync(repoKey);
-                await _keyRepository.SaveKeyAsync(repoKey);
-
-                if (key.ShouldPublish == true)
-                {
-                    var request = new GenerateUilmFilesRequest
-                    {
-                        Guid = key.ItemId,
-                        ModuleId = key.ModuleId,
-                        ProjectKey = BlocksContext.GetContext().TenantId??""
-                    };
-                    await SendGenerateUilmFilesEvent(request);
-                }
-
-                await CreateBulkKeyTimelineEntryAsync(previousKey, repoKey, bulkOperationId);
-
-                return null;
-            }
-            catch (Exception ex) when (DuplicateKeyRetry.IsDuplicateKey(ex))
-            {
-                // User-supplied names stay out of the log; the response carries the details.
-                // The exception is not logged because its message repeats the duplicate KeyName and ModuleId.
-#pragma warning disable S6667
-                _logger.LogWarning("A key save was rejected by the unique key index");
-#pragma warning restore S6667
-                var failure = DuplicateKeyFailure();
-                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {failure.PropertyName}: {failure.ErrorMessage}";
+                stored = await _keyRepository.GetKeysByNameAndModuleAsync(chunk.Select(i => (keys[i].KeyName, keys[i].ModuleId)).Distinct().ToList());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
-                return $"Key '{key.KeyName}' in Module '{key.ModuleId}': {ex.Message}";
+                _logger.LogError(ex, "Error while reading {KeyCount} keys for a bulk save: {ErrorMessage}", chunk.Length, ex.Message);
+                foreach (var i in chunk) errors[i] = KeyErrorLine(keys[i], ex.Message);
+                return planned;
+            }
+            var storedByName = stored
+                .GroupBy(k => (k.KeyName, k.ModuleId))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            foreach (var index in chunk)
+            {
+                var key = keys[index];
+                try
+                {
+                    storedByName.TryGetValue((key.KeyName, key.ModuleId), out var storedKey);
+                    var validationErrors = await ValidateInBulkAsync(key, storedKey != null);
+                    if (validationErrors.Count > 0)
+                    {
+                        errors[index] = KeyErrorLine(key, string.Join("; ", validationErrors));
+                        continue;
+                    }
+
+                    var previousKey = storedKey == null ? null : JsonConvert.DeserializeObject<BlocksLanguageKey>(JsonConvert.SerializeObject(storedKey));
+                    var glossaryIdsOnly = storedKey != null && key.GlossaryIdsOnly == true;
+                    var repoKey = MapIntoRepoKey(key, storedKey, KeepExistingGlossaryIds(key.GlossaryIds, existingGlossaryIds));
+                    planned.Add(new PlannedKeySave(index, key, previousKey, repoKey, glossaryIdsOnly));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", key.KeyName, key.ModuleId, ex.Message);
+                    errors[index] = KeyErrorLine(key, ex.Message);
+                }
+            }
+            return planned;
+        }
+
+        /// <summary>
+        /// The validator's failures for a bulk entry, with the IsNewKey rule checked against the stored keys
+        /// already read for the chunk instead of one read per key.
+        /// </summary>
+        private async Task<List<string>> ValidateInBulkAsync(Key key, bool exists)
+        {
+            var isNewKey = key.IsNewKey;
+            key.IsNewKey = false;
+            ValidationResult validationResult;
+            try
+            {
+                validationResult = await _validator.ValidateAsync(key);
+            }
+            finally
+            {
+                key.IsNewKey = isNewKey;
+            }
+
+            var failures = validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}").ToList();
+            if (isNewKey && exists) failures.Add($"{nameof(Key.IsNewKey)}: {DuplicateKeyMessage}");
+            return failures;
+        }
+
+        private async Task WriteKeySavesAsync(List<PlannedKeySave> batch, List<bool> violationsRecomputed, string?[] errors, string bulkOperationId)
+        {
+            IReadOnlyList<KeyBulkSaveError> failures;
+            try
+            {
+                failures = await _keyRepository.BulkSaveKeysAsync(batch
+                    .Select((save, i) => new KeyBulkSave(save.RepoKey, save.GlossaryIdsOnly, violationsRecomputed[i]))
+                    .ToList());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while saving {KeyCount} keys in bulk: {ErrorMessage}", batch.Count, ex.Message);
+                foreach (var save in batch) errors[save.Index] = KeyErrorLine(save.Key, ex.Message);
+                return;
+            }
+
+            var failed = RecordWriteFailures(batch, failures, errors);
+
+            for (var i = 0; i < batch.Count; i++)
+            {
+                if (failed.Contains(i)) continue;
+                var save = batch[i];
+                try
+                {
+                    if (save.Key.ShouldPublish == true)
+                    {
+                        await SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest
+                        {
+                            Guid = save.Key.ItemId,
+                            ModuleId = save.Key.ModuleId,
+                            ProjectKey = BlocksContext.GetContext().TenantId??""
+                        });
+                    }
+
+                    await CreateBulkKeyTimelineEntryAsync(save.PreviousKey, save.RepoKey, bulkOperationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while saving Key '{KeyName}' in Module '{ModuleId}': {ErrorMessage}", save.Key.KeyName, save.Key.ModuleId, ex.Message);
+                    errors[save.Index] = KeyErrorLine(save.Key, ex.Message);
+                }
             }
         }
+
+        private HashSet<int> RecordWriteFailures(List<PlannedKeySave> batch, IReadOnlyList<KeyBulkSaveError> failures, string?[] errors)
+        {
+            var failed = new HashSet<int>();
+            foreach (var failure in failures)
+            {
+                var save = batch[failure.Index];
+                failed.Add(failure.Index);
+                if (failure.IsDuplicateKey)
+                {
+                    var duplicate = DuplicateKeyFailure();
+                    errors[save.Index] = KeyErrorLine(save.Key, $"{duplicate.PropertyName}: {duplicate.ErrorMessage}");
+                }
+                else
+                {
+                    errors[save.Index] = KeyErrorLine(save.Key, failure.Message);
+                }
+            }
+            if (failures.Any(f => f.IsDuplicateKey))
+            {
+                // User-supplied names stay out of the log; the response carries the details.
+#pragma warning disable S6667
+                _logger.LogWarning("A key save was rejected by the unique key index");
+#pragma warning restore S6667
+            }
+            if (failures.Any(f => !f.IsDuplicateKey))
+                _logger.LogError("Bulk save: {FailedCount} keys could not be written", failures.Count(f => !f.IsDuplicateKey));
+            return failed;
+        }
+
+        private static string KeyErrorLine(Key key, string message) => $"Key '{key.KeyName}' in Module '{key.ModuleId}': {message}";
 
         private async Task CreateBulkKeyTimelineEntryAsync(BlocksLanguageKey? previousKey, BlocksLanguageKey? repoKey, string bulkOperationId)
         {
@@ -264,15 +375,25 @@ namespace Eurolm.DomainService.Services
         /// The requested glossary ids that still exist, de-duplicated. A client holding a cached list cannot tag a key
         /// with a deleted glossary (for example a save racing the delete's untagging).
         /// </summary>
-        private async Task<List<string>?> ExistingGlossaryIdsAsync(List<string>? ids)
+        private async Task<List<string>?> ExistingGlossaryIdsAsync(List<string>? ids) =>
+            KeepExistingGlossaryIds(ids, await LoadExistingGlossaryIdsAsync(ids));
+
+        /// <summary>The ids among <paramref name="ids"/> that exist, or null when there is nothing to look up.</summary>
+        private async Task<HashSet<string>?> LoadExistingGlossaryIdsAsync(IEnumerable<string>? ids)
         {
             var requested = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
             var repository = GlossaryRepository;
-            if (requested is not { Count: > 0 } || repository == null) return requested ?? ids;
+            if (requested is not { Count: > 0 } || repository == null) return null;
 
-            var existing = (await repository.GetStoredByIdsAsync(requested))
+            return (await repository.GetStoredByIdsAsync(requested))
                 .Select(g => g.ItemId)
                 .ToHashSet(StringComparer.Ordinal);
+        }
+
+        private static List<string>? KeepExistingGlossaryIds(List<string>? ids, HashSet<string>? existing)
+        {
+            var requested = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
+            if (requested is not { Count: > 0 } || existing == null) return requested ?? ids;
             return requested.Where(existing.Contains).ToList();
         }
 
@@ -284,20 +405,54 @@ namespace Eurolm.DomainService.Services
         /// its saved translations (matcher and validator only, no AI). With it off, or if the check fails, the
         /// stored violations are left as they are: no client sends them, so a save never clears them.
         /// </summary>
-        private async Task RecomputeGlossaryViolationsAsync(BlocksLanguageKey repoKey)
+        private async Task<bool> RecomputeGlossaryViolationsAsync(BlocksLanguageKey repoKey)
         {
             var terminology = TerminologyService;
-            if (terminology?.IsEnforcementEnabled != true) return;
+            if (terminology?.IsEnforcementEnabled != true) return false;
 
             try
             {
                 var violations = await terminology.ComputeKeyViolationsAsync(repoKey);
-                if (violations != null) repoKey.GlossaryViolations = violations;
+                if (violations == null) return false;
+                repoKey.GlossaryViolations = violations;
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Could not recompute glossary violations for key {ItemId}; stored violations kept", repoKey.ItemId);
+                return false;
             }
+        }
+
+        /// <summary>
+        /// <see cref="RecomputeGlossaryViolationsAsync(BlocksLanguageKey)"/> for a bulk save: one language-setting read
+        /// and one matcher. Returns, per key, whether its violations were replaced.
+        /// </summary>
+        private async Task<List<bool>> RecomputeGlossaryViolationsAsync(List<BlocksLanguageKey> repoKeys)
+        {
+            var recomputed = repoKeys.Select(_ => false).ToList();
+            var terminology = TerminologyService;
+            if (terminology?.IsEnforcementEnabled != true || repoKeys.Count == 0) return recomputed;
+
+            try
+            {
+                var violations = await terminology.ComputeKeyViolationsAsync(repoKeys);
+                if (violations == null) return recomputed;
+                for (var i = 0; i < repoKeys.Count && i < violations.Count; i++)
+                {
+                    if (violations[i] == null) continue;
+                    repoKeys[i].GlossaryViolations = violations[i];
+                    recomputed[i] = true;
+                }
+                var failed = recomputed.Count(r => !r);
+                if (failed > 0)
+                    _logger.LogWarning("Could not recompute glossary violations for {KeyCount} keys; stored violations kept", failed);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not recompute glossary violations for {KeyCount} keys; stored violations kept", repoKeys.Count);
+            }
+            return recomputed;
         }
 
         // GlossaryViolations is deliberately not copied from the request: no client sends it, so the stored
@@ -305,13 +460,17 @@ namespace Eurolm.DomainService.Services
         private async Task<BlocksLanguageKey> MappedIntoRepoKeyAsync(Key key)
         {
             var repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
+            return MapIntoRepoKey(key, repoKey, await ExistingGlossaryIdsAsync(key.GlossaryIds));
+        }
 
+        private static BlocksLanguageKey MapIntoRepoKey(Key key, BlocksLanguageKey? repoKey, List<string>? glossaryIds)
+        {
             if (repoKey == null)
                 repoKey = new BlocksLanguageKey { ItemId = Guid.NewGuid().ToString(), CreateDate = DateTime.UtcNow, TenantId = CurrentTenantId };
             else if (key.GlossaryIdsOnly == true)
             {
                 repoKey.LastUpdateDate = DateTime.UtcNow;
-                repoKey.GlossaryIds = await ExistingGlossaryIdsAsync(key.GlossaryIds);
+                repoKey.GlossaryIds = glossaryIds;
                 return repoKey;
             }
 
@@ -321,7 +480,7 @@ namespace Eurolm.DomainService.Services
             repoKey.Resources = key.Resources;
             repoKey.IsPartiallyTranslated = key.IsPartiallyTranslated;
             repoKey.Routes = key.Routes;
-            repoKey.GlossaryIds = await ExistingGlossaryIdsAsync(key.GlossaryIds);
+            repoKey.GlossaryIds = glossaryIds;
             repoKey.Context = key.Context;
 
             return repoKey;
@@ -479,67 +638,99 @@ namespace Eurolm.DomainService.Services
             return new BaseMutationResponse { IsSuccess = true };
         }
 
-        public async Task<BaseMutationResponse> DeleteKeysAsync(DeleteKeysRequest request)
+        public async Task<BulkKeyActionResponse> DeleteKeysAsync(DeleteKeysRequest request)
         {
-            _logger.LogInformation("Bulk deleting Keys start. Count: {Count}", request.ItemIds.Count);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var isFilterForm = request.Filter != null;
+            var itemIds = isFilterForm
+                ? await ResolveBulkKeyTargetAsync(request.Filter!, request.ExcludedItemIds, request.ExpectedCount ?? 0)
+                : request.ItemIds.Distinct().ToList();
+
+            // Filter values are user content; only the form and the counts are logged.
+            _logger.LogInformation("Bulk deleting Keys start. Form: {Form}, Count: {Count}", isFilterForm ? "filter" : "ids", itemIds.Count);
 
             var errors = new Dictionary<string, string>();
             var bulkOperationId = Guid.NewGuid().ToString();
+            var tenantId = BlocksContext.GetContext()?.TenantId ?? "";
 
-            foreach (var itemId in request.ItemIds)
+            foreach (var batch in itemIds.Chunk(BulkKeyTarget.DeleteBatchSize))
             {
                 try
                 {
-                    var key = await _keyRepository.GetByIdAsync(itemId);
-                    if (key == null)
-                    {
-                        errors[itemId] = "Key not found";
-                        continue;
-                    }
-
-                    BlocksLanguageKey? repoKey = null;
-                    try
-                    {
-                        repoKey = await _keyRepository.GetKeyByNameAsync(key.KeyName, key.ModuleId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to get key data for timeline before bulk deletion {KeyId}: {Error}", itemId, ex.Message);
-                    }
-
-                    await _keyRepository.DeleteAsync(itemId);
-
-                    if (repoKey != null)
-                    {
-                        try
-                        {
-                            await CreateKeyTimelineEntryAsync(repoKey, null, LogFromConstants.KeyBulkDelete, bulkOperationId, entityId: repoKey.ItemId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to create timeline entry for bulk deleted Key {KeyId}: {Error}", itemId, ex.Message);
-                        }
-                    }
+                    var result = await _keyRepository.DeleteKeysWithSnapshotsAsync(batch);
+                    foreach (var (itemId, message) in result.Errors) errors[itemId] = message;
+                    if (result.Deleted.Count > 0)
+                        await CreateBulkDeleteTimelineEntriesAsync(result.Deleted, bulkOperationId, tenantId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error while bulk deleting Key '{KeyId}': {Error}", itemId, ex.Message);
-                    errors[itemId] = ex.Message;
+                    _logger.LogError(ex, "Error while bulk deleting a batch of {Count} Keys: {Error}", batch.Length, ex.Message);
+                    foreach (var itemId in batch.Where(id => !errors.ContainsKey(id)))
+                    {
+                        errors[itemId] = ex.Message;
+                    }
                 }
             }
 
-            _logger.LogInformation("Bulk deleting Keys end. Errors: {ErrorCount}", errors.Count);
+            _logger.LogInformation("Bulk deleting Keys end. Form: {Form}, Count: {Count}, Errors: {ErrorCount}, Duration: {DurationMs} ms",
+                isFilterForm ? "filter" : "ids", itemIds.Count, errors.Count, stopwatch.ElapsedMilliseconds);
 
-            if (errors.Any())
+            return new BulkKeyActionResponse
             {
-                return new BaseMutationResponse
+                IsSuccess = errors.Count == 0,
+                Errors = errors.Count == 0 ? null : errors,
+                MatchedCount = itemIds.Count
+            };
+        }
+
+        private async Task CreateBulkDeleteTimelineEntriesAsync(List<BlocksLanguageKey> deletedKeys, string bulkOperationId, string tenantId)
+        {
+            try
+            {
+                var context = BlocksContext.GetContext();
+                var timelines = deletedKeys.Select(key => new KeyTimeline
                 {
-                    IsSuccess = false,
-                    Errors = errors
-                };
+                    EntityId = key.ItemId,
+                    PreviousData = key,
+                    CurrentData = null,
+                    LogFrom = LogFromConstants.KeyBulkDelete,
+                    UserId = context?.UserId ?? SystemUserId,
+                    CreateDate = DateTime.UtcNow,
+                    LastUpdateDate = DateTime.UtcNow,
+                    OperationId = bulkOperationId
+                }).ToList();
+
+                await _keyTimelineRepository.BulkSaveKeyTimelinesAsync(timelines, tenantId);
+            }
+            catch (Exception ex)
+            {
+                // The keys are already deleted; a timeline failure must not report them as failed.
+                _logger.LogError(ex, "Failed to create timeline entries for {Count} bulk deleted Keys: {Error}", deletedKeys.Count, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// The keys a filter-form bulk action acts on: the keys matching <paramref name="filter"/> minus
+        /// <paramref name="excludedIds"/>, refused when over <see cref="BulkKeyTarget.MaxKeys"/> or when they no
+        /// longer number <paramref name="expectedCount"/>.
+        /// </summary>
+        private async Task<List<string>> ResolveBulkKeyTargetAsync(GetKeysRequest filter, IReadOnlyCollection<string>? excludedIds, long expectedCount)
+        {
+            var excluded = excludedIds?.ToHashSet() ?? new HashSet<string>();
+            // One past the cap after exclusions tells an over-cap set apart without reading all of it.
+            var matching = await _keyRepository.GetMatchingKeyIdsAsync(filter, BulkKeyTarget.MaxKeys + excluded.Count + 1);
+            var target = matching.Ids.Where(id => !excluded.Contains(id)).Distinct().ToList();
+
+            if (matching.DuplicatesTruncated || target.Count > BulkKeyTarget.MaxKeys)
+            {
+                throw new BulkKeyTargetException(BulkKeyTarget.TooManyKeys, 400, target.Count);
+            }
+            if (target.Count != expectedCount)
+            {
+                throw new BulkKeyTargetException(BulkKeyTarget.KeySetChanged, 409, target.Count);
             }
 
-            return new BaseMutationResponse { IsSuccess = true };
+            return target;
         }
 
         public async Task<bool> ChangeAll(TranslateAllEvent request)
@@ -553,7 +744,7 @@ namespace Eurolm.DomainService.Services
             while (true)
             {
 
-                IQueryable<BlocksLanguageKey> dbResourceKeys = await _keyRepository.GetUilmResourceKeysWithPage(page, pageSize);
+                IQueryable<BlocksLanguageKey> dbResourceKeys = await _keyRepository.GetUilmResourceKeysWithPage(page, pageSize, request.ModuleId);
 
                 if (!dbResourceKeys.Any())
                 {
@@ -698,6 +889,27 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        public async Task<bool?> CompleteTranslateBlocksLanguageKeysBatchAsync(TranslateBlocksLanguageKeysEvent request, bool succeeded)
+        {
+            var batchCount = request.BatchCount ?? 1;
+            if (batchCount <= 1) return succeeded;
+
+            try
+            {
+                var progress = await _keyRepository.RecordBulkTranslateBatchAsync(request.OperationId, succeeded);
+                if (progress.Done < batchCount) return null;
+
+                await _keyRepository.DeleteBulkTranslateProgressAsync(request.OperationId);
+                return progress.Failed == 0;
+            }
+            catch (Exception ex)
+            {
+                // Without the counter, notifying for this batch beats never notifying at all.
+                _logger.LogError(ex, "Failed to record bulk translate batch for operation {OperationId}: {Error}", request.OperationId, ex.Message);
+                return succeeded;
+            }
+        }
+
         public async Task<List<BlocksLanguageKey>> ProcessChangeAll(TranslateAllEvent request, IQueryable<BlocksLanguageKey> dbResourceKeys, List<Language> languageSetting)
         {
             var uilmResourceKeyList = new List<BlocksLanguageKey>();
@@ -786,9 +998,9 @@ namespace Eurolm.DomainService.Services
             var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
             missingResource.Value = suggestion?.Content;
 
-            if (TerminologyService?.IsEnforcementEnabled == true)
+            if (TerminologyService?.IsEnforcementEnabled == true && suggestion?.Validated == true && !string.IsNullOrEmpty(suggestion.Content))
             {
-                ReplaceCultureGlossaryViolations(resourceKey, missingResource.Culture, suggestion?.GlossaryViolations);
+                ReplaceCultureGlossaryViolations(resourceKey, missingResource.Culture, suggestion.GlossaryViolations);
             }
 
             var matchedResource = resources.FirstOrDefault(x => x.Culture == missingResource.Culture);
@@ -1110,7 +1322,8 @@ namespace Eurolm.DomainService.Services
                     {
                         MessageCoRelationId = request.MessageCoRelationId,
                         ProjectKey =BlocksContext.GetContext().TenantId??"",
-                        DefaultLanguage = request.DefaultLanguage
+                        DefaultLanguage = request.DefaultLanguage,
+                        ModuleId = string.IsNullOrWhiteSpace(request.ModuleId) ? null : request.ModuleId.Trim()
                     }
                 }
             );
@@ -1133,24 +1346,37 @@ namespace Eurolm.DomainService.Services
             );
         }
 
-        public async Task SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request)
+        public async Task<BulkKeyActionResponse> SendTranslateBlocksLanguageKeysEvent(TranslateBlocksLanguageKeysRequest request)
         {
+            var isFilterForm = request.Filter != null;
+            var keyIds = isFilterForm
+                ? await ResolveBulkKeyTargetAsync(request.Filter!, request.ExcludedKeyIds, request.ExpectedCount ?? 0)
+                : request.KeyIds?.Distinct().ToList() ?? new List<string>();
             var operationId = Guid.NewGuid().ToString();
+            var batches = keyIds.Chunk(BulkKeyTarget.TranslateEventBatchSize).ToList();
 
-            await _messageClient.SendToConsumerAsync(
-                new ConsumerMessage<TranslateBlocksLanguageKeysEvent>
-                {
-                    ConsumerName = Utilities.Constants.TranslateBlocksLanguageKeysQueue,
-                    Payload = new TranslateBlocksLanguageKeysEvent
+            // Small events keep each message well under the broker's size limit; they share the operation.
+            foreach (var batch in batches)
+            {
+                await _messageClient.SendToConsumerAsync(
+                    new ConsumerMessage<TranslateBlocksLanguageKeysEvent>
                     {
-                        MessageCoRelationId = request.MessageCoRelationId,
-                        ProjectKey = BlocksContext.GetContext().TenantId??"",
-                        DefaultLanguage = request.DefaultLanguage,
-                        KeyIds = request.KeyIds,
-                        OperationId = operationId
+                        ConsumerName = Utilities.Constants.TranslateBlocksLanguageKeysQueue,
+                        Payload = new TranslateBlocksLanguageKeysEvent
+                        {
+                            MessageCoRelationId = request.MessageCoRelationId,
+                            ProjectKey = BlocksContext.GetContext().TenantId??"",
+                            DefaultLanguage = request.DefaultLanguage,
+                            KeyIds = batch.ToList(),
+                            OperationId = operationId,
+                            BatchCount = batches.Count > 1 ? batches.Count : null
+                        }
                     }
-                }
-            );
+                );
+            }
+
+            _logger.LogInformation("Bulk translate queued. Form: {Form}, Count: {Count}", isFilterForm ? "filter" : "ids", keyIds.Count);
+            return new BulkKeyActionResponse { IsSuccess = true, MatchedCount = keyIds.Count };
         }
 
         public async Task SendUilmImportEvent(UilmImportRequest request)
@@ -2471,7 +2697,7 @@ namespace Eurolm.DomainService.Services
                     FileId = fileId,
                     FileName = fileName,
                     CreateDate = DateTime.UtcNow,
-                    CreatedBy = BlocksContext.GetContext()?.UserId ?? "System"
+                    CreatedBy = BlocksContext.GetContext()?.UserId ?? SystemUserId
                 };
 
                 await _keyRepository.SaveUilmExportedFileAsync(exportedFile);
@@ -2962,7 +3188,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = currentKey,
                     PreviousData = previousKey,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId ?? Guid.NewGuid().ToString()
@@ -2992,7 +3218,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = key,
                     PreviousData = null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId
@@ -3025,7 +3251,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = key,
                     PreviousData = previousKeyDict.TryGetValue(key.ItemId, out var previousKey) ? previousKey : null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = operationId
@@ -3052,7 +3278,7 @@ namespace Eurolm.DomainService.Services
                     CurrentData = null,
                     PreviousData = null,
                     LogFrom = logFrom,
-                    UserId = context?.UserId ?? "System",
+                    UserId = context?.UserId ?? SystemUserId,
                     CreateDate = DateTime.UtcNow,
                     LastUpdateDate = DateTime.UtcNow,
                     OperationId = Guid.NewGuid().ToString()

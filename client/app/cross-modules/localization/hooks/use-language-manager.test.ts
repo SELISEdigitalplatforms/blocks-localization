@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { languageManagerService } from "@blocks-localization/services/language-manager.service";
@@ -220,6 +221,62 @@ describe("localization/hooks/use-language-manager", () => {
     await waitFor(() => expect(result.current.hasNextPage).toBe(false));
   });
 
+  it("buildKeyListFilter is exactly the filter the All view query sends", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({
+      totalCount: 1,
+      keys: [],
+      hasMore: false,
+      nextCursor: null,
+    } as never);
+    const options = {
+      searchKey: "hello",
+      moduleIds: ["m1"],
+      sortProperty: "CreateDate",
+      isDescending: true,
+      createDateRange: { startDate: "2026-01-01", endDate: "2026-02-01" },
+      resourceSearchFilters: [{ culture: "de-DE", searchText: "Hallo" }],
+      missingLanguages: ["fr-FR"],
+      onlyDuplicates: false,
+      hasGlossaryViolations: true,
+    };
+    const { result } = renderQ(() => hooks.useGetBlocksLanguageKeysInfinite(options));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const {
+      pageNumber: _pageNumber,
+      pageSize: _pageSize,
+      cursor: _cursor,
+      includeTotalCount: _includeTotalCount,
+      ...sentFilter
+    } = svc.fetchBlocksLanguageKey.mock.lastCall![0];
+
+    expect(hooks.buildKeyListFilter(options)).toEqual(sentFilter);
+    expect(sentFilter).toMatchObject({ isPartiallyTranslated: false, hasGlossaryViolations: true });
+    expect(sentFilter).not.toHaveProperty("onlyDuplicates");
+  });
+
+  it("useDeleteLanguageKeys reloads the All view after a filter-form delete", async () => {
+    svc.deleteLanguageKeys.mockResolvedValue({ isSuccess: true } as never);
+    const { queryClient, wrapper } = createQueryWrapper();
+    const resetQueries = vi.spyOn(queryClient, "resetQueries");
+    const { result } = renderHook(() => hooks.useDeleteLanguageKeys(), { wrapper });
+
+    await result.current.mutateAsync({
+      filter: hooks.buildKeyListFilter({
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+      }),
+      excludedItemIds: [],
+      expectedCount: 3,
+    });
+
+    expect(resetQueries).toHaveBeenCalledWith({
+      queryKey: localizationQueryKeys.languageKeys.infinitePrefix,
+    });
+  });
+
   it("useGetBlocksLanguageKeysInfinite stays idle until the All view is selected", () => {
     renderQ(() =>
       hooks.useGetBlocksLanguageKeysInfinite({
@@ -349,6 +406,40 @@ describe("localization/hooks/use-language-manager", () => {
     const { result } = renderQ(() => hooks.useGetDuplicateSummary());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(summary);
+  });
+
+  it("useGetGlossaryIssueCount should request one issue row under the other filters", async () => {
+    svc.fetchBlocksLanguageKey.mockResolvedValue({ totalCount: 7, keys: [] } as never);
+    const { result } = renderQ(() =>
+      hooks.useGetGlossaryIssueCount({
+        searchKey: "save",
+        moduleIds: ["m1"],
+        createStartDate: "2026-01-01T00:00:00.000Z",
+        createEndDate: "",
+        lastUpdateStartDate: "",
+        lastUpdateEndDate: "",
+        resourceSearchFilters: [],
+        missingLanguages: ["de-DE"],
+        onlyDuplicates: true,
+      }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe(7);
+    expect(svc.fetchBlocksLanguageKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 0,
+        pageSize: 1,
+        searchKey: "save",
+        moduleIds: ["m1"],
+        createDateRange: { startDate: "2026-01-01T00:00:00.000Z", endDate: "" },
+        lastUpdateDateRange: undefined,
+        resourceSearchFilters: undefined,
+        missingLanguages: ["de-DE"],
+        onlyDuplicates: true,
+        hasGlossaryViolations: true,
+      }),
+      expect.anything(),
+    );
   });
 
   it("useGetDuplicateSummary should not retry a failure", async () => {
@@ -1071,11 +1162,8 @@ describe("localization/hooks/use-language-manager", () => {
     expect(svc.saveGlossary).toHaveBeenCalled();
   });
 
-  it("useDeleteGlossary should invoke the service", async () => {
-    svc.deleteGlossary.mockResolvedValue({ isSuccess: true } as never);
-    const { result } = renderQ(() => hooks.useDeleteGlossary());
-    await result.current.mutateAsync({ itemId: "g1" } as never);
-    expect(svc.deleteGlossary).toHaveBeenCalled();
+  it("no longer exports useDeleteGlossary", () => {
+    expect("useDeleteGlossary" in hooks).toBe(false);
   });
 
   describe("useDeleteGlossaryWithCascade", () => {
@@ -1138,6 +1226,83 @@ describe("localization/hooks/use-language-manager", () => {
       expect(keys).toEqual(
         expect.arrayContaining([localizationQueryKeys.glossaries.all, localizationQueryKeys.languageKeys.all]),
       );
+    });
+
+    describe("All view on screen", () => {
+      const allViewKey = localizationQueryKeys.languageKeys.infinite("tenant-1", {
+        searchKey: "",
+        moduleIds: [],
+        sortProperty: "KeyName",
+        isDescending: false,
+        createStartDate: "",
+        createEndDate: "",
+        lastUpdateStartDate: "",
+        lastUpdateEndDate: "",
+        resourceSearchFilters: [],
+        missingLanguages: [],
+      });
+      const mountAllView = (queryClient: QueryClient) => {
+        queryClient.setQueryData(allViewKey, {
+          pages: [
+            {
+              totalCount: 2,
+              keys: [
+                {
+                  itemId: "a",
+                  glossaryIds: ["g1", "g2"],
+                  glossaryViolations: [{ glossaryId: "g1", culture: "de-DE" }],
+                },
+                { itemId: "b", glossaryIds: ["g2"] },
+              ],
+              hasMore: true,
+              nextCursor: "b",
+            },
+          ],
+          pageParams: [null],
+        });
+        const observer = new QueryObserver(queryClient, {
+          queryKey: allViewKey,
+          queryFn: () => new Promise<never>(() => {}),
+          staleTime: Infinity,
+        });
+        return observer.subscribe(() => {});
+      };
+
+      it("keeps the loaded rows and patches the deleted glossary out in place", async () => {
+        svc.deleteGlossary.mockResolvedValue({ isSuccess: true, errors: null } as never);
+        const { queryClient, wrapper } = createQueryWrapper();
+        const unsubscribe = mountAllView(queryClient);
+        const reset = vi.spyOn(queryClient, "resetQueries");
+        const { result } = renderHook(() => hooks.useDeleteGlossaryWithCascade(), { wrapper });
+        await result.current.mutateAsync({ glossaryId: "g1" });
+
+        expect(reset).not.toHaveBeenCalled();
+        expect(queryClient.getQueryState(allViewKey)?.isInvalidated).toBe(false);
+        const data = queryClient.getQueryData<{
+          pages: Array<{ keys: Array<{ itemId: string; glossaryIds?: string[]; glossaryViolations?: unknown[] }> }>;
+        }>(allViewKey)!;
+        expect(data.pages[0].keys).toEqual([
+          { itemId: "a", glossaryIds: ["g2"], glossaryViolations: [] },
+          { itemId: "b", glossaryIds: ["g2"] },
+        ]);
+        unsubscribe();
+      });
+
+      it("keeps the All view unchanged when the delete fails", async () => {
+        svc.deleteGlossary.mockRejectedValue(new Error("timeout"));
+        const { queryClient, wrapper } = createQueryWrapper();
+        const unsubscribe = mountAllView(queryClient);
+        const reset = vi.spyOn(queryClient, "resetQueries");
+        const { result } = renderHook(() => hooks.useDeleteGlossaryWithCascade(), { wrapper });
+        await expect(result.current.mutateAsync({ glossaryId: "g1" })).rejects.toThrow();
+
+        expect(reset).not.toHaveBeenCalled();
+        const data = queryClient.getQueryData<{
+          pages: Array<{ keys: Array<{ glossaryIds?: string[] }> }>;
+        }>(allViewKey)!;
+        expect(data.pages[0].keys[0].glossaryIds).toEqual(["g1", "g2"]);
+        unsubscribe();
+      });
     });
 
     it("should refuse to run without a tenant", async () => {

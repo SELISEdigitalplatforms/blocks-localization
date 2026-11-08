@@ -1,5 +1,6 @@
 using Eurolm.DomainService.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Eurolm.DomainService.Services
 {
@@ -11,7 +12,8 @@ namespace Eurolm.DomainService.Services
             services.AddSingleton<IGlossaryMatcherCache>(sp =>
                 new GlossaryMatcherCache(
                     tenantId => sp.GetRequiredService<IGlossaryRepository>().GetAllEntitiesAsync(tenantId),
-                    loadRevision: tenantId => sp.GetRequiredService<IGlossaryRepository>().GetRevisionAsync(tenantId)));
+                    loadRevision: tenantId => sp.GetRequiredService<IGlossaryRepository>().GetRevisionAsync(tenantId),
+                    logger: sp.GetService<ILogger<GlossaryMatcherCache>>()));
             services.AddSingleton<IGlossaryTerminologyService, GlossaryTerminologyService>();
             services.AddSingleton<IGlossaryRecheckJobRepository, GlossaryRecheckJobRepository>();
             services.AddSingleton<IGlossaryRecheckService, GlossaryRecheckService>();

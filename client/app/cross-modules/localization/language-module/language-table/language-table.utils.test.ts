@@ -2,16 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import {
   areAllRowsSelected,
+  getBulkKeyTargetError,
   getDeleteKeyErrorMessage,
   getKeyListErrorCode,
   getPageSizeOptions,
   getSelectedKeysLabel,
+  getSelectedRowIds,
   getStickyBodyCellClassName,
   getStickyHeaderClassName,
   getStretchedColumnWidths,
+  getUpdatedExclusions,
   isStickyLeftColumn,
+  MAX_BULK_KEY_SELECTION,
   parseKeyPageSize,
   toKeyPageSize,
+  withoutRow,
   withRowsSelected,
 } from "./language-table.utils";
 
@@ -187,5 +192,87 @@ describe("withRowsSelected", () => {
   it("returns the same selection when nothing is added", () => {
     const selection = { a: true };
     expect(withRowsSelected(selection, ["a"])).toBe(selection);
+  });
+});
+
+describe("getSelectedRowIds", () => {
+  it("lists only the rows selected as true", () => {
+    expect(getSelectedRowIds({ a: true, b: false, c: true })).toEqual(["a", "c"]);
+  });
+
+  it("is empty for an empty selection", () => {
+    expect(getSelectedRowIds({})).toEqual([]);
+  });
+
+  it("lists 10,000 IDs quickly", () => {
+    const selection = Object.fromEntries(
+      Array.from({ length: MAX_BULK_KEY_SELECTION }, (_, index) => [`k${index}`, true]),
+    );
+    const start = performance.now();
+    const rowIds = getSelectedRowIds(selection);
+    const elapsed = performance.now() - start;
+    expect(rowIds).toHaveLength(MAX_BULK_KEY_SELECTION);
+    // The budget is 5 ms; the margin keeps a loaded CI runner from failing it.
+    expect(elapsed).toBeLessThan(50);
+  });
+});
+
+describe("MAX_BULK_KEY_SELECTION", () => {
+  it("matches the server cap of 10,000 keys", () => {
+    expect(MAX_BULK_KEY_SELECTION).toBe(10_000);
+  });
+});
+
+describe("withoutRow", () => {
+  it("removes the row and keeps the rest", () => {
+    expect(withoutRow({ a: true, b: true }, "a")).toEqual({ b: true });
+  });
+
+  it("returns the same selection when the row isn't in it", () => {
+    const selection = { a: true };
+    expect(withoutRow(selection, "b")).toBe(selection);
+  });
+});
+
+describe("getBulkKeyTargetError", () => {
+  it("reads the target code and the count the server now resolves to", () => {
+    expect(
+      getBulkKeyTargetError({ errors: { Target: "KEY_SET_CHANGED", MatchedCount: "936" } }),
+    ).toEqual({ code: "KEY_SET_CHANGED", matchedCount: 936 });
+  });
+
+  it("reads a code without a count", () => {
+    expect(getBulkKeyTargetError({ errors: { Target: ["QUERY_TIMEOUT"] } })).toEqual({
+      code: "QUERY_TIMEOUT",
+    });
+  });
+
+  it("is undefined for other errors", () => {
+    expect(getBulkKeyTargetError({ errors: { k1: "Key not found" } })).toBeUndefined();
+    expect(getBulkKeyTargetError(new Error("boom"))).toBeUndefined();
+    expect(getBulkKeyTargetError(null)).toBeUndefined();
+  });
+});
+
+describe("getUpdatedExclusions", () => {
+  it("adds unticked rows and removes re-ticked ones", () => {
+    const excluded = new Set(["c"]);
+    const next = getUpdatedExclusions(
+      excluded,
+      ["a", "b", "c"],
+      { a: true, b: true },
+      { b: true, c: true },
+    );
+    expect([...next].sort()).toEqual(["a"]);
+  });
+
+  it("keeps an excluded row that is no longer loaded", () => {
+    const next = getUpdatedExclusions(new Set(["evicted"]), ["a"], { a: true }, {});
+    expect([...next].sort()).toEqual(["a", "evicted"]);
+  });
+
+  it("returns the same set when nothing changed", () => {
+    const excluded = new Set(["a"]);
+    expect(getUpdatedExclusions(excluded, ["a", "b"], { b: true }, { b: true })).toBe(excluded);
   });
 });

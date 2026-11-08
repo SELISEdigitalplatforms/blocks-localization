@@ -321,5 +321,54 @@ namespace XUnitTest.Services.Glossary
             report.UniqueIndexCreated.Should().BeFalse();
             report.Notes.Should().Contain(n => n.Contains("run it again"));
         }
+
+        [Fact]
+        public async Task H5_a_real_run_stamps_every_rewritten_glossary_with_the_run_time()
+        {
+            var old = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var trackA = TrackA("g1");
+            trackA.LastUpdateDate = old;
+            var outdated = Migrated("g2", "Settings");
+            outdated.NormalizedName = null!;
+            outdated.LastUpdateDate = old;
+            _stored.AddRange(new[] { trackA, outdated });
+            var before = DateTime.UtcNow;
+
+            await _service.MigrateAsync(dryRun: false);
+
+            _written.Should().HaveCount(2);
+            _written.Select(w => w.Glossary.LastUpdateDate).Distinct().Should().ContainSingle()
+                .Which.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+            trackA.LastUpdateDate.Should().Be(old, "the stored snapshot is not changed");
+        }
+
+        [Fact]
+        public async Task H19_a_real_run_removes_violations_of_deleted_glossaries_and_reports_the_count()
+        {
+            _stored.Add(Migrated("g1", "Workspace"));
+            _keyRepository.Setup(k => k.RemoveStaleGlossaryViolationsAsync(It.IsAny<IReadOnlyCollection<string>>(), false, GlossaryMigrationService.BatchSize))
+                .ReturnsAsync(3L);
+
+            var report = await _service.MigrateAsync(dryRun: false);
+
+            report.StaleViolationsRemoved.Should().Be(3);
+            _keyRepository.Verify(k => k.RemoveStaleGlossaryViolationsAsync(
+                It.Is<IReadOnlyCollection<string>>(ids => ids.Contains("g1")), false, GlossaryMigrationService.BatchSize), Times.Once);
+        }
+
+        [Fact]
+        public async Task C22_a_dry_run_counts_stale_violations_and_writes_nothing()
+        {
+            _stored.Add(TrackA("g1"));
+            _keyRepository.Setup(k => k.RemoveStaleGlossaryViolationsAsync(It.IsAny<IReadOnlyCollection<string>>(), true, It.IsAny<int>()))
+                .ReturnsAsync(2L);
+
+            var report = await _service.MigrateAsync(dryRun: true);
+
+            report.StaleViolationsRemoved.Should().Be(2);
+            _keyRepository.Verify(k => k.RemoveStaleGlossaryViolationsAsync(It.IsAny<IReadOnlyCollection<string>>(), false, It.IsAny<int>()), Times.Never);
+            _written.Should().BeEmpty();
+        }
+
     }
 }

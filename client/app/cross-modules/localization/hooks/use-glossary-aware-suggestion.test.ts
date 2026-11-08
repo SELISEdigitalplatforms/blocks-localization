@@ -68,6 +68,12 @@ describe("buildSuggestionPayload", () => {
     );
     expect(payload).toMatchObject({ currentLanguage: "German", currentLanguageCode: "de-DE" });
   });
+
+  it("falls back to English with no code when there is no default language (SPEC15 H31)", () => {
+    const payload = buildSuggestionPayload(input({ defaultLanguage: undefined }));
+    expect(payload.currentLanguage).toBe("English");
+    expect(payload).not.toHaveProperty("currentLanguageCode");
+  });
 });
 
 describe("runGlossaryAwareSuggestion", () => {

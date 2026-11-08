@@ -1,5 +1,6 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Services;
 using FluentAssertions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -68,8 +69,38 @@ namespace XUnitTest.Repositories
 
             created.Should().BeFalse();
             _updates[0].Update["$set"].ToJson().Should().Be(BsonDocument.Parse("{ WholeProject: true }").ToJson());
-            // The second update only takes over a marker older than the stale limit.
-            _updates[1].Filter["QueuedAt"]["$lt"].ToUniversalTime().Should().Be(Now.AddMinutes(-30));
+            // The second update only takes over a failed marker or one older than the stale limit.
+            _updates[1].Filter["$or"].ToJson().Should().Be(BsonDocument.Parse(
+                "{ a: [{ Failed: true }, { QueuedAt: { $lt: ISODate('" + Now.AddMinutes(-30).ToString("yyyy-MM-ddTHH:mm:ss.fffZ") + "') } }] }")["a"].ToJson());
+            _updates[1].Update["$set"].ToJson().Should().Be(BsonDocument.Parse(
+                "{ QueuedAt: ISODate('" + Now.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") + "'), Failed: false }").ToJson());
+        }
+
+        [Fact]
+        public async Task TryEnqueue_takes_over_a_failed_marker_and_reports_it()
+        {
+            SetupJobUpdates(new UpdateResult.Acknowledged(1, 1, null), 1);
+            var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
+
+            var created = await repo.TryEnqueueAsync("recheck-tenant", new[] { "g1" }, null, Now, GlossaryRecheckService.StaleAfter);
+
+            created.Should().BeTrue();
+            _updates[1].Filter["$or"][0].ToJson().Should().Be(BsonDocument.Parse("{ Failed: true }").ToJson());
+            _updates[1].Filter["$or"][1]["QueuedAt"]["$lt"].ToUniversalTime().Should().Be(Now.AddMinutes(-5));
+        }
+
+        [Fact]
+        public async Task RequeueFailed_merges_the_scope_marks_the_marker_failed_and_never_takes_it_over()
+        {
+            SetupJobUpdates(new UpdateResult.Acknowledged(1, 1, null), 0);
+            var repo = new GlossaryRecheckJobRepository(_dbContextProvider.Object);
+
+            await repo.RequeueFailedAsync("recheck-tenant", new[] { "g1", "g2" }, new[] { "m1", "m2" }, Now);
+
+            _updates.Should().ContainSingle();
+            _updates[0].Upsert.Should().BeTrue();
+            _updates[0].Update["$set"].ToJson().Should().Be(BsonDocument.Parse("{ Failed: true }").ToJson());
+            _updates[0].Update["$addToSet"].ToJson().Should().Be(BsonDocument.Parse("{ GlossaryIds: { $each: ['g1', 'g2'] }, ModuleIds: { $each: ['m1', 'm2'] } }").ToJson());
         }
 
         [Fact]

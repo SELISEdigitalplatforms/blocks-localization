@@ -38,6 +38,57 @@ namespace XUnitTest.Terminology
             PlaceholderMask.Apply(text).Should().Be(Blanked(text, "{count, plural, one", "other"));
         }
 
+        [Fact]
+        public void Blanks_ICU_select_option_names_but_keeps_branch_text()
+        {
+            const string text = "{role, select, admin {Admin panel} other {Panel}}";
+
+            var masked = PlaceholderMask.Apply(text);
+
+            masked.Length.Should().Be(text.Length);
+            masked[..14].Should().Be(new string(' ', 14));
+            masked.Substring(15, 5).Should().Be("     ");
+            masked.Substring(22, 11).Should().Be("Admin panel");
+            masked.Should().NotContain("other");
+        }
+
+        [Fact]
+        public void Select_option_names_are_blanked_only_at_the_arguments_own_depth()
+        {
+            const string text = "{g, select, female {She is admin {x}} other {admin rights}}";
+
+            var masked = PlaceholderMask.Apply(text);
+
+            masked.Should().Contain("She is admin").And.Contain("admin rights");
+            masked.Should().NotContain("female").And.NotContain("other");
+        }
+
+        [Fact]
+        public void H2_a_select_option_named_like_a_glossary_is_not_matched_but_branch_text_is()
+        {
+            var matcher = Matcher(TerminologyTestData.Glossary("g1", "admin"));
+
+            var matches = matcher.Match("{role, select, admin {Admin panel} other {Panel}}", new MatchOptions());
+
+            matches.Should().ContainSingle();
+            matches[0].Start.Should().Be(22);
+            matches[0].Length.Should().Be(5);
+        }
+
+        [Theory]
+        [InlineData("Hi {{ name }} and {user}", new[] { "{user}", "{{name}}" })]
+        [InlineData("${id} {count, number}", new[] { "${id}", "{count,number}" })]
+        [InlineData("{count, plural, one {# item} other {# items}}", new[] { "{count,plural," })]
+        [InlineData("{role, select, admin {Admin {user}} other {Panel}}", new[] { "{role,select,", "{user}" })]
+        [InlineData("<a href=\"/x\">Go</a><br />", new[] { "</a>", "<a>", "<br/>" })]
+        [InlineData("%1$d of %s, 100%%", new[] { "%1$d", "%s" })]
+        [InlineData("{user} and {user}", new[] { "{user}", "{user}" })]
+        [InlineData("Plain text", new string[0])]
+        public void Tokens_are_normalized_and_sorted(string text, string[] expected)
+        {
+            PlaceholderMask.GetTokens(text).Should().Equal(expected);
+        }
+
         [Theory]
         [InlineData("50% off, a < b > c, {not closed")]
         [InlineData("One other thing")]

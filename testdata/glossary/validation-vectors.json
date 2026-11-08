@@ -1,0 +1,1333 @@
+[
+  {
+    "id": "mask-double-brace",
+    "source": "Hi {{Workspace}}, open your Workspace",
+    "target": "Hallo {{Werkbereich}}, öffne deinen Arbeitsbereich",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "Hi              , open your Workspace",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 28,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "mask-single-brace",
+    "source": "{Workspace} in your Workspace",
+    "target": "{Workspace} im Werkbereich",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "            in your Workspace",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 20,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      },
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "g1",
+        "value": "Werkbereich"
+      }
+    ]
+  },
+  {
+    "id": "mask-dollar-brace-and-number-arg",
+    "source": "Id ${Workspace} for {count, number} Workspace",
+    "target": "Id ${Workspace} für {count, number} Arbeitsbereich",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "Id              for                 Workspace",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 36,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "mask-icu-plural",
+    "source": "{count, plural, one {# Workspace} other {# workspaces}}",
+    "target": "{count, plural, one {# Arbeitsbereich} other {# Arbeitsbereiche}}",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "                    {# Workspace}       {# workspaces}}",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 23,
+        "surface": "Workspace"
+      },
+      {
+        "glossaryId": "g1",
+        "start": 43,
+        "surface": "workspaces"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "mask-icu-plural-exact-selector-forbidden-in-branch",
+    "source": "{count, plural, =0 {No Workspace} other {# Workspace}}",
+    "target": "{count, plural, =0 {Kein Werkbereich} other {# Arbeitsbereich}}",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "                   {No Workspace}       {# Workspace}}",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 23,
+        "surface": "Workspace"
+      },
+      {
+        "glossaryId": "g1",
+        "start": 43,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "g1",
+        "value": "Werkbereich"
+      }
+    ]
+  },
+  {
+    "id": "mask-icu-select-option-name",
+    "source": "{role, select, admin {Open} other {Close}}",
+    "target": "{role, select, admin {Öffnen} other {Schließen}}",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "a1",
+        "name": "admin",
+        "rule": "keep"
+      }
+    ],
+    "expectedMasked": "                                         }",
+    "expectedMatches": [],
+    "expectedViolations": []
+  },
+  {
+    "id": "mask-icu-select-branch-text-matches",
+    "source": "{role, select, admin {Admin panel} other {Panel}}",
+    "target": "{role, select, admin {Verwaltung} other {Bereich}}",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "a1",
+        "name": "admin",
+        "rule": "keep"
+      }
+    ],
+    "expectedMasked": "                     {Admin panel}              }",
+    "expectedMatches": [
+      {
+        "glossaryId": "a1",
+        "start": 22,
+        "surface": "Admin"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-keep",
+        "glossaryId": "a1",
+        "value": "Admin"
+      }
+    ]
+  },
+  {
+    "id": "mask-html-tags",
+    "source": "Click <b class=\"Workspace\">Workspace</b>",
+    "target": "Klicke <b class=\"Werkbereich\">Arbeitsbereich</b>",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "Click                      Workspace    ",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 27,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "mask-printf",
+    "source": "%s Workspace of %1$d, 100%%",
+    "target": "%s Werkbereich von %1$d, 100%%",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMasked": "   Workspace of     , 100  ",
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 3,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      },
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "g1",
+        "value": "Werkbereich"
+      }
+    ]
+  },
+  {
+    "id": "translate-missing",
+    "source": "Open your Workspace",
+    "target": "Öffnen Sie Ihren Bereich",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      }
+    ]
+  },
+  {
+    "id": "translate-other-case-and-inflected-counts",
+    "source": "Open your Workspace",
+    "target": "Die ARBEITSBEREICHE öffnen",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "keep-exact-case",
+    "source": "Welcome to SELISE",
+    "target": "Willkommen bei SELISE",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "s1",
+        "name": "SELISE",
+        "rule": "keep"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "s1",
+        "start": 11,
+        "surface": "SELISE"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "keep-other-case-is-missing",
+    "source": "Welcome to SELISE",
+    "target": "Willkommen bei selise",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "s1",
+        "name": "SELISE",
+        "rule": "keep"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "s1",
+        "start": 11,
+        "surface": "SELISE"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-keep",
+        "glossaryId": "s1",
+        "value": "SELISE"
+      }
+    ]
+  },
+  {
+    "id": "keep-requires-the-source-surface",
+    "source": "Welcome to Selise",
+    "target": "Willkommen bei SELISE",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "s1",
+        "name": "SELISE",
+        "rule": "keep"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "s1",
+        "start": 11,
+        "surface": "Selise"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-keep",
+        "glossaryId": "s1",
+        "value": "Selise"
+      }
+    ]
+  },
+  {
+    "id": "forbidden-with-inflected-ending",
+    "source": "Open your Workspace",
+    "target": "Ihres Werkbereichs",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      },
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "g1",
+        "value": "Werkbereich"
+      }
+    ]
+  },
+  {
+    "id": "forbidden-inside-longer-word",
+    "source": "Open your Workspace",
+    "target": "Der Werkbereichsleiter",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      }
+    ]
+  },
+  {
+    "id": "forbidden-not-at-word-start",
+    "source": "Open your Workspace",
+    "target": "Der Hauptwerkbereich",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g1",
+        "value": "Arbeitsbereich"
+      }
+    ]
+  },
+  {
+    "id": "short-forbidden-whole-word",
+    "source": "Open the App",
+    "target": "Open the App now",
+    "culture": "en-GB",
+    "glossaries": [
+      {
+        "id": "f1",
+        "name": "App",
+        "rule": "forbidden"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "f1",
+        "start": 9,
+        "surface": "App"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "f1",
+        "value": "App"
+      }
+    ]
+  },
+  {
+    "id": "short-forbidden-inside-word",
+    "source": "Open the App",
+    "target": "Open the Application or the Apps",
+    "culture": "en-GB",
+    "glossaries": [
+      {
+        "id": "f1",
+        "name": "App",
+        "rule": "forbidden"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "f1",
+        "start": 9,
+        "surface": "App"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "forbidden-longest-value-once",
+    "source": "Dashboard",
+    "target": "Zwei Dashboards",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "f2",
+        "name": "Dashboard",
+        "rule": "forbidden",
+        "variants": [
+          "Dashboards"
+        ]
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "f2",
+        "start": 0,
+        "surface": "Dashboard"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "f2",
+        "value": "Dashboards"
+      }
+    ]
+  },
+  {
+    "id": "forbidden-inside-approved-translation",
+    "source": "Portal",
+    "target": "Die Portalseite",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "p1",
+        "name": "Portal",
+        "translations": {
+          "de-DE": "Portalseite"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Portal"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "p1",
+        "start": 0,
+        "surface": "Portal"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "compound-de-end-of-word",
+    "source": "Open your Workspace",
+    "target": "Projektarbeitsbereich öffnen",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "g1",
+        "name": "Workspace",
+        "rule": "translate",
+        "variants": [
+          "workspaces"
+        ],
+        "translations": {
+          "de-DE": "Arbeitsbereich",
+          "fr-FR": "Espace de travail"
+        },
+        "forbidden": {
+          "de-DE": [
+            "Werkbereich"
+          ],
+          "fr-FR": [
+            "Zone"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "compound-de-short-part-not-found",
+    "source": "Day",
+    "target": "Vertrag",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "d1",
+        "name": "Day",
+        "translations": {
+          "de-DE": "Tag"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "d1",
+        "start": 0,
+        "surface": "Day"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "d1",
+        "value": "Tag"
+      }
+    ]
+  },
+  {
+    "id": "compound-en-not-compounding",
+    "source": "Workspace",
+    "target": "Workspace",
+    "culture": "en-GB",
+    "glossaries": [
+      {
+        "id": "g3",
+        "name": "Workspace",
+        "translations": {
+          "en-GB": "space"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "g3",
+        "start": 0,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "g3",
+        "value": "space"
+      }
+    ]
+  },
+  {
+    "id": "arabic-prefix-letters",
+    "source": "Open your Account",
+    "target": "وبالحساب",
+    "culture": "ar-SA",
+    "glossaries": [
+      {
+        "id": "ac1",
+        "name": "Account",
+        "translations": {
+          "ar-SA": "الحساب"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "ac1",
+        "start": 10,
+        "surface": "Account"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "arabic-article-contraction",
+    "source": "Open your Account",
+    "target": "للحساب",
+    "culture": "ar-SA",
+    "glossaries": [
+      {
+        "id": "ac1",
+        "name": "Account",
+        "translations": {
+          "ar-SA": "الحساب"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "ac1",
+        "start": 10,
+        "surface": "Account"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "arabic-longer-stem-is-missing",
+    "source": "Account",
+    "target": "مححساب",
+    "culture": "ar-SA",
+    "glossaries": [
+      {
+        "id": "ac2",
+        "name": "Account",
+        "translations": {
+          "ar-SA": "حساب"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "ac2",
+        "start": 0,
+        "surface": "Account"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "ac2",
+        "value": "حساب"
+      }
+    ]
+  },
+  {
+    "id": "hebrew-prefix-letters",
+    "source": "Account",
+    "target": "ולחשבון",
+    "culture": "he-IL",
+    "glossaries": [
+      {
+        "id": "ac3",
+        "name": "Account",
+        "translations": {
+          "he-IL": "חשבון"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "ac3",
+        "start": 0,
+        "surface": "Account"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "hebrew-too-many-prefix-letters",
+    "source": "Account",
+    "target": "והבכחשבון",
+    "culture": "he-IL",
+    "glossaries": [
+      {
+        "id": "ac3",
+        "name": "Account",
+        "translations": {
+          "he-IL": "חשבון"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "ac3",
+        "start": 0,
+        "surface": "Account"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "ac3",
+        "value": "חשבון"
+      }
+    ]
+  },
+  {
+    "id": "no-space-source-ja",
+    "source": "アカウント設定を開く",
+    "sourceCulture": "ja-JP",
+    "target": "Open account settings",
+    "culture": "en-US",
+    "glossaries": [
+      {
+        "id": "j1",
+        "name": "設定",
+        "translations": {
+          "en-US": "Settings"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "j1",
+        "start": 5,
+        "surface": "設定"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "no-space-target-zh",
+    "source": "Open Workspace settings",
+    "target": "打开工作空间设置",
+    "culture": "zh-CN",
+    "glossaries": [
+      {
+        "id": "z1",
+        "name": "Workspace",
+        "translations": {
+          "zh-CN": "工作区"
+        },
+        "forbidden": {
+          "zh-CN": [
+            "工作空间"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "z1",
+        "start": 5,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "z1",
+        "value": "工作区"
+      },
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "z1",
+        "value": "工作空间"
+      }
+    ]
+  },
+  {
+    "id": "no-space-target-zh-substring-ok",
+    "source": "Open Workspace settings",
+    "target": "打开工作区设置",
+    "culture": "zh-CN",
+    "glossaries": [
+      {
+        "id": "z1",
+        "name": "Workspace",
+        "translations": {
+          "zh-CN": "工作区"
+        },
+        "forbidden": {
+          "zh-CN": [
+            "工作空间"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "z1",
+        "start": 5,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "culture-fallback-bare-language",
+    "source": "Open your Workspace",
+    "target": "Den Werkbereich öffnen",
+    "culture": "de-CH",
+    "glossaries": [
+      {
+        "id": "c1",
+        "name": "Workspace",
+        "translations": {
+          "de": "Arbeitsbereich"
+        },
+        "forbidden": {
+          "de": [
+            "Werkbereich"
+          ]
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "c1",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "c1",
+        "value": "Arbeitsbereich"
+      },
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "c1",
+        "value": "Werkbereich"
+      }
+    ]
+  },
+  {
+    "id": "culture-fallback-case-variant-before-bare",
+    "source": "Open your Workspace",
+    "target": "Den Bereich öffnen",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "c2",
+        "name": "Workspace",
+        "translations": {
+          "de": "Arbeitsplatz",
+          "de-de": "Arbeitsbereich"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "c2",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "c2",
+        "value": "Arbeitsbereich"
+      }
+    ]
+  },
+  {
+    "id": "culture-fallback-exact-first",
+    "source": "Open your Workspace",
+    "target": "Den Bereich öffnen",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "c3",
+        "name": "Workspace",
+        "translations": {
+          "de-de": "Arbeitsplatz",
+          "de-DE": "Arbeitsbereich",
+          "de": "Raum"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "c3",
+        "start": 10,
+        "surface": "Workspace"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "c3",
+        "value": "Arbeitsbereich"
+      }
+    ]
+  },
+  {
+    "id": "dotted-capital-i-source-match",
+    "source": "Fly to İstanbul",
+    "target": "istanbul'a uç",
+    "culture": "tr-TR",
+    "glossaries": [
+      {
+        "id": "i1",
+        "name": "Istanbul",
+        "translations": {
+          "tr-TR": "İstanbul"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "i1",
+        "start": 7,
+        "surface": "İstanbul"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "dotted-capital-i-target-turkish-dotless",
+    "source": "Fly to İstanbul",
+    "target": "ISTANBUL'A UÇ",
+    "culture": "tr-TR",
+    "glossaries": [
+      {
+        "id": "i1",
+        "name": "Istanbul",
+        "translations": {
+          "tr-TR": "İstanbul"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "i1",
+        "start": 7,
+        "surface": "İstanbul"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "i1",
+        "value": "İstanbul"
+      }
+    ]
+  },
+  {
+    "id": "combining-mark-is-word-char-in-match",
+    "source": "नमस्ते दुनिया",
+    "target": "नमस्ते",
+    "culture": "hi-IN",
+    "glossaries": [
+      {
+        "id": "h1",
+        "name": "नमस"
+      }
+    ],
+    "expectedMatches": [],
+    "expectedViolations": []
+  },
+  {
+    "id": "combining-mark-is-word-char-in-forbidden",
+    "source": "Open the App",
+    "target": "Open the App̳ now",
+    "culture": "en-GB",
+    "glossaries": [
+      {
+        "id": "f1",
+        "name": "App",
+        "rule": "forbidden"
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "f1",
+        "start": 9,
+        "surface": "App"
+      }
+    ],
+    "expectedViolations": []
+  },
+  {
+    "id": "case-sensitive-glossary-other-case-no-match",
+    "source": "selise is a company",
+    "target": "selise ist eine Firma",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "s2",
+        "name": "SELISE",
+        "rule": "keep",
+        "caseSensitive": true
+      }
+    ],
+    "expectedMatches": [],
+    "expectedViolations": []
+  },
+  {
+    "id": "case-sensitive-glossary-keep-missing",
+    "source": "SELISE is a company",
+    "target": "selise ist eine Firma",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "s2",
+        "name": "SELISE",
+        "rule": "keep",
+        "caseSensitive": true
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "s2",
+        "start": 0,
+        "surface": "SELISE"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-keep",
+        "glossaryId": "s2",
+        "value": "SELISE"
+      }
+    ]
+  },
+  {
+    "id": "case-sensitive-forbidden",
+    "source": "Beta and BETA",
+    "target": "Die Beta und die BETA",
+    "culture": "de-DE",
+    "glossaries": [
+      {
+        "id": "f3",
+        "name": "BETA",
+        "rule": "forbidden",
+        "caseSensitive": true
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "f3",
+        "start": 9,
+        "surface": "BETA"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "forbidden-used",
+        "glossaryId": "f3",
+        "value": "BETA"
+      }
+    ]
+  },
+  {
+    "id": "underscore-culture-turkish-lowering",
+    "source": "Fly to Istanbul",
+    "target": "ISTANBUL'A UÇ",
+    "culture": "tr_TR",
+    "glossaries": [
+      {
+        "id": "i2",
+        "name": "Istanbul",
+        "translations": {
+          "tr_TR": "istanbul"
+        }
+      }
+    ],
+    "expectedMatches": [
+      {
+        "glossaryId": "i2",
+        "start": 7,
+        "surface": "Istanbul"
+      }
+    ],
+    "expectedViolations": [
+      {
+        "kind": "missing-translation",
+        "glossaryId": "i2",
+        "value": "istanbul"
+      }
+    ]
+  }
+]

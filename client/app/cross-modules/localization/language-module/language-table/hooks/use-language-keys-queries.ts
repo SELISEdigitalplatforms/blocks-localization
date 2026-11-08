@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import type { useKeysFilterQueryParams } from "@blocks-localization/components/language-table-toolbar/language-table-toolbar";
 import {
+  buildKeyListFilter,
   useGetBlocksLanguageKey,
   useGetBlocksLanguageKeysInfinite,
+  useGetGlossaryIssueCount,
 } from "@blocks-localization/hooks/use-language-manager";
 import {
   ALL_KEYS_PAGE_SIZE,
@@ -58,7 +60,7 @@ export const useLanguageKeysQueries = ({
     queryParams.duplicates,
     queryParams.glossaryIssues,
   );
-  const allViewQuery = useGetBlocksLanguageKeysInfinite({
+  const allViewFilterOptions = {
     searchKey: queryParams.search ?? "",
     moduleIds: queryParams.moduleIds ?? [],
     sortProperty: sortQueryParams.property,
@@ -67,9 +69,23 @@ export const useLanguageKeysQueries = ({
     lastUpdateDateRange,
     resourceSearchFilters: activeResourceSearchFilters,
     missingLanguages: queryParams.missingLanguages ?? [],
-    enabled: isAllView,
     onlyDuplicates: queryParams.duplicates,
     hasGlossaryViolations: queryParams.glossaryIssues,
+  };
+  const allViewQuery = useGetBlocksLanguageKeysInfinite({
+    ...allViewFilterOptions,
+    enabled: isAllView,
+  });
+  const glossaryIssueCountQuery = useGetGlossaryIssueCount({
+    searchKey: queryParams.search ?? "",
+    moduleIds: queryParams.moduleIds ?? [],
+    createStartDate: createDateRange?.startDate ?? "",
+    createEndDate: createDateRange?.endDate ?? "",
+    lastUpdateStartDate: lastUpdateDateRange?.startDate ?? "",
+    lastUpdateEndDate: lastUpdateDateRange?.endDate ?? "",
+    resourceSearchFilters: resourceSearchFilters,
+    missingLanguages: queryParams.missingLanguages ?? [],
+    onlyDuplicates: queryParams.duplicates,
   });
   const allViewKeys = useMemo(
     () => allViewQuery.data?.pages.flatMap((page) => page.keys) ?? [],
@@ -103,6 +119,8 @@ export const useLanguageKeysQueries = ({
     allViewQuery,
     allViewKeys,
     allViewTotalCount,
+    /** What the All view's query filters by; an "all matching" bulk action sends it. */
+    allViewFilter: buildKeyListFilter(allViewFilterOptions),
     pagedData,
     isLoading: isAllView ? allViewQuery.isLoading : pagedKeysQuery.isLoading,
     isFetching: isAllView ? allViewQuery.isFetching : pagedKeysQuery.isFetching,
@@ -110,5 +128,6 @@ export const useLanguageKeysQueries = ({
     currentTotalCount: isAllView ? allViewTotalCount : (pagedData?.totalCount ?? 0),
     refetchLanguageKeys,
     showDuplicatesTruncatedNote: Boolean(queryParams.duplicates && isDuplicatesTruncated),
+    glossaryIssueCount: glossaryIssueCountQuery.data,
   };
 };

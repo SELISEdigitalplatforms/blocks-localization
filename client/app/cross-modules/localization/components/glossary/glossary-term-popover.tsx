@@ -10,7 +10,10 @@ import GlossaryStatusBadge from "@blocks-localization/components/glossary/glossa
 import { GlossaryMatch } from "@blocks-localization/models/glossary-match";
 import { GlossaryMeta } from "@blocks-localization/models/glossary-meta";
 import { ILanguageConfig } from "@blocks-localization/models/language";
-import { containsApprovedTranslation } from "@blocks-localization/utils/glossary-validation";
+import {
+  containsApprovedTranslation,
+  findInTarget,
+} from "@blocks-localization/utils/glossary-validation";
 import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 
 const LOCALIZATION_GLOSSARY_MODULE = "localization.glossary";
@@ -53,9 +56,12 @@ export const isGlossaryMatchUsed = (
   targetCulture: string,
 ): boolean => {
   const term = getGlossaryTermValue(match.meta, match.surface, targetCulture);
+  if (term.kind === "keep") {
+    const text = (targetText ?? "").normalize("NFC");
+    return findInTarget(text, term.value, { caseInsensitive: false, targetCulture }) !== null;
+  }
   return (
-    (term.kind === "translate" || term.kind === "keep") &&
-    containsApprovedTranslation(targetText, term.value, targetCulture)
+    term.kind === "translate" && containsApprovedTranslation(targetText, term.value, targetCulture)
   );
 };
 

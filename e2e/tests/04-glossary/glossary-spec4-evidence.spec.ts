@@ -251,7 +251,7 @@ test.describe("Glossary — SPEC4 evidence", () => {
     }
   });
 
-  test("axe: Edit translation modal, term popover and glossary picker", async ({
+  test("axe: Edit translation modal, glossary popover and glossary picker", async ({
     page,
   }, testInfo) => {
     test.setTimeout(300_000);

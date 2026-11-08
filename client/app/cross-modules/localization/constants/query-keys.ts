@@ -16,6 +16,12 @@ export interface LanguageKeyInfiniteFilters {
   hasGlossaryViolations?: boolean;
 }
 
+/** The keys-table filters (other than "Glossary issues") that the glossary-issue count follows. */
+export type LanguageKeyIssueCountFilters = Omit<
+  LanguageKeyInfiniteFilters,
+  "sortProperty" | "isDescending" | "hasGlossaryViolations"
+>;
+
 export const localizationQueryKeys = {
   languageKeys: {
     all: ["get-blocksLanguageKeys"] as const,
@@ -99,6 +105,9 @@ export const localizationQueryKeys = {
     duplicateSummary: (tenantId: string) =>
       ["get-blocksLanguageKeys", "duplicate-summary", tenantId] as const,
     duplicateSummaryPrefix: ["get-blocksLanguageKeys", "duplicate-summary"] as const,
+    // Under `all` too, so key saves, deletes and glossary changes refresh the count.
+    glossaryIssueCount: (tenantId: string, filters: LanguageKeyIssueCountFilters) =>
+      ["get-blocksLanguageKeys", "glossary-issue-count", tenantId, JSON.stringify(filters)] as const,
     detail: (tenantId: string, itemId: string) =>
       ["get-blocksLanguageKey", tenantId, itemId] as const,
     detailPrefix: ["get-blocksLanguageKey"] as const,

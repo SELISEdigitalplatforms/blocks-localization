@@ -22,9 +22,10 @@ namespace Eurolm.DomainService.Services
         public const int MaxGetsPageSize = 100;
 
         internal const string VersionConflictMessage = "This glossary was changed by someone else. Reload and try again.";
-        internal const string ItemNotFoundMessage = "Glossary item not found";
+        public const string ItemNotFoundMessage = "Glossary item not found";
         internal const string DuplicateNameMessage = "Glossary name must be unique.";
         internal const string SaveFailedMessage = "Could not save the glossary. Try again.";
+        internal const string DeleteFailedMessage = "Could not delete the glossary. Try again.";
 
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
             ?? throw new InvalidOperationException("A tenant context is required to save a glossary.");
@@ -183,7 +184,25 @@ namespace Eurolm.DomainService.Services
                 };
             }
 
-            await _glossaryRepository.DeleteAsync(request.ItemId);
+            try
+            {
+                await _glossaryRepository.DeleteAsync(request.ItemId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Deleting glossary end -- could not delete it after removing it from {ModifiedKeyCount} keys: {ErrorMessage}", modifiedKeys, ex.Message);
+                await TriggerRecheckAsync(request.ItemId, glossary.ModuleIds, glossary.IsGlobal || modifiedKeys > 0);
+
+                return new BaseMutationResponse
+                {
+                    IsSuccess = false,
+                    Errors = new Dictionary<string, string>
+                    {
+                        { "Error", DeleteFailedMessage }
+                    }
+                };
+            }
+
             modifiedKeys += await RemoveLateTagsAsync(request.ItemId);
             InvalidateMatcher();
             // The untagged keys can't be found by glossary any more, and a global glossary may have hidden others

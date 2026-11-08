@@ -148,7 +148,7 @@ describe("components/glossary/glossary-bulk-actions", () => {
     await waitFor(() => expect(run).toHaveBeenCalledWith({ kind: "set-project" }, selected));
   });
 
-  it("requires typing 'delete N terms' when the summed usage is 50 or more", async () => {
+  it("requires typing 'delete N glossaries' when the summed usage is 50 or more", async () => {
     vi.mocked(languageManagerService.getGlossaryUsage).mockImplementation(
       async ({ itemId }) =>
         ({ keyCount: itemId === "a" ? 30 : 20, keys: [], moduleIds: [] }) as never,
@@ -171,6 +171,55 @@ describe("components/glossary/glossary-bulk-actions", () => {
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ description: "Deleted 2 of 2 glossaries" }),
     );
+  });
+
+  it("requires the typed phrase when a Usage call is forbidden (SPEC15 H22)", async () => {
+    vi.mocked(languageManagerService.getGlossaryUsage).mockImplementation(async ({ itemId }) => {
+      if (itemId === "b") throw { status: 403, errors: {} };
+      return { keyCount: 1, keys: [], moduleIds: [] } as never;
+    });
+    run.mockResolvedValue({ total: 2, succeeded: 2, failed: [] });
+    renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(
+      await screen.findByText(
+        "You can't see how many keys use these glossaries. Deleting removes them from every key that uses them.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    const confirm = () =>
+      screen.getAllByRole("button", { name: "Delete" }).at(-1) as HTMLButtonElement;
+    expect(confirm().disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Type "delete 2 glossaries" to confirm'), {
+      target: { value: "delete 2 glossaries" },
+    });
+    expect(confirm().disabled).toBe(false);
+    fireEvent.click(confirm());
+    await waitFor(() => expect(run).toHaveBeenCalledWith({ kind: "delete" }, selected));
+  });
+
+  it("keeps Retry and a disabled Delete for any other Usage error (SPEC15 C24)", async () => {
+    vi.mocked(languageManagerService.getGlossaryUsage).mockRejectedValue({ status: 500 });
+    renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(
+      await screen.findByText("Failed to check how many keys use these glossaries."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByLabelText(/to confirm/)).toBeNull();
+    expect(
+      (screen.getAllByRole("button", { name: "Delete" }).at(-1) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("asks for the phrase at a summed 50 keys but not at 49 (SPEC15 C37)", async () => {
+    vi.mocked(languageManagerService.getGlossaryUsage).mockImplementation(
+      async ({ itemId }) => ({ keyCount: itemId === "a" ? 30 : 19, keys: [], moduleIds: [] }) as never,
+    );
+    renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("Used by up to 49 keys in total.")).toBeTruthy();
+    expect(screen.queryByLabelText(/to confirm/)).toBeNull();
   });
 
   it("deletes without typing when the summed usage is below 50", async () => {

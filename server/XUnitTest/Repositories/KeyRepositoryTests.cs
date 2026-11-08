@@ -733,7 +733,7 @@ namespace XUnitTest.Repositories
             };
             MockCursorHelper.SetupFindAsync(_blkCollection, keys);
 
-            var result = await _repo.GetUilmResourceKeysWithPage(0, 10);
+            var result = await _repo.GetUilmResourceKeysWithPage(0, 10, null);
 
             result.Should().NotBeNull();
             result.Count().Should().Be(1);
