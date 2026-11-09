@@ -41,7 +41,6 @@ namespace Eurolm.DomainService.Services
         private readonly ILocalizationSecret _localizationSecret;
         private readonly IGlossaryRepository _glossaryRepository;
         private readonly IGlossaryMatcherCache? _matcherCache;
-        private readonly IModuleRepository? _moduleRepository;
         private readonly TimeProvider _timeProvider;
         private readonly SemaphoreSlim _gate;
         private readonly TimeSpan _attemptTimeLimit;
@@ -56,8 +55,7 @@ namespace Eurolm.DomainService.Services
             ILocalizationSecret localizationSecret,
             IGlossaryRepository glossaryRepository,
             IGlossaryMatcherCache? matcherCache = null,
-            TimeProvider? timeProvider = null,
-            IModuleRepository? moduleRepository = null
+            TimeProvider? timeProvider = null
         )
         {
             _localizationSecret = localizationSecret;
@@ -67,30 +65,10 @@ namespace Eurolm.DomainService.Services
             _httpClient = httpClient;
             _glossaryRepository = glossaryRepository;
             _matcherCache = matcherCache;
-            _moduleRepository = moduleRepository;
             _timeProvider = timeProvider ?? TimeProvider.System;
             MaxConcurrency = ReadInt(_configuration?[MaxConcurrencyKey], DefaultMaxConcurrency, 1, 64);
             _attemptTimeLimit = TimeSpan.FromSeconds(ReadInt(_configuration?[AttemptTimeoutKey], (int)DefaultAttemptTimeLimit.TotalSeconds, 1, 30));
             _gate = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
-        }
-
-        public async Task ApplyModuleContextAsync(SuggestLanguageRequest query)
-        {
-            if (!string.IsNullOrWhiteSpace(query.ElementApplicationContext) || string.IsNullOrWhiteSpace(query.ModuleId) || _moduleRepository == null)
-            {
-                return;
-            }
-
-            try
-            {
-                var module = await _moduleRepository.GetByIdAsync(BlocksContext.GetContext()?.TenantId ?? "", query.ModuleId);
-                query.ElementApplicationContext = module?.Description;
-            }
-            catch (Exception ex)
-            {
-                // The suggestion still runs, only without module context; the log carries no description text.
-                _logger.LogWarning(ex, "SuggestTranslation: module {ModuleId} lookup failed, continuing without module context", query.ModuleId);
-            }
         }
 
         public async Task<SuggestionResult> SuggestTranslation(SuggestLanguageRequest query)

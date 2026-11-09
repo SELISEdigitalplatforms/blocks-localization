@@ -10,25 +10,15 @@ using static XUnitTest.Terminology.TerminologyTestData;
 
 namespace XUnitTest.Services.Assistant
 {
-    /// <summary>SPEC16 H3, H4, C3, C6, C7, C8, C9: module context in the suggestion prompt.</summary>
+    /// <summary>SPEC16 H4, C3, C7, C8: module context in the suggestion prompt.</summary>
     public class AssistantServiceSpec16Tests
     {
         private const string Description = "Subscription plans, invoices, payment methods.";
-
-        private readonly Mock<IModuleRepository> _modules = new();
 
         public AssistantServiceSpec16Tests()
         {
             XUnitTest.Shared.TestBlocksContext.Set("spec16-assistant");
         }
-
-        private AssistantService Service(IModuleRepository? modules) => new(
-            new Mock<ILogger<AssistantService>>().Object,
-            new ConfigurationBuilder().Build(),
-            new HttpClient(),
-            new Mock<ILocalizationSecret>().Object,
-            new Mock<IGlossaryRepository>().Object,
-            moduleRepository: modules);
 
         private static SuggestLanguageRequest WithContext(string? applicationContext, string? detailContext = null)
         {
@@ -105,80 +95,6 @@ namespace XUnitTest.Services.Assistant
             prompt.Context.Should().NotContain(TerminologyPromptBuilder.ModuleContextLabel);
             prompt.Context.Should().Contain(TerminologyPromptBuilder.RulesHeading);
             prompt.AppliedTerms.Should().ContainSingle();
-        }
-
-        // ---- H3 / C6 / C9: resolving the description ----
-
-        [Fact]
-        public async Task H3_a_blank_application_context_is_filled_from_the_module_in_the_request_tenant()
-        {
-            _modules.Setup(m => m.GetByIdAsync("spec16-assistant", "mod-1"))
-                .ReturnsAsync(new BlocksLanguageModule { ItemId = "mod-1", Description = Description });
-            var request = WithContext("");
-            request.ModuleId = "mod-1";
-
-            await Service(_modules.Object).ApplyModuleContextAsync(request);
-
-            request.ElementApplicationContext.Should().Be(Description);
-            _modules.Verify(m => m.GetByIdAsync(It.IsAny<string>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task H3_a_caller_supplied_application_context_wins_and_skips_the_lookup()
-        {
-            var request = WithContext("Checkout screens");
-            request.ModuleId = "mod-1";
-
-            await Service(_modules.Object).ApplyModuleContextAsync(request);
-
-            request.ElementApplicationContext.Should().Be("Checkout screens");
-            _modules.VerifyNoOtherCalls();
-        }
-
-        [Fact]
-        public async Task C6_no_module_id_means_no_lookup()
-        {
-            var request = WithContext(null);
-
-            await Service(_modules.Object).ApplyModuleContextAsync(request);
-
-            request.ElementApplicationContext.Should().BeNull();
-            _modules.VerifyNoOtherCalls();
-        }
-
-        [Fact]
-        public async Task C6_an_unknown_module_leaves_the_context_empty()
-        {
-            var request = WithContext(null);
-            request.ModuleId = "gone";
-
-            await Service(_modules.Object).ApplyModuleContextAsync(request);
-
-            request.ElementApplicationContext.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task C6_a_failed_lookup_does_not_throw()
-        {
-            _modules.Setup(m => m.GetByIdAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new TimeoutException());
-            var request = WithContext(null);
-            request.ModuleId = "mod-1";
-
-            var act = () => Service(_modules.Object).ApplyModuleContextAsync(request);
-
-            await act.Should().NotThrowAsync();
-            request.ElementApplicationContext.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task C6_without_a_module_repository_nothing_is_resolved()
-        {
-            var request = WithContext(null);
-            request.ModuleId = "mod-1";
-
-            await Service(null).ApplyModuleContextAsync(request);
-
-            request.ElementApplicationContext.Should().BeNull();
         }
     }
 }

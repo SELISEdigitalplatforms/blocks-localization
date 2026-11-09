@@ -109,7 +109,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
                   </FormLabel>
                   <FormControl>
                     <Input
-                      id="moduleName"
                       placeholder={t("NEW_MODULE.NAME_PLACEHOLDER")}
                       className="border-default col-span-3 mt-1 border shadow-none"
                       {...field}

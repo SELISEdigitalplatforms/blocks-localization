@@ -10,7 +10,7 @@ using ModuleModel = Eurolm.DomainService.Services.Module;
 
 namespace XUnitTest.Services.Module
 {
-    /// <summary>SPEC16 H1, H1b, H5, C1, C2, C10: the module description on Save.</summary>
+    /// <summary>SPEC16 H1, H1b, H5, C1, C2, C10 (the module description on Save) and H3, C6, C9 (resolving it for a suggestion).</summary>
     public class ModuleManagementServiceSpec16Tests
     {
         private readonly Mock<IModuleRepository> _repository = new();
@@ -131,6 +131,72 @@ namespace XUnitTest.Services.Module
 
             module.ModuleName.Should().Be("Billing");
             module.Description.Should().BeNull();
+        }
+
+        // ---- H3 / C6 / C9: resolving the description for a suggestion ----
+
+        private static SuggestLanguageRequest Suggestion(string? applicationContext, string? moduleId) => new()
+        {
+            SourceText = "Plan",
+            ElementApplicationContext = applicationContext,
+            ModuleId = moduleId
+        };
+
+        [Fact]
+        public async Task H3_C9_a_blank_application_context_is_filled_from_the_module_in_the_request_tenant()
+        {
+            _repository.Setup(r => r.GetByIdAsync("spec16-modules", "mod-1"))
+                .ReturnsAsync(new BlocksLanguageModule { ItemId = "mod-1", Description = "Subscription plans." });
+            var request = Suggestion("", "mod-1");
+
+            await _service.ApplyModuleContextAsync(request);
+
+            request.ElementApplicationContext.Should().Be("Subscription plans.");
+            _repository.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task H3_a_caller_supplied_application_context_wins_and_skips_the_lookup()
+        {
+            var request = Suggestion("Checkout screens", "mod-1");
+
+            await _service.ApplyModuleContextAsync(request);
+
+            request.ElementApplicationContext.Should().Be("Checkout screens");
+            _repository.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task C6_no_module_id_means_no_lookup()
+        {
+            var request = Suggestion(null, null);
+
+            await _service.ApplyModuleContextAsync(request);
+
+            request.ElementApplicationContext.Should().BeNull();
+            _repository.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task C6_an_unknown_module_leaves_the_context_empty()
+        {
+            var request = Suggestion(null, "gone");
+
+            await _service.ApplyModuleContextAsync(request);
+
+            request.ElementApplicationContext.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task C6_a_failed_lookup_does_not_throw()
+        {
+            _repository.Setup(r => r.GetByIdAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new TimeoutException());
+            var request = Suggestion(null, "mod-1");
+
+            var act = () => _service.ApplyModuleContextAsync(request);
+
+            await act.Should().NotThrowAsync();
+            request.ElementApplicationContext.Should().BeNull();
         }
     }
 }

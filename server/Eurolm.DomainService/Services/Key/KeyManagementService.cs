@@ -1059,10 +1059,11 @@ namespace Eurolm.DomainService.Services
                 var modules = moduleIds.Count == 1
                     ? await _moduleManagementService.GetModulesAsync(projectKey, moduleIds[0])
                     : await _moduleManagementService.GetModulesAsync(projectKey, null);
-                foreach (var module in modules ?? new List<BlocksLanguageModule>())
+                var described = (modules ?? new List<BlocksLanguageModule>())
+                    .Where(module => !string.IsNullOrWhiteSpace(module?.ItemId) && !string.IsNullOrWhiteSpace(module.Description));
+                foreach (var module in described)
                 {
-                    if (!string.IsNullOrWhiteSpace(module?.ItemId) && !string.IsNullOrWhiteSpace(module.Description))
-                        descriptions[module.ItemId] = module.Description;
+                    descriptions[module.ItemId] = module.Description!;
                 }
             }
             catch (Exception ex)

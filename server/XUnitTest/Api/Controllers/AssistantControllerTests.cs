@@ -11,6 +11,7 @@ namespace XUnitTest
     public class AssistantControllerTests
     {
         private readonly Mock<IAssistantService> _assistantServiceMock;
+        private readonly Mock<IModuleManagementService> _moduleManagementServiceMock = new();
         private readonly AssistantController _controller;
 
         public AssistantControllerTests()
@@ -18,7 +19,7 @@ namespace XUnitTest
             _assistantServiceMock = new Mock<IAssistantService>();
 
             // Create a loose mock that allows any method calls without throwing
-            _controller = new AssistantController(_assistantServiceMock.Object)
+            _controller = new AssistantController(_assistantServiceMock.Object, _moduleManagementServiceMock.Object)
             {
                 ControllerContext = new ControllerContext()
             };
@@ -187,7 +188,7 @@ namespace XUnitTest
         {
             var request = new SuggestLanguageRequest { SourceText = "Plan", ModuleId = "mod-1" };
             var calls = new List<string>();
-            _assistantServiceMock.Setup(x => x.ApplyModuleContextAsync(request))
+            _moduleManagementServiceMock.Setup(x => x.ApplyModuleContextAsync(request))
                 .Callback(() => calls.Add("context"))
                 .Returns(Task.CompletedTask);
             _assistantServiceMock.Setup(x => x.SuggestTranslation(request))

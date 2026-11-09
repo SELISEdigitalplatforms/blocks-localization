@@ -27,7 +27,10 @@ import {
   getTargetLanguages,
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
-import { isUnsupportedGlossaryNote, toGlossaryMeta } from "@blocks-localization/utils/glossary-display";
+import {
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
 import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
@@ -86,7 +89,9 @@ export const getGlossaryCoverage = (
   if (isUnsupportedGlossaryNote(glossary) || meta.rule !== "translate" || targets.length === 0) {
     return "—";
   }
-  const translated = targets.filter(({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim());
+  const translated = targets.filter(
+    ({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim(),
+  );
   return t("MODULE_DETAILS.COVERAGE", { translated: translated.length, total: targets.length });
 };
 
@@ -177,7 +182,7 @@ function ModuleDetailsContent({
   module,
   moduleId,
   userMap,
-}: {
+}: Readonly<{
   module: {
     moduleName: string;
     createDate: string | null;
@@ -191,7 +196,7 @@ function ModuleDetailsContent({
     string,
     { firstName: string; lastName: string; email: string; userName: string }
   >;
-}) {
+}>) {
   const { t } = useT("localization.modules");
   const [activeTab, setActiveTab] = useQueryState("moduleTab", {
     defaultValue: "details",
@@ -301,7 +306,9 @@ function ModuleDetailsContent({
                     {module.description}
                   </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t("MODULE_DETAILS.NO_DESCRIPTION")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("MODULE_DETAILS.NO_DESCRIPTION")}
+                  </p>
                 )}
               </div>
             </CardContent>

@@ -110,7 +110,6 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
                   </FormLabel>
                   <FormControl>
                     <Input
-                      id="moduleName"
                       placeholder={t("EDIT_MODULE.NAME_PLACEHOLDER")}
                       className="border-default col-span-3 mt-1 border shadow-none"
                       {...field}

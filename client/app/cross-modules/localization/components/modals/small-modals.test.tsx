@@ -168,6 +168,16 @@ describe("modals/edit-module", () => {
     expect(saveModuleAsync).not.toHaveBeenCalled();
   });
 
+  it("should link each label to its field", () => {
+    render(
+      withDialog(
+        <EditModule module={{ itemId: "m1", moduleName: "UILM" } as never} onClose={vi.fn()} />,
+      ),
+    );
+    expect((screen.getByLabelText("Module name") as HTMLInputElement).value).toBe("UILM");
+    expect(screen.getByLabelText("Description").tagName).toBe("TEXTAREA");
+  });
+
   it("should cancel", () => {
     const onClose = vi.fn();
     render(
