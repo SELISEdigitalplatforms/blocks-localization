@@ -23,6 +23,7 @@ namespace BlocksTemplate.Api.Controllers
         [ProtectedEndPoint($"{Constants.ServiceName}::assistant::getTranslationsuggestion")]
         public async Task<IActionResult> GetTranslationSuggestion([FromBody] SuggestLanguageRequest request)
         {
+            await _assistantService.ApplyModuleContextAsync(request);
             var response = await _assistantService.SuggestTranslation(request);
             return StatusCode((int)HttpStatusCode.OK, new
             {

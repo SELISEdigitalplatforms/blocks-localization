@@ -181,5 +181,22 @@ namespace XUnitTest
 
             json.Should().Be("{\"content\":null,\"appliedTerms\":[],\"glossaryViolations\":[],\"missingGlossaryTranslations\":[]}");
         }
+
+        [Fact]
+        public async Task GetTranslationSuggestion_AppliesModuleContextBeforeSuggesting()
+        {
+            var request = new SuggestLanguageRequest { SourceText = "Plan", ModuleId = "mod-1" };
+            var calls = new List<string>();
+            _assistantServiceMock.Setup(x => x.ApplyModuleContextAsync(request))
+                .Callback(() => calls.Add("context"))
+                .Returns(Task.CompletedTask);
+            _assistantServiceMock.Setup(x => x.SuggestTranslation(request))
+                .Callback(() => calls.Add("suggest"))
+                .ReturnsAsync(new SuggestionResult { Content = "Tarif" });
+
+            await _controller.GetTranslationSuggestion(request);
+
+            calls.Should().Equal("context", "suggest");
+        }
     }
 }

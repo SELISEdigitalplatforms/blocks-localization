@@ -23,6 +23,10 @@ import { IModuleGets } from "@blocks-localization/models/language";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import {
+  ModuleDescriptionField,
+  moduleDescriptionSchema,
+} from "@blocks-localization/components/modals/module-description-field/module-description-field";
 
 interface EditModuleProps {
   module: IModuleGets;
@@ -31,6 +35,7 @@ interface EditModuleProps {
 
 interface FormValues {
   moduleName: string;
+  description: string;
 }
 
 const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
@@ -40,12 +45,14 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       .string()
       .min(3, { message: t("EDIT_MODULE.NAME_TOO_SHORT") })
       .max(100, { message: t("EDIT_MODULE.NAME_TOO_LONG") }),
+    description: moduleDescriptionSchema(t),
   });
   const { isPending, mutateAsync } = useSaveLanguageModule();
 
   const form = useForm<FormValues>({
     defaultValues: {
       moduleName: module.moduleName,
+      description: module.description ?? "",
     },
     resolver: zodResolver(schema),
   });
@@ -55,6 +62,8 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
       const payload = {
         itemId: module.itemId,
         moduleName: data.moduleName,
+        // Always sent: "" clears the description, while an omitted field would keep it.
+        description: data.description,
       };
       const res = await mutateAsync(payload);
       if (res?.success) {
@@ -90,7 +99,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
           <DialogHeader className="mb-4">
             <DialogTitle>{t("EDIT_MODULE.TITLE")}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-2">
+          <div className="grid gap-4">
             <FormField
               name="moduleName"
               control={form.control}
@@ -111,6 +120,7 @@ const EditModule: React.FC<EditModuleProps> = ({ module, onClose }) => {
                 </FormItem>
               )}
             />
+            <ModuleDescriptionField control={form.control} name="description" />
           </div>
           <DialogFooter className="mt-6">
             <Button

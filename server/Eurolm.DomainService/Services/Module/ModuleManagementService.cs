@@ -357,6 +357,11 @@ namespace Eurolm.DomainService.Services
             }
 
             repoModule.ModuleName = module.ModuleName;
+            if (module.Description != null)
+            {
+                var description = module.Description.Trim();
+                repoModule.Description = description.Length > 0 ? description : null;
+            }
             repoModule.LastUpdateDate = DateTime.UtcNow;
             repoModule.LastUpdatedBy = BlocksContext.GetContext().UserId;
 

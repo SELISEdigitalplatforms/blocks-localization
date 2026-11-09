@@ -73,6 +73,27 @@ describe("components/modals/new-module", () => {
     });
   });
 
+  describe("SPEC16 H7 — Optional description", () => {
+    it("shows the description field with its hint and sends the trimmed text", async () => {
+      const user = userEvent.setup();
+      saveModuleAsync.mockResolvedValue({ success: true });
+      render(withDialog(<NewModule onClose={vi.fn()} />));
+
+      expect(screen.getByText(/existing translations are not updated/)).toBeTruthy();
+      await act(async () => {
+        await user.type(screen.getByPlaceholderText("Enter Module name"), "Billing");
+        await user.type(screen.getByLabelText("Description"), "  Subscription plans  ");
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      });
+
+      await waitFor(() =>
+        expect(saveModuleAsync).toHaveBeenCalledWith({ moduleName: "Billing", description: "Subscription plans" }),
+      );
+    });
+  });
+
   describe("H3 — Cancel closes without API call", () => {
     it("closes dialog without calling API on Cancel", async () => {
       const user = userEvent.setup();

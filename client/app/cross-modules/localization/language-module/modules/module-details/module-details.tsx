@@ -184,6 +184,7 @@ function ModuleDetailsContent({
     lastUpdateDate: string | null;
     createdBy: string | null;
     lastUpdatedBy: string | null;
+    description?: string | null;
   };
   moduleId: string;
   userMap?: Record<
@@ -290,6 +291,18 @@ function ModuleDetailsContent({
                     {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
                 </div>
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  {t("MODULE_DETAILS.DESCRIPTION")}
+                </h3>
+                {hasDisplayValue(module.description) ? (
+                  <p className="whitespace-pre-line text-base font-normal text-high-emphasis">
+                    {module.description}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("MODULE_DETAILS.NO_DESCRIPTION")}</p>
+                )}
               </div>
             </CardContent>
           </Card>
