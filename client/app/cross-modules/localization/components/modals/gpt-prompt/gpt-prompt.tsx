@@ -111,8 +111,10 @@ const GptPrompt: React.FC<{
               className="h-28 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <div className="border-0 bg-background px-3 py-2 text-sm text-muted-foreground">
+              {/* eslint-disable no-restricted-syntax -- the exact prompt suffix AssistantService sends to the AI, shown verbatim; translating it would misstate the prompt */}
               Translate the following from {"{CurrentLanguage}"} to {"{DestinationLanguage}"}:&apos;
               {"{SourceText}"}&apos;.
+              {/* eslint-enable no-restricted-syntax */}
             </div>
           </div>
           {/* <div className="mt-2 flex w-full justify-end">

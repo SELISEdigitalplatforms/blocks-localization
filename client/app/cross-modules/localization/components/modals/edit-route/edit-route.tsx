@@ -165,6 +165,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
             <p>
               {withNode(
                 t("EDIT_ROUTE.ADD_AFTER_HOSTNAME", { hostname: MARKER }),
+                // eslint-disable-next-line no-restricted-syntax -- literal URL segment of the route syntax, not prose
                 <span className="font-semibold text-foreground">hostname/</span>,
               )}
             </p>
@@ -176,6 +177,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
             </p>
             <p className="text-[11px]">
               {t("EDIT_ROUTE.EXAMPLE")}{" "}
+              {/* eslint-disable-next-line no-restricted-syntax -- example route path in route syntax, not prose */}
               <span className="font-mono">release-note/{`{{ dynamic_routing }}`}</span>
             </p>
           </div>

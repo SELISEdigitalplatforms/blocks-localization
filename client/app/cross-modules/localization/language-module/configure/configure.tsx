@@ -571,6 +571,7 @@ function Configure() {
                         {t("CONFIGURE.URL_LABEL")} <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
+                        {/* eslint-disable-next-line no-restricted-syntax -- example URL, not prose */}
                         <Input placeholder="https://example.com/webhook" {...field} />
                       </FormControl>
                       <FormMessage />
@@ -586,6 +587,7 @@ function Configure() {
                         {t("CONFIGURE.CONTENT_TYPE_LABEL")} <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
+                        {/* eslint-disable-next-line no-restricted-syntax -- MIME type, not prose */}
                         <Input placeholder="application/json" {...field} />
                       </FormControl>
                       <FormMessage />
@@ -602,6 +604,7 @@ function Configure() {
                         <span className="text-error">*</span>
                       </FormLabel>
                       <FormControl>
+                        {/* eslint-disable-next-line no-restricted-syntax -- HTTP header name, not prose */}
                         <Input placeholder="X-Webhook-Secret" {...field} autoComplete="off" />
                       </FormControl>
                       <FormMessage />
