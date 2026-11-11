@@ -15,7 +15,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
     /// </summary>
     internal sealed class UilmContentMigration
     {
-        private const char ByteOrderMark = '﻿';
+        private const char ByteOrderMark = '\uFEFF';
 
         private readonly IKeyRepository _keyRepository;
         private readonly IUilmStoredFileRepository _storedFiles;
@@ -63,10 +63,10 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 async (group, _) => outcomes.Add(await BackfillGroupAsync(group)));
 
             var counts = await _keyRepository.CountUilmFilesAsync();
-            _logger.LogInformation("UilmBackfillSummary: tenant {TenantId}: {ConvertedCount} converted, {FailedCount} failed, {SupersededCount} superseded by a publish; "
+            _logger.LogInformation("UilmBackfillSummary: tenant {TenantId}: {ConvertedCount} converted, {FailedCount} failed, {SupersededCount} superseded by a publish, {SkippedCount} skipped; "
                 + "{LegacyRows} legacy rows remaining, {PointersWithContent} pointer rows with content, {PointersWithoutContent} pointer rows without content",
                 TenantId(), outcomes.Count(o => o == BackfillOutcome.Converted), outcomes.Count(o => o == BackfillOutcome.Failed),
-                outcomes.Count(o => o == BackfillOutcome.Superseded), counts.LegacyRows, counts.PointersWithContent, counts.PointersWithoutContent);
+                outcomes.Count(o => o == BackfillOutcome.Superseded), outcomes.Count(o => o == BackfillOutcome.Skipped), counts.LegacyRows, counts.PointersWithContent, counts.PointersWithoutContent);
         }
 
         private async Task<BackfillOutcome> BackfillGroupAsync(UilmFileGroup group)
@@ -83,6 +83,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 if (!string.IsNullOrEmpty(served.FileId) && await _storedFiles.ExistsAsync(served.FileId))
                 {
                     // Already served from a tenant file: only rows an interrupted publish or backfill left behind remain.
+                    // A run that stopped before marking its file Live left it Uploading; it is in use, so it is Live.
+                    await _storedFiles.MarkLiveAsync([served.FileId], UilmStoredFileState.Uploading);
                     await _keyRepository.DeleteUilmFileDuplicatesAsync(group.ModuleName, group.Language, served.Id);
                     return BackfillOutcome.Skipped;
                 }
@@ -176,7 +178,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
         {
             var removed = 0;
             var kept = 0;
-            await ForEachLiveRowAsync(withContent: true, async row =>
+            await ForEachLiveRowAsync(withContent: true, StopWhenContentIsKeptAsync, async row =>
             {
                 var failure = await VerifyAsync(row);
                 if (failure != null)
@@ -213,7 +215,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         /// <summary>
         /// Sets <c>KeepContent</c> first, so publishes write content again at once (C9), then writes back hash-verified
-        /// content for every pointer row without it. Mismatching (C8) or unreadable files leave that row's content null.
+        /// content for every pointer row without it whose file is <c>Live</c> in the ledger. Mismatching (C8) or unreadable
+        /// files leave that row's content null.
         /// </summary>
         public async Task RestoreContentAsync()
         {
@@ -221,7 +224,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
             var restored = 0;
             var mismatched = 0;
             var failed = 0;
-            await ForEachLiveRowAsync(withContent: false, async row =>
+            await ForEachLiveRowAsync(withContent: false, () => Task.FromResult(false), async row =>
             {
                 var download = await DownloadAsync(row.Url);
                 if (download.Bytes == null)
@@ -247,11 +250,17 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 TenantId(), restored, mismatched, failed);
         }
 
-        /// <summary>Pages through the rows with a ledger-<c>Live</c> file, a few downloads at a time.</summary>
-        private async Task ForEachLiveRowAsync(bool withContent, Func<UilmFile, Task> action)
+        /// <summary>A restore started meanwhile set <c>KeepContent</c> again: removal stops before its next page.</summary>
+        private async Task<bool> StopWhenContentIsKeptAsync() => (await _settings.GetModeAsync()).KeepContent;
+
+        /// <summary>
+        /// Pages through the rows with a ledger-<c>Live</c> file, a few downloads at a time, until <paramref name="stop"/>
+        /// is true before a page. One row's error is logged and the others continue.
+        /// </summary>
+        private async Task ForEachLiveRowAsync(bool withContent, Func<Task<bool>> stop, Func<UilmFile, Task> action)
         {
             string? afterId = null;
-            while (true)
+            while (!await stop())
             {
                 var rows = await _keyRepository.GetUilmFilesWithLiveFileAsync(withContent, afterId, _options.ContentPageSize);
                 if (rows.Count == 0)
@@ -259,12 +268,25 @@ namespace Eurolm.DomainService.Services.UilmStorage
                     return;
                 }
                 await Parallel.ForEachAsync(rows, new ParallelOptions { MaxDegreeOfParallelism = _options.UploadParallelism },
-                    async (row, _) => await action(row));
+                    async (row, _) => await RunForRowAsync(row, action));
                 if (rows.Count < _options.ContentPageSize)
                 {
                     return;
                 }
                 afterId = rows[^1].Id;
+            }
+        }
+
+        private async Task RunForRowAsync(UilmFile row, Func<UilmFile, Task> action)
+        {
+            try
+            {
+                await action(row);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("UilmContentRowFailed: module {ModuleName} language {Language} file {FileId}: {Reason}",
+                    row.ModuleName, row.Language, row.FileId, ex.GetType().Name);
             }
         }
 

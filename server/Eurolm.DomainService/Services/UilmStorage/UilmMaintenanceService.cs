@@ -137,18 +137,11 @@ namespace Eurolm.DomainService.Services.UilmStorage
             var mode = await _settings.GetModeAsync();
             if (mode.PublishToStorage)
             {
-                try
+                // A failed step leaves the rows as they are and the next run continues; the later steps still run.
+                await RunStepAsync("backfill", _contentMigration.BackfillAsync);
+                if (!mode.KeepContent)
                 {
-                    await _contentMigration.BackfillAsync();
-                    if (!mode.KeepContent)
-                    {
-                        await _contentMigration.RemoveContentAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Rows stay as they are and the next run continues; the due deletes and the reconcile still run.
-                    _logger.LogError(ex, "UILM backfill or content removal failed for tenant {TenantId}", BlocksContext.GetContext()?.TenantId);
+                    await RunStepAsync("content removal", _contentMigration.RemoveContentAsync);
                 }
             }
 
@@ -172,6 +165,18 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 await ReconcileAsync(now);
             }
             return deleted;
+        }
+
+        private async Task RunStepAsync(string step, Func<Task> run)
+        {
+            try
+            {
+                await run();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UILM {Step} failed for tenant {TenantId}", step, BlocksContext.GetContext()?.TenantId);
+            }
         }
 
         private async Task<bool> DeleteDueFileAsync(UilmStoredFile file, DateTime now)

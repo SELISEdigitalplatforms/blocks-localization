@@ -20,6 +20,9 @@ namespace Eurolm.DomainService.Repositories
         private const string KeyNameField = "KeyName";
         private const string CreateDateField = "CreateDate";
         private const string MatchStage = "$match";
+        private const string GroupStage = "$group";
+        private const string SortStage = "$sort";
+        private const string LimitStage = "$limit";
 
         public const int DefaultKeyPageSize = 10;
         public const int MaxKeyPageSize = 1000;
@@ -274,7 +277,7 @@ namespace Eurolm.DomainService.Repositories
                 { "ModuleId", new BsonDocument("$type", "string") },
                 { KeyNameField, new BsonDocument("$type", "string") },
             }),
-            new BsonDocument("$group", new BsonDocument
+            new BsonDocument(GroupStage, new BsonDocument
             {
                 { "_id", new BsonDocument { { "ModuleId", "$ModuleId" }, { KeyNameField, "$KeyName" } } },
                 { "count", new BsonDocument("$sum", 1) },
@@ -282,13 +285,13 @@ namespace Eurolm.DomainService.Repositories
             }),
             new BsonDocument(MatchStage, new BsonDocument("count", new BsonDocument("$gt", 1))),
             new BsonDocument("$unwind", "$members"),
-            new BsonDocument("$sort", new BsonDocument
+            new BsonDocument(SortStage, new BsonDocument
             {
                 { "_id.KeyName", 1 },
                 { "_id.ModuleId", 1 },
                 { "members.created", 1 },
             }),
-            new BsonDocument("$limit", limit),
+            new BsonDocument(LimitStage, limit),
             new BsonDocument("$project", new BsonDocument("_id", "$members.id")),
         };
 
@@ -751,8 +754,7 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<List<UilmFileGroup>> GetUilmBackfillGroupsAsync(int limit)
         {
-            var groups = await UilmFiles().Aggregate(PipelineDefinition<UilmFile, BsonDocument>.Create(new[]
-            {
+            var pipeline = PipelineDefinition<UilmFile, BsonDocument>.Create(
                 new BsonDocument(MatchStage, new BsonDocument(nameof(UilmFile.Content), new BsonDocument(NotEqual, BsonNull.Value))),
                 // Content isn't needed past the filter.
                 new BsonDocument(ProjectStage, new BsonDocument
@@ -761,13 +763,14 @@ namespace Eurolm.DomainService.Repositories
                 }),
                 LedgerLookup,
                 new BsonDocument(MatchStage, new BsonDocument(LedgerField, new BsonDocument("$size", 0))),
-                new BsonDocument("$group", new BsonDocument(IdField, new BsonDocument
+                new BsonDocument(GroupStage, new BsonDocument(IdField, new BsonDocument
                 {
                     { GroupModule, "$" + nameof(UilmFile.ModuleName) }, { GroupLanguage, "$" + nameof(UilmFile.Language) }
                 })),
-                new BsonDocument("$sort", new BsonDocument(IdField, 1)),
-                new BsonDocument("$limit", limit)
-            })).ToListAsync();
+                new BsonDocument(SortStage, new BsonDocument(IdField, 1)),
+                new BsonDocument(LimitStage, limit)
+            );
+            var groups = await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
             return groups
                 .Select(g => g[IdField].AsBsonDocument)
                 .Where(id => id.GetValue(GroupModule, BsonNull.Value).IsString && id.GetValue(GroupLanguage, BsonNull.Value).IsString)
@@ -797,31 +800,42 @@ namespace Eurolm.DomainService.Repositories
             try
             {
                 await collection.ReplaceOneAsync(replaceable, pointer, new ReplaceOptions { IsUpsert = true });
-                return true;
             }
             catch (MongoException ex) when (IsDuplicateKeyError(ex))
             {
                 return false;
             }
+
+            // The served row must still be there: a publish that dropped its language, or a copy that replaced the
+            // module's rows, deleted it during the upload. Then the pointer would serve stale content, so it goes.
+            var stillServed = Builders<UilmFile>.Filter.Eq(f => f.Id, served.Id)
+                & Builders<UilmFile>.Filter.Eq(f => f.Version, served.Version)
+                & Builders<UilmFile>.Filter.Eq(f => f.FileId, served.FileId);
+            if (await collection.CountDocumentsAsync(stillServed, new CountOptions { Limit = 1 }) > 0)
+            {
+                return true;
+            }
+            await collection.DeleteOneAsync(byPointerId & Builders<UilmFile>.Filter.Eq(f => f.FileId, pointer.FileId));
+            return false;
         }
 
         public async Task<UilmFileCounts> CountUilmFilesAsync()
         {
             var content = new BsonDocument(NotEqual, new BsonArray { new BsonDocument("$ifNull", new BsonArray { "$" + nameof(UilmFile.Content), BsonNull.Value }), BsonNull.Value });
-            var buckets = await UilmFiles().Aggregate(PipelineDefinition<UilmFile, BsonDocument>.Create(new[]
-            {
+            var pipeline = PipelineDefinition<UilmFile, BsonDocument>.Create(
                 new BsonDocument(ProjectStage, new BsonDocument
                 {
                     { nameof(UilmFile.FileId), 1 },
                     { HasContentKey, content }
                 }),
                 LedgerLookup,
-                new BsonDocument("$group", new BsonDocument
+                new BsonDocument(GroupStage, new BsonDocument
                 {
                     { IdField, new BsonDocument { { HasFileKey, HasLedgerFile() }, { HasContentKey, "$" + HasContentKey } } },
                     { "n", new BsonDocument("$sum", 1) }
                 })
-            })).ToListAsync();
+            );
+            var buckets = await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
 
             long legacy = 0;
             long withContent = 0;
@@ -846,7 +860,7 @@ namespace Eurolm.DomainService.Repositories
             return new UilmFileCounts(legacy, withContent, withoutContent);
         }
 
-        public Task<List<UilmFile>> GetUilmFilesWithLiveFileAsync(bool withContent, string? afterId, int limit)
+        public async Task<List<UilmFile>> GetUilmFilesWithLiveFileAsync(bool withContent, string? afterId, int limit)
         {
             var match = new BsonDocument
             {
@@ -858,16 +872,16 @@ namespace Eurolm.DomainService.Repositories
             {
                 match.Add(IdField, new BsonDocument("$gt", afterId));
             }
-            return UilmFiles().Aggregate(PipelineDefinition<UilmFile, UilmFile>.Create(new[]
-            {
+            var pipeline = PipelineDefinition<UilmFile, UilmFile>.Create(
                 new BsonDocument(MatchStage, match),
-                new BsonDocument("$sort", new BsonDocument(IdField, 1)),
+                new BsonDocument(SortStage, new BsonDocument(IdField, 1)),
                 new BsonDocument(ProjectStage, new BsonDocument(nameof(UilmFile.Content), 0)),
                 LedgerLookup,
                 new BsonDocument(MatchStage, new BsonDocument(LedgerField + ".State", UilmStoredFileState.Live)),
-                new BsonDocument("$limit", limit),
+                new BsonDocument(LimitStage, limit),
                 new BsonDocument(ProjectStage, new BsonDocument(LedgerField, 0))
-            })).ToListAsync();
+            );
+            return await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
         }
 
         private static FilterDefinition<UilmFile> SameFile(UilmFile row) =>

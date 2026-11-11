@@ -132,7 +132,46 @@ namespace XUnitTest.Services.UilmStorage
             await Service().RunAsync(Maintenance);
 
             _order.Should().Equal("deletes");
-            _logger.LoggedMessages().Should().Contain("UILM backfill or content removal failed for tenant t1");
+            _logger.LoggedMessages().Should().Contain("UILM backfill failed for tenant t1");
+        }
+
+        [Fact]
+        public async Task ARemovalError_IsLogged_AndTheDeletesStillRun()
+        {
+            _settings.Setup(s => s.GetModeAsync()).ReturnsAsync(new UilmStorageMode(true, false));
+            _keys.Setup(k => k.GetUilmFilesWithLiveFileAsync(true, null, It.IsAny<int>())).ThrowsAsync(new TimeoutException());
+
+            await Service().RunAsync(Maintenance);
+
+            _order.Should().Equal("backfill", "deletes");
+            _logger.LoggedMessages().Should().Contain("UILM content removal failed for tenant t1");
+        }
+
+        [Fact]
+        public async Task Removal_StopsWhenARestoreSetKeepContentMeanwhile()
+        {
+            _settings.SetupSequence(s => s.GetModeAsync())
+                .ReturnsAsync(new UilmStorageMode(true, false))
+                .ReturnsAsync(new UilmStorageMode(true, true));
+
+            await Service().RunAsync(Maintenance);
+
+            _keys.Verify(k => k.GetUilmFilesWithLiveFileAsync(It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task OneRowsError_IsLogged_AndTheOtherRowsContinue_C8()
+        {
+            var body = Encoding.UTF8.GetBytes("{}");
+            LiveRows(false, Pointer("a", hash: UilmFilePublisher.Hash(body)), Pointer("b", hash: UilmFilePublisher.Hash(body)));
+            _http.Respond = _ => Task.FromResult(StubStorageHttp.Ok(body));
+            _keys.Setup(k => k.RestoreUilmFileContentAsync(It.Is<UilmFile>(r => r.Id == "a"), It.IsAny<string>())).ThrowsAsync(new TimeoutException());
+            _keys.Setup(k => k.RestoreUilmFileContentAsync(It.Is<UilmFile>(r => r.Id == "b"), It.IsAny<string>())).ReturnsAsync(true);
+
+            await Service().RunAsync(Restore);
+
+            _logger.LoggedMessages().Should().Contain("UilmContentRowFailed: module app-login language a file file-a: TimeoutException");
+            _logger.LoggedMessages().Should().Contain(m => m.Contains("content restored on 1 rows"));
         }
 
         [Fact]

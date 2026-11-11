@@ -332,6 +332,20 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task ALegacyRowDeletedDuringTheUpload_GetsNoPointer_AndTheFileIsRetired_Q2()
+        {
+            // For example a publish that dropped the language, or a blocks-os copy that replaced the module's rows.
+            await UilmFiles.InsertOneAsync(Legacy("legacy", "en-US", "{\"title\":\"Old\"}"));
+            _storage.BeforeFirstPut = () => UilmFiles.DeleteOneAsync(f => f.Id == "legacy");
+
+            await Maintenance().RunAsync(RunMaintenance);
+
+            (await UilmFiles.CountDocumentsAsync(FilterDefinition<UilmFile>.Empty)).Should().Be(0);
+            (await StoredFiles.Find(FilterDefinition<UilmStoredFile>.Empty).SingleAsync()).State.Should().Be(UilmStoredFileState.Retired);
+            _logger.LoggedMessages().Should().Contain(m => m.Contains("1 superseded by a publish"));
+        }
+
+        [Fact]
         public async Task AFailedUpload_LeavesTheRow_LogsUilmBackfillFailed_AndTheNextRunConverts_C2()
         {
             await UilmFiles.InsertOneAsync(Legacy("legacy", "en-US", "{}"));
@@ -342,6 +356,7 @@ namespace XUnitTest.Repositories
 
             (await Row("legacy")).FileId.Should().BeNull();
             _logger.LoggedMessages().Should().Contain("UilmBackfillFailed: module app-login language en-US: HTTP 503");
+            _logger.LoggedMessages().Should().Contain(m => m.Contains("0 converted, 1 failed") && m.Contains("1 legacy rows remaining"));
             (await StoredFiles.Find(FilterDefinition<UilmStoredFile>.Empty).SingleAsync()).State.Should().Be(UilmStoredFileState.Retired);
 
             _storage.FailPuts = false;
@@ -466,7 +481,8 @@ namespace XUnitTest.Repositories
         public async Task AnInterruptedConversion_IsFinished_AndItsOrphanUploadRetiredByReconcile_C7()
         {
             // A run that stopped after the pointer write left a duplicate, and one that stopped after the upload an orphan.
-            await LiveFileAsync("converted");
+            await StoredFiles.InsertOneAsync(new UilmStoredFile { Id = "converted", ModuleName = Module, Language = "en-US",
+                State = UilmStoredFileState.Uploading, CreatedAt = Now.AddHours(-2) });
             await UilmFiles.InsertManyAsync(new[]
             {
                 new UilmFile { Id = "app-login|en-US", ModuleName = Module, Language = "en-US", Content = "{}", FileId = "converted", ContentHash = "h", Version = 0 },
@@ -479,6 +495,8 @@ namespace XUnitTest.Repositories
 
             (await UilmFiles.Find(FilterDefinition<UilmFile>.Empty).Project(f => f.Id).ToListAsync()).Should().Equal("app-login|en-US");
             (await StoredFiles.Find(f => f.Id == "orphan").SingleAsync()).State.Should().Be(UilmStoredFileState.Retired);
+            (await StoredFiles.Find(f => f.Id == "converted").SingleAsync()).State.Should().Be(UilmStoredFileState.Live,
+                "the pointer uses it, so the stopped run's Uploading state is finished");
             _storage.Blobs.Should().BeEmpty("nothing was uploaded");
         }
 

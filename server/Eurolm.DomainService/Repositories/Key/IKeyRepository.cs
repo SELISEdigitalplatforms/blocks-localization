@@ -56,7 +56,7 @@ namespace Eurolm.DomainService.Repositories
         /// <summary>
         /// Writes the backfill pointer only while <paramref name="served"/> is still what the reader serves: the same
         /// row with the same <c>Version</c> and <c>FileId</c>, or, for a legacy row with another id, while no row with
-        /// the pointer's id has a version. False when a publish or another run changed the group meanwhile.
+        /// the pointer's id has a version or a file. False when a publish or another run changed the group meanwhile.
         /// </summary>
         Task<bool> ReplaceUilmFileFromBackfillAsync(UilmFile served, UilmFile pointer);
         /// <summary>The tenant's rows by state (#349 H10, H12).</summary>
