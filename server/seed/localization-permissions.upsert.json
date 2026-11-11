@@ -220,7 +220,7 @@
         "Tags" : [],
         "Name" : "Run UILM Maintenance",
         "Type" : "Endpoint",
-        "Description" : "Queue a UILM Storage maintenance run for the caller's project. Covers: POST /Key/RunUilmMaintenance. Processed asynchronously: permanently deletes published UILM files that were replaced more than 24 hours ago and reconciles the file ledger.",
+        "Description" : "Queue a UILM Storage maintenance run for the caller's tenant. Covers: POST /Key/RunUilmMaintenance. Processed asynchronously: permanently deletes published UILM files that were replaced more than 24 hours ago and reconciles the file ledger.",
         "Resource" : "blocks-localization::key::runuilmmaintenance",
         "ResourceGroup" : "localization",
         "IsBuiltIn" : true,

@@ -11,8 +11,9 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         /// <summary>
         /// Publishes one module's files (one per language, plus the key file). With the switch on, unchanged files
-        /// are skipped and the module's pointers switch only when every other upload succeeded; a failed module keeps
-        /// its existing pointers (<see cref="UilmModulePublishResult.Failed"/>). Database errors are thrown.
+        /// are skipped (not uploaded) and the module's pointers switch only when every upload of the module
+        /// succeeded; a failed module keeps its existing pointers (<see cref="UilmModulePublishResult.Failed"/>).
+        /// Database errors are thrown.
         /// </summary>
         Task<UilmModulePublishResult> PublishModuleAsync(UilmPublishSession session, string moduleName, IReadOnlyList<UilmFile> files);
     }

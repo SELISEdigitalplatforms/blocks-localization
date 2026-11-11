@@ -143,7 +143,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 {
                     break;
                 }
-                if (await DeleteDueFileAsync(file))
+                if (await DeleteDueFileAsync(file, now))
                 {
                     deleted++;
                 }
@@ -156,7 +156,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
             return deleted;
         }
 
-        private async Task<bool> DeleteDueFileAsync(UilmStoredFile file)
+        private async Task<bool> DeleteDueFileAsync(UilmStoredFile file, DateTime now)
         {
             // A pointer switched back to this file (or a race with a publish): it is in use, so it stays.
             if ((await _keyRepository.GetReferencedUilmFileIdsAsync([file.Id])).Count > 0)
@@ -171,7 +171,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 return true;
             }
 
-            var attempts = await _storedFiles.RecordFailedDeleteAsync(file.Id);
+            var attempts = await _storedFiles.RecordFailedDeleteAsync(file.Id, now);
             if (attempts >= _options.StuckDeleteAttempts)
             {
                 _logger.LogError("UilmFileDeleteStuck: file {FileId} of module {ModuleName} language {Language} failed to delete {Attempts} times",

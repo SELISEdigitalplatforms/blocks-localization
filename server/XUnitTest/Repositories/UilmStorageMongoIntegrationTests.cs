@@ -192,10 +192,16 @@ namespace XUnitTest.Repositories
 
             await ledger.RetireAsync(new[] { "f1" }, Now);
             (await ledger.ClaimDueAsync(Now, Now.AddMinutes(15))).Should().NotBeNull();
-            (await ledger.RecordFailedDeleteAsync("f1")).Should().Be(1);
-            (await ledger.RecordFailedDeleteAsync("f1")).Should().Be(2);
+            (await ledger.RecordFailedDeleteAsync("f1", Now)).Should().Be(1);
+            (await ledger.RecordFailedDeleteAsync("f1", Now)).Should().Be(2);
             var row = await StoredFiles.Find(f => f.Id == "f1").SingleAsync();
-            row.LeaseUntil.Should().BeNull("a failed delete releases the lease");
+            row.LeaseUntil.Should().Be(Now, "a failed delete ends the lease at the run's start");
+            (await ledger.ClaimDueAsync(Now, Now.AddMinutes(15))).Should().BeNull("the failing run doesn't claim it again");
+            (await ledger.ClaimDueAsync(Now.AddHours(1), Now.AddHours(1).AddMinutes(15))).Should().NotBeNull("the next run does");
+            await ledger.RetireAsync(new[] { "f1" }, Now);
+            await ledger.MarkLiveAsync(new[] { "f1" }, UilmStoredFileState.Uploading);
+            (await StoredFiles.Find(f => f.Id == "f1").SingleAsync()).State.Should().Be(UilmStoredFileState.Retired,
+                "a publish never revives a file that was retired meanwhile");
 
             await ledger.MarkLiveAsync(new[] { "f1" });
             row = await StoredFiles.Find(f => f.Id == "f1").SingleAsync();
@@ -206,7 +212,7 @@ namespace XUnitTest.Repositories
             (await ledger.RetireFromStateAsync(new[] { "f1" }, UilmStoredFileState.Live, Now)).Should().Be(1);
             await ledger.RemoveAsync("f1");
             (await ledger.ExistsAsync("f1")).Should().BeFalse();
-            (await ledger.RecordFailedDeleteAsync("f1")).Should().Be(0);
+            (await ledger.RecordFailedDeleteAsync("f1", Now)).Should().Be(0);
         }
 
         [Fact]
@@ -381,6 +387,28 @@ namespace XUnitTest.Repositories
             storage.Deleted.Should().Equal(oldFileId);
             (await StoredFiles.CountDocumentsAsync(f => f.Id == oldFileId)).Should().Be(0);
             (await StoredFiles.CountDocumentsAsync(f => f.State == UilmStoredFileState.Live)).Should().Be(2);
+        }
+
+        [Fact]
+        public async Task FailingDelete_IsAttemptedOncePerRun()
+        {
+            var storage = new FakeStorage();
+            storage.Driver.Setup(d => d.DeleteFileAsync(It.IsAny<DeleteFileRequest>()))
+                .ReturnsAsync(new BaseResponse { IsSuccess = false, Errors = new Dictionary<string, string> { ["access_denied"] = "no" } });
+            var (_, _, maintenance) = Pipeline(storage);
+            await StoredFiles.InsertManyAsync(new[]
+            {
+                new UilmStoredFile { Id = "stuck", State = UilmStoredFileState.Retired, DeleteAfter = Now.AddHours(-2) },
+                new UilmStoredFile { Id = "next", State = UilmStoredFileState.Retired, DeleteAfter = Now.AddHours(-1) }
+            });
+
+            await maintenance.RunAsync("{\"task\":\"uilm-maintenance\"}");
+            _time.Advance(TimeSpan.FromHours(1));
+            await maintenance.RunAsync("{\"task\":\"uilm-maintenance\"}");
+
+            storage.Driver.Verify(d => d.DeleteFileAsync(It.Is<DeleteFileRequest>(r => r.FileId == "stuck")), Times.Exactly(2));
+            storage.Driver.Verify(d => d.DeleteFileAsync(It.Is<DeleteFileRequest>(r => r.FileId == "next")), Times.Exactly(2));
+            (await StoredFiles.Find(f => f.Id == "stuck").SingleAsync()).Attempts.Should().Be(2);
         }
 
         [Fact]

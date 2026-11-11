@@ -60,6 +60,7 @@ namespace XUnitTest.Services.UilmStorage
                     _rows.RemoveAll(removed.Contains);
                     return removed;
                 });
+            _ledger.Setup(l => l.ExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _ledger.Setup(l => l.InsertAsync(It.IsAny<UilmStoredFile>()))
                 .Callback((UilmStoredFile f) => { lock (_order) _order.Add("ledger:" + f.Id); })
                 .Returns(Task.CompletedTask);
@@ -118,7 +119,7 @@ namespace XUnitTest.Services.UilmStorage
             pointer.Content.Should().Be("{\"a\":\"A\"}", "Content is still written in this phase (dual write)");
             _rows.Should().NotContain(legacy, "the legacy duplicate is deleted once the pointer row exists (H15)");
             _order.IndexOf("replace:en-US").Should().BeLessThan(_order.IndexOf("dedupe:en-US"));
-            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 2)), Times.Once);
+            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 2), UilmStoredFileState.Uploading), Times.Once);
         }
 
         [Fact]
@@ -204,6 +205,18 @@ namespace XUnitTest.Services.UilmStorage
                 : Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created));
 
             (await _publisher.PublishModuleAsync(On(8), Module, Files(("en-US", "{}")))).UploadedFiles.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task UnchangedForeignPointer_IsUploadedAgain_WithoutRequestingItsUrl_C19()
+        {
+            Published("en-US", "{}", 7, "copied-file");
+            _ledger.Setup(l => l.ExistsAsync("copied-file")).ReturnsAsync(false);
+
+            var result = await _publisher.PublishModuleAsync(On(8), Module, Files(("en-US", "{}")));
+
+            result.Should().Be(new UilmModulePublishResult(1, 0, false));
+            Methods.Should().Equal(HttpMethod.Put);
         }
 
         [Fact]
@@ -357,7 +370,7 @@ namespace XUnitTest.Services.UilmStorage
             _rows.Should().ContainSingle().Which.Should().BeSameAs(newer);
             var loser = _presigned.Single().ItemId!;
             _ledger.Verify(l => l.RetireAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { loser })), Now), Times.Once);
-            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0)), Times.Once);
+            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), UilmStoredFileState.Uploading), Times.Once);
             _keys.Verify(k => k.DeleteUilmFileDuplicatesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 

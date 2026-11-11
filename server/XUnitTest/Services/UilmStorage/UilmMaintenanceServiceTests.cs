@@ -159,12 +159,12 @@ namespace XUnitTest.Services.UilmStorage
             _due.Enqueue(Due("f1"));
             _driver.Setup(d => d.DeleteFileAsync(It.IsAny<DeleteFileRequest>()))
                 .ReturnsAsync(new BaseResponse { IsSuccess = false, Errors = new Dictionary<string, string> { ["access_denied"] = "no" } });
-            _ledger.Setup(l => l.RecordFailedDeleteAsync("f1")).ReturnsAsync(attempts);
+            _ledger.Setup(l => l.RecordFailedDeleteAsync("f1", It.IsAny<DateTime>())).ReturnsAsync(attempts);
 
             await _service.RunAsync("{\"task\":\"uilm-maintenance\",\"tenantId\":\"t1\"}");
 
             _ledger.Verify(l => l.RemoveAsync(It.IsAny<string>()), Times.Never);
-            _ledger.Verify(l => l.RecordFailedDeleteAsync("f1"), Times.Once);
+            _ledger.Verify(l => l.RecordFailedDeleteAsync("f1", Now), Times.Once);
             _logger.LoggedMessages().Count(m => m.StartsWith("UilmFileDeleteStuck")).Should().Be(stuck ? 1 : 0);
             _logger.LoggedMessages().Should().Contain(m => m.Contains("could not delete file f1: access_denied"));
         }
@@ -177,7 +177,7 @@ namespace XUnitTest.Services.UilmStorage
 
             await _service.RunAsync("{\"task\":\"uilm-maintenance\",\"tenantId\":\"t1\"}");
 
-            _ledger.Verify(l => l.RecordFailedDeleteAsync("f1"), Times.Once);
+            _ledger.Verify(l => l.RecordFailedDeleteAsync("f1", Now), Times.Once);
         }
 
         [Fact]
@@ -189,7 +189,7 @@ namespace XUnitTest.Services.UilmStorage
 
             await _service.RunAsync("{\"task\":\"uilm-maintenance\",\"tenantId\":\"t1\"}");
 
-            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "f1" }))), Times.Once);
+            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "f1" })), null), Times.Once);
             _driver.Verify(d => d.DeleteFileAsync(It.IsAny<DeleteFileRequest>()), Times.Never);
         }
 

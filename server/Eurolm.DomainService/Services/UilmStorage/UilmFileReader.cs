@@ -136,7 +136,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                     reason = $"HTTP {(int)response.StatusCode}";
                 }
             }
-            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException)
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException or UriFormatException)
             {
                 reason = ex is OperationCanceledException ? "timeout" : ex.GetType().Name;
             }

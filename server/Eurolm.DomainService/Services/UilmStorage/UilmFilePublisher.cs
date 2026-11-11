@@ -154,7 +154,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 if (write.Previous?.FileId is { } previousFileId && previousFileId != upload.FileId) replaced.Add(previousFileId);
             }
 
-            await _storedFiles.MarkLiveAsync(live);
+            await _storedFiles.MarkLiveAsync(live, UilmStoredFileState.Uploading);
             await _storedFiles.RetireAsync(superseded, now);
             await _storedFiles.RetireAsync(replaced, now + _options.RetireDelay);
             await RemoveDroppedLanguagesAsync(moduleName, files, now);
@@ -200,8 +200,9 @@ namespace Eurolm.DomainService.Services.UilmStorage
             {
                 return false;
             }
-            // The same bytes are already published; upload again only if the file is gone from Storage.
-            return await ExistsInStorageAsync(pointer.Url);
+            // The same bytes are already published; upload again only if the file is gone from Storage. A pointer
+            // whose file isn't in this tenant's ledger (a copied row) is never requested and is replaced.
+            return await _storedFiles.ExistsAsync(pointer.FileId) && await ExistsInStorageAsync(pointer.Url);
         }
 
         private async Task<bool> ExistsInStorageAsync(string url)
@@ -213,7 +214,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 using var response = await _httpClientFactory.CreateClient(UilmStorageHttp.ClientName).SendAsync(request, timeout.Token);
                 return response.IsSuccessStatusCode;
             }
-            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException or UriFormatException)
             {
                 return false;
             }

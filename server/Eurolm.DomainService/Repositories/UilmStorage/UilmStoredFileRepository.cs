@@ -40,10 +40,11 @@ namespace Eurolm.DomainService.Repositories.UilmStorage
         public async Task<bool> ExistsAsync(string fileId) =>
             await Collection().Find(f => f.Id == fileId).Project(f => f.Id).FirstOrDefaultAsync() != null;
 
-        public async Task MarkLiveAsync(IReadOnlyCollection<string> fileIds)
+        public async Task MarkLiveAsync(IReadOnlyCollection<string> fileIds, string? fromState = null)
         {
             if (fileIds.Count == 0) return;
-            await Collection().UpdateManyAsync(ById(fileIds), Builders<UilmStoredFile>.Update
+            var filter = fromState == null ? ById(fileIds) : ById(fileIds) & Builders<UilmStoredFile>.Filter.Eq(f => f.State, fromState);
+            await Collection().UpdateManyAsync(filter, Builders<UilmStoredFile>.Update
                 .Set(f => f.State, UilmStoredFileState.Live)
                 .Set(f => f.DeleteAfter, null)
                 .Set(f => f.LeaseUntil, null));
@@ -85,11 +86,11 @@ namespace Eurolm.DomainService.Repositories.UilmStorage
 
         public Task RemoveAsync(string fileId) => Collection().DeleteOneAsync(f => f.Id == fileId);
 
-        public async Task<int> RecordFailedDeleteAsync(string fileId)
+        public async Task<int> RecordFailedDeleteAsync(string fileId, DateTime runStartedAt)
         {
             var updated = await Collection().FindOneAndUpdateAsync<UilmStoredFile?>(
                 Builders<UilmStoredFile>.Filter.Eq(f => f.Id, fileId),
-                Builders<UilmStoredFile>.Update.Inc(f => f.Attempts, 1).Set(f => f.LeaseUntil, null),
+                Builders<UilmStoredFile>.Update.Inc(f => f.Attempts, 1).Set(f => f.LeaseUntil, runStartedAt),
                 new FindOneAndUpdateOptions<UilmStoredFile, UilmStoredFile?> { ReturnDocument = ReturnDocument.After });
             return updated?.Attempts ?? 0;
         }
