@@ -126,10 +126,10 @@ namespace XUnitTest.Api.Controllers
         [Fact]
         public async Task RunUilmMaintenance_QueuesARunForTheCallersTenant_AndReturnsSuccess_H14()
         {
-            var result = await _controller.RunUilmMaintenance(_maintenance.Object);
+            var result = await _controller.RunUilmMaintenance(null, _maintenance.Object);
 
             result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeOfType<BaseMutationResponse>().Which.IsSuccess.Should().BeTrue();
-            _maintenance.Verify(m => m.QueueForCurrentTenantAsync(), Times.Once);
+            _maintenance.Verify(m => m.QueueForCurrentTenantAsync(null), Times.Once);
         }
 
         [Fact]
@@ -141,8 +141,11 @@ namespace XUnitTest.Api.Controllers
             method.GetCustomAttribute<ProtectedEndPointAttribute>().Should().NotBeNull();
             method.GetCustomAttributesData().Single(a => a.AttributeType == typeof(ProtectedEndPointAttribute))
                 .ConstructorArguments.Single().Value.Should().Be("blocks-localization::key::runuilmmaintenance");
-            method.GetParameters().Should().ContainSingle().Which.GetCustomAttribute<FromServicesAttribute>()
-                .Should().NotBeNull("the endpoint takes no body; the tenant comes from the caller");
+            // #349 §6.5: an optional body chooses the task; the tenant still comes from the caller.
+            var parameters = method.GetParameters();
+            parameters.Should().HaveCount(2);
+            parameters[0].GetCustomAttribute<FromBodyAttribute>()!.EmptyBodyBehavior.Should().Be(Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow);
+            parameters[1].GetCustomAttribute<FromServicesAttribute>().Should().NotBeNull();
         }
 
         [Fact]

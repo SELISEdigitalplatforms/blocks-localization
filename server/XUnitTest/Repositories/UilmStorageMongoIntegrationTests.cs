@@ -243,14 +243,15 @@ namespace XUnitTest.Repositories
         // ---- Settings and counter (6.3, 6.4) ----
 
         [Fact]
-        public async Task Switch_IsOffWithoutADocument_AndFollowsTheDocument()
+        public async Task Switch_IsOnWithoutADocument_AndFollowsTheDocument_349H5()
         {
+            // #349 §6.1/H5 changed the missing-document default from off to on.
             var settings = new UilmStorageSettingsRepository(_provider.Object);
-            (await settings.IsPublishToStorageEnabledAsync()).Should().BeFalse();
+            (await settings.GetModeAsync()).Should().Be(new UilmStorageMode(true, true));
 
-            await _database.GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = true });
+            await _database.GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = false });
 
-            (await settings.IsPublishToStorageEnabledAsync()).Should().BeTrue();
+            (await settings.GetModeAsync()).PublishToStorage.Should().BeFalse();
         }
 
         [Fact]
@@ -262,7 +263,7 @@ namespace XUnitTest.Repositories
             (await settings.TryStartReconcileAsync(Now, day)).Should().BeTrue();
             (await settings.TryStartReconcileAsync(Now.AddHours(23), day)).Should().BeFalse();
             (await settings.TryStartReconcileAsync(Now.AddHours(24), day)).Should().BeTrue();
-            (await settings.IsPublishToStorageEnabledAsync()).Should().BeFalse();
+            (await settings.GetModeAsync()).Should().Be(new UilmStorageMode(true, true), "the reconcile's document doesn't opt the tenant out (#349 Q1)");
         }
 
         [Fact]
@@ -437,7 +438,8 @@ namespace XUnitTest.Repositories
             await maintenance.RunAsync("{\"task\":\"uilm-maintenance\"}");
 
             storage.Deleted.Should().HaveCount(3, "the two unused live files are deleted 24 hours after the reconcile");
-            (await StoredFiles.CountDocumentsAsync(FilterDefinition<UilmStoredFile>.Empty)).Should().Be(0);
+            // #349 H9: the seed row was backfilled by the first run, so only its file remains.
+            (await StoredFiles.Find(FilterDefinition<UilmStoredFile>.Empty).SingleAsync()).State.Should().Be(UilmStoredFileState.Live);
         }
     }
 }

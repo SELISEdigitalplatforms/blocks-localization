@@ -13,7 +13,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
             _messageClient = messageClient;
         }
 
-        public async Task QueueForCurrentTenantAsync()
+        public async Task QueueForCurrentTenantAsync(string? task)
         {
             var tenantId = BlocksContext.GetContext()?.TenantId;
             if (string.IsNullOrWhiteSpace(tenantId))
@@ -27,7 +27,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 {
                     Payload = JsonSerializer.Serialize(new Dictionary<string, string>
                     {
-                        ["task"] = UilmMaintenanceService.TaskName,
+                        ["task"] = string.IsNullOrWhiteSpace(task) ? UilmMaintenanceService.TaskName : task,
                         ["tenantId"] = tenantId
                     })
                 }
