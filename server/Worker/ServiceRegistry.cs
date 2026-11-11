@@ -61,13 +61,15 @@ namespace Worker
 
             // UILM files in Storage (#348): options with code defaults, the ledger/settings/counter repositories,
             // the publisher (worker), the reader with its own size-limited cache (API) and maintenance.
-            services.AddSingleton(new UilmStorageOptions());
+            services.AddSingleton(sp => new UilmStorageInfrastructure(
+                new UilmStorageOptions(), sp.GetRequiredService<IHttpClientFactory>(), TimeProvider.System));
             services.AddSingleton<IUilmStoredFileRepository, UilmStoredFileRepository>();
             services.AddSingleton<IUilmStorageSettingsRepository, UilmStorageSettingsRepository>();
             services.AddSingleton<IUilmPublishCounterRepository, UilmPublishCounterRepository>();
             services.AddSingleton<IUilmFilePublisher, UilmFilePublisher>();
             services.AddSingleton<IUilmFileReader, UilmFileReader>();
             services.AddSingleton<IUilmMaintenanceService, UilmMaintenanceService>();
+            services.AddSingleton<IUilmMaintenanceQueue, UilmMaintenanceQueue>();
             services.AddHttpClient(UilmStorageHttp.ClientName);
 
             services.AddAssistantService();

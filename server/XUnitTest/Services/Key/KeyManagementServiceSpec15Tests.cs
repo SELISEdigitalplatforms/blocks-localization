@@ -12,7 +12,6 @@ using Moq;
 using StorageDriver;
 using Xunit;
 using KeyModel = Eurolm.DomainService.Services.Key;
-using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest.Services.Key
 {
@@ -63,8 +62,7 @@ namespace XUnitTest.Services.Key
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriver.Object),
                 _serviceProvider.Object,
                 new Mock<INotificationService>().Object,
-                _glossaries.Object,
-                Mock.Of<IUilmFilePublisher>());
+                _glossaries.Object);
         }
 
         private static KeyModel NewKey(string name, string module = "m1", List<string>? glossaryIds = null, bool isNewKey = false) => new()

@@ -23,7 +23,6 @@ using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
 using KeyModel = Eurolm.DomainService.Services.Key;
 using KeyTimeline = Eurolm.DomainService.Services.KeyTimeline;
 using ModuleModel = Eurolm.DomainService.Services.Module;
-using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest.Services.Key
 {
@@ -64,8 +63,7 @@ namespace XUnitTest.Services.Key
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriver.Object),
                 _serviceProvider.Object,
                 new Mock<INotificationService>().Object,
-                new Mock<IGlossaryRepository>().Object,
-                Mock.Of<IUilmFilePublisher>());
+                new Mock<IGlossaryRepository>().Object);
         }
 
         private static KeyModel NewKey(string name = "race-key", bool publish = true) =>

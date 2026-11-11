@@ -62,10 +62,9 @@ namespace XUnitTest
                 _assistantServiceMock.Object,
                 _storageDriverServiceMock.Object,
                 storageHelper,
-                Mock.Of<IServiceProvider>(),
+                Mock.Of<IServiceProvider>(p => p.GetService(typeof(IUilmFilePublisher)) == _uilmFilePublisherMock.Object),
                 _notificationServiceMock.Object,
-                Mock.Of<IGlossaryRepository>(),
-                _uilmFilePublisherMock.Object
+                Mock.Of<IGlossaryRepository>()
             );
         }
 

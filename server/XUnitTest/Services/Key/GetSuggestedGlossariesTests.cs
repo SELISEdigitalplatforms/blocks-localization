@@ -12,7 +12,6 @@ using StorageDriver;
 using Xunit;
 using KeyModel = Eurolm.DomainService.Services.Key;
 using GlossaryModel = Eurolm.DomainService.Services.Glossary;
-using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -63,8 +62,7 @@ namespace XUnitTest
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriverServiceMock.Object),
                 serviceProvider,
                 Mock.Of<INotificationService>(),
-                _glossaryRepositoryMock.Object,
-                Mock.Of<IUilmFilePublisher>());
+                _glossaryRepositoryMock.Object);
         }
 
         private void AddGlossary(string id, string name, bool isGlobal = false, List<string>? moduleIds = null,

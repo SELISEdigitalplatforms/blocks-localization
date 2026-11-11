@@ -34,7 +34,7 @@ namespace XUnitTest.Services.UilmStorage
         }
 
         private UilmFileReader Reader(UilmStorageOptions options) =>
-            new(_keys.Object, _ledger.Object, _http.Factory().Object, options, _logger.Object);
+            new(_keys.Object, _ledger.Object, new UilmStorageInfrastructure(options, _http.Factory().Object, TimeProvider.System), _logger.Object);
 
         private UilmFile Row(string? content = Json, string fileId = "file-1", string? hash = null)
         {

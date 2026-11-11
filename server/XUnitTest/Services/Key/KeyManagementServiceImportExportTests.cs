@@ -15,7 +15,6 @@ using System.Text;
 using Xunit;
 using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
 using KeyModel = Eurolm.DomainService.Services.Key;
-using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -68,8 +67,7 @@ namespace XUnitTest
                 _storageHelper,
                 _serviceProviderMock.Object,
                 _notificationServiceMock.Object,
-                _glossaryRepositoryMock.Object,
-                Mock.Of<IUilmFilePublisher>()
+                _glossaryRepositoryMock.Object
             );
         }
 

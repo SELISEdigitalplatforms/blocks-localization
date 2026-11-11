@@ -681,16 +681,19 @@ namespace Eurolm.DomainService.Repositories
             var options = new FindOneAndReplaceOptions<UilmFile, UilmFile?> { IsUpsert = true, ReturnDocument = ReturnDocument.Before };
             // A duplicate key means the upsert tried to insert a row that exists: either it has the same or a higher
             // version, or a concurrent writer inserted it first. The second attempt sees that row and decides.
-            for (var attempt = 1; ; attempt++)
+            try
+            {
+                return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
+            }
+            catch (MongoException ex) when (IsDuplicateKeyError(ex))
             {
                 try
                 {
-                    var previous = await collection.FindOneAndReplaceAsync(filter, pointer, options);
-                    return new UilmFilePointerWrite(true, previous);
+                    return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
                 }
-                catch (MongoException ex) when (IsDuplicateKeyError(ex))
+                catch (MongoException retryEx) when (IsDuplicateKeyError(retryEx))
                 {
-                    if (attempt == 2) return new UilmFilePointerWrite(false, null);
+                    return new UilmFilePointerWrite(false, null);
                 }
             }
         }

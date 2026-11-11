@@ -49,6 +49,7 @@ namespace XUnitTest
             _assistantServiceMock = new Mock<IAssistantService>();
             _storageDriverServiceMock = new Mock<IStorageDriverService>();
             _serviceProviderMock = new Mock<IServiceProvider>();
+            _serviceProviderMock.Setup(p => p.GetService(typeof(IUilmFilePublisher))).Returns(Mock.Of<IUilmFilePublisher>());
             var storageLoggerMock = new Mock<ILogger<StorageHelper>>();
             _storageHelper = new StorageHelper(storageLoggerMock.Object, _storageDriverServiceMock.Object);
             _notificationServiceMock = new Mock<INotificationService>();
@@ -67,8 +68,7 @@ namespace XUnitTest
                 _storageHelper,
                 _serviceProviderMock.Object,
                 _notificationServiceMock.Object,
-                Mock.Of<IGlossaryRepository>(),
-                Mock.Of<IUilmFilePublisher>()
+                Mock.Of<IGlossaryRepository>()
             );
         }
 

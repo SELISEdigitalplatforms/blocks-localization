@@ -63,13 +63,21 @@ namespace XUnitTest
             AssertRegistration<IBlocksWebhookRepository, BlocksWebhookRepository>(services, ServiceLifetime.Singleton);
 
             // UILM files in Storage (#348)
-            services.Should().ContainSingle(d => d.ServiceType == typeof(UilmStorageOptions) && d.ImplementationInstance != null);
+            services.Should().ContainSingle(d => d.ServiceType == typeof(UilmStorageInfrastructure) && d.ImplementationFactory != null && d.Lifetime == ServiceLifetime.Singleton);
             AssertRegistration<IUilmStoredFileRepository, UilmStoredFileRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<IUilmStorageSettingsRepository, UilmStorageSettingsRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<IUilmPublishCounterRepository, UilmPublishCounterRepository>(services, ServiceLifetime.Singleton);
             AssertRegistration<IUilmFilePublisher, UilmFilePublisher>(services, ServiceLifetime.Singleton);
             AssertRegistration<IUilmFileReader, UilmFileReader>(services, ServiceLifetime.Singleton);
             AssertRegistration<IUilmMaintenanceService, UilmMaintenanceService>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmMaintenanceQueue, UilmMaintenanceQueue>(services, ServiceLifetime.Singleton);
+            using (var provider = services.BuildServiceProvider())
+            {
+                var infrastructure = provider.GetRequiredService<UilmStorageInfrastructure>();
+                infrastructure.TimeProvider.Should().BeSameAs(TimeProvider.System);
+                infrastructure.Options.CacheSizeLimitBytes.Should().Be(200L * 1024 * 1024);
+                infrastructure.CreateHttpClient().Should().NotBeNull();
+            }
             services.Should().Contain(d => d.ServiceType == typeof(IHttpClientFactory));
         }
 

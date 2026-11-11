@@ -22,14 +22,13 @@ namespace Eurolm.DomainService.Services.UilmStorage
         private readonly IUilmStoredFileRepository _storedFiles;
         private readonly IUilmStorageSettingsRepository _settings;
         private readonly IUilmPublishCounterRepository _counter;
-        private readonly ILanguageFileGenerationHistoryRepository _history;
         private readonly IStorageDriverService _storageDriver;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly UilmStorageInfrastructure _infrastructure;
         private readonly UilmStorageOptions _options;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<UilmFilePublisher> _logger;
 
-        private sealed record BuiltFile(UilmFile File, byte[] Bytes, string Hash);
+        private sealed record BuiltFile(UilmFile File, byte[] Bytes, string ContentHash);
 
         private sealed record Uploaded(BuiltFile Built, string FileId, string Url);
 
@@ -38,23 +37,19 @@ namespace Eurolm.DomainService.Services.UilmStorage
             IUilmStoredFileRepository storedFiles,
             IUilmStorageSettingsRepository settings,
             IUilmPublishCounterRepository counter,
-            ILanguageFileGenerationHistoryRepository history,
             IStorageDriverService storageDriver,
-            IHttpClientFactory httpClientFactory,
-            UilmStorageOptions options,
-            ILogger<UilmFilePublisher> logger,
-            TimeProvider? timeProvider = null)
+            UilmStorageInfrastructure infrastructure,
+            ILogger<UilmFilePublisher> logger)
         {
             _keyRepository = keyRepository;
             _storedFiles = storedFiles;
             _settings = settings;
             _counter = counter;
-            _history = history;
             _storageDriver = storageDriver;
-            _httpClientFactory = httpClientFactory;
-            _options = options;
+            _infrastructure = infrastructure;
+            _options = infrastructure.Options;
+            _timeProvider = infrastructure.TimeProvider;
             _logger = logger;
-            _timeProvider = timeProvider ?? TimeProvider.System;
         }
 
         /// <summary>UTF-8 without a byte order mark, so clients that parse the body as JSON never see one.</summary>
@@ -66,8 +61,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
         public async Task<UilmPublishSession> BeginAsync(string projectKey, bool forceUpload)
         {
             var publishToStorage = await _settings.IsPublishToStorageEnabledAsync();
-            var seed = await _history.GetHighestVersionAsync(projectKey);
-            var version = await _counter.NextVersionAsync(seed);
+            var version = await _counter.NextVersionAsync(projectKey);
             return new UilmPublishSession(version, publishToStorage, forceUpload);
         }
 
@@ -139,7 +133,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 var pointer = Pointer(session, moduleName, upload.Built.File, now);
                 pointer.FileId = upload.FileId;
                 pointer.Url = upload.Url;
-                pointer.ContentHash = upload.Built.Hash;
+                pointer.ContentHash = upload.Built.ContentHash;
                 pointer.Size = upload.Built.Bytes.LongLength;
 
                 var write = await _keyRepository.ReplaceUilmFilePointerAsync(pointer);
@@ -196,7 +190,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         private async Task<bool> CanSkipAsync(UilmPublishSession session, BuiltFile file, UilmFile? pointer)
         {
-            if (session.ForceUpload || pointer?.FileId == null || pointer.ContentHash != file.Hash || string.IsNullOrEmpty(pointer.Url))
+            if (session.ForceUpload || pointer?.FileId == null || pointer.ContentHash != file.ContentHash || string.IsNullOrEmpty(pointer.Url))
             {
                 return false;
             }
@@ -211,7 +205,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
             {
                 using var timeout = new CancellationTokenSource(_options.StorageFetchTimeout, _timeProvider);
                 using var request = new HttpRequestMessage(HttpMethod.Head, url);
-                using var response = await _httpClientFactory.CreateClient(UilmStorageHttp.ClientName).SendAsync(request, timeout.Token);
+                using var response = await _infrastructure.CreateHttpClient().SendAsync(request, timeout.Token);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException or UriFormatException)
@@ -303,41 +297,55 @@ namespace Eurolm.DomainService.Services.UilmStorage
         /// </summary>
         private async Task<bool> PutWithRetriesAsync(GetPreSignedUrlForUploadResponse upload, byte[] bytes, string moduleName, string language, string fileId)
         {
-            var client = _httpClientFactory.CreateClient(UilmStorageHttp.ClientName);
-            for (var attempt = 0; ; attempt++)
+            var client = _infrastructure.CreateHttpClient();
+            var retries = _options.UploadRetryDelays.Count;
+            for (var attempt = 0; attempt <= retries; attempt++)
             {
-                string failure;
-                try
+                if (attempt > 0)
                 {
-                    using var timeout = new CancellationTokenSource(_options.UploadTimeout, _timeProvider);
-                    using var request = PutRequest(upload, bytes);
-                    using var response = await client.SendAsync(request, timeout.Token);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        return true;
-                    }
-                    if (!IsRetryable(response.StatusCode))
-                    {
-                        _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) was refused with HTTP {StatusCode}",
-                            moduleName, language, fileId, (int)response.StatusCode);
-                        return false;
-                    }
-                    failure = $"HTTP {(int)response.StatusCode}";
-                }
-                catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
-                {
-                    failure = ex.GetType().Name;
+                    await Task.Delay(_options.UploadRetryDelays[attempt - 1], _timeProvider);
                 }
 
-                if (attempt >= _options.UploadRetryDelays.Count)
+                var (succeeded, retryable, failure) = await PutOnceAsync(client, upload, bytes);
+                if (succeeded)
+                {
+                    return true;
+                }
+                if (!retryable)
+                {
+                    _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) was refused: {Failure}",
+                        moduleName, language, fileId, failure);
+                    return false;
+                }
+                if (attempt < retries)
+                {
+                    _logger.LogWarning("UILM upload of {ModuleName}/{Language} (file {FileId}) attempt {Attempt} failed ({Failure}); retrying",
+                        moduleName, language, fileId, attempt + 1, failure);
+                }
+                else
                 {
                     _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) failed after {Attempts} attempts: {Failure}",
                         moduleName, language, fileId, attempt + 1, failure);
-                    return false;
                 }
-                _logger.LogWarning("UILM upload of {ModuleName}/{Language} (file {FileId}) attempt {Attempt} failed ({Failure}); retrying",
-                    moduleName, language, fileId, attempt + 1, failure);
-                await Task.Delay(_options.UploadRetryDelays[attempt], _timeProvider);
+            }
+            return false;
+        }
+
+        /// <summary>One PUT within the upload timeout: whether it succeeded, whether a failure may be retried, and why.</summary>
+        private async Task<(bool Succeeded, bool Retryable, string Failure)> PutOnceAsync(HttpClient client, GetPreSignedUrlForUploadResponse upload, byte[] bytes)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(_options.UploadTimeout, _timeProvider);
+                using var request = PutRequest(upload, bytes);
+                using var response = await client.SendAsync(request, timeout.Token);
+                return response.IsSuccessStatusCode
+                    ? (true, false, string.Empty)
+                    : (false, IsRetryable(response.StatusCode), $"HTTP {(int)response.StatusCode}");
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                return (false, true, ex.GetType().Name);
             }
         }
 
@@ -367,6 +375,6 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         private static bool IsRetryable(HttpStatusCode status) => (int)status >= 500 || status == HttpStatusCode.TooManyRequests;
 
-        private DateTime UtcNow() => _timeProvider.GetUtcNow().UtcDateTime;
+        private DateTime UtcNow() => _infrastructure.UtcNow();
     }
 }

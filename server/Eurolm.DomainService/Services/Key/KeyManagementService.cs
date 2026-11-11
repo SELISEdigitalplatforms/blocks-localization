@@ -41,7 +41,6 @@ namespace Eurolm.DomainService.Services
         private readonly StorageHelper _storageHelperService;
         private readonly INotificationService _notificationService;
         private readonly IGlossaryRepository _glossaryRepository;
-        private readonly IUilmFilePublisher _uilmFilePublisher;
 
         private BaseBlocksCommand _blocksBaseCommand;
         private static string CurrentTenantId => BlocksContext.GetContext()?.TenantId
@@ -69,8 +68,7 @@ namespace Eurolm.DomainService.Services
             StorageHelper storageHelperService,
             IServiceProvider serviceProvider,
             INotificationService notificationService,
-            IGlossaryRepository glossaryRepository,
-            IUilmFilePublisher uilmFilePublisher
+            IGlossaryRepository glossaryRepository
             )
         {
             _keyRepository = keyRepository;
@@ -87,8 +85,10 @@ namespace Eurolm.DomainService.Services
             _serviceProvider = serviceProvider;
             _notificationService = notificationService;
             _glossaryRepository = glossaryRepository;
-            _uilmFilePublisher = uilmFilePublisher;
         }
+
+        /// <summary>Writes a publish's files (Storage or content only); registered in every host.</summary>
+        private IUilmFilePublisher UilmFilePublisher => _serviceProvider.GetRequiredService<IUilmFilePublisher>();
 
         public async Task<ApiResponse> SaveKeyAsync(Key key)
         {
@@ -1200,7 +1200,8 @@ namespace Eurolm.DomainService.Services
                 : throw new InvalidOperationException("A target project key is required to generate language files.");
             _logger.LogInformation("++ Started JsonOutputGeneratorService: GenerateAsync()...");
 
-            var session = await _uilmFilePublisher.BeginAsync(projectKey, command.ForceUpload);
+            var uilmFilePublisher = UilmFilePublisher;
+            var session = await uilmFilePublisher.BeginAsync(projectKey, command.ForceUpload);
 
             List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
 
@@ -1226,7 +1227,7 @@ namespace Eurolm.DomainService.Services
                     List<UilmFile> uilmfiles = ProcessUilmFile(command, languageSetting, resourceKeys, application);
 
                     _logger.LogInformation("++Saving {UilmfilesCount} UilmFiles for UilmApplication={ApplicationName}", uilmfiles.Count, application.ModuleName);
-                    var result = await _uilmFilePublisher.PublishModuleAsync(session, application.ModuleName, uilmfiles);
+                    var result = await uilmFilePublisher.PublishModuleAsync(session, application.ModuleName, uilmfiles);
                     if (result.Failed)
                     {
                         // An upload failed: the module keeps its previous files (spec C1).

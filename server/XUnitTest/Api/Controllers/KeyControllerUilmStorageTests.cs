@@ -18,7 +18,7 @@ namespace XUnitTest.Api.Controllers
     {
         private readonly Mock<IKeyManagementService> _keyManagementService = new();
         private readonly Mock<IUilmFileReader> _reader = new();
-        private readonly Mock<IUilmMaintenanceService> _maintenance = new();
+        private readonly Mock<IUilmMaintenanceQueue> _maintenance = new();
         private readonly GetUilmFileRequest _request = new() { Language = "en-US", ModuleName = "app-login" };
         private readonly DefaultHttpContext _http = new();
         private readonly KeyController _controller;
@@ -28,7 +28,7 @@ namespace XUnitTest.Api.Controllers
             _http.Response.Body = new MemoryStream();
             _controller = new KeyController(_keyManagementService.Object,
                 Mock.Of<IValidator<TranslateBlocksLanguageKeyRequest>>(), Mock.Of<IValidator<TranslateBlocksLanguageKeysRequest>>(),
-                new GetKeysRequestValidator(), new DeleteKeysRequestValidator(), _reader.Object, _maintenance.Object)
+                new GetKeysRequestValidator(), new DeleteKeysRequestValidator())
             {
                 ControllerContext = new ControllerContext { HttpContext = _http }
             };
@@ -49,7 +49,7 @@ namespace XUnitTest.Api.Controllers
             var bytes = Encoding.UTF8.GetBytes("{\"a\":\"Ä\"}");
             Returns(new UilmFileReadResult(UilmFileReadKind.File, Bytes: bytes, ETag: "\"abc\""));
 
-            await _controller.GetUilmFile(_request);
+            await _controller.GetUilmFile(_request, _reader.Object);
 
             _http.Response.StatusCode.Should().Be(200);
             _http.Response.ContentType.Should().Be("application/json");
@@ -65,7 +65,7 @@ namespace XUnitTest.Api.Controllers
             _http.Request.Headers.IfNoneMatch = "W/\"abc\"";
             _reader.Setup(r => r.ReadAsync(_request, "W/\"abc\"")).ReturnsAsync(new UilmFileReadResult(UilmFileReadKind.NotModified, ETag: "\"abc\""));
 
-            await _controller.GetCloudUilmFile(_request);
+            await _controller.GetCloudUilmFile(_request, _reader.Object);
 
             _http.Response.StatusCode.Should().Be(304);
             _http.Response.Headers.ETag.ToString().Should().Be("\"abc\"");
@@ -78,7 +78,7 @@ namespace XUnitTest.Api.Controllers
         {
             Returns(UilmFileReadResult.Unavailable);
 
-            await _controller.GetUilmFile(_request);
+            await _controller.GetUilmFile(_request, _reader.Object);
 
             _http.Response.StatusCode.Should().Be(503);
             _http.Response.Headers.RetryAfter.ToString().Should().Be("30");
@@ -91,7 +91,7 @@ namespace XUnitTest.Api.Controllers
         {
             Returns(new UilmFileReadResult(UilmFileReadKind.Content, "{}"));
 
-            await _controller.GetUilmFile(_request);
+            await _controller.GetUilmFile(_request, _reader.Object);
 
             _http.Response.StatusCode.Should().Be(200);
             _http.Response.Headers.ETag.Should().BeEmpty();
@@ -101,7 +101,7 @@ namespace XUnitTest.Api.Controllers
         [Fact]
         public async Task NullRequest_IsBadRequest_WithoutReading()
         {
-            await _controller.GetUilmFile(null!);
+            await _controller.GetUilmFile(null!, _reader.Object);
 
             _http.Response.StatusCode.Should().Be(400);
             _reader.VerifyNoOtherCalls();
@@ -126,7 +126,7 @@ namespace XUnitTest.Api.Controllers
         [Fact]
         public async Task RunUilmMaintenance_QueuesARunForTheCallersTenant_AndReturnsSuccess_H14()
         {
-            var result = await _controller.RunUilmMaintenance();
+            var result = await _controller.RunUilmMaintenance(_maintenance.Object);
 
             result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeOfType<BaseMutationResponse>().Which.IsSuccess.Should().BeTrue();
             _maintenance.Verify(m => m.QueueForCurrentTenantAsync(), Times.Once);
@@ -141,7 +141,8 @@ namespace XUnitTest.Api.Controllers
             method.GetCustomAttribute<ProtectedEndPointAttribute>().Should().NotBeNull();
             method.GetCustomAttributesData().Single(a => a.AttributeType == typeof(ProtectedEndPointAttribute))
                 .ConstructorArguments.Single().Value.Should().Be("blocks-localization::key::runuilmmaintenance");
-            method.GetParameters().Should().BeEmpty("the endpoint takes no body; the tenant comes from the caller");
+            method.GetParameters().Should().ContainSingle().Which.GetCustomAttribute<FromServicesAttribute>()
+                .Should().NotBeNull("the endpoint takes no body; the tenant comes from the caller");
         }
 
         [Fact]

@@ -266,14 +266,17 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
-        public async Task Counter_ContinuesFromTheSeed_AndNeverRepeatsUnderConcurrency_H10()
+        public async Task Counter_ContinuesFromTheHighestHistoryVersion_AndNeverRepeatsUnderConcurrency_H10()
         {
-            var counter = new UilmPublishCounterRepository(_provider.Object);
+            var history = new LanguageFileGenerationHistoryRepository(_provider.Object);
+            var counter = new UilmPublishCounterRepository(_provider.Object, history);
+            await history.SaveAsync(new LanguageFileGenerationHistory { ItemId = "h41", ProjectKey = "p", Version = 41 });
 
-            (await counter.NextVersionAsync(41)).Should().Be(42);
-            (await counter.NextVersionAsync(0)).Should().Be(43);
-            (await counter.NextVersionAsync(100)).Should().Be(101);
-            var concurrent = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => counter.NextVersionAsync(0)));
+            (await counter.NextVersionAsync("p")).Should().Be(42);
+            (await counter.NextVersionAsync("p")).Should().Be(43);
+            await history.SaveAsync(new LanguageFileGenerationHistory { ItemId = "h100", ProjectKey = "p", Version = 100 });
+            (await counter.NextVersionAsync("p")).Should().Be(101);
+            var concurrent = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => counter.NextVersionAsync("p")));
 
             concurrent.Should().OnlyHaveUniqueItems().And.BeEquivalentTo(Enumerable.Range(102, 20));
         }
@@ -331,20 +334,19 @@ namespace XUnitTest.Repositories
 
         private (UilmFilePublisher Publisher, UilmFileReader Reader, UilmMaintenanceService Maintenance) Pipeline(FakeStorage storage)
         {
-            var options = new UilmStorageOptions();
+            var infrastructure = new UilmStorageInfrastructure(new UilmStorageOptions(), storage.Http.Factory().Object, _time);
             var keys = Keys();
             var ledger = Ledger();
             var settings = new UilmStorageSettingsRepository(_provider.Object);
-            var factory = storage.Http.Factory().Object;
             var tenants = new Mock<ITenants>();
             tenants.Setup(t => t.GetTenantDatabaseConnectionStrings()).Returns(new Dictionary<string, (string, string)> { ["uilm-tenant"] = ("db", "c") });
             return (
-                new UilmFilePublisher(keys, ledger, settings, new UilmPublishCounterRepository(_provider.Object),
-                    new LanguageFileGenerationHistoryRepository(_provider.Object), storage.Driver.Object, factory, options,
-                    NullLogger<UilmFilePublisher>.Instance, _time),
-                new UilmFileReader(keys, ledger, factory, options, NullLogger<UilmFileReader>.Instance),
-                new UilmMaintenanceService(ledger, settings, keys, storage.Driver.Object, tenants.Object, Mock.Of<IMessageClient>(),
-                    options, NullLogger<UilmMaintenanceService>.Instance, _time));
+                new UilmFilePublisher(keys, ledger, settings,
+                    new UilmPublishCounterRepository(_provider.Object, new LanguageFileGenerationHistoryRepository(_provider.Object)),
+                    storage.Driver.Object, infrastructure, NullLogger<UilmFilePublisher>.Instance),
+                new UilmFileReader(keys, ledger, infrastructure, NullLogger<UilmFileReader>.Instance),
+                new UilmMaintenanceService(ledger, settings, keys, storage.Driver.Object, tenants.Object, infrastructure,
+                    NullLogger<UilmMaintenanceService>.Instance));
         }
 
         private static List<UilmFile> Files(string english) => new()

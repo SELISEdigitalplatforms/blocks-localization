@@ -49,7 +49,7 @@ namespace XUnitTest.Services.UilmStorage
         }
 
         private UilmMaintenanceService Service(UilmStorageOptions options) => new(_ledger.Object, _settings.Object, _keys.Object,
-            _driver.Object, _tenants.Object, _messages.Object, options, _logger.Object, _time);
+            _driver.Object, _tenants.Object, new UilmStorageInfrastructure(options, Mock.Of<IHttpClientFactory>(), _time), _logger.Object);
 
         private static UilmStoredFile Due(string id) => new() { Id = id, ModuleName = "app-login", Language = "en-US", State = UilmStoredFileState.Retired };
 
@@ -246,7 +246,7 @@ namespace XUnitTest.Services.UilmStorage
                 .Callback((ConsumerMessage<PublishScheduleCommand> m) => sent = m)
                 .Returns(Task.CompletedTask);
 
-            await _service.QueueForCurrentTenantAsync();
+            await new UilmMaintenanceQueue(_messages.Object).QueueForCurrentTenantAsync();
 
             sent!.ConsumerName.Should().Be("eurolm_maintenance_listener");
             UilmMaintenanceService.TryParsePayload(sent.Payload.Payload, out var tenantId).Should().BeTrue();
@@ -259,7 +259,7 @@ namespace XUnitTest.Services.UilmStorage
         {
             BlocksContext.SetContext(null!, true);
 
-            await _service.Invoking(s => s.QueueForCurrentTenantAsync()).Should().ThrowAsync<InvalidOperationException>();
+            await new UilmMaintenanceQueue(_messages.Object).Invoking(q => q.QueueForCurrentTenantAsync()).Should().ThrowAsync<InvalidOperationException>();
             _messages.VerifyNoOtherCalls();
         }
 

@@ -53,8 +53,8 @@ namespace XUnitTest.Services.Key
                 new Mock<ILogger<KeyManagementService>>().Object, _languages.Object, _modules.Object, _messages.Object,
                 new Mock<IAssistantService>().Object, storageDriver.Object,
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriver.Object),
-                new Mock<IServiceProvider>().Object, new Mock<INotificationService>().Object, new Mock<IGlossaryRepository>().Object,
-                _publisher.Object);
+                Mock.Of<IServiceProvider>(p => p.GetService(typeof(IUilmFilePublisher)) == _publisher.Object),
+                new Mock<INotificationService>().Object, new Mock<IGlossaryRepository>().Object);
         }
 
         private static bool IsGuid(string value) => Guid.TryParse(value, out var _);

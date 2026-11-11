@@ -20,14 +20,17 @@ namespace Eurolm.DomainService.Repositories.UilmStorage
         public const string CollectionName = "UilmPublishCounters";
 
         private readonly IDbContextProvider _dbContextProvider;
+        private readonly ILanguageFileGenerationHistoryRepository _history;
 
-        public UilmPublishCounterRepository(IDbContextProvider dbContextProvider)
+        public UilmPublishCounterRepository(IDbContextProvider dbContextProvider, ILanguageFileGenerationHistoryRepository history)
         {
             _dbContextProvider = dbContextProvider;
+            _history = history;
         }
 
-        public async Task<int> NextVersionAsync(int seed)
+        public async Task<int> NextVersionAsync(string projectKey)
         {
+            var seed = await _history.GetHighestVersionAsync(projectKey);
             var collection = UilmTenantDatabase.Current(_dbContextProvider).GetCollection<UilmPublishCounter>(CollectionName);
             // One update pipeline, so concurrent publishes never get the same version.
             var stage = new BsonDocument("$set", new BsonDocument("Value", new BsonDocument("$add", new BsonArray

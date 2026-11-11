@@ -15,7 +15,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
     {
         private readonly IKeyRepository _keyRepository;
         private readonly IUilmStoredFileRepository _storedFiles;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly UilmStorageInfrastructure _infrastructure;
         private readonly UilmStorageOptions _options;
         private readonly ILogger<UilmFileReader> _logger;
         private readonly MemoryCache _cache;
@@ -23,16 +23,15 @@ namespace Eurolm.DomainService.Services.UilmStorage
         public UilmFileReader(
             IKeyRepository keyRepository,
             IUilmStoredFileRepository storedFiles,
-            IHttpClientFactory httpClientFactory,
-            UilmStorageOptions options,
+            UilmStorageInfrastructure infrastructure,
             ILogger<UilmFileReader> logger)
         {
             _keyRepository = keyRepository;
             _storedFiles = storedFiles;
-            _httpClientFactory = httpClientFactory;
-            _options = options;
+            _infrastructure = infrastructure;
+            _options = infrastructure.Options;
             _logger = logger;
-            _cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = options.CacheSizeLimitBytes });
+            _cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = _options.CacheSizeLimitBytes });
         }
 
         /// <summary>The cache key: the tenant is part of it, so one tenant's entry is never served to another.</summary>
@@ -114,8 +113,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
             string reason;
             try
             {
-                using var timeout = new CancellationTokenSource(_options.StorageFetchTimeout);
-                using var response = await _httpClientFactory.CreateClient(UilmStorageHttp.ClientName)
+                using var timeout = new CancellationTokenSource(_options.StorageFetchTimeout, _infrastructure.TimeProvider);
+                using var response = await _infrastructure.CreateHttpClient()
                     .GetAsync(row.Url, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
                 if (response.IsSuccessStatusCode)
                 {

@@ -2,7 +2,6 @@ using Blocks.Genesis;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Repositories.UilmStorage;
-using Eurolm.DomainService.Utilities;
 using Microsoft.Extensions.Logging;
 using StorageDriver;
 using System.Text.Json;
@@ -20,9 +19,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
         private readonly IKeyRepository _keyRepository;
         private readonly IStorageDriverService _storageDriver;
         private readonly ITenants _tenants;
-        private readonly IMessageClient _messageClient;
+        private readonly UilmStorageInfrastructure _infrastructure;
         private readonly UilmStorageOptions _options;
-        private readonly TimeProvider _timeProvider;
         private readonly ILogger<UilmMaintenanceService> _logger;
 
         public UilmMaintenanceService(
@@ -31,37 +29,17 @@ namespace Eurolm.DomainService.Services.UilmStorage
             IKeyRepository keyRepository,
             IStorageDriverService storageDriver,
             ITenants tenants,
-            IMessageClient messageClient,
-            UilmStorageOptions options,
-            ILogger<UilmMaintenanceService> logger,
-            TimeProvider? timeProvider = null)
+            UilmStorageInfrastructure infrastructure,
+            ILogger<UilmMaintenanceService> logger)
         {
             _storedFiles = storedFiles;
             _settings = settings;
             _keyRepository = keyRepository;
             _storageDriver = storageDriver;
             _tenants = tenants;
-            _messageClient = messageClient;
-            _options = options;
+            _infrastructure = infrastructure;
+            _options = infrastructure.Options;
             _logger = logger;
-            _timeProvider = timeProvider ?? TimeProvider.System;
-        }
-
-        public async Task QueueForCurrentTenantAsync()
-        {
-            var tenantId = BlocksContext.GetContext()?.TenantId;
-            if (string.IsNullOrWhiteSpace(tenantId))
-            {
-                throw new InvalidOperationException("A tenant context is required to queue UILM maintenance.");
-            }
-            await _messageClient.SendToConsumerAsync(new ConsumerMessage<PublishScheduleCommand>
-            {
-                ConsumerName = Constants.UilmMaintenanceQueue,
-                Payload = new PublishScheduleCommand
-                {
-                    Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["task"] = TaskName, ["tenantId"] = tenantId })
-                }
-            });
         }
 
         public async Task RunAsync(string? payload)
@@ -256,6 +234,6 @@ namespace Eurolm.DomainService.Services.UilmStorage
             impersonated: false,
             impersonationSessionId: "");
 
-        private DateTime UtcNow() => _timeProvider.GetUtcNow().UtcDateTime;
+        private DateTime UtcNow() => _infrastructure.UtcNow();
     }
 }

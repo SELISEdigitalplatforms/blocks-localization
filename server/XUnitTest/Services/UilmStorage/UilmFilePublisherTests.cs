@@ -22,7 +22,6 @@ namespace XUnitTest.Services.UilmStorage
         private readonly Mock<IUilmStoredFileRepository> _ledger = new();
         private readonly Mock<IUilmStorageSettingsRepository> _settings = new();
         private readonly Mock<IUilmPublishCounterRepository> _counter = new();
-        private readonly Mock<ILanguageFileGenerationHistoryRepository> _history = new();
         private readonly Mock<IStorageDriverService> _driver = new();
         private readonly Mock<ILogger<UilmFilePublisher>> _logger = new();
         private readonly StubStorageHttp _http = new();
@@ -74,8 +73,8 @@ namespace XUnitTest.Services.UilmStorage
                 .ReturnsAsync((GetFileRequest r) => new FileResponse { Url = "https://files.test/" + r.FileId });
 
             var options = new UilmStorageOptions { UploadRetryDelays = [TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero] };
-            _publisher = new UilmFilePublisher(_keys.Object, _ledger.Object, _settings.Object, _counter.Object, _history.Object,
-                _driver.Object, _http.Factory().Object, options, _logger.Object, _time);
+            _publisher = new UilmFilePublisher(_keys.Object, _ledger.Object, _settings.Object, _counter.Object, _driver.Object,
+                new UilmStorageInfrastructure(options, _http.Factory().Object, _time), _logger.Object);
         }
 
         private static UilmPublishSession On(int version = 7, bool force = false) => new(version, true, force);
@@ -420,11 +419,10 @@ namespace XUnitTest.Services.UilmStorage
         }
 
         [Fact]
-        public async Task BeginAsync_ReadsTheSwitch_AndTakesTheNextVersionSeededWithTheHighestHistoryVersion_H10()
+        public async Task BeginAsync_ReadsTheSwitch_AndTakesTheProjectsNextVersion_H10()
         {
             _settings.Setup(s => s.IsPublishToStorageEnabledAsync()).ReturnsAsync(true);
-            _history.Setup(h => h.GetHighestVersionAsync("proj")).ReturnsAsync(41);
-            _counter.Setup(c => c.NextVersionAsync(41)).ReturnsAsync(42);
+            _counter.Setup(c => c.NextVersionAsync("proj")).ReturnsAsync(42);
 
             var session = await _publisher.BeginAsync("proj", forceUpload: true);
 

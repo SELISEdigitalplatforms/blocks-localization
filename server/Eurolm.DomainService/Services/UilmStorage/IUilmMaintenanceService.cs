@@ -8,8 +8,5 @@ namespace Eurolm.DomainService.Services.UilmStorage
         /// every tenant. An invalid payload or another task is logged and ignored; nothing is thrown.
         /// </summary>
         Task RunAsync(string? payload);
-
-        /// <summary>Queues a maintenance run for the caller's tenant only.</summary>
-        Task QueueForCurrentTenantAsync();
     }
 }
