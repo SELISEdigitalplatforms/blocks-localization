@@ -297,7 +297,9 @@ describe("edit-translation — glossary-aware suggestions", () => {
     const renderFresh = (props: Partial<React.ComponentProps<typeof EditTranslation>>) =>
       renderModal({ keyDetails: freshKey(), ...props });
     const highlight = (name: string) =>
-      screen.findByRole("button", { name: new RegExp(`^Glossary ${name}`) });
+      screen.findByRole("button", {
+        name: (accessibleName) => accessibleName.startsWith(`Glossary ${name}`),
+      });
 
     it("requests /Glossary/Match once with the key and reuses it when reopened (H6, C11)", async () => {
       const { close, reopen } = renderFresh({});

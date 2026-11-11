@@ -73,6 +73,23 @@ namespace XUnitTest.Shared
                 .ReturnsAsync(cursor.Object);
         }
 
+        /// <summary>
+        /// Sets up AggregateAsync for a pipeline producing <typeparamref name="TResult"/> and optionally captures
+        /// the pipeline and options, so tests can render and inspect the stages. Each call gets a fresh cursor.
+        /// </summary>
+        public static void SetupAggregateAsync<TDocument, TResult>(
+            Mock<IMongoCollection<TDocument>> collection,
+            List<TResult> items,
+            Action<PipelineDefinition<TDocument, TResult>, AggregateOptions>? callback = null)
+        {
+            collection.Setup(x => x.AggregateAsync(
+                    It.IsAny<PipelineDefinition<TDocument, TResult>>(),
+                    It.IsAny<AggregateOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<PipelineDefinition<TDocument, TResult>, AggregateOptions, CancellationToken>((p, o, _) => callback?.Invoke(p, o))
+                .ReturnsAsync(() => CreateCursor(items).Object);
+        }
+
         /// <summary>listIndexes returns no indexes, so the index initializers create every index they define.</summary>
         public static Mock<IMongoIndexManager<T>> WithNoExistingIndexes<T>(this Mock<IMongoIndexManager<T>> indexes)
         {

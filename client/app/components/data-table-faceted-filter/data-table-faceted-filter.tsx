@@ -60,7 +60,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <div className="flex space-x-1">
                   {selectedValues.size > 2 ? (
                     <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                      {selectedValues.size} selected
+                      {t("DATA_TABLE_FACETED_FILTER.SELECTED_COUNT", { count: selectedValues.size })}
                     </Badge>
                   ) : (
                     options

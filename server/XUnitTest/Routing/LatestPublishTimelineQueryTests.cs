@@ -1,6 +1,7 @@
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Driver;
 using Moq;
 
@@ -39,7 +40,7 @@ public class LatestPublishTimelineQueryTests : IDisposable
             Timeline("e2-only", "e2", LogFromConstants.Published, now.AddDays(-3), "e2"),
             Timeline("e3-not-requested", "e3", LogFromConstants.Published, now, "e3")
         });
-        var repository = new KeyTimelineRepository(_fixture.Provider, Mock.Of<IConfiguration>());
+        var repository = new KeyTimelineRepository(_fixture.Provider, Mock.Of<IConfiguration>(), NullLogger<KeyTimelineRepository>.Instance);
 
         var result = await repository.GetLatestPublishTimelinesAsync(new List<string> { "e1", "e2", "missing" }, "dev");
 
