@@ -109,20 +109,30 @@ namespace XUnitTest.Repositories
             indexes.Setup(i => i.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<BsonDocument>>>(), It.IsAny<CancellationToken>()))
                 .Returns(gate.Task);
             using var start = new Barrier(20);
+            // The 20 callers block on the barrier, so the pool must have 20 threads at once. On a 2-core runner it adds
+            // them too slowly for the 10 s wait; the minimum is raised for this test only and restored afterwards.
+            ThreadPool.GetMinThreads(out var minWorkers, out var minIo);
+            ThreadPool.SetMinThreads(Math.Max(minWorkers, 32), minIo);
+            try
+            {
+                var callers = Enumerable.Range(0, 20)
+                    .Select(_ => Task.Run<Task>(() =>
+                    {
+                        start.SignalAndWait();
+                        return MongoIndexEnsurer.EnsureAsync(database.Object, "Things", Models, _logger.Object);
+                    }))
+                    .ToList();
+                var ensured = await Task.WhenAll(callers.Select(c => c.WaitAsync(TimeSpan.FromSeconds(10))));
+                gate.SetResult(new[] { "ix_test" });
+                await Task.WhenAll(ensured);
 
-            var callers = Enumerable.Range(0, 20)
-                .Select(_ => Task.Run<Task>(() =>
-                {
-                    start.SignalAndWait();
-                    return MongoIndexEnsurer.EnsureAsync(database.Object, "Things", Models, _logger.Object);
-                }))
-                .ToList();
-            var ensured = await Task.WhenAll(callers.Select(c => c.WaitAsync(TimeSpan.FromSeconds(10))));
-            gate.SetResult(new[] { "ix_test" });
-            await Task.WhenAll(ensured);
-
-            ensured.Distinct().Should().ContainSingle();
-            VerifyCreated(indexes, Times.Once());
+                ensured.Distinct().Should().ContainSingle();
+                VerifyCreated(indexes, Times.Once());
+            }
+            finally
+            {
+                ThreadPool.SetMinThreads(minWorkers, minIo);
+            }
         }
     }
 }
