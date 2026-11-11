@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { showErrorToast } from "@/hooks/use-toast";
 import { formatErrorMessage } from "@/lib/error";
 import { ILanguageConfig } from "@blocks-localization/models/language";
@@ -90,7 +91,9 @@ export const useGlossaryTermSuggestion = () => {
         showErrorToast({
           errors: res?.errors
             ? formatErrorMessage(res.errors)
-            : `No suggestion for ${target.languageName}.`,
+            : tStatic("localization.glossary", "USE_GLOSSARY_TERM_SUGGESTION.NO_SUGGESTION", {
+                language: target.languageName,
+              }),
         });
         return undefined;
       }

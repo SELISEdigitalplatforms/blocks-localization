@@ -2,8 +2,10 @@ using Blocks.Extension.DependencyInjection;
 using Blocks.Secrets;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Repositories.UilmStorage;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Validation;
 using FluentValidation;
@@ -45,6 +47,19 @@ namespace Eurolm.DomainService.Shared
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IValidator<GetKeysRequest>, GetKeysRequestValidator>();
             services.AddSingleton<IValidator<DeleteKeysRequest>, DeleteKeysRequestValidator>();
+
+            // UILM files in Storage (#348): options with code defaults, the ledger/settings/counter repositories,
+            // the publisher (worker), the reader with its own size-limited cache (API) and maintenance.
+            services.AddSingleton(sp => new UilmStorageInfrastructure(
+                new UilmStorageOptions(), sp.GetRequiredService<IHttpClientFactory>(), TimeProvider.System));
+            services.AddSingleton<IUilmStoredFileRepository, UilmStoredFileRepository>();
+            services.AddSingleton<IUilmStorageSettingsRepository, UilmStorageSettingsRepository>();
+            services.AddSingleton<IUilmPublishCounterRepository, UilmPublishCounterRepository>();
+            services.AddSingleton<IUilmFilePublisher, UilmFilePublisher>();
+            services.AddSingleton<IUilmFileReader, UilmFileReader>();
+            services.AddSingleton<IUilmMaintenanceService, UilmMaintenanceService>();
+            services.AddSingleton<IUilmMaintenanceQueue, UilmMaintenanceQueue>();
+            services.AddHttpClient(UilmStorageHttp.ClientName);
 
             services.AddBlocksSecrets();
             services.RegisterBlocksStorageServices();

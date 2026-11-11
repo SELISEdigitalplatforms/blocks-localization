@@ -643,14 +643,88 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<UilmFile> GetUilmFile(GetUilmFileRequest request)
         {
+            // The index on (ModuleName, Language, Version) is ensured by the publish that writes the rows.
             var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
             var project = Builders<BsonDocument>.Projection.As<UilmFile>();
             var filter = Builders<BsonDocument>.Filter.Eq("Language", request.Language) & Builders<BsonDocument>.Filter.Eq("ModuleName", request.ModuleName);
 
-            return await dataBase.GetCollection<BsonDocument>("UilmFiles")
+            return await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
                 .Find(filter)
+                .Sort(Builders<BsonDocument>.Sort.Descending(nameof(UilmFile.Version)))
                 .Project(project)
                 .FirstOrDefaultAsync();
+        }
+
+        private const string UilmFilesCollection = "UilmFiles";
+
+        private static readonly IReadOnlyList<CreateIndexModel<UilmFile>> UilmFileIndexes =
+        [
+            new(Builders<UilmFile>.IndexKeys.Ascending(f => f.ModuleName).Ascending(f => f.Language).Descending(f => f.Version),
+                new CreateIndexOptions { Name = "ModuleName_1_Language_1_Version_-1" })
+        ];
+
+        private IMongoCollection<UilmFile> UilmFiles()
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            _ = MongoIndexEnsurer.EnsureAsync(dataBase, UilmFilesCollection, UilmFileIndexes, _logger);
+            return dataBase.GetCollection<UilmFile>(UilmFilesCollection);
+        }
+
+        public Task<List<UilmFile>> GetUilmFilesOfModuleAsync(string moduleName) =>
+            UilmFiles().Find(f => f.ModuleName == moduleName).ToListAsync();
+
+        public async Task<UilmFilePointerWrite> ReplaceUilmFilePointerAsync(UilmFile pointer)
+        {
+            var collection = UilmFiles();
+            var filter = Builders<UilmFile>.Filter.Eq(f => f.Id, pointer.Id)
+                & (Builders<UilmFile>.Filter.Eq(f => f.Version, null) | Builders<UilmFile>.Filter.Lt(f => f.Version, pointer.Version));
+            var options = new FindOneAndReplaceOptions<UilmFile, UilmFile?> { IsUpsert = true, ReturnDocument = ReturnDocument.Before };
+            // A duplicate key means the upsert tried to insert a row that exists: either it has the same or a higher
+            // version, or a concurrent writer inserted it first. The second attempt sees that row and decides.
+            try
+            {
+                return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
+            }
+            catch (MongoException ex) when (IsDuplicateKeyError(ex))
+            {
+                try
+                {
+                    return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
+                }
+                catch (MongoException retryEx) when (IsDuplicateKeyError(retryEx))
+                {
+                    return new UilmFilePointerWrite(false, null);
+                }
+            }
+        }
+
+        /// <summary>findAndModify reports a duplicate key as a command error, other writes as a write error.</summary>
+        private static bool IsDuplicateKeyError(MongoException ex) =>
+            DuplicateKeyRetry.IsDuplicateKey(ex) || ex is MongoCommandException { Code: 11000 };
+
+        public Task DeleteUilmFileDuplicatesAsync(string moduleName, string language, string keepId) =>
+            UilmFiles().DeleteManyAsync(f => f.ModuleName == moduleName && f.Language == language && f.Id != keepId);
+
+        public async Task<List<UilmFile>> DeleteUilmFilesOfOtherLanguagesAsync(string moduleName, IReadOnlyCollection<string> languages)
+        {
+            var collection = UilmFiles();
+            var filter = Builders<UilmFile>.Filter.Eq(f => f.ModuleName, moduleName) & Builders<UilmFile>.Filter.Nin(f => f.Language, languages);
+            var removed = await collection.Find(filter).ToListAsync();
+            if (removed.Count > 0)
+            {
+                await collection.DeleteManyAsync(Builders<UilmFile>.Filter.In(f => f.Id, removed.Select(f => f.Id)));
+            }
+            return removed;
+        }
+
+        public async Task<HashSet<string>> GetReferencedUilmFileIdsAsync(IReadOnlyCollection<string> fileIds)
+        {
+            if (fileIds.Count == 0) return new HashSet<string>(StringComparer.Ordinal);
+            var referenced = await UilmFiles()
+                .Find(Builders<UilmFile>.Filter.In(f => f.FileId, fileIds))
+                .Project(f => f.FileId)
+                .ToListAsync();
+            return referenced.Where(id => id != null).Select(id => id!).ToHashSet(StringComparer.Ordinal);
         }
         public async Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request)
         {

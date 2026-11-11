@@ -44,7 +44,8 @@ namespace Eurolm.DomainService.Services.HelperService
                 return false;
             }
 
-            _logger.LogInformation("SaveIntoStorage: Upload url - {Url}", fileInfo.UploadUrl);
+            // The pre-signed upload URL is a credential, so only the file id is logged.
+            _logger.LogInformation("SaveIntoStorage: Uploading fileId={FileId}", fileId);
 
             using var request = new HttpRequestMessage(HttpMethod.Put, fileInfo.UploadUrl)
             {

@@ -32,7 +32,21 @@ namespace Eurolm.DomainService.Repositories
         Task<List<Key>> GetAllKeysByModuleAsync(string moduleId);
         Task<bool> SaveNewUilmFiles(List<UilmFile> uilmfiles);
         Task<long> DeleteOldUilmFiles(List<UilmFile> uilmfiles);
+        /// <summary>The module/language row to serve: the highest <c>Version</c> wins, legacy rows (no version) last.</summary>
         Task<UilmFile> GetUilmFile(GetUilmFileRequest request);
+        /// <summary>Every row of the module, legacy rows included.</summary>
+        Task<List<UilmFile>> GetUilmFilesOfModuleAsync(string moduleName);
+        /// <summary>
+        /// Replaces (or inserts) the row with the pointer's deterministic id, only when the stored row has no
+        /// version or a lower one.
+        /// </summary>
+        Task<UilmFilePointerWrite> ReplaceUilmFilePointerAsync(UilmFile pointer);
+        /// <summary>Deletes the module/language rows other than <paramref name="keepId"/> (legacy duplicates).</summary>
+        Task DeleteUilmFileDuplicatesAsync(string moduleName, string language, string keepId);
+        /// <summary>Deletes the module's rows whose language is not in <paramref name="languages"/> and returns them.</summary>
+        Task<List<UilmFile>> DeleteUilmFilesOfOtherLanguagesAsync(string moduleName, IReadOnlyCollection<string> languages);
+        /// <summary>The subset of <paramref name="fileIds"/> that some <c>UilmFiles</c> row still points at.</summary>
+        Task<HashSet<string>> GetReferencedUilmFileIdsAsync(IReadOnlyCollection<string> fileIds);
         Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key> GetByIdAsync(string itemId);
         Task DeleteAsync(string itemId);
