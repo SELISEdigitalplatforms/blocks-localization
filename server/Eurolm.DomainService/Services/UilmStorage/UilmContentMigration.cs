@@ -285,7 +285,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("UilmContentRowFailed: module {ModuleName} language {Language} file {FileId}: {Reason}",
+                _logger.LogWarning(ex, "UilmContentRowFailed: module {ModuleName} language {Language} file {FileId}: {Reason}",
                     row.ModuleName, row.Language, row.FileId, ex.GetType().Name);
             }
         }
