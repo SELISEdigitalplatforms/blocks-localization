@@ -1,10 +1,17 @@
 namespace Eurolm.DomainService.Services.UilmStorage
 {
-    /// <summary>Resolves what <c>GetUilmFile</c> and <c>GetCloudUilmFile</c> answer (spec 6.7).</summary>
+    /// <summary>Resolves what <c>GetUilmFile</c>, <c>GetCloudUilmFile</c> (spec 6.7) and <c>GetUilmManifest</c> answer.</summary>
     public interface IUilmFileReader
     {
         /// <param name="ifNoneMatch">The request's <c>If-None-Match</c> header, if any.</param>
         Task<UilmFileReadResult> ReadAsync(GetUilmFileRequest request, string? ifNoneMatch);
+
+        /// <summary>
+        /// What <c>GetUilmManifest</c> answers: the manifest's JSON bytes (<see cref="UilmFileReadKind.File"/>) or
+        /// <see cref="UilmFileReadKind.NotModified"/>, both with the manifest's ETag. Reads MongoDB only, never Storage.
+        /// </summary>
+        /// <param name="ifNoneMatch">The request's <c>If-None-Match</c> header, if any.</param>
+        Task<UilmFileReadResult> GetManifestAsync(GetUilmManifestRequest request, string? ifNoneMatch);
     }
 
     public enum UilmFileReadKind

@@ -318,6 +318,23 @@ namespace BlocksTemplate.Api.Controllers
             await WriteUilmFileAsync(request, uilmFileReader);
         }
 
+        /// <summary>
+        /// Lists the caller's published files with their public Storage URLs, for anonymous callers with the project key,
+        /// so a client can download the files directly from Storage. The response carries an <c>ETag</c> and
+        /// <c>Cache-Control: no-cache</c>; a matching <c>If-None-Match</c> gets <c>304</c> with an empty body.
+        /// Download each <c>url</c> without credentials. An entry whose <c>url</c>, <c>hash</c>, <c>size</c> and
+        /// <c>version</c> are <c>null</c> means "fall back to <c>GetUilmFile</c>" with the same module and language;
+        /// do the same when a download fails. The endpoint reads MongoDB only and never returns file content.
+        /// </summary>
+        /// <param name="request">Optional exact <c>ModuleName</c> and <c>Language</c> filters.</param>
+        /// <param name="uilmFileReader">Builds the manifest.</param>
+        [HttpGet]
+        public async Task GetUilmManifest([FromQuery] GetUilmManifestRequest request, [FromServices] IUilmFileReader uilmFileReader)
+        {
+            var result = await uilmFileReader.GetManifestAsync(request ?? new GetUilmManifestRequest(), Request.Headers.IfNoneMatch.ToString());
+            await WriteUilmReadResultAsync(result);
+        }
+
         /// <summary>Writes the response for both read endpoints (spec 6.7).</summary>
         private async Task WriteUilmFileAsync(GetUilmFileRequest request, IUilmFileReader uilmFileReader)
         {
@@ -327,7 +344,11 @@ namespace BlocksTemplate.Api.Controllers
                 return;
             }
 
-            var result = await uilmFileReader.ReadAsync(request, Request.Headers.IfNoneMatch.ToString());
+            await WriteUilmReadResultAsync(await uilmFileReader.ReadAsync(request, Request.Headers.IfNoneMatch.ToString()));
+        }
+
+        private async Task WriteUilmReadResultAsync(UilmFileReadResult result)
+        {
             switch (result.Kind)
             {
                 case UilmFileReadKind.NotModified:

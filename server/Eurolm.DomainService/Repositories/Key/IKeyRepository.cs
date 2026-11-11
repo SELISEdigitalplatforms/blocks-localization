@@ -35,6 +35,11 @@ namespace Eurolm.DomainService.Repositories
         Task<long> DeleteOldUilmFiles(List<UilmFile> uilmfiles);
         /// <summary>The module/language row to serve: the highest <c>Version</c> wins, legacy rows (no version) last.</summary>
         Task<UilmFile> GetUilmFile(GetUilmFileRequest request);
+        /// <summary>
+        /// For each module/language matching the optional exact filters, the row <see cref="GetUilmFile(GetUilmFileRequest)"/>
+        /// would serve, without its content, with its file's state in the <c>UilmStoredFiles</c> ledger. Unsorted.
+        /// </summary>
+        Task<List<UilmManifestRow>> GetUilmManifestRowsAsync(string? moduleName, string? language);
         /// <summary>Every row of the module, legacy rows included.</summary>
         Task<List<UilmFile>> GetUilmFilesOfModuleAsync(string moduleName);
         /// <summary>

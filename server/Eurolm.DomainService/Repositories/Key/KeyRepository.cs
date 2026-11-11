@@ -660,6 +660,54 @@ namespace Eurolm.DomainService.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<List<UilmManifestRow>> GetUilmManifestRowsAsync(string? moduleName, string? language)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var match = new BsonDocument();
+            if (moduleName != null) match[nameof(UilmFile.ModuleName)] = moduleName;
+            if (language != null) match[nameof(UilmFile.Language)] = language;
+
+            // Same selection as GetUilmFile: per module and language, the highest Version first (legacy rows last), on
+            // the (ModuleName, Language, Version) index. Content is never returned.
+            var stages = new[]
+            {
+                new BsonDocument(MatchStage, match),
+                new BsonDocument(SortStage, new BsonDocument { { nameof(UilmFile.ModuleName), 1 }, { nameof(UilmFile.Language), 1 }, { nameof(UilmFile.Version), -1 } }),
+                new BsonDocument(GroupStage, new BsonDocument
+                {
+                    { IdField, new BsonDocument { { GroupModule, "$" + nameof(UilmFile.ModuleName) }, { GroupLanguage, "$" + nameof(UilmFile.Language) } } },
+                    { nameof(UilmManifestRow.ModuleName), GroupFirst(nameof(UilmFile.ModuleName)) },
+                    { nameof(UilmManifestRow.Language), GroupFirst(nameof(UilmFile.Language)) },
+                    { nameof(UilmManifestRow.FileId), GroupFirst(nameof(UilmFile.FileId)) },
+                    { nameof(UilmManifestRow.Url), GroupFirst(nameof(UilmFile.Url)) },
+                    { nameof(UilmManifestRow.ContentHash), GroupFirst(nameof(UilmFile.ContentHash)) },
+                    { nameof(UilmManifestRow.Size), GroupFirst(nameof(UilmFile.Size)) },
+                    { nameof(UilmManifestRow.Version), GroupFirst(nameof(UilmFile.Version)) }
+                }),
+                new BsonDocument(ProjectStage, new BsonDocument(IdField, 0))
+            };
+            using var cursor = await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
+                .AggregateAsync(PipelineDefinition<BsonDocument, UilmManifestRow>.Create(stages));
+            var rows = await cursor.ToListAsync();
+
+            // The ledger states of the pointed-at files in one read by _id (a $lookup per row measured about three times
+            // slower). It runs after the pointer read, so a file retired in between is not Live and gets no URL.
+            var fileIds = rows.Where(r => r.FileId != null).Select(r => r.FileId!).Distinct().ToList();
+            if (fileIds.Count == 0) return rows;
+            var states = (await dataBase.GetCollection<UilmStoredFile>(UilmStoredFileRepository.CollectionName)
+                    .Find(Builders<UilmStoredFile>.Filter.In(f => f.Id, fileIds))
+                    .Project(f => new { f.Id, f.State })
+                    .ToListAsync())
+                .ToDictionary(f => f.Id, f => f.State, StringComparer.Ordinal);
+            foreach (var row in rows)
+            {
+                row.LedgerState = row.FileId != null && states.TryGetValue(row.FileId, out var state) ? state : null;
+            }
+            return rows;
+        }
+
+        private static BsonDocument GroupFirst(string field) => new("$first", "$" + field);
+
         private const string UilmFilesCollection = "UilmFiles";
 
         private static readonly IReadOnlyList<CreateIndexModel<UilmFile>> UilmFileIndexes =
