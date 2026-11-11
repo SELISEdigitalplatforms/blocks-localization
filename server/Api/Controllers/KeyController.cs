@@ -393,15 +393,19 @@ namespace BlocksTemplate.Api.Controllers
         }
 
         /// <summary>
-        /// Queues a UILM Storage maintenance run (retired file deletion and reconcile) for the caller's tenant only.
+        /// Queues a UILM Storage task for the caller's tenant only: <c>uilm-maintenance</c> (backfill, content removal,
+        /// retired file deletion and reconcile) or <c>uilm-restore-content</c>.
         /// </summary>
-        /// <param name="uilmMaintenanceQueue">Queues the run; the request has no body.</param>
+        /// <param name="request">Optional <c>{"task": ...}</c>; without a body or task, <c>uilm-maintenance</c> runs.</param>
+        /// <param name="uilmMaintenanceQueue">Queues the run.</param>
         /// <returns><c>isSuccess: true</c> once the run is queued.</returns>
         [HttpPost]
         [ProtectedEndPoint($"{Constants.ServiceName}::key::runuilmmaintenance")]
-        public async Task<IActionResult> RunUilmMaintenance([FromServices] IUilmMaintenanceQueue uilmMaintenanceQueue)
+        public async Task<IActionResult> RunUilmMaintenance(
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] RunUilmMaintenanceRequest? request,
+            [FromServices] IUilmMaintenanceQueue uilmMaintenanceQueue)
         {
-            await uilmMaintenanceQueue.QueueForCurrentTenantAsync();
+            await uilmMaintenanceQueue.QueueForCurrentTenantAsync(request?.Task);
             return Ok(new BaseMutationResponse { IsSuccess = true });
         }
 

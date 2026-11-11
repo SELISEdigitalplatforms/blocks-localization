@@ -1,13 +1,9 @@
-using Blocks.Genesis.Entities.Data;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Repositories.UilmStorage;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using StorageDriver;
 using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -16,16 +12,15 @@ namespace Eurolm.DomainService.Services.UilmStorage
     public class UilmFilePublisher : IUilmFilePublisher
     {
         public const string JsonContentType = "application/json";
-        private const string FileTags = "[\"UilmFile\"]";
 
         private readonly IKeyRepository _keyRepository;
         private readonly IUilmStoredFileRepository _storedFiles;
         private readonly IUilmStorageSettingsRepository _settings;
         private readonly IUilmPublishCounterRepository _counter;
-        private readonly IStorageDriverService _storageDriver;
         private readonly UilmStorageInfrastructure _infrastructure;
         private readonly UilmStorageOptions _options;
         private readonly TimeProvider _timeProvider;
+        private readonly UilmFileUploader _uploader;
         private readonly ILogger<UilmFilePublisher> _logger;
 
         private sealed record BuiltFile(UilmFile File, byte[] Bytes, string ContentHash);
@@ -45,10 +40,10 @@ namespace Eurolm.DomainService.Services.UilmStorage
             _storedFiles = storedFiles;
             _settings = settings;
             _counter = counter;
-            _storageDriver = storageDriver;
             _infrastructure = infrastructure;
             _options = infrastructure.Options;
             _timeProvider = infrastructure.TimeProvider;
+            _uploader = new UilmFileUploader(storedFiles, storageDriver, infrastructure, logger);
             _logger = logger;
         }
 
@@ -60,9 +55,9 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         public async Task<UilmPublishSession> BeginAsync(string projectKey, bool forceUpload)
         {
-            var publishToStorage = await _settings.IsPublishToStorageEnabledAsync();
+            var mode = await _settings.GetModeAsync();
             var version = await _counter.NextVersionAsync(projectKey);
-            return new UilmPublishSession(version, publishToStorage, forceUpload);
+            return new UilmPublishSession(version, mode.PublishToStorage, forceUpload, mode.KeepContent);
         }
 
         public async Task<UilmModulePublishResult> PublishModuleAsync(UilmPublishSession session, string moduleName, IReadOnlyList<UilmFile> files)
@@ -135,6 +130,12 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 pointer.Url = upload.Url;
                 pointer.ContentHash = upload.Built.ContentHash;
                 pointer.Size = upload.Built.Bytes.LongLength;
+                if (!session.KeepContent)
+                {
+                    // #349 §6.4: the file is the only copy; restore writes Content back from Storage if needed. The
+                    // model keeps Content non-nullable for legacy rows (out of scope to change), hence null!.
+                    pointer.Content = null!;
+                }
 
                 var write = await _keyRepository.ReplaceUilmFilePointerAsync(pointer);
                 if (!write.Applied)
@@ -199,6 +200,12 @@ namespace Eurolm.DomainService.Services.UilmStorage
             return await _storedFiles.ExistsAsync(pointer.FileId) && await ExistsInStorageAsync(pointer.Url);
         }
 
+        private async Task<Uploaded?> UploadAsync(string moduleName, BuiltFile file, ConcurrentBag<string> attemptedFileIds)
+        {
+            var outcome = await _uploader.UploadAsync(moduleName, file.File.Language, file.Bytes, attemptedFileIds);
+            return outcome.Upload == null ? null : new Uploaded(file, outcome.Upload.FileId, outcome.Upload.Url);
+        }
+
         private async Task<bool> ExistsInStorageAsync(string url)
         {
             try
@@ -213,167 +220,6 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 return false;
             }
         }
-
-        /// <summary>Uploads one file under a new file id; null when it failed (after retries).</summary>
-        private async Task<Uploaded?> UploadAsync(string moduleName, BuiltFile file, ConcurrentBag<string> attemptedFileIds)
-        {
-            var fileId = Guid.NewGuid().ToString();
-            var language = file.File.Language;
-            try
-            {
-                // The ledger row comes first, so a crash after this point never leaves an untracked file.
-                await _storedFiles.InsertAsync(new UilmStoredFile
-                {
-                    Id = fileId,
-                    ModuleName = moduleName,
-                    Language = language,
-                    State = UilmStoredFileState.Uploading,
-                    CreatedAt = UtcNow()
-                });
-                attemptedFileIds.Add(fileId);
-
-                var upload = await _storageDriver.GetPerSignedUrlForUploadAsync(new GetPreSignedUrlForUploadRequest
-                {
-                    ItemId = fileId,
-                    Name = $"{moduleName}.{language}.json",
-                    MetaData = JsonConvert.SerializeObject(new Dictionary<string, object>()),
-                    ParentDirectoryId = string.Empty,
-                    Tags = FileTags,
-                    AccessModifier = "Public",
-                    ContentType = JsonContentType,
-                    SizeInBytes = file.Bytes.LongLength,
-                    ModuleName = ModuleName.Localization,
-                });
-                if (upload == null || string.IsNullOrEmpty(upload.UploadUrl))
-                {
-                    _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) got no upload URL", moduleName, language, fileId);
-                    return null;
-                }
-
-                if (!await PutWithRetriesAsync(upload, file.Bytes, moduleName, language, fileId))
-                {
-                    return null;
-                }
-
-                if (upload.UploadCompletionRequired && !await CompleteAsync(upload, moduleName, language, fileId))
-                {
-                    return null;
-                }
-
-                var stored = await _storageDriver.GetUrlForDownloadFileAsync(new GetFileRequest { FileId = fileId });
-                if (string.IsNullOrEmpty(stored?.Url))
-                {
-                    _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) got no download URL", moduleName, language, fileId);
-                    return null;
-                }
-                return new Uploaded(file, fileId, stored.Url);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "UILM upload of {ModuleName}/{Language} (file {FileId}) failed", moduleName, language, fileId);
-                return null;
-            }
-        }
-
-        private async Task<bool> CompleteAsync(GetPreSignedUrlForUploadResponse upload, string moduleName, string language, string fileId)
-        {
-            var completion = await _storageDriver.CompleteUploadAsync(new CompleteUploadRequest
-            {
-                FileId = fileId,
-                FileVersionId = upload.FileVersionId,
-            });
-            if (completion?.VerificationStatus == FileVerificationStatus.Verified)
-            {
-                return true;
-            }
-            _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) was rejected by Storage: {RejectionReason}",
-                moduleName, language, fileId, completion?.RejectionReason);
-            return false;
-        }
-
-        /// <summary>
-        /// PUTs the bytes to the pre-signed URL, retrying network errors, timeouts and HTTP 5xx/429 after each of
-        /// <see cref="UilmStorageOptions.UploadRetryDelays"/>. Other responses fail at once.
-        /// </summary>
-        private async Task<bool> PutWithRetriesAsync(GetPreSignedUrlForUploadResponse upload, byte[] bytes, string moduleName, string language, string fileId)
-        {
-            var client = _infrastructure.CreateHttpClient();
-            var retries = _options.UploadRetryDelays.Count;
-            for (var attempt = 0; attempt <= retries; attempt++)
-            {
-                if (attempt > 0)
-                {
-                    await Task.Delay(_options.UploadRetryDelays[attempt - 1], _timeProvider);
-                }
-
-                var (succeeded, retryable, failure) = await PutOnceAsync(client, upload, bytes);
-                if (succeeded)
-                {
-                    return true;
-                }
-                if (!retryable)
-                {
-                    _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) was refused: {Failure}",
-                        moduleName, language, fileId, failure);
-                    return false;
-                }
-                if (attempt < retries)
-                {
-                    _logger.LogWarning("UILM upload of {ModuleName}/{Language} (file {FileId}) attempt {Attempt} failed ({Failure}); retrying",
-                        moduleName, language, fileId, attempt + 1, failure);
-                }
-                else
-                {
-                    _logger.LogError("UILM upload of {ModuleName}/{Language} (file {FileId}) failed after {Attempts} attempts: {Failure}",
-                        moduleName, language, fileId, attempt + 1, failure);
-                }
-            }
-            return false;
-        }
-
-        /// <summary>One PUT within the upload timeout: whether it succeeded, whether a failure may be retried, and why.</summary>
-        private async Task<(bool Succeeded, bool Retryable, string Failure)> PutOnceAsync(HttpClient client, GetPreSignedUrlForUploadResponse upload, byte[] bytes)
-        {
-            try
-            {
-                using var timeout = new CancellationTokenSource(_options.UploadTimeout, _timeProvider);
-                using var request = PutRequest(upload, bytes);
-                using var response = await client.SendAsync(request, timeout.Token);
-                return response.IsSuccessStatusCode
-                    ? (true, false, string.Empty)
-                    : (false, IsRetryable(response.StatusCode), $"HTTP {(int)response.StatusCode}");
-            }
-            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
-            {
-                return (false, true, ex.GetType().Name);
-            }
-        }
-
-        private static HttpRequestMessage PutRequest(GetPreSignedUrlForUploadResponse upload, byte[] bytes)
-        {
-            var content = new ByteArrayContent(bytes);
-            content.Headers.ContentType = new MediaTypeHeaderValue(JsonContentType);
-            var request = new HttpRequestMessage(HttpMethod.Put, upload.UploadUrl) { Content = content };
-            if (upload.RequiredHeaders is { Count: > 0 } headers)
-            {
-                foreach (var (name, value) in headers)
-                {
-                    if (!request.Headers.TryAddWithoutValidation(name, value))
-                    {
-                        content.Headers.Remove(name);
-                        content.Headers.TryAddWithoutValidation(name, value);
-                    }
-                }
-            }
-            else
-            {
-                // Same header the export upload (StorageHelper) sends; Azure needs it for a block blob.
-                request.Headers.Add("x-ms-blob-type", "BlockBlob");
-            }
-            return request;
-        }
-
-        private static bool IsRetryable(HttpStatusCode status) => (int)status >= 500 || status == HttpStatusCode.TooManyRequests;
 
         private DateTime UtcNow() => _infrastructure.UtcNow();
     }

@@ -4,7 +4,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
     public interface IUilmFilePublisher
     {
         /// <summary>
-        /// Starts a publish: reads the tenant's Storage switch and takes the next version from the atomic counter,
+        /// Starts a publish: reads the tenant's Storage switches (<see cref="UilmStorageMode"/>) and takes the next version from the atomic counter,
         /// seeded with the project's highest history version.
         /// </summary>
         Task<UilmPublishSession> BeginAsync(string projectKey, bool forceUpload);

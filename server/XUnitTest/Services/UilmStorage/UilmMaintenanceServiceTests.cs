@@ -246,7 +246,7 @@ namespace XUnitTest.Services.UilmStorage
                 .Callback((ConsumerMessage<PublishScheduleCommand> m) => sent = m)
                 .Returns(Task.CompletedTask);
 
-            await new UilmMaintenanceQueue(_messages.Object).QueueForCurrentTenantAsync();
+            await new UilmMaintenanceQueue(_messages.Object).QueueForCurrentTenantAsync(null);
 
             sent!.ConsumerName.Should().Be("eurolm_maintenance_listener");
             UilmMaintenanceService.TryParsePayload(sent.Payload.Payload, out var tenantId).Should().BeTrue();
@@ -259,7 +259,7 @@ namespace XUnitTest.Services.UilmStorage
         {
             BlocksContext.SetContext(null!, true);
 
-            await new UilmMaintenanceQueue(_messages.Object).Invoking(q => q.QueueForCurrentTenantAsync()).Should().ThrowAsync<InvalidOperationException>();
+            await new UilmMaintenanceQueue(_messages.Object).Invoking(q => q.QueueForCurrentTenantAsync(null)).Should().ThrowAsync<InvalidOperationException>();
             _messages.VerifyNoOtherCalls();
         }
 

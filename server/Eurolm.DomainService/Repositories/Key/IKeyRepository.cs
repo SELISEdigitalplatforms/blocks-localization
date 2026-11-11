@@ -53,6 +53,29 @@ namespace Eurolm.DomainService.Repositories
         Task<List<UilmFile>> DeleteUilmFilesOfOtherLanguagesAsync(string moduleName, IReadOnlyCollection<string> languages);
         /// <summary>The subset of <paramref name="fileIds"/> that some <c>UilmFiles</c> row still points at.</summary>
         Task<HashSet<string>> GetReferencedUilmFileIdsAsync(IReadOnlyCollection<string> fileIds);
+        /// <summary>
+        /// Up to <paramref name="limit"/> module/language groups, in order, that have a row with <c>Content</c> and no
+        /// file in the tenant's <c>UilmStoredFiles</c> ledger (no <c>FileId</c>, or one the ledger doesn't know).
+        /// </summary>
+        Task<List<UilmFileGroup>> GetUilmBackfillGroupsAsync(int limit);
+        /// <summary>
+        /// Writes the backfill pointer only while <paramref name="served"/> is still what the reader serves: the same
+        /// row with the same <c>Version</c> and <c>FileId</c>, or, for a legacy row with another id, while no row with
+        /// the pointer's id has a version or a file. False when a publish or another run changed the group meanwhile.
+        /// </summary>
+        Task<bool> ReplaceUilmFileFromBackfillAsync(UilmFile served, UilmFile pointer);
+        /// <summary>The tenant's rows by state (#349 H10, H12).</summary>
+        Task<UilmFileCounts> CountUilmFilesAsync();
+        /// <summary>
+        /// Rows whose <c>FileId</c> is <c>Live</c> in the ledger and that have a <c>ContentHash</c>, with
+        /// (<paramref name="withContent"/>) or without <c>Content</c>, in id order after <paramref name="afterId"/>.
+        /// <c>Content</c> itself is not loaded.
+        /// </summary>
+        Task<List<UilmFile>> GetUilmFilesWithLiveFileAsync(bool withContent, string? afterId, int limit);
+        /// <summary>Removes <c>Content</c> while the row still has the same <c>FileId</c> and <c>ContentHash</c>.</summary>
+        Task<bool> RemoveUilmFileContentAsync(UilmFile row);
+        /// <summary>Writes <c>Content</c> while the row still has the same <c>FileId</c> and <c>ContentHash</c> and no content.</summary>
+        Task<bool> RestoreUilmFileContentAsync(UilmFile row, string content);
         Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request);
         Task<Key> GetByIdAsync(string itemId);
         Task DeleteAsync(string itemId);
