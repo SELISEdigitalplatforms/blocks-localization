@@ -1,4 +1,5 @@
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import {
   localizationQueryKeys,
   type LanguageKeyIssueCountFilters,
@@ -1211,7 +1212,7 @@ export const useDeleteGlossaryWithCascade = () => {
       glossaryId,
     }: GlossaryCascadeVariables): Promise<GlossaryCascadeResult> => {
       if (!tenantId) {
-        throw new Error("No project selected");
+        throw new Error(tStatic("localization.glossary", "USE_LANGUAGE_MANAGER.NO_PROJECT_SELECTED"));
       }
 
       const deleteResponse = await languageManagerService.deleteGlossary({ itemId: glossaryId });

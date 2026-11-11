@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@seliseblocks/genesis-os";
+import { tStatic } from "@seliseblocks/genesis-os/i18n";
 import { formatErrorMessage } from "@/lib/error";
 import { refreshKeysAfterGlossaryChange } from "@blocks-localization/hooks/language-key-list-cache";
 import { GLOSSARY_CACHE_PREFIXES } from "@blocks-localization/hooks/use-language-manager";
@@ -66,7 +67,8 @@ type SaveResponse = Awaited<ReturnType<typeof languageManagerService.saveGlossar
 
 /** The server's message for a rejected save: the first validation error (e.g. `Version`). */
 const saveErrorMessage = (res: SaveResponse | undefined) =>
-  res?.validationErrors?.[0]?.errorMessage || res?.errorMessage || "Save failed";
+  res?.validationErrors?.[0]?.errorMessage || res?.errorMessage ||
+  tStatic("localization.glossary", "USE_GLOSSARY_BULK.SAVE_FAILED");
 
 const saveWith = async (glossary: IGlossary, change: Partial<ReturnType<typeof toGlossarySavePayload>>) => {
   const res = await languageManagerService.saveGlossary({ ...toGlossarySavePayload(glossary), ...change });
@@ -120,7 +122,7 @@ export const useGlossaryBulk = () => {
     glossaries: IGlossary[],
   ): Promise<GlossaryBulkResult | undefined> => {
     if (runningRef.current || glossaries.length === 0) return undefined;
-    if (!tenantId) throw new Error("No project selected");
+    if (!tenantId) throw new Error(tStatic("localization.glossary", "USE_GLOSSARY_BULK.NO_PROJECT_SELECTED"));
     runningRef.current = true;
     try {
       if (action.kind === "tag-module") {

@@ -380,13 +380,26 @@ export const GLOSSARY_PARTS_OF_SPEECH: readonly GlossaryPartOfSpeech[] = [
   "other",
 ];
 
+// Getters, so each label is translated when it is shown, not at import time.
 export const GLOSSARY_PART_OF_SPEECH_LABELS: Record<GlossaryPartOfSpeech, string> = {
-  noun: "Noun",
-  verb: "Verb",
-  adjective: "Adjective",
-  adverb: "Adverb",
-  phrase: "Phrase",
-  other: "Other",
+  get noun() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.NOUN");
+  },
+  get verb() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.VERB");
+  },
+  get adjective() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.ADJECTIVE");
+  },
+  get adverb() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.ADVERB");
+  },
+  get phrase() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.PHRASE");
+  },
+  get other() {
+    return tStatic("localization.shared", "GLOSSARY_PART_OF_SPEECH.OTHER");
+  },
 };
 
 export type GlossaryRuleDto = "translate" | "keep" | "forbidden";

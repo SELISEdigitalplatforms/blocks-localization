@@ -270,9 +270,14 @@ export const FileUploaderContent = forwardRef<HTMLDivElement, React.HTMLAttribut
   ({ children, className, ...props }, ref) => {
     const { orientation } = useFileUpload();
     const containerRef = useRef<HTMLDivElement>(null);
+    const { t } = useT("localization.shared");
 
     return (
-      <div className={cn("w-full px-1")} ref={containerRef} aria-description="content file holder">
+      <div
+        className={cn("w-full px-1")}
+        ref={containerRef}
+        aria-description={t("FILE_UPLOADER.CONTENT_DESCRIPTION")}
+      >
         <div
           {...props}
           ref={ref}
