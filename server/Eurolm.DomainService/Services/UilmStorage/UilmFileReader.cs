@@ -72,6 +72,19 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 : new UilmFileReadResult(UilmFileReadKind.File, Bytes: bytes, ETag: etag);
         }
 
+        public async Task<UilmFileReadResult> GetManifestAsync(GetUilmManifestRequest request, string? ifNoneMatch)
+        {
+            var rows = await _keyRepository.GetUilmManifestRowsAsync(
+                string.IsNullOrEmpty(request.ModuleName) ? null : request.ModuleName,
+                string.IsNullOrEmpty(request.Language) ? null : request.Language);
+            var manifest = UilmManifest.FromRows(rows);
+            var hash = manifest.ComputeHash();
+            var etag = $"\"{hash}\"";
+            return IfNoneMatchMatches(ifNoneMatch, hash)
+                ? new UilmFileReadResult(UilmFileReadKind.NotModified, ETag: etag)
+                : new UilmFileReadResult(UilmFileReadKind.File, Bytes: manifest.ToJsonBytes(), ETag: etag);
+        }
+
         private UilmFileReadResult FromContent(UilmFile row)
         {
             if (row.Content != null)
