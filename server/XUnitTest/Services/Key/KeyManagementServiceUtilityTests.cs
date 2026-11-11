@@ -12,6 +12,7 @@ using Moq;
 using StorageDriver;
 using Xunit;
 using KeyModel = Eurolm.DomainService.Services.Key;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -49,7 +50,8 @@ namespace XUnitTest
                 storageHelper,
                 Mock.Of<IServiceProvider>(),
                 notificationServiceMock.Object,
-                Mock.Of<IGlossaryRepository>()
+                Mock.Of<IGlossaryRepository>(),
+                Mock.Of<IUilmFilePublisher>()
             );
         }
 

@@ -13,6 +13,8 @@ using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Validation;
+using Eurolm.DomainService.Repositories.UilmStorage;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -59,6 +61,16 @@ namespace XUnitTest
             AssertRegistration<IHttpHelperServices, HttpHelperServices>(services, ServiceLifetime.Singleton);
             AssertRegistration<IWebHookService, WebHookService>(services, ServiceLifetime.Singleton);
             AssertRegistration<IBlocksWebhookRepository, BlocksWebhookRepository>(services, ServiceLifetime.Singleton);
+
+            // UILM files in Storage (#348)
+            services.Should().ContainSingle(d => d.ServiceType == typeof(UilmStorageOptions) && d.ImplementationInstance != null);
+            AssertRegistration<IUilmStoredFileRepository, UilmStoredFileRepository>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmStorageSettingsRepository, UilmStorageSettingsRepository>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmPublishCounterRepository, UilmPublishCounterRepository>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmFilePublisher, UilmFilePublisher>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmFileReader, UilmFileReader>(services, ServiceLifetime.Singleton);
+            AssertRegistration<IUilmMaintenanceService, UilmMaintenanceService>(services, ServiceLifetime.Singleton);
+            services.Should().Contain(d => d.ServiceType == typeof(IHttpClientFactory));
         }
 
         private static void AssertRegistration<TService, TImplementation>(

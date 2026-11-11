@@ -210,6 +210,27 @@
         "OrganizationId" : "default"
     },
     {
+        "_id" : "a4e1cc47-bd3b-474c-ac76-0fdd4b52cd4d",
+        "CreatedDate" : "2026-11-11T00:00:00.000+0000",
+        "LastUpdatedDate" : "2026-11-11T00:00:00.000+0000",
+        "CreatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
+        "Language" : null,
+        "LastUpdatedBy" : "edc5584a-8098-441a-95f5-21920c0f2fa6",
+        "OrganizationIds" : [],
+        "Tags" : [],
+        "Name" : "Run UILM Maintenance",
+        "Type" : "Endpoint",
+        "Description" : "Queue a UILM Storage maintenance run for the caller's project. Covers: POST /Key/RunUilmMaintenance. Processed asynchronously: permanently deletes published UILM files that were replaced more than 24 hours ago and reconciles the file ledger.",
+        "Resource" : "blocks-localization::key::runuilmmaintenance",
+        "ResourceGroup" : "localization",
+        "IsBuiltIn" : true,
+        "IsArchived" : false,
+        "PermissionSeverity" : "Medium",
+        "DependentPermissions" : [],
+        "Roles" : [],
+        "OrganizationId" : "default"
+    },
+    {
         "_id" : "f39a5ef1-47f1-42d7-872f-ff593969c841",
         "CreatedDate" : "2026-07-09T11:32:25.758+0000",
         "LastUpdatedDate" : "2026-07-09T11:32:25.758+0000",

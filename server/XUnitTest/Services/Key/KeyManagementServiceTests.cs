@@ -14,6 +14,7 @@ using Xunit;
 using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
 using KeyModel = Eurolm.DomainService.Services.Key;
 using KeyTimeline = Eurolm.DomainService.Services.KeyTimeline;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -30,6 +31,7 @@ namespace XUnitTest
         private readonly Mock<IAssistantService> _assistantServiceMock;
         private readonly Mock<IStorageDriverService> _storageDriverServiceMock;
         private readonly Mock<IServiceProvider> _serviceProviderMock;
+        private readonly Mock<IUilmFilePublisher> _uilmFilePublisherMock = new();
         private readonly StorageHelper _storageHelper;
         private readonly Mock<INotificationService> _notificationServiceMock;
         private readonly Mock<IGlossaryRepository> _glossaryRepositoryMock;
@@ -68,7 +70,8 @@ namespace XUnitTest
                 _storageHelper,
                 _serviceProviderMock.Object,
                 _notificationServiceMock.Object,
-                _glossaryRepositoryMock.Object
+                _glossaryRepositoryMock.Object,
+                _uilmFilePublisherMock.Object
             );
         }
 
@@ -171,7 +174,8 @@ namespace XUnitTest
             var result = await _service.GenerateAsync(command);
 
             result.Should().BeTrue();
-            _keyRepositoryMock.Verify(r => r.SaveNewUilmFiles(It.IsAny<List<UilmFile>>()), Times.AtLeastOnce);
+            // The module's files are written by the publisher (spec 6.8), no longer by delete-and-insert.
+            _uilmFilePublisherMock.Verify(p => p.PublishModuleAsync(It.IsAny<UilmPublishSession>(), "auth", It.IsAny<IReadOnlyList<UilmFile>>()), Times.AtLeastOnce);
             _notificationServiceMock.Verify(n => n.NotifyExtensionEvent(true, "proj"), Times.Once);
         }
 

@@ -21,6 +21,7 @@ using XUnitTest.Shared;
 using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
 using KeyModel = Eurolm.DomainService.Services.Key;
 using KeyTimeline = Eurolm.DomainService.Services.KeyTimeline;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest.Services.Key
 {
@@ -46,7 +47,8 @@ namespace XUnitTest.Services.Key
                 new Mock<ILanguageManagementService>().Object, new Mock<IModuleManagementService>().Object,
                 new Mock<IMessageClient>().Object, new Mock<IAssistantService>().Object, storageDriver.Object,
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriver.Object),
-                new Mock<IServiceProvider>().Object, new Mock<INotificationService>().Object, new Mock<IGlossaryRepository>().Object);
+                new Mock<IServiceProvider>().Object, new Mock<INotificationService>().Object, new Mock<IGlossaryRepository>().Object,
+                Mock.Of<IUilmFilePublisher>());
 
             _keyRepository.Setup(r => r.InsertModulesSkippingTakenNamesAsync(It.IsAny<List<BlocksLanguageModule>>()))
                 .Callback(() => _order.Add("modules"))

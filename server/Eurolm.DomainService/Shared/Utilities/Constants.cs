@@ -9,6 +9,8 @@ namespace Eurolm.DomainService.Utilities
         public const string TranslateAllKeysQueue = "eurolm_translate_all_keys_listener";
         public const string TranslateBlocksLanguageKeyQueue = "eurolm_translate_blocks_language_key_listener";
         public const string TranslateBlocksLanguageKeysQueue = "eurolm_translate_blocks_language_keys_listener";
+        /// <summary>The blocks-logic UILM maintenance schedule and <c>Key/RunUilmMaintenance</c> send here.</summary>
+        public const string UilmMaintenanceQueue = "eurolm_maintenance_listener";
         public const string EnvironmentDataMigrationQueue = "blocks_localization_environment_data_migration_listener";
         public const string MigrationCompletionTopic = "blocks_migration_topic";
         public const string MigrationCompletionTopicQueue = "blocks_migration_topic";
@@ -52,6 +54,7 @@ namespace Eurolm.DomainService.Utilities
                                              ConsumerSubscription.BindToQueue(TranslateAllKeysQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeyQueue),
                                              ConsumerSubscription.BindToQueue(TranslateBlocksLanguageKeysQueue),
+                                             ConsumerSubscription.BindToQueue(UilmMaintenanceQueue),
                                              // Producer only: blocks-os consumes completion events from the
                                              // "blocks_migration_topic" queue. Bind that queue to the exchange we
                                              // publish to, but don't consume it here — otherwise this worker takes
@@ -67,7 +70,7 @@ namespace Eurolm.DomainService.Utilities
             {
                 AzureServiceBusConfiguration = new AzureServiceBusConfiguration
                 {
-                    Queues = [UilmQueue, UilmImportExportQueue, EnvironmentDataMigrationQueue, TranslateAllKeysQueue, TranslateBlocksLanguageKeyQueue, TranslateBlocksLanguageKeysQueue],
+                    Queues = [UilmQueue, UilmImportExportQueue, EnvironmentDataMigrationQueue, TranslateAllKeysQueue, TranslateBlocksLanguageKeyQueue, TranslateBlocksLanguageKeysQueue, UilmMaintenanceQueue],
                     Topics = []
                 }
             };

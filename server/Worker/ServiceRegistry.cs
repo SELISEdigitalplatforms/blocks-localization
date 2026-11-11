@@ -3,8 +3,10 @@ using Blocks.Secrets;
 using Blocks.Genesis;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Repositories.UilmStorage;
 using Eurolm.DomainService.Services;
 using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
 using Eurolm.DomainService.Validation;
@@ -30,6 +32,7 @@ namespace Worker
             services.AddSingleton<IConsumer<UilmExportEvent>, UilmExportEventConsumer>();
             services.AddSingleton<IConsumer<EnvironmentDataMigrationEvent>, EuroLMEnvironmentDataMigrationEventConsumer>();
             services.AddSingleton<IConsumer<RecheckGlossaryViolationsEvent>, RecheckGlossaryViolationsEventConsumer>();
+            services.AddSingleton<IConsumer<PublishScheduleCommand>, UilmMaintenanceConsumer>();
 
             services.AddSingleton<XlsxOutputGeneratorService>();
             services.AddSingleton<JsonOutputGeneratorService>();
@@ -55,6 +58,17 @@ namespace Worker
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeyRequest>, TranslateBlocksLanguageKeyRequestValidator>();
             services.AddSingleton<IValidator<TranslateBlocksLanguageKeysRequest>, TranslateBlocksLanguageKeysRequestValidator>();
             services.AddSingleton<IEnvironmentDataMigrationRepository, EnvironmentDataMigrationRepository>();
+
+            // UILM files in Storage (#348): options with code defaults, the ledger/settings/counter repositories,
+            // the publisher (worker), the reader with its own size-limited cache (API) and maintenance.
+            services.AddSingleton(new UilmStorageOptions());
+            services.AddSingleton<IUilmStoredFileRepository, UilmStoredFileRepository>();
+            services.AddSingleton<IUilmStorageSettingsRepository, UilmStorageSettingsRepository>();
+            services.AddSingleton<IUilmPublishCounterRepository, UilmPublishCounterRepository>();
+            services.AddSingleton<IUilmFilePublisher, UilmFilePublisher>();
+            services.AddSingleton<IUilmFileReader, UilmFileReader>();
+            services.AddSingleton<IUilmMaintenanceService, UilmMaintenanceService>();
+            services.AddHttpClient(UilmStorageHttp.ClientName);
 
             services.AddAssistantService();
 

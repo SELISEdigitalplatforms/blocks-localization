@@ -12,6 +12,7 @@ using Moq;
 using StorageDriver;
 using Xunit;
 using KeyModel = Eurolm.DomainService.Services.Key;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest.Services.Key
 {
@@ -45,7 +46,8 @@ namespace XUnitTest.Services.Key
                 new StorageHelper(new Mock<ILogger<StorageHelper>>().Object, storageDriver.Object),
                 _serviceProvider.Object,
                 new Mock<INotificationService>().Object,
-                Mock.Of<IGlossaryRepository>());
+                Mock.Of<IGlossaryRepository>(),
+                Mock.Of<IUilmFilePublisher>());
         }
 
         private static KeyGlossaryViolation Stored(string culture, string glossaryId) => new()
