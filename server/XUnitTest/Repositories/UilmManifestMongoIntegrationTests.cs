@@ -292,6 +292,30 @@ namespace XUnitTest.Repositories
         }
 
         [Fact]
+        public async Task AForcedReuploadOfTheSameBytes_ChangesTheETag_AndAnUnchangedRepublishKeepsIt_H6()
+        {
+            await Database().GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = true });
+            var publisher = Publisher(new FakeStorage(_http));
+            var reader = Reader();
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, false), Module, Files("{\"title\":\"Sign in\"}"));
+            var first = await reader.GetManifestAsync(new GetUilmManifestRequest(), null);
+
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, false), Module, Files("{\"title\":\"Sign in\"}"));
+            var unchanged = await reader.GetManifestAsync(new GetUilmManifestRequest(), first.ETag);
+
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, true), Module, Files("{\"title\":\"Sign in\"}"));
+            var forced = await reader.GetManifestAsync(new GetUilmManifestRequest(), first.ETag);
+
+            unchanged.Should().Be(new UilmFileReadResult(UilmFileReadKind.NotModified, ETag: first.ETag), "nothing was re-uploaded");
+            forced.Kind.Should().Be(UilmFileReadKind.File, "H6: the pointers switched to new URLs");
+            forced.ETag.Should().NotBe(first.ETag);
+            var before = JsonDocument.Parse(first.Bytes!).RootElement.GetProperty("files");
+            var after = JsonDocument.Parse(forced.Bytes!).RootElement.GetProperty("files");
+            after[0].GetProperty("hash").GetString().Should().Be(before[0].GetProperty("hash").GetString(), "the bytes are the same");
+            after[0].GetProperty("url").GetString().Should().NotBe(before[0].GetProperty("url").GetString());
+        }
+
+        [Fact]
         public async Task AFailedPublish_KeepsThePreviousFileInTheManifest_C5()
         {
             await Database().GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = true });

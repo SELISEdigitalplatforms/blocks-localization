@@ -60,15 +60,18 @@ namespace Eurolm.DomainService.Services.UilmStorage
         }
 
         /// <summary>
-        /// The manifest's ETag value: lowercase hex SHA-256 over the lines <c>moduleName\tlanguage\thash-or-empty\n</c>
-        /// in response order.
+        /// The manifest's ETag value: lowercase hex SHA-256 over the lines
+        /// <c>moduleName\tlanguage\thash-or-empty\turl-or-empty\n</c> in response order.
+        /// The URL is part of each line because a pointer can switch to a new file with the same bytes (a
+        /// <c>forceUpload</c> or a missing previous file re-uploads them); every pointer switch must change the ETag (H6).
         /// </summary>
         public string ComputeHash()
         {
             var lines = new StringBuilder();
             foreach (var file in Files)
             {
-                lines.Append(file.ModuleName).Append('\t').Append(file.Language).Append('\t').Append(file.Hash).Append('\n');
+                lines.Append(file.ModuleName).Append('\t').Append(file.Language).Append('\t').Append(file.Hash)
+                    .Append('\t').Append(file.Url).Append('\n');
             }
             return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(lines.ToString())));
         }

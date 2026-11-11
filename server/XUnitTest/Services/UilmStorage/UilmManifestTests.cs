@@ -138,7 +138,7 @@ namespace XUnitTest.Services.UilmStorage
         {
             var manifest = UilmManifest.FromRows([new UilmManifestRow { ModuleName = "root", Language = "en-US" }, Live("app-login", "en-US", 3)]);
 
-            manifest.ComputeHash().Should().Be(Sha256("app-login\ten-US\th3\nroot\ten-US\t\n"))
+            manifest.ComputeHash().Should().Be(Sha256("app-login\ten-US\th3\thttps://files.test/app-login.en-US.3.json\nroot\ten-US\t\t\n"))
                 .And.MatchRegex("^[0-9a-f]{64}$");
         }
 
@@ -161,6 +161,27 @@ namespace XUnitTest.Services.UilmStorage
             UilmManifest.FromRows([new UilmManifestRow { ModuleName = "a", Language = "en-US" }, Live("b", "en-US", 3)]).ComputeHash().Should().NotBe(before);
             UilmManifest.FromRows([Live("a", "en-US", 3)]).ComputeHash().Should().NotBe(before);
             UilmManifest.FromRows([Live("a", "en-US", 3), Live("b", "en-US", 3), Live("c", "en-US", 3)]).ComputeHash().Should().NotBe(before);
+        }
+
+        [Fact]
+        public void Hash_Changes_WhenAPointerSwitchesToAByteIdenticalFileWithANewUrl_H6()
+        {
+            var before = UilmManifest.FromRows([Live("a", "en-US", 3), Live("b", "en-US", 3)]);
+            var reuploaded = Live("a", "en-US", 3);
+            reuploaded.FileId = "f-reuploaded";
+            reuploaded.Url = "https://files.test/a.en-US.reuploaded.json";
+
+            var after = UilmManifest.FromRows([reuploaded, Live("b", "en-US", 3)]);
+
+            after.Files[0].Hash.Should().Be(before.Files[0].Hash, "the re-uploaded file has the same bytes");
+            after.ComputeHash().Should().NotBe(before.ComputeHash(), "the pointer now names another URL");
+        }
+
+        [Fact]
+        public void Hash_IsUnchanged_WhenTheManifestIsUnchanged()
+        {
+            UilmManifest.FromRows([Live("a", "en-US", 3), new UilmManifestRow { ModuleName = "b", Language = "en-US" }]).ComputeHash()
+                .Should().Be(UilmManifest.FromRows([Live("a", "en-US", 3), new UilmManifestRow { ModuleName = "b", Language = "en-US" }]).ComputeHash());
         }
 
         // ---- Reader (H2, H5, C7, C10, D5) ----
