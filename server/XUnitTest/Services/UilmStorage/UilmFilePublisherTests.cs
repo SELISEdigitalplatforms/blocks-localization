@@ -421,12 +421,12 @@ namespace XUnitTest.Services.UilmStorage
         [Fact]
         public async Task BeginAsync_ReadsTheSwitch_AndTakesTheProjectsNextVersion_H10()
         {
-            _settings.Setup(s => s.IsPublishToStorageEnabledAsync()).ReturnsAsync(true);
+            _settings.Setup(s => s.GetModeAsync()).ReturnsAsync(new UilmStorageMode(true, false));
             _counter.Setup(c => c.NextVersionAsync("proj")).ReturnsAsync(42);
 
             var session = await _publisher.BeginAsync("proj", forceUpload: true);
 
-            session.Should().Be(new UilmPublishSession(42, true, true));
+            session.Should().Be(new UilmPublishSession(42, true, true, KeepContent: false));
         }
 
         [Fact]

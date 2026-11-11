@@ -34,6 +34,12 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
         public TimeSpan ReconcileInterval { get; init; } = TimeSpan.FromHours(24);
 
+        /// <summary>Module/language groups the backfill converts per tenant and run (#349 P1).</summary>
+        public int BackfillBatchSize { get; init; } = 200;
+
+        /// <summary>Rows read per page by content removal and restore.</summary>
+        public int ContentPageSize { get; init; } = 500;
+
         /// <summary>An <c>Uploading</c> ledger row older than this, with no pointer, is an orphan.</summary>
         public TimeSpan OrphanUploadAge { get; init; } = TimeSpan.FromHours(1);
     }

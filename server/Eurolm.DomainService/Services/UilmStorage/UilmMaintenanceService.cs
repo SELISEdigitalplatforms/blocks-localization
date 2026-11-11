@@ -11,6 +11,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
     public class UilmMaintenanceService : IUilmMaintenanceService
     {
         public const string TaskName = "uilm-maintenance";
+        public const string RestoreContentTaskName = "uilm-restore-content";
         private const string FileNotFound = "file_not_found";
         private const int ReconcilePageSize = 500;
 
@@ -21,6 +22,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
         private readonly ITenants _tenants;
         private readonly UilmStorageInfrastructure _infrastructure;
         private readonly UilmStorageOptions _options;
+        private readonly UilmContentMigration _contentMigration;
         private readonly ILogger<UilmMaintenanceService> _logger;
 
         public UilmMaintenanceService(
@@ -39,17 +41,20 @@ namespace Eurolm.DomainService.Services.UilmStorage
             _tenants = tenants;
             _infrastructure = infrastructure;
             _options = infrastructure.Options;
+            _contentMigration = new UilmContentMigration(keyRepository, storedFiles, settings, storageDriver, infrastructure, logger);
             _logger = logger;
         }
 
         public async Task RunAsync(string? payload)
         {
-            if (!TryParsePayload(payload, out var payloadTenantId))
+            if (!TryParsePayload(payload, out var task, out var payloadTenantId))
             {
-                // A retry can't fix a bad payload, so it is dropped rather than thrown.
-                _logger.LogWarning("UILM maintenance ignored a schedule payload that is not a {TaskName} task", TaskName);
+                // A retry can't fix a bad payload, so it is dropped rather than thrown (C12).
+                _logger.LogWarning("UILM maintenance ignored a schedule payload that is not a {TaskName} or {RestoreTaskName} task",
+                    TaskName, RestoreContentTaskName);
                 return;
             }
+            Func<Task> runTenant = task == RestoreContentTaskName ? _contentMigration.RestoreContentAsync : () => RunTenantAsync();
 
             List<string> tenantIds;
             try
@@ -69,7 +74,7 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 try
                 {
                     // No user: the scheduler's context. ExecuteInContext restores the caller's context afterwards.
-                    await BlocksContext.ExecuteInContext(NoUserContext(tenantId), () => RunTenantAsync());
+                    await BlocksContext.ExecuteInContext(NoUserContext(tenantId), runTenant);
                 }
                 catch (Exception ex)
                 {
@@ -78,9 +83,16 @@ namespace Eurolm.DomainService.Services.UilmStorage
             }
         }
 
-        /// <summary>True for a JSON object whose <c>task</c> is <see cref="TaskName"/>; returns its optional <c>tenantId</c>.</summary>
-        public static bool TryParsePayload(string? payload, out string? tenantId)
+        /// <summary>True for a JSON object whose <c>task</c> is one of the two tasks; returns its optional <c>tenantId</c>.</summary>
+        public static bool TryParsePayload(string? payload, out string? tenantId) => TryParsePayload(payload, out _, out tenantId);
+
+        /// <summary>
+        /// True for a JSON object whose <c>task</c> is <see cref="TaskName"/> or <see cref="RestoreContentTaskName"/>
+        /// (trimmed, any case); returns that task's constant and the optional <c>tenantId</c>.
+        /// </summary>
+        public static bool TryParsePayload(string? payload, out string task, out string? tenantId)
         {
+            task = string.Empty;
             tenantId = null;
             if (string.IsNullOrWhiteSpace(payload))
             {
@@ -91,9 +103,15 @@ namespace Eurolm.DomainService.Services.UilmStorage
                 using var document = JsonDocument.Parse(payload);
                 var root = document.RootElement;
                 if (root.ValueKind != JsonValueKind.Object
-                    || !root.TryGetProperty("task", out var task)
-                    || task.ValueKind != JsonValueKind.String
-                    || !string.Equals(task.GetString()?.Trim(), TaskName, StringComparison.OrdinalIgnoreCase))
+                    || !root.TryGetProperty("task", out var taskElement)
+                    || taskElement.ValueKind != JsonValueKind.String)
+                {
+                    return false;
+                }
+                var name = taskElement.GetString()?.Trim();
+                task = Array.Find([TaskName, RestoreContentTaskName], known => string.Equals(name, known, StringComparison.OrdinalIgnoreCase))
+                    ?? string.Empty;
+                if (task.Length == 0)
                 {
                     return false;
                 }
@@ -110,8 +128,30 @@ namespace Eurolm.DomainService.Services.UilmStorage
             }
         }
 
+        /// <summary>
+        /// One tenant's <see cref="TaskName"/> run, in the #349 order: backfill and content removal (only while the tenant
+        /// publishes to Storage, C6; removal only with <c>KeepContent: false</c>), then the due deletes and the reconcile.
+        /// </summary>
         private async Task<int> RunTenantAsync()
         {
+            var mode = await _settings.GetModeAsync();
+            if (mode.PublishToStorage)
+            {
+                try
+                {
+                    await _contentMigration.BackfillAsync();
+                    if (!mode.KeepContent)
+                    {
+                        await _contentMigration.RemoveContentAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Rows stay as they are and the next run continues; the due deletes and the reconcile still run.
+                    _logger.LogError(ex, "UILM backfill or content removal failed for tenant {TenantId}", BlocksContext.GetContext()?.TenantId);
+                }
+            }
+
             var now = UtcNow();
             var deleted = 0;
             for (var claimed = 0; claimed < _options.MaintenanceBatchSize; claimed++)
