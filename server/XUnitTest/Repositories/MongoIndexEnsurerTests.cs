@@ -4,9 +4,13 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Moq;
+using XUnitTest.Shared;
 
 namespace XUnitTest.Repositories
 {
+    // EnsureAsync_ConcurrentFirstCalls_CreateOnce blocks 20 thread-pool threads on a barrier, so it runs alone:
+    // in parallel with the rest of the suite the pool can't add threads fast enough and the 10 s wait times out.
+    [Collection(ThreadPoolSensitiveTests.Name)]
     public class MongoIndexEnsurerTests
     {
         private static readonly IReadOnlyList<CreateIndexModel<BsonDocument>> Models = new[]
