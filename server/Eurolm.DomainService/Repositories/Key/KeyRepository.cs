@@ -671,11 +671,11 @@ namespace Eurolm.DomainService.Repositories
             // the (ModuleName, Language, Version) index. Content is never returned.
             var stages = new[]
             {
-                new BsonDocument("$match", match),
-                new BsonDocument("$sort", new BsonDocument { { nameof(UilmFile.ModuleName), 1 }, { nameof(UilmFile.Language), 1 }, { nameof(UilmFile.Version), -1 } }),
-                new BsonDocument("$group", new BsonDocument
+                new BsonDocument(MatchStage, match),
+                new BsonDocument(SortStage, new BsonDocument { { nameof(UilmFile.ModuleName), 1 }, { nameof(UilmFile.Language), 1 }, { nameof(UilmFile.Version), -1 } }),
+                new BsonDocument(GroupStage, new BsonDocument
                 {
-                    { "_id", new BsonDocument { { "m", "$" + nameof(UilmFile.ModuleName) }, { "l", "$" + nameof(UilmFile.Language) } } },
+                    { IdField, new BsonDocument { { GroupModule, "$" + nameof(UilmFile.ModuleName) }, { GroupLanguage, "$" + nameof(UilmFile.Language) } } },
                     { nameof(UilmManifestRow.ModuleName), GroupFirst(nameof(UilmFile.ModuleName)) },
                     { nameof(UilmManifestRow.Language), GroupFirst(nameof(UilmFile.Language)) },
                     { nameof(UilmManifestRow.FileId), GroupFirst(nameof(UilmFile.FileId)) },
@@ -684,7 +684,7 @@ namespace Eurolm.DomainService.Repositories
                     { nameof(UilmManifestRow.Size), GroupFirst(nameof(UilmFile.Size)) },
                     { nameof(UilmManifestRow.Version), GroupFirst(nameof(UilmFile.Version)) }
                 }),
-                new BsonDocument("$project", new BsonDocument("_id", 0))
+                new BsonDocument(ProjectStage, new BsonDocument(IdField, 0))
             };
             using var cursor = await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
                 .AggregateAsync(PipelineDefinition<BsonDocument, UilmManifestRow>.Create(stages));
