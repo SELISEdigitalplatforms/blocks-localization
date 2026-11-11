@@ -301,10 +301,13 @@ namespace Eurolm.DomainService.Services
         }
 
         /// <summary>The failure retry waits 5 s, or the 429 Retry-After when longer (at most <see cref="MaxThrottleWait"/>).</summary>
-        private static TimeSpan RetryDelay(TimeSpan? retryAfter) =>
-            retryAfter is { } wait && wait > FailureRetryDelay
-                ? (wait > MaxThrottleWait ? MaxThrottleWait : wait)
-                : FailureRetryDelay;
+        private static TimeSpan RetryDelay(TimeSpan? retryAfter)
+        {
+            if (retryAfter is not { } wait || wait <= FailureRetryDelay)
+                return FailureRetryDelay;
+
+            return wait > MaxThrottleWait ? MaxThrottleWait : wait;
+        }
 
         private readonly record struct AiCallResult(string? Text, TimeSpan? RetryAfter);
 
@@ -330,9 +333,9 @@ namespace Eurolm.DomainService.Services
                 budget.Stop();
                 return default;
             }
-            catch (OperationCanceledException) when (attemptLimit.Token.IsCancellationRequested)
+            catch (OperationCanceledException ex) when (attemptLimit.Token.IsCancellationRequested)
             {
-                _logger.LogWarning("SuggestTranslation: an AI call got no answer within {AttemptLimitMs} ms; cancelled and retried",
+                _logger.LogWarning(ex, "SuggestTranslation: an AI call got no answer within {AttemptLimitMs} ms; cancelled and retried",
                     (long)_attemptTimeLimit.TotalMilliseconds);
                 return default;
             }
