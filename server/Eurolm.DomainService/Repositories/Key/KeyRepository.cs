@@ -683,9 +683,9 @@ namespace Eurolm.DomainService.Repositories
                 }),
                 new BsonDocument("$project", new BsonDocument("_id", 0))
             };
-            var rows = await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
-                .Aggregate(PipelineDefinition<BsonDocument, UilmManifestRow>.Create(stages))
-                .ToListAsync();
+            using var cursor = await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
+                .AggregateAsync(PipelineDefinition<BsonDocument, UilmManifestRow>.Create(stages));
+            var rows = await cursor.ToListAsync();
 
             // The ledger states of the pointed-at files in one read by _id (a $lookup per row measured about three times
             // slower). It runs after the pointer read, so a file retired in between is not Live and gets no URL.
