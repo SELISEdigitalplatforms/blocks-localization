@@ -45,6 +45,7 @@
   "EDIT_ROUTE.UPDATING": "Updating...",
   "EDIT_ROUTE.USE_PLACEHOLDER": "Use {{placeholder}} for dynamic segments",
   "MODULE_DESCRIPTION.HINT": "Helps AI suggestions pick the right meaning for keys in this module. Changes affect future suggestions only; existing translations are not updated.",
+  "MODULE_DESCRIPTION.INFO_LABEL": "About module description",
   "MODULE_DESCRIPTION.LABEL": "Description",
   "MODULE_DESCRIPTION.PLACEHOLDER": "What this module covers, e.g. subscription plans, invoices and payment methods",
   "MODULE_DESCRIPTION.TOO_LONG": "Description must be {{max}} characters or fewer",
