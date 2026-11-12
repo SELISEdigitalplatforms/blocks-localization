@@ -402,6 +402,86 @@ namespace XUnitTest
             result.Should().BeTrue();
         }
 
+        private BlocksLanguageKey SetupKeyWithWrongBengali(string? aiAnswer, List<BlocksLanguageKey> saved)
+        {
+            var resourceKey = new BlocksLanguageKey
+            {
+                ItemId = "key-common",
+                KeyName = "common_test",
+                ModuleId = "mod-1",
+                Resources = new[]
+                {
+                    new Resource { Culture = "en-US", Value = "common test" },
+                    new Resource { Culture = "bn-BD", Value = "change" }
+                }
+            };
+
+            _languageManagementServiceMock.Setup(m => m.GetLanguagesAsync())
+                .ReturnsAsync(new List<Language>
+                {
+                    new Language { LanguageCode = "en-US", LanguageName = "English" },
+                    new Language { LanguageCode = "bn-BD", LanguageName = "Bengali" }
+                });
+            _keyRepositoryMock.Setup(r => r.GetUilmResourceKey(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<BlocksLanguageKey, bool>>>(), It.IsAny<string>()))
+                .ReturnsAsync(resourceKey);
+            _assistantServiceMock.Setup(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()))
+                .ReturnsAsync(new SuggestionResult { Content = aiAnswer });
+            _keyRepositoryMock.Setup(r => r.UpdateUilmResourceKeysForChangeAll(It.IsAny<List<BlocksLanguageKey>>()))
+                .Callback<List<BlocksLanguageKey>>(keys => saved.AddRange(keys))
+                .ReturnsAsync(1);
+            _keyTimelineRepositoryMock.Setup(r => r.SaveKeyTimelineAsync(It.IsAny<KeyTimeline>()))
+                .Returns(Task.CompletedTask);
+
+            return resourceKey;
+        }
+
+        [Fact]
+        public async Task TranslateBlocksLanguageKey_ExistingValue_IsRetranslatedFromDefault()
+        {
+            var saved = new List<BlocksLanguageKey>();
+            SetupKeyWithWrongBengali("সাধারণ পরীক্ষা", saved);
+
+            var result = await _service.TranslateBlocksLanguageKey(new TranslateBlocksLanguageKeyEvent
+            {
+                KeyId = "key-common", MessageCoRelationId = "corr-1", ProjectKey = "proj", DefaultLanguage = "en-US"
+            });
+
+            result.Should().BeTrue();
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.Is<SuggestLanguageRequest>(q =>
+                q.SourceText == "common test" && q.DestinationLanguageCode == "bn-BD")), Times.Once);
+            saved.Should().ContainSingle().Which.Resources
+                .Single(r => r.Culture == "bn-BD").Value.Should().Be("সাধারণ পরীক্ষা");
+        }
+
+        [Fact]
+        public async Task TranslateBlocksLanguageKey_EmptyAiAnswerForExistingValue_KeepsTheValue()
+        {
+            var saved = new List<BlocksLanguageKey>();
+            SetupKeyWithWrongBengali("", saved);
+
+            await _service.TranslateBlocksLanguageKey(new TranslateBlocksLanguageKeyEvent
+            {
+                KeyId = "key-common", MessageCoRelationId = "corr-1", ProjectKey = "proj", DefaultLanguage = "en-US"
+            });
+
+            saved.SelectMany(k => k.Resources).Single(r => r.Culture == "bn-BD").Value.Should().Be("change");
+        }
+
+        [Fact]
+        public async Task ProcessResourceKey_TranslateAll_LeavesExistingValues()
+        {
+            var saved = new List<BlocksLanguageKey>();
+            var key = SetupKeyWithWrongBengali("সাধারণ পরীক্ষা", saved);
+            var languages = await _languageManagementServiceMock.Object.GetLanguagesAsync();
+            var updated = new List<BlocksLanguageKey>();
+
+            await _service.ProcessResourceKey(new TranslateAllEvent { DefaultLanguage = "en-US" }, key, languages, updated);
+
+            updated.Should().BeEmpty();
+            _assistantServiceMock.Verify(a => a.SuggestTranslation(It.IsAny<SuggestLanguageRequest>()), Times.Never);
+        }
+
         [Fact]
         public async Task TranslateBlocksLanguageKey_ExceptionThrown_ReturnsFalse()
         {

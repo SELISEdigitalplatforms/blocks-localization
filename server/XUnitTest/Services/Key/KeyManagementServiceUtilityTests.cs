@@ -109,6 +109,38 @@ namespace XUnitTest
         }
 
         [Fact]
+        public void GetMissingResources_WithExistingIncluded_ReturnsEveryNonDefaultLanguage()
+        {
+            var defaultResource = new Resource { Culture = "en-US", Value = "common test" };
+            var resources = new List<Resource>
+            {
+                defaultResource,
+                new Resource { Culture = "bn-BD", Value = "change" },
+                new Resource { Culture = "de-DE", Value = "gemeinsamer Test" },
+                new Resource { Culture = "fr-FR", Value = "" }
+            };
+
+            KeyManagementService.GetMissingResources("common_test", resources, defaultResource, "en-US", includeExisting: true)
+                .Select(x => x.Culture).Should().BeEquivalentTo("bn-BD", "de-DE", "fr-FR");
+        }
+
+        [Fact]
+        public void GetMissingResources_WithoutExistingIncluded_ReturnsOnlyEmptyValues()
+        {
+            // Translate All / TranslateKeys: only empty values are translated, as before.
+            var defaultResource = new Resource { Culture = "en-US", Value = "common test" };
+            var resources = new List<Resource>
+            {
+                defaultResource,
+                new Resource { Culture = "bn-BD", Value = "change" },
+                new Resource { Culture = "fr-FR", Value = null }
+            };
+
+            KeyManagementService.GetMissingResources("common_test", resources, defaultResource, "en-US")
+                .Should().ContainSingle().Which.Culture.Should().Be("fr-FR");
+        }
+
+        [Fact]
         public void CompareAndAddResources_AddsMissingCultures()
         {
             var missing = new List<Resource>();

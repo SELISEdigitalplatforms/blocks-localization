@@ -830,7 +830,8 @@ namespace Eurolm.DomainService.Services
                     MessageCoRelationId = request.MessageCoRelationId,
                     ProjectKey = request.ProjectKey,
                     DefaultLanguage = request.DefaultLanguage,
-                    ModuleId = resourceKey.ModuleId // Use the ModuleId from the retrieved key
+                    ModuleId = resourceKey.ModuleId, // Use the ModuleId from the retrieved key
+                    RetranslateExisting = true
                 };
 
                 await ProcessResourceKey(translateAllEvent, resourceKey, languageSetting, uilmResourceKeyList);
@@ -1017,7 +1018,7 @@ namespace Eurolm.DomainService.Services
             var missingResources = new List<Resource>();
             if (!ShouldSkipResource(defaultResource, keyName, request))
             {
-                missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage);
+                missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage, request.RetranslateExisting);
                 CompareAndAddResources(missingResources, resources, languageSetting);
             }
 
@@ -1039,9 +1040,11 @@ namespace Eurolm.DomainService.Services
             return string.IsNullOrWhiteSpace(defaultResource?.Value);
         }
 
-        public static List<Resource> GetMissingResources(string keyName, List<Resource> resources, Resource defaultResource, string defaultLanguage)
+        public static List<Resource> GetMissingResources(string keyName, List<Resource> resources, Resource defaultResource, string defaultLanguage,
+            bool includeExisting = false)
         {
-            return resources.Where(x => x.Culture != defaultLanguage && (x.Value == "" || x.Value == null)).ToList();
+            return resources.Where(x => x.Culture != defaultLanguage &&
+                (includeExisting || x.Value == "" || x.Value == null)).ToList();
         }
 
         public void CompareAndAddResources(List<Resource> missingResources, IEnumerable<Resource> resources,
@@ -1092,6 +1095,13 @@ namespace Eurolm.DomainService.Services
         /// <summary>Puts one answer on the key; runs one at a time, as it changes the key's resources and violations.</summary>
         private void ApplyMissingResource(BlocksLanguageKey resourceKey, Resource missingResource, List<Resource> resources, SuggestionResult? suggestion)
         {
+            // An existing value being re-translated (TranslateKey): an empty answer must not wipe the text the user had.
+            // Empty resources (the only kind Translate All picks) are applied exactly as before.
+            if (!string.IsNullOrEmpty(missingResource.Value) && string.IsNullOrWhiteSpace(suggestion?.Content))
+            {
+                return;
+            }
+
             missingResource.Value = suggestion?.Content;
 
             if (TerminologyService?.IsEnforcementEnabled == true && suggestion?.Validated == true && !string.IsNullOrEmpty(suggestion.Content))
