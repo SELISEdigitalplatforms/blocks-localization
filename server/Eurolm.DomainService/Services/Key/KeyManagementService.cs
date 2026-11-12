@@ -974,9 +974,11 @@ namespace Eurolm.DomainService.Services
             List<Language> languageSetting, List<BlocksLanguageKey> uilmResourceKeyList)
         {
             var plans = items.Select(item => PlanResourceKey(item.Request, item.Key, languageSetting)).ToList();
+            var moduleDescriptions = await GetModuleDescriptionsAsync(plans.Where(plan => plan.MissingResources.Count > 0).ToList());
 
             var translations = await Task.WhenAll(plans.SelectMany(plan => plan.MissingResources.Select(missing =>
-                FetchMissingResourceAsync(plan.Request, plan.Key, plan.DefaultResource, missing, languageSetting))));
+                FetchMissingResourceAsync(plan.Request, plan.Key, plan.DefaultResource, missing, languageSetting,
+                    moduleDescriptions.GetValueOrDefault(plan.Key.ModuleId ?? "")))));
 
             var next = 0;
             foreach (var plan in plans)
@@ -1067,6 +1069,39 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        /// <summary>
+        /// The description of each module the plans translate in, read once for the whole batch from the
+        /// event's tenant. A failed read leaves the batch without module context instead of failing it.
+        /// </summary>
+        private async Task<Dictionary<string, string>> GetModuleDescriptionsAsync(List<KeyTranslationPlan> plans)
+        {
+            var descriptions = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (plans.Count == 0) return descriptions;
+
+            var projectKey = plans.Select(plan => plan.Request.ProjectKey).FirstOrDefault(key => !string.IsNullOrWhiteSpace(key))
+                ?? BlocksContext.GetContext()?.TenantId ?? "";
+            var moduleIds = plans.Select(plan => plan.Key.ModuleId).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
+            if (moduleIds.Count == 0) return descriptions;
+
+            try
+            {
+                var modules = moduleIds.Count == 1
+                    ? await _moduleManagementService.GetModulesAsync(projectKey, moduleIds[0])
+                    : await _moduleManagementService.GetModulesAsync(projectKey, null);
+                var described = (modules ?? new List<BlocksLanguageModule>())
+                    .Where(module => !string.IsNullOrWhiteSpace(module?.ItemId) && !string.IsNullOrWhiteSpace(module.Description));
+                foreach (var module in described)
+                {
+                    descriptions[module.ItemId] = module.Description!;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Translate: module lookup failed, translating without module context");
+            }
+            return descriptions;
+        }
+
         public async Task ProcessMissingResource(TranslateAllEvent request, BlocksLanguageKey resourceKey, Resource defaultResource, Resource missingResource, List<Resource> resources, List<Language> languageSetting)
         {
             var translation = await FetchMissingResourceAsync(request, resourceKey, defaultResource, missingResource, languageSetting);
@@ -1078,7 +1113,7 @@ namespace Eurolm.DomainService.Services
 
         /// <summary>The AI call for one missing resource; reads the key, changes nothing, so calls can overlap.</summary>
         private async Task<MissingResourceTranslation> FetchMissingResourceAsync(TranslateAllEvent request, BlocksLanguageKey resourceKey,
-            Resource? defaultResource, Resource missingResource, List<Language> languageSetting)
+            Resource? defaultResource, Resource missingResource, List<Language> languageSetting, string? moduleDescription = null)
         {
             var languageName = languageSetting?.FirstOrDefault(x => x.LanguageCode == missingResource.Culture)?.LanguageName;
 
@@ -1088,7 +1123,7 @@ namespace Eurolm.DomainService.Services
                 return new MissingResourceTranslation(false, null);
             }
 
-            var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
+            var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting, moduleDescription));
             return new MissingResourceTranslation(true, suggestion);
         }
 
@@ -1132,12 +1167,13 @@ namespace Eurolm.DomainService.Services
         }
 
         public static SuggestLanguageRequest ConstructQuery(TranslateAllEvent request, BlocksLanguageKey resourceKey,
-            Resource defaultResource, Resource missingResource, string languageName, List<Language> languageSetting)
+            Resource defaultResource, Resource missingResource, string languageName, List<Language> languageSetting, string? moduleDescription = null)
         {
             return new()
             {
                 Temperature = 0.1,
                 ElementDetailContext = resourceKey.Context,
+                ElementApplicationContext = moduleDescription,
                 SourceText = defaultResource?.Value,
                 DestinationLanguage = languageName,
                 CurrentLanguage = languageSetting?.FirstOrDefault(x => x.LanguageCode == request.DefaultLanguage).LanguageName,

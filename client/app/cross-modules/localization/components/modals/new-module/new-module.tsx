@@ -24,12 +24,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui-kits/form/form";
+import {
+  ModuleDescriptionField,
+  moduleDescriptionSchema,
+} from "@blocks-localization/components/modals/module-description-field/module-description-field";
 
 interface NewModuleProps {
   onClose: (value?: boolean) => void;
 }
 interface FormValues {
   moduleName: string;
+  description: string;
 }
 
 const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
@@ -40,12 +45,14 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
       .trim()
       .min(1, { message: t("NEW_MODULE.NAME_REQUIRED") })
       .max(50, { message: t("NEW_MODULE.NAME_TOO_LONG") }),
+    description: moduleDescriptionSchema(t),
   });
   const { isPending, mutateAsync } = useSaveLanguageModule();
 
   const form = useForm<FormValues>({
     defaultValues: {
       moduleName: "",
+      description: "",
     },
     resolver: zodResolver(schema),
     mode: "onChange",
@@ -91,7 +98,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
           <DialogHeader className="mb-4">
             <DialogTitle>{t("NEW_MODULE.TITLE")}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-2">
+          <div className="grid gap-4">
             <FormField
               name="moduleName"
               control={form.control}
@@ -102,7 +109,6 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
                   </FormLabel>
                   <FormControl>
                     <Input
-                      id="moduleName"
                       placeholder={t("NEW_MODULE.NAME_PLACEHOLDER")}
                       className="border-default col-span-3 mt-1 border shadow-none"
                       {...field}
@@ -112,6 +118,7 @@ const NewModule: React.FC<NewModuleProps> = ({ onClose }) => {
                 </FormItem>
               )}
             />
+            <ModuleDescriptionField control={form.control} name="description" />
           </div>
           <DialogFooter className="mt-6">
             <DialogTrigger asChild>

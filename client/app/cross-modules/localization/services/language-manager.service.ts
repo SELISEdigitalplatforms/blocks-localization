@@ -169,6 +169,8 @@ export class LanguageManagerService {
 
   saveLanguageModule = (payload: {
     moduleName: string;
+    itemId?: string;
+    description?: string | null;
   }): Promise<{
     errorMessage: null | unknown;
     success: boolean;
