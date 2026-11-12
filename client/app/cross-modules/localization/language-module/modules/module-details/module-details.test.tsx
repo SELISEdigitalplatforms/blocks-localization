@@ -92,6 +92,25 @@ describe("language-module/module-details", () => {
     expect(screen.getByRole("tab", { name: "Glossary" })).toBeTruthy();
   });
 
+  it("should show the module description on the details tab (SPEC16 H7)", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null, description: "Billing screens" }],
+      isLoading: false,
+    } as never);
+    renderWithProviders(<ModuleDetails />, { route: "/app/abc/services/modules/m1" });
+    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByText("Billing screens")).toBeTruthy();
+  });
+
+  it("should show an empty-state hint when the module has no description", () => {
+    h.useGetLanguageModules.mockReturnValue({
+      data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
+      isLoading: false,
+    } as never);
+    renderWithProviders(<ModuleDetails />, { route: "/app/abc/services/modules/m1" });
+    expect(screen.getByText(/No description yet/)).toBeTruthy();
+  });
+
   it("should render an empty glossary tab when preselected", () => {
     h.useGetLanguageModules.mockReturnValue({
       data: [{ itemId: "m1", moduleName: "UILM", createdBy: null, lastUpdatedBy: null }],
