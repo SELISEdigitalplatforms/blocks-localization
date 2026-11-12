@@ -79,10 +79,10 @@ describe("components/modals/new-module", () => {
       saveModuleAsync.mockResolvedValue({ success: true });
       render(withDialog(<NewModule onClose={vi.fn()} />));
 
-      expect(screen.queryByText(/existing translations are not updated/)).toBeNull();
+      expect(screen.queryByText(/pick the right meaning for keys in this module/)).toBeNull();
       await user.hover(screen.getByRole("button", { name: "About module description" }));
       expect((await screen.findByRole("tooltip")).textContent).toMatch(
-        /existing translations are not updated/,
+        /pick the right meaning for keys in this module/,
       );
       await act(async () => {
         await user.type(screen.getByPlaceholderText("Enter Module name"), "Billing");
