@@ -7,6 +7,7 @@ test.describe("Overview", () => {
   test("Overview — full flow", async ({ page }) => {
     const overview = new OverviewPage(page);
     const sidebar = new Sidebar(page);
+    overview.trackConfiguredLanguages();
 
     await test.step("Console shows the project list with at least one environment to enter", async () => {
       await openLocalizationConsole(page);
@@ -56,8 +57,7 @@ test.describe("Overview", () => {
     await test.step("Language selector lists EN/German/French with non-English disabled", async () => {
       await overview.openLanguageSelector();
       await overview.expectLanguageOptionVisible("English");
-      await overview.expectLanguageOptionDisabled("German");
-      await overview.expectLanguageOptionDisabled("French");
+      await overview.expectConfiguredLanguagesSelectable();
       await overview.closeLanguageSelector();
     });
 
