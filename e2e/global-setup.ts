@@ -23,7 +23,12 @@ export default function globalSetup() {
   if (!baseURL) return; // playwright.config.ts already throws when unset
 
   const runtimeConfig = path.resolve(__dirname, "../server/Api/wwwroot/runtime-config.js");
-  if (!fs.existsSync(runtimeConfig)) {
+  // Read once and handle a missing file, instead of checking first (no window for the file to change).
+  let original: string;
+  try {
+    original = fs.readFileSync(runtimeConfig, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     console.warn(
       `[e2e] runtime-config.js not found at ${runtimeConfig} — skipping BLOCKS_LOCALIZATION_BASE_URL patch. ` +
         `Expected when testing a remote host; for a local run build the FE first (cd client && npm run build).`,
@@ -31,7 +36,6 @@ export default function globalSetup() {
     return;
   }
 
-  const original = fs.readFileSync(runtimeConfig, "utf8");
   const patched = original.replace(
     /(BLOCKS_LOCALIZATION_BASE_URL:\s*")([^"]*)(")/g,
     `$1${baseURL}$3`,
