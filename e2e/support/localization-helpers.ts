@@ -3,7 +3,7 @@ import path from "path"
 import { expect, type Page } from "@playwright/test"
 import { openNamedProjectDashboard } from "./create-and-delete-project"
 import { e2eBaseUrl } from "./env"
-import { ensureAuthenticated, isLoginSurface } from "./login-helper"
+import { ensureAuthenticated, isLoginSurface, isSessionEndedScreen, loginAfterSessionEnded } from "./login-helper"
 import {
   LOCALIZATION_SESSION_PATH,
   readLocalizationProject,
@@ -63,7 +63,7 @@ function readyLocator(page: Page, route: LocalizationRoute) {
   return heading ? page.getByRole("heading", { name: heading }) : null
 }
 
-async function persistSuiteSession(page: Page) {
+export async function persistSuiteSession(page: Page) {
   fs.mkdirSync(path.dirname(LOCALIZATION_SESSION_PATH), { recursive: true })
   await page.context().storageState({ path: LOCALIZATION_SESSION_PATH })
 }
@@ -99,7 +99,10 @@ export async function openProjectRoute(page: Page, route: LocalizationRoute | st
 
   await gotoTarget()
 
-  if (await isLoginSurface(page)) {
+  if (await isSessionEndedScreen(page)) {
+    await loginAfterSessionEnded(page)
+    await reseedThenGoto(page, targetUrl, fixture.projectName, fixtureDashboardUrl)
+  } else if (await isLoginSurface(page)) {
     await ensureAuthenticated(page)
     await reseedThenGoto(page, targetUrl, fixture.projectName, fixtureDashboardUrl)
   } else if (/\/app\/console\/?$/i.test(new URL(page.url()).pathname)) {
@@ -112,7 +115,9 @@ export async function openProjectRoute(page: Page, route: LocalizationRoute | st
   }
 
   // Soft-bounce or stale context — reseed once, then prefer sidebar for service routes.
-  if (await isLoginSurface(page)) {
+  if (await isSessionEndedScreen(page)) {
+    await loginAfterSessionEnded(page)
+  } else if (await isLoginSurface(page)) {
     await ensureAuthenticated(page)
   }
   await openNamedProjectDashboard(page, fixture.projectName, {
