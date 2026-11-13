@@ -36,9 +36,11 @@ test("All-view selection retains evicted IDs for bulk Delete", async ({ page }) 
         return Number(label.split(" of ")[0].replace(/\D/g, ""));
       }, { timeout: 30_000 }).toBeGreaterThan(before);
     }
-    await expect(page.getByRole("button", { name: "Back to top" })).toBeVisible();
+    // Drift (4a6d98f0): the disabled Bulk edit button has a sibling tooltip trigger whose
+    // aria-label (the reason text, which mentions "Back to top") contains both names.
+    await expect(page.getByRole("button", { name: "Back to top", exact: true })).toBeVisible();
     await expect(selectedCount).toContainText("6000 keys selected");
-    await expect(page.getByRole("button", { name: "Bulk edit" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Bulk edit", exact: true })).toBeDisabled();
 
     await page.getByRole("checkbox", { name: "Select row" }).first().uncheck();
     await expect(selectedCount).toContainText("5,999 of 6,000 keys selected");

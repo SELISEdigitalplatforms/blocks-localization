@@ -19,6 +19,7 @@ export class OverviewPage {
   private readonly notificationBell: Locator;
   private readonly appsSwitcherButton: Locator;
   private readonly backToConsoleButton: Locator;
+  private configuredLanguageCodes: string[] | null = null;
 
   constructor(page: Page) {
     this.page = page;
@@ -35,7 +36,9 @@ export class OverviewPage {
     this.themeTablist = page.getByRole("tablist").first();
     this.darkTab = this.themeTablist.locator('[aria-controls$="-content-dark"]');
     this.lightTab = this.themeTablist.locator('[aria-controls$="-content-light"]');
-    this.languageButton = page.getByRole("button", { name: /^en$/i });
+    // Drift (201e8976, genesis-os 4.5.0): the switcher is a "Change language" button showing the
+    // current code, and its menu lists the languages as radio items (still with `lang`).
+    this.languageButton = page.getByRole("button", { name: "Change language" });
     this.notificationBell = page.getByTestId("notification-bell");
     this.appsSwitcherButton = page.getByRole("button", { name: "SELISE Blocks apps" });
     this.backToConsoleButton = page.getByRole("button", { name: "Back to console" });
@@ -74,19 +77,59 @@ export class OverviewPage {
     await expect(button).toHaveAttribute("aria-expanded", expanded ? "true" : "false");
   }
 
+  /**
+   * Records the project's configured localization languages as the app loads them for its
+   * language menu (genesis-os: GET /api/Language/Gets on every page load). Call it before the
+   * first navigation.
+   */
+  trackConfiguredLanguages() {
+    this.page.on("response", async (response) => {
+      if (!new URL(response.url()).pathname.toLowerCase().endsWith("/api/language/gets")) return;
+      try {
+        const body: unknown = await response.json();
+        if (!Array.isArray(body)) return;
+        const codes = body
+          .map((item: Record<string, unknown>) => item.languageCode ?? item.LanguageCode)
+          .filter((code): code is string => typeof code === "string" && code.trim() !== "")
+          .map((code) => code.trim().toLowerCase().split(/[-_]/)[0]);
+        // English is always offered, configured or not (genesis-os).
+        if (codes.length > 0) this.configuredLanguageCodes = [...new Set([...codes, "en"])].sort();
+      } catch {
+        // Not JSON (for example a redirect); the check waits for a usable response.
+      }
+    });
+  }
+
   async openLanguageSelector() {
+    await expect(this.languageButton).toHaveText(/^en$/i);
     await this.languageButton.click();
   }
 
   async expectLanguageOptionVisible(language: string) {
-    await expect(this.page.getByRole("menuitem", { name: language })).toBeVisible();
+    await expect(this.page.getByRole("menuitemradio", { name: language })).toBeVisible();
   }
 
-  async expectLanguageOptionDisabled(language: string) {
-    await expect(this.page.getByRole("menuitem", { name: language })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+  /**
+   * Drift (201e8976, genesis-os 4.5.0): the menu lists the project's configured languages as
+   * radio items and disables none of them, where it used to show every non-English item disabled.
+   */
+  async expectConfiguredLanguagesSelectable() {
+    await expect
+      .poll(() => this.configuredLanguageCodes, {
+        timeout: 15_000,
+        message: "the app loaded the project's languages from /api/Language/Gets",
+      })
+      .not.toBeNull();
+    const languageItems = this.page.locator('[role="menuitemradio"][lang]');
+    await expect
+      .poll(async () =>
+        (await languageItems.evaluateAll((items) => items.map((item) => item.getAttribute("lang")))).sort(),
+      )
+      .toEqual(this.configuredLanguageCodes);
+    for (const item of await languageItems.all()) {
+      await expect(item).toBeVisible();
+      await expect(item).not.toHaveAttribute("aria-disabled", "true");
+    }
   }
 
   async closeLanguageSelector() {

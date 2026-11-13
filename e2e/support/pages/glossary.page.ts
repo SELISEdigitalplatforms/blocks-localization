@@ -239,7 +239,8 @@ export class GlossaryPage {
   }
 
   async clickSaveButton() {
-    await this.editorSheet.getByRole("button", { name: "Save" }).click();
+    // Drift (e7570b47): the Add Glossary sheet also has "Save & add another".
+    await this.editorSheet.getByRole("button", { name: "Save", exact: true }).click();
   }
 
   async saveAndCapturePayload(): Promise<Record<string, unknown>> {
