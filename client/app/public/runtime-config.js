@@ -5,7 +5,7 @@
  * is ignored by the frontend (see app/lib/runtime-env.ts). Served as a file rather
  * than an inline script so the Content-Security-Policy keeps script-src 'self'.
  */
-window.__BLOCKS_ENV__ = {
+globalThis.__BLOCKS_ENV__ = {
   BLOCKS_PUBLIC_API_BASE_URL: "__BLOCKS_PUBLIC_API_BASE_URL__",
   BLOCKS_LOCALIZATION_BASE_URL: "__BLOCKS_LOCALIZATION_BASE_URL__",
   BLOCKS_LOCALIZATION_CLIENT_ID: "__BLOCKS_LOCALIZATION_CLIENT_ID__",

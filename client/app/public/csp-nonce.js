@@ -1,13 +1,13 @@
 (function () {
-  var meta = document.querySelector('meta[name="csp-nonce"]');
-  var nonce = meta ? meta.nonce || meta.getAttribute("nonce") : "";
-  if (!nonce || nonce.indexOf("__") === 0) return;
+  const meta = document.querySelector('meta[name="csp-nonce"]');
+  const nonce = meta ? meta.nonce || meta.getAttribute("nonce") : "";
+  if (!nonce || nonce.startsWith("__")) return;
 
-  window.__webpack_nonce__ = nonce;
+  globalThis.__webpack_nonce__ = nonce;
 
-  var createElement = Document.prototype.createElement;
-  Document.prototype.createElement = function (tagName) {
-    var element = createElement.apply(this, arguments);
+  const createElement = Document.prototype.createElement;
+  Document.prototype.createElement = function (tagName, options) {
+    const element = createElement.call(this, tagName, options);
     if (typeof tagName === "string" && tagName.toLowerCase() === "style") {
       element.setAttribute("nonce", nonce);
     }

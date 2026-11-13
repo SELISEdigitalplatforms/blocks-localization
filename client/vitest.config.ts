@@ -34,7 +34,8 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       all: true,
       provider: "v8",
-      include: ["app/**/*.{ts,tsx}"],
+      // The classic scripts the shell loads before the app are covered by app/lib/public-scripts.test.ts.
+      include: ["app/**/*.{ts,tsx}", "app/public/*.js"],
       exclude: [
         "app/**/*.test.*",
         "app/**/*.spec.*",
