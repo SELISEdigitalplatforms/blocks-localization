@@ -121,8 +121,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
 
             var now = UtcNow();
             var uploaded = uploads.Select(u => u!).ToList();
-            // #350 C11: the manifest lists ledger-Live files only, so a file is Live before any pointer references it;
-            // a reader then sees the old pointer or the new one, never a null entry. Reconcile leaves young Live files alone.
+            // #350 C11: the manifest lists ledger-Live files only, so every file is Live before any pointer references it.
+            // A reader then sees the old pointer or the new one, never a null entry. Reconcile leaves young Live files alone.
             await _storedFiles.MarkLiveAsync(uploaded.Select(u => u.FileId).ToList(), UilmStoredFileState.Uploading);
             var superseded = new List<string>();
             var replaced = new List<string>();
