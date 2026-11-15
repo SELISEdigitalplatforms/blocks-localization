@@ -122,6 +122,26 @@ namespace XUnitTest.Services.UilmStorage
         }
 
         [Fact]
+        public async Task SwitchOn_MarksTheUploadedFilesLive_BeforeAnyPointerSwitches_AndRetiresTheReplacedFilesAfter_C11()
+        {
+            Published("en-US", "{\"a\":\"old\"}", 6, "old-en");
+            _ledger.Setup(l => l.MarkLiveAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>()))
+                .Callback((IReadOnlyCollection<string> ids, string? _) => _order.Add("live:" + ids.Count))
+                .Returns(Task.CompletedTask);
+            _ledger.Setup(l => l.RetireAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>()))
+                .Callback((IReadOnlyCollection<string> ids, DateTime _) => _order.Add("retire:" + string.Join(",", ids)))
+                .Returns(Task.CompletedTask);
+
+            await _publisher.PublishModuleAsync(On(), Module, Files(("en-US", "{\"a\":\"A\"}"), ("key", "{\"a\":\"a\"}")));
+
+            // #350 Q1: A: the manifest lists ledger-Live files only, so each pointer must reference a Live file the moment it switches.
+            _order.Should().ContainSingle(o => o.StartsWith("live:")).Which.Should().Be("live:2");
+            _order.IndexOf("live:2").Should().BeLessThan(_order.IndexOf("replace:en-US"));
+            _order.IndexOf("live:2").Should().BeLessThan(_order.IndexOf("replace:key"));
+            _order.IndexOf("retire:old-en").Should().BeGreaterThan(_order.IndexOf("replace:en-US"), "the old file stays Live until its pointer moved");
+        }
+
+        [Fact]
         public async Task SwitchOn_Upload_RecordsTheLedgerRowFirst_AndSendsThePublicJsonFile()
         {
             var files = Files(("en-US", "{\"a\":\"Ä\"}"));
@@ -369,7 +389,8 @@ namespace XUnitTest.Services.UilmStorage
             _rows.Should().ContainSingle().Which.Should().BeSameAs(newer);
             var loser = _presigned.Single().ItemId!;
             _ledger.Verify(l => l.RetireAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { loser })), Now), Times.Once);
-            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), UilmStoredFileState.Uploading), Times.Once);
+            // #350 Q1: A: every upload is Live before its pointer write; the losing one is retired right after.
+            _ledger.Verify(l => l.MarkLiveAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { loser })), UilmStoredFileState.Uploading), Times.Once);
             _keys.Verify(k => k.DeleteUilmFileDuplicatesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 

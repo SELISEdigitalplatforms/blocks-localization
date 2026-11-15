@@ -40,7 +40,10 @@ namespace Eurolm.DomainService.Services.UilmStorage
         /// <summary>Rows read per page by content removal and restore.</summary>
         public int ContentPageSize { get; init; } = 500;
 
-        /// <summary>An <c>Uploading</c> ledger row older than this, with no pointer, is an orphan.</summary>
+        /// <summary>
+        /// A ledger row older than this, with no pointer, is unused: an <c>Uploading</c> row is an orphan, a <c>Live</c> row
+        /// lost its pointer. Younger rows may belong to a publish or backfill that hasn't switched its pointers yet.
+        /// </summary>
         public TimeSpan OrphanUploadAge { get; init; } = TimeSpan.FromHours(1);
     }
 }

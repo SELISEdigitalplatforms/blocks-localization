@@ -223,14 +223,16 @@ namespace Eurolm.DomainService.Services.UilmStorage
         }
 
         /// <summary>
-        /// Retires ledger rows that no pointer uses: uploads that never switched a pointer (older than
-        /// <see cref="UilmStorageOptions.OrphanUploadAge"/>, deleted on the next run) and live files whose pointer is
-        /// gone (deleted after <see cref="UilmStorageOptions.RetireDelay"/>).
+        /// Retires ledger rows that no pointer uses: uploads that never switched a pointer (deleted on the next run) and
+        /// live files whose pointer is gone (deleted after <see cref="UilmStorageOptions.RetireDelay"/>). Both only when
+        /// older than <see cref="UilmStorageOptions.OrphanUploadAge"/>: a publish or backfill marks its files Live just
+        /// before it switches their pointers (#350 C11), so a young unreferenced file may be about to be used.
         /// </summary>
         private async Task ReconcileAsync(DateTime now)
         {
-            var orphans = await RetireUnreferencedAsync(UilmStoredFileState.Uploading, now - _options.OrphanUploadAge, now);
-            var unused = await RetireUnreferencedAsync(UilmStoredFileState.Live, DateTime.MaxValue, now + _options.RetireDelay);
+            var createdBefore = now - _options.OrphanUploadAge;
+            var orphans = await RetireUnreferencedAsync(UilmStoredFileState.Uploading, createdBefore, now);
+            var unused = await RetireUnreferencedAsync(UilmStoredFileState.Live, createdBefore, now + _options.RetireDelay);
             if (orphans + unused > 0)
             {
                 _logger.LogInformation("UILM reconcile retired {OrphanCount} abandoned uploads and {UnusedCount} unused files", orphans, unused);

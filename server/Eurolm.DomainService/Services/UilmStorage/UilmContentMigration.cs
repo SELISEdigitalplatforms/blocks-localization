@@ -117,6 +117,8 @@ namespace Eurolm.DomainService.Services.UilmStorage
                     Version = served.Version ?? 0,
                     PublishedAt = UtcNow()
                 };
+                // Live before the pointer references it, as in the publisher (#350 C11): the manifest never shows a null entry.
+                await _storedFiles.MarkLiveAsync([outcome.Upload.FileId], UilmStoredFileState.Uploading);
                 if (!await _keyRepository.ReplaceUilmFileFromBackfillAsync(served, pointer))
                 {
                     // A publish (or an overlapping run) changed the group meanwhile; its pointer stays (C1, C10).
@@ -126,7 +128,6 @@ namespace Eurolm.DomainService.Services.UilmStorage
                     return BackfillOutcome.Superseded;
                 }
 
-                await _storedFiles.MarkLiveAsync([outcome.Upload.FileId], UilmStoredFileState.Uploading);
                 await _keyRepository.DeleteUilmFileDuplicatesAsync(group.ModuleName, group.Language, pointer.Id);
                 return BackfillOutcome.Converted;
             }

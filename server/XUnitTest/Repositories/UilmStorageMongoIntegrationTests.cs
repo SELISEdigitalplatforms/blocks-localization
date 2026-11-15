@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Blocks.Genesis;
 using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
@@ -350,6 +351,19 @@ namespace XUnitTest.Repositories
                     NullLogger<UilmMaintenanceService>.Instance));
         }
 
+        private const string RunMaintenance = "{\"task\":\"uilm-maintenance\"}";
+
+        private async Task PublishToStorageAsync() =>
+            await _database.GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = true });
+
+        private UilmFilePublisher Publisher(FakeStorage storage, IKeyRepository keys) => new(keys, Ledger(),
+            new UilmStorageSettingsRepository(_provider.Object),
+            new UilmPublishCounterRepository(_provider.Object, new LanguageFileGenerationHistoryRepository(_provider.Object)),
+            storage.Driver.Object, new UilmStorageInfrastructure(new UilmStorageOptions(), storage.Http.Factory().Object, _time),
+            NullLogger<UilmFilePublisher>.Instance);
+
+        private Task<UilmStoredFile> LedgerRow(string id) => StoredFiles.Find(f => f.Id == id).SingleAsync();
+
         private static List<UilmFile> Files(string english) => new()
         {
             new UilmFile { Language = "en-US", Content = english },
@@ -421,6 +435,8 @@ namespace XUnitTest.Repositories
             var storage = new FakeStorage();
             var (publisher, reader, maintenance) = Pipeline(storage);
             await publisher.PublishModuleAsync(await publisher.BeginAsync("uilm-tenant", false), Module, Files("{\"title\":\"Sign in\"}"));
+            // #350 Q1: A: reconcile leaves files younger than the orphan age alone (a publish may be switching to them).
+            _time.Advance(TimeSpan.FromHours(2));
             await StoredFiles.InsertOneAsync(new UilmStoredFile { Id = "crashed", ModuleName = Module, Language = "en-US",
                 State = UilmStoredFileState.Uploading, CreatedAt = Now.AddHours(-2) });
             // A blocks-os data cleanup replaces the rows with legacy seed rows.
@@ -440,6 +456,106 @@ namespace XUnitTest.Repositories
             storage.Deleted.Should().HaveCount(3, "the two unused live files are deleted 24 hours after the reconcile");
             // #349 H9: the seed row was backfilled by the first run, so only its file remains.
             (await StoredFiles.Find(FilterDefinition<UilmStoredFile>.Empty).SingleAsync()).State.Should().Be(UilmStoredFileState.Live);
+        }
+
+        // ---- #350 Q1: A: files are Live before their pointers switch; reconcile's age guard (C6, C7, C8) ----
+
+        [Fact]
+        public async Task AReconcileInsideAPublishsPointerSwitch_LeavesTheNewLiveFiles_AndDeletesNothingInUse_C6()
+        {
+            await PublishToStorageAsync();
+            var storage = new FakeStorage();
+            var (_, reader, maintenance) = Pipeline(storage);
+            var reconciled = false;
+            var keys = PointerWriteHook.Around(Keys(), before: async _ =>
+            {
+                if (reconciled) return;
+                reconciled = true;
+                // Both new files are Live and no pointer references them yet.
+                (await StoredFiles.CountDocumentsAsync(f => f.State == UilmStoredFileState.Live)).Should().Be(2);
+                await maintenance.RunAsync(RunMaintenance);
+            });
+            var publisher = Publisher(storage, keys);
+
+            await publisher.PublishModuleAsync(await publisher.BeginAsync("uilm-tenant", false), Module, Files("{\"title\":\"Sign in\"}"));
+
+            reconciled.Should().BeTrue();
+            (await StoredFiles.Find(FilterDefinition<UilmStoredFile>.Empty).ToListAsync()).Should().HaveCount(2)
+                .And.OnlyContain(f => f.State == UilmStoredFileState.Live && f.DeleteAfter == null, "reconcile ran in the switch but left the young files");
+            var manifest = await reader.GetManifestAsync(new GetUilmManifestRequest(), null);
+            JsonDocument.Parse(manifest.Bytes!).RootElement.GetProperty("files").EnumerateArray()
+                .Should().OnlyContain(e => e.GetProperty("url").ValueKind == JsonValueKind.String);
+            for (var day = 0; day < 3; day++)
+            {
+                _time.Advance(TimeSpan.FromHours(25));
+                await maintenance.RunAsync(RunMaintenance);
+            }
+            storage.Deleted.Should().BeEmpty("the files are in use");
+            (await reader.ReadAsync(new GetUilmFileRequest { ModuleName = Module, Language = "en-US" }, null)).Bytes
+                .Should().Equal(Encoding.UTF8.GetBytes("{\"title\":\"Sign in\"}"));
+        }
+
+        [Fact]
+        public async Task OverlappingRuns_KeepAYoungLiveFile_RetireOldUnusedFilesOnce_AndDeleteEachDueFileOnce_C7()
+        {
+            var storage = new FakeStorage();
+            var (_, _, maintenance) = Pipeline(storage);
+            await StoredFiles.InsertManyAsync(new[]
+            {
+                new UilmStoredFile { Id = "switching", ModuleName = Module, Language = "en-US", State = UilmStoredFileState.Live, CreatedAt = Now.AddMinutes(-5) },
+                new UilmStoredFile { Id = "unused", ModuleName = Module, Language = "en-US", State = UilmStoredFileState.Live, CreatedAt = Now.AddHours(-3) },
+                new UilmStoredFile { Id = "orphan", ModuleName = Module, Language = "en-US", State = UilmStoredFileState.Uploading, CreatedAt = Now.AddHours(-3) }
+            });
+            var start = Now;
+
+            await Task.WhenAll(maintenance.RunAsync(RunMaintenance), maintenance.RunAsync(RunMaintenance));
+
+            (await LedgerRow("switching")).State.Should().Be(UilmStoredFileState.Live, "younger than the orphan age");
+            (await LedgerRow("unused")).DeleteAfter.Should().Be(start.AddHours(24));
+            (await LedgerRow("orphan")).DeleteAfter.Should().Be(start);
+
+            _time.Advance(TimeSpan.FromHours(1));
+            await Task.WhenAll(maintenance.RunAsync(RunMaintenance), maintenance.RunAsync(RunMaintenance));
+            storage.Deleted.Should().Equal("orphan");
+
+            _time.Advance(TimeSpan.FromHours(24));
+            await Task.WhenAll(maintenance.RunAsync(RunMaintenance), maintenance.RunAsync(RunMaintenance));
+            storage.Deleted.Should().Equal("orphan", "unused");
+            (await LedgerRow("switching")).Should().Match<UilmStoredFile>(f => f.State == UilmStoredFileState.Retired && f.DeleteAfter == Now.AddHours(24),
+                "still unused at the next reconcile, so it was never switched to");
+        }
+
+        [Fact]
+        public async Task APublishThatStopsAfterMarkingItsFileLive_KeepsTheOldFileServed_AndReconcileRetiresAndDeletesTheNewOne_C8()
+        {
+            await PublishToStorageAsync();
+            var storage = new FakeStorage();
+            var (publisher, reader, maintenance) = Pipeline(storage);
+            await publisher.PublishModuleAsync(await publisher.BeginAsync("uilm-tenant", false), Module, Files("{\"title\":\"Sign in\"}"));
+            var before = await reader.GetManifestAsync(new GetUilmManifestRequest(), null);
+            var stopping = Publisher(storage, PointerWriteHook.Around(Keys(), before: _ => throw new OperationCanceledException("worker stopped")));
+
+            var publish = async () => await stopping.PublishModuleAsync(await stopping.BeginAsync("uilm-tenant", false), Module, Files("{\"title\":\"Log in\"}"));
+
+            await publish.Should().ThrowAsync<OperationCanceledException>();
+            var referenced = await Keys().GetReferencedUilmFileIdsAsync(storage.Blobs.Keys.ToList());
+            var stranded = storage.Blobs.Keys.Where(id => !referenced.Contains(id)).Should().ContainSingle().Subject;
+            (await LedgerRow(stranded)).State.Should().Be(UilmStoredFileState.Live);
+            (await reader.GetManifestAsync(new GetUilmManifestRequest(), before.ETag)).Kind
+                .Should().Be(UilmFileReadKind.NotModified, "no pointer switched, so the manifest still lists the old files");
+
+            await maintenance.RunAsync(RunMaintenance);
+            (await LedgerRow(stranded)).State.Should().Be(UilmStoredFileState.Live, "too young for this reconcile");
+
+            _time.Advance(TimeSpan.FromHours(24));
+            await maintenance.RunAsync(RunMaintenance);
+            (await LedgerRow(stranded)).DeleteAfter.Should().Be(Now.AddHours(24), "the next reconcile retires it");
+            storage.Deleted.Should().BeEmpty();
+
+            _time.Advance(TimeSpan.FromHours(24));
+            await maintenance.RunAsync(RunMaintenance);
+            storage.Deleted.Should().Equal(stranded);
+            (await StoredFiles.CountDocumentsAsync(f => f.State == UilmStoredFileState.Live)).Should().Be(2, "the served files stay");
         }
     }
 }
