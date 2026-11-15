@@ -211,7 +211,7 @@ namespace XUnitTest.Services.UilmStorage
             var uploading = Enumerable.Range(0, 500).Select(i => $"u{i:D3}").ToList();
             _ledger.Setup(l => l.GetIdsAsync(UilmStoredFileState.Uploading, Now.AddHours(-1), null, 500)).ReturnsAsync(uploading);
             _ledger.Setup(l => l.GetIdsAsync(UilmStoredFileState.Uploading, Now.AddHours(-1), "u499", 500)).ReturnsAsync(new List<string> { "u500" });
-            _ledger.Setup(l => l.GetIdsAsync(UilmStoredFileState.Live, DateTime.MaxValue, null, 500)).ReturnsAsync(new List<string> { "live-used", "live-unused" });
+            _ledger.Setup(l => l.GetIdsAsync(UilmStoredFileState.Live, Now.AddHours(-1), null, 500)).ReturnsAsync(new List<string> { "live-used", "live-unused" });
             _keys.Setup(k => k.GetReferencedUilmFileIdsAsync(It.IsAny<IReadOnlyCollection<string>>()))
                 .ReturnsAsync(new HashSet<string> { "u001", "live-used" });
             _ledger.Setup(l => l.RetireFromStateAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string>(), It.IsAny<DateTime>()))
@@ -226,6 +226,20 @@ namespace XUnitTest.Services.UilmStorage
             _ledger.Verify(l => l.RetireFromStateAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "live-unused" })),
                 UilmStoredFileState.Live, Now.AddHours(24)), Times.Once);
             _logger.LoggedMessages().Should().Contain("UILM reconcile retired 500 abandoned uploads and 1 unused files");
+        }
+
+        [Fact]
+        public async Task Reconcile_LeavesUnreferencedFilesYoungerThanTheOrphanAge_ForAPublishAboutToSwitchItsPointers_C6()
+        {
+            // #350 Q1: A: a publish marks its files Live just before it switches their pointers; reconcile must not retire them.
+            _service = Service(new UilmStorageOptions { OrphanUploadAge = TimeSpan.FromMinutes(30) });
+            _settings.Setup(s => s.TryStartReconcileAsync(Now, TimeSpan.FromHours(24))).ReturnsAsync(true);
+
+            await _service.RunAsync("{\"task\":\"uilm-maintenance\",\"tenantId\":\"t1\"}");
+
+            _ledger.Verify(l => l.GetIdsAsync(UilmStoredFileState.Live, Now.AddMinutes(-30), null, 500), Times.Once);
+            _ledger.Verify(l => l.GetIdsAsync(UilmStoredFileState.Uploading, Now.AddMinutes(-30), null, 500), Times.Once);
+            _ledger.Verify(l => l.GetIdsAsync(It.IsAny<string>(), It.Is<DateTime>(d => d != Now.AddMinutes(-30)), It.IsAny<string?>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

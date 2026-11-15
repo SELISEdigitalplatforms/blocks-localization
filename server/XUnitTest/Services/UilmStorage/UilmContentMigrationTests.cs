@@ -253,6 +253,28 @@ namespace XUnitTest.Services.UilmStorage
         }
 
         [Fact]
+        public async Task Backfill_MarksTheUploadLive_BeforeThePointerReferencesIt_AndRetiresItIfSuperseded_C11()
+        {
+            Legacy("en-US", "{\"a\":1}");
+            _driver.Setup(d => d.GetPerSignedUrlForUploadAsync(It.IsAny<GetPreSignedUrlForUploadRequest>()))
+                .ReturnsAsync(new GetPreSignedUrlForUploadResponse { UploadUrl = "https://upload.test/x" });
+            _driver.Setup(d => d.GetUrlForDownloadFileAsync(It.IsAny<GetFileRequest>())).ReturnsAsync(new FileResponse { Url = "https://files.test/x" });
+            _ledger.Setup(l => l.MarkLiveAsync(It.IsAny<IReadOnlyCollection<string>>(), UilmStoredFileState.Uploading))
+                .Callback(() => _order.Add("live")).Returns(Task.CompletedTask);
+            _ledger.Setup(l => l.RetireAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>()))
+                .Callback(() => _order.Add("retire")).Returns(Task.CompletedTask);
+            _keys.Setup(k => k.ReplaceUilmFileFromBackfillAsync(It.IsAny<UilmFile>(), It.IsAny<UilmFile>()))
+                .Callback(() => _order.Add("pointer")).ReturnsAsync(false);
+
+            await Service().RunAsync(Maintenance);
+
+            // #350 Q1: A: Live first, so the manifest never lists the new pointer as a null entry; a lost write still retires it now.
+            _order.Should().ContainInOrder("live", "pointer", "retire");
+            _ledger.Verify(l => l.RetireAsync(It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 1), _time.GetUtcNow().UtcDateTime), Times.Once);
+            _logger.LoggedMessages().Should().Contain(m => m.Contains("0 converted, 0 failed, 1 superseded"));
+        }
+
+        [Fact]
         public async Task AFailingRetireAfterAnError_IsOnlyLogged()
         {
             Legacy("en-US");

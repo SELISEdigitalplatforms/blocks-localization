@@ -235,7 +235,7 @@ namespace XUnitTest.Repositories
             }
         }
 
-        private UilmFilePublisher Publisher(FakeStorage storage) => new(Keys(), new UilmStoredFileRepository(_provider.Object),
+        private UilmFilePublisher Publisher(FakeStorage storage, IKeyRepository? keys = null) => new(keys ?? Keys(), new UilmStoredFileRepository(_provider.Object),
             new UilmStorageSettingsRepository(_provider.Object),
             new UilmPublishCounterRepository(_provider.Object, new LanguageFileGenerationHistoryRepository(_provider.Object)),
             storage.Driver.Object, new UilmStorageInfrastructure(new UilmStorageOptions(), _http.Factory().Object, TimeProvider.System),
@@ -374,6 +374,35 @@ namespace XUnitTest.Repositories
 
             urls.Should().OnlyContain(u => u == null || u == "https://files.test/old" || u == "https://files.test/new");
             urls[^1].Should().Be("https://files.test/new");
+        }
+
+        [Fact]
+        public async Task APublishSwitchesEachPointerToAFileThatIsAlreadyLive_SoAReadInTheSwitchNeverGetsANullEntry_C11()
+        {
+            // Weekend 2026-11-13: a manifest read right after a pointer write, before the file was marked Live, got a null entry.
+            await Database().GetCollection<UilmStorageSettings>("UilmStorageSettings").InsertOneAsync(new UilmStorageSettings { PublishToStorage = true });
+            var reader = Reader();
+            var seen = new List<(string? Expected, JsonElement Entry)>();
+            var keys = PointerWriteHook.Around(Keys(), after: async pointer =>
+            {
+                var entry = (await ManifestJsonAsync(reader, new GetUilmManifestRequest { ModuleName = Module, Language = pointer.Language }))
+                    .GetProperty("files")[0];
+                seen.Add((pointer.Url, entry));
+            });
+            var publisher = Publisher(new FakeStorage(_http), keys);
+
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, false), Module, Files("{\"title\":\"Sign in\"}"));
+            // #348 §10 step 6: a forced re-upload switches every pointer again, then a changed text switches one.
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, true), Module, Files("{\"title\":\"Sign in\"}"));
+            await publisher.PublishModuleAsync(await publisher.BeginAsync(TenantA, false), Module, Files("{\"title\":\"Log in\"}"));
+
+            seen.Should().HaveCount(5);
+            foreach (var (expected, entry) in seen)
+            {
+                entry.GetProperty("url").ValueKind.Should().Be(JsonValueKind.String, "the switched pointer's file is already Live");
+                entry.GetProperty("url").GetString().Should().Be(expected);
+                entry.GetProperty("hash").ValueKind.Should().Be(JsonValueKind.String);
+            }
         }
     }
 }
