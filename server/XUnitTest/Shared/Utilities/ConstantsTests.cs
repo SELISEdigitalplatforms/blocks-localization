@@ -13,6 +13,7 @@ namespace XUnitTest
             Constants.TranslateAllKeysQueue.Should().Be("eurolm_translate_all_keys_listener");
             Constants.TranslateBlocksLanguageKeyQueue.Should().Be("eurolm_translate_blocks_language_key_listener");
             Constants.EnvironmentDataMigrationQueue.Should().Be("blocks_localization_environment_data_migration_listener");
+            Constants.UilmMaintenanceQueue.Should().Be("eurolm_maintenance_listener");
         }
 
         [Fact]
@@ -31,7 +32,8 @@ namespace XUnitTest
                 Constants.EnvironmentDataMigrationQueue,
                 Constants.TranslateAllKeysQueue,
                 Constants.TranslateBlocksLanguageKeyQueue,
-                Constants.TranslateBlocksLanguageKeysQueue
+                Constants.TranslateBlocksLanguageKeysQueue,
+                Constants.UilmMaintenanceQueue
             });
             serviceBusConfig.Topics.Should().BeEmpty();
         }
@@ -43,7 +45,7 @@ namespace XUnitTest
 
             config.Should().NotBeNull();
             config.RabbitMqConfiguration.Should().NotBeNull();
-            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(7);
+            config.RabbitMqConfiguration!.ConsumerSubscriptions.Should().HaveCount(8);
             config.RabbitMqConfiguration.ConsumerSubscriptions
                 .Select(subscription => subscription.QueueName)
                 .Should()
@@ -55,6 +57,7 @@ namespace XUnitTest
                     Constants.TranslateAllKeysQueue,
                     Constants.TranslateBlocksLanguageKeyQueue,
                     Constants.TranslateBlocksLanguageKeysQueue,
+                    Constants.UilmMaintenanceQueue,
                     Constants.MigrationCompletionTopicQueue,
                 });
 

@@ -73,6 +73,31 @@ describe("components/modals/new-module", () => {
     });
   });
 
+  describe("SPEC16 H7 — Optional description", () => {
+    it("shows the description hint in a tooltip and sends the trimmed text", async () => {
+      const user = userEvent.setup();
+      saveModuleAsync.mockResolvedValue({ success: true });
+      render(withDialog(<NewModule onClose={vi.fn()} />));
+
+      expect(screen.queryByText(/pick the right meaning for keys in this module/)).toBeNull();
+      await user.hover(screen.getByRole("button", { name: "About module description" }));
+      expect((await screen.findByRole("tooltip")).textContent).toMatch(
+        /pick the right meaning for keys in this module/,
+      );
+      await act(async () => {
+        await user.type(screen.getByPlaceholderText("Enter Module name"), "Billing");
+        await user.type(screen.getByLabelText("Description"), "  Subscription plans  ");
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      });
+
+      await waitFor(() =>
+        expect(saveModuleAsync).toHaveBeenCalledWith({ moduleName: "Billing", description: "Subscription plans" }),
+      );
+    });
+  });
+
   describe("H3 — Cancel closes without API call", () => {
     it("closes dialog without calling API on Cancel", async () => {
       const user = userEvent.setup();

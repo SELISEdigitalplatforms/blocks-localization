@@ -21,10 +21,16 @@ namespace Worker.Consumers
         public async Task Consume(GenerateUilmFilesEvent context)
         {
             var isSuccess = await _keyManagementService.GenerateAsync(context);
+            // The webhook body keeps exactly its original fields; ForceUpload is internal to the publish.
             await _webHookService.CallWebhook(
                     new
                     {
-                        GenerateUilmFilesEvent = context
+                        GenerateUilmFilesEvent = new
+                        {
+                            context.Guid,
+                            context.ModuleId,
+                            context.ProjectKey
+                        }
                     }
             );
             await _actionPublisher.PublishAsync("localization.files.generated", new

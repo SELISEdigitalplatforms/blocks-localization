@@ -5,6 +5,8 @@ namespace Eurolm.DomainService.Services
 {
     public class ModuleValidator : AbstractValidator<Module>
     {
+        public const int MaxDescriptionLength = 500;
+
         private readonly  IModuleRepository _moduleRepository;
 
         public ModuleValidator(IModuleRepository moduleRepository)
@@ -16,6 +18,11 @@ namespace Eurolm.DomainService.Services
                 .MustAsync(async (module, name, cancellationToken) => await IsNameUniqueAsync(module.ItemId, name))
                 .WithMessage("Module name must be unique.")
                 .Length(3, 100).WithMessage("Module name must be between 3 and 100 characters long.");
+
+            RuleFor(module => module.Description)
+                .Must(description => description!.Trim().Length <= MaxDescriptionLength)
+                .When(module => module.Description != null)
+                .WithMessage($"Description must be {MaxDescriptionLength} characters or fewer.");
         }
 
         private async Task<bool> IsNameUniqueAsync(string? itemId, string name)

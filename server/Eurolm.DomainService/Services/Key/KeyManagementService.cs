@@ -6,6 +6,7 @@ using DomainService.Storage;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services.HelperService;
 using Eurolm.DomainService.Services.HelperService;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Shared.Entities;
 using Eurolm.DomainService.Shared.Events;
@@ -85,6 +86,9 @@ namespace Eurolm.DomainService.Services
             _notificationService = notificationService;
             _glossaryRepository = glossaryRepository;
         }
+
+        /// <summary>Writes a publish's files (Storage or content only); registered in every host.</summary>
+        private IUilmFilePublisher UilmFilePublisher => _serviceProvider.GetRequiredService<IUilmFilePublisher>();
 
         public async Task<ApiResponse> SaveKeyAsync(Key key)
         {
@@ -186,11 +190,13 @@ namespace Eurolm.DomainService.Services
 
             var saves = planned.Values.OrderBy(save => save.Index).ToList();
             var violationsRecomputed = await RecomputeGlossaryViolationsAsync(saves.Select(save => save.RepoKey).ToList());
+            var savedToPublish = new List<PlannedKeySave>();
             for (var start = 0; start < saves.Count; start += SaveKeysBatchSize)
             {
                 var batch = saves.Skip(start).Take(SaveKeysBatchSize).ToList();
-                await WriteKeySavesAsync(batch, violationsRecomputed.Skip(start).Take(batch.Count).ToList(), errors, bulkOperationId);
+                await WriteKeySavesAsync(batch, violationsRecomputed.Skip(start).Take(batch.Count).ToList(), errors, bulkOperationId, savedToPublish);
             }
+            await SendModulePublishEventsAsync(savedToPublish, errors);
 
             var errorLines = errors.Where(error => error != null).ToList();
             _logger.LogInformation("Bulk save completed. Success: {SuccessCount}, Errors: {ErrorCount}", keys.Count - errorLines.Count, errorLines.Count);
@@ -276,7 +282,33 @@ namespace Eurolm.DomainService.Services
             return failures;
         }
 
-        private async Task WriteKeySavesAsync(List<PlannedKeySave> batch, List<bool> violationsRecomputed, string?[] errors, string bulkOperationId)
+        /// <summary>
+        /// Sends one publish event per module that has keys saved with <c>ShouldPublish</c>, each with a new
+        /// generation id. When a send fails, every one of those keys of the module gets an error line; their
+        /// timeline entries were already written with the save.
+        /// </summary>
+        private async Task SendModulePublishEventsAsync(List<PlannedKeySave> savedToPublish, string?[] errors)
+        {
+            foreach (var module in savedToPublish.GroupBy(save => save.Key.ModuleId))
+            {
+                try
+                {
+                    await SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest
+                    {
+                        Guid = Guid.NewGuid().ToString(),
+                        ModuleId = module.Key,
+                        ProjectKey = BlocksContext.GetContext().TenantId ?? ""
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while queueing the publish of Module '{ModuleId}' after a bulk save: {ErrorMessage}", module.Key, ex.Message);
+                    foreach (var save in module) errors[save.Index] = KeyErrorLine(save.Key, ex.Message);
+                }
+            }
+        }
+
+        private async Task WriteKeySavesAsync(List<PlannedKeySave> batch, List<bool> violationsRecomputed, string?[] errors, string bulkOperationId, List<PlannedKeySave> savedToPublish)
         {
             IReadOnlyList<KeyBulkSaveError> failures;
             try
@@ -298,18 +330,12 @@ namespace Eurolm.DomainService.Services
             {
                 if (failed.Contains(i)) continue;
                 var save = batch[i];
+                if (save.Key.ShouldPublish == true)
+                {
+                    savedToPublish.Add(save);
+                }
                 try
                 {
-                    if (save.Key.ShouldPublish == true)
-                    {
-                        await SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest
-                        {
-                            Guid = save.Key.ItemId,
-                            ModuleId = save.Key.ModuleId,
-                            ProjectKey = BlocksContext.GetContext().TenantId??""
-                        });
-                    }
-
                     await CreateBulkKeyTimelineEntryAsync(save.PreviousKey, save.RepoKey, bulkOperationId);
                 }
                 catch (Exception ex)
@@ -804,7 +830,8 @@ namespace Eurolm.DomainService.Services
                     MessageCoRelationId = request.MessageCoRelationId,
                     ProjectKey = request.ProjectKey,
                     DefaultLanguage = request.DefaultLanguage,
-                    ModuleId = resourceKey.ModuleId // Use the ModuleId from the retrieved key
+                    ModuleId = resourceKey.ModuleId, // Use the ModuleId from the retrieved key
+                    RetranslateExisting = true
                 };
 
                 await ProcessResourceKey(translateAllEvent, resourceKey, languageSetting, uilmResourceKeyList);
@@ -947,9 +974,11 @@ namespace Eurolm.DomainService.Services
             List<Language> languageSetting, List<BlocksLanguageKey> uilmResourceKeyList)
         {
             var plans = items.Select(item => PlanResourceKey(item.Request, item.Key, languageSetting)).ToList();
+            var moduleDescriptions = await GetModuleDescriptionsAsync(plans.Where(plan => plan.MissingResources.Count > 0).ToList());
 
             var translations = await Task.WhenAll(plans.SelectMany(plan => plan.MissingResources.Select(missing =>
-                FetchMissingResourceAsync(plan.Request, plan.Key, plan.DefaultResource, missing, languageSetting))));
+                FetchMissingResourceAsync(plan.Request, plan.Key, plan.DefaultResource, missing, languageSetting,
+                    moduleDescriptions.GetValueOrDefault(plan.Key.ModuleId ?? "")))));
 
             var next = 0;
             foreach (var plan in plans)
@@ -991,7 +1020,7 @@ namespace Eurolm.DomainService.Services
             var missingResources = new List<Resource>();
             if (!ShouldSkipResource(defaultResource, keyName, request))
             {
-                missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage);
+                missingResources = GetMissingResources(keyName, resources, defaultResource, request.DefaultLanguage, request.RetranslateExisting);
                 CompareAndAddResources(missingResources, resources, languageSetting);
             }
 
@@ -1013,9 +1042,11 @@ namespace Eurolm.DomainService.Services
             return string.IsNullOrWhiteSpace(defaultResource?.Value);
         }
 
-        public static List<Resource> GetMissingResources(string keyName, List<Resource> resources, Resource defaultResource, string defaultLanguage)
+        public static List<Resource> GetMissingResources(string keyName, List<Resource> resources, Resource defaultResource, string defaultLanguage,
+            bool includeExisting = false)
         {
-            return resources.Where(x => x.Culture != defaultLanguage && (x.Value == "" || x.Value == null)).ToList();
+            return resources.Where(x => x.Culture != defaultLanguage &&
+                (includeExisting || x.Value == "" || x.Value == null)).ToList();
         }
 
         public void CompareAndAddResources(List<Resource> missingResources, IEnumerable<Resource> resources,
@@ -1038,6 +1069,39 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        /// <summary>
+        /// The description of each module the plans translate in, read once for the whole batch from the
+        /// event's tenant. A failed read leaves the batch without module context instead of failing it.
+        /// </summary>
+        private async Task<Dictionary<string, string>> GetModuleDescriptionsAsync(List<KeyTranslationPlan> plans)
+        {
+            var descriptions = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (plans.Count == 0) return descriptions;
+
+            var projectKey = plans.Select(plan => plan.Request.ProjectKey).FirstOrDefault(key => !string.IsNullOrWhiteSpace(key))
+                ?? BlocksContext.GetContext()?.TenantId ?? "";
+            var moduleIds = plans.Select(plan => plan.Key.ModuleId).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
+            if (moduleIds.Count == 0) return descriptions;
+
+            try
+            {
+                var modules = moduleIds.Count == 1
+                    ? await _moduleManagementService.GetModulesAsync(projectKey, moduleIds[0])
+                    : await _moduleManagementService.GetModulesAsync(projectKey, null);
+                var described = (modules ?? new List<BlocksLanguageModule>())
+                    .Where(module => !string.IsNullOrWhiteSpace(module?.ItemId) && !string.IsNullOrWhiteSpace(module.Description));
+                foreach (var module in described)
+                {
+                    descriptions[module.ItemId] = module.Description!;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Translate: module lookup failed, translating without module context");
+            }
+            return descriptions;
+        }
+
         public async Task ProcessMissingResource(TranslateAllEvent request, BlocksLanguageKey resourceKey, Resource defaultResource, Resource missingResource, List<Resource> resources, List<Language> languageSetting)
         {
             var translation = await FetchMissingResourceAsync(request, resourceKey, defaultResource, missingResource, languageSetting);
@@ -1049,7 +1113,7 @@ namespace Eurolm.DomainService.Services
 
         /// <summary>The AI call for one missing resource; reads the key, changes nothing, so calls can overlap.</summary>
         private async Task<MissingResourceTranslation> FetchMissingResourceAsync(TranslateAllEvent request, BlocksLanguageKey resourceKey,
-            Resource? defaultResource, Resource missingResource, List<Language> languageSetting)
+            Resource? defaultResource, Resource missingResource, List<Language> languageSetting, string? moduleDescription = null)
         {
             var languageName = languageSetting?.FirstOrDefault(x => x.LanguageCode == missingResource.Culture)?.LanguageName;
 
@@ -1059,13 +1123,20 @@ namespace Eurolm.DomainService.Services
                 return new MissingResourceTranslation(false, null);
             }
 
-            var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting));
+            var suggestion = await _assistantService.SuggestTranslation(ConstructQuery(request, resourceKey, defaultResource, missingResource, languageName, languageSetting, moduleDescription));
             return new MissingResourceTranslation(true, suggestion);
         }
 
         /// <summary>Puts one answer on the key; runs one at a time, as it changes the key's resources and violations.</summary>
         private void ApplyMissingResource(BlocksLanguageKey resourceKey, Resource missingResource, List<Resource> resources, SuggestionResult? suggestion)
         {
+            // An existing value being re-translated (TranslateKey): an empty answer must not wipe the text the user had.
+            // Empty resources (the only kind Translate All picks) are applied exactly as before.
+            if (!string.IsNullOrEmpty(missingResource.Value) && string.IsNullOrWhiteSpace(suggestion?.Content))
+            {
+                return;
+            }
+
             missingResource.Value = suggestion?.Content;
 
             if (TerminologyService?.IsEnforcementEnabled == true && suggestion?.Validated == true && !string.IsNullOrEmpty(suggestion.Content))
@@ -1096,12 +1167,13 @@ namespace Eurolm.DomainService.Services
         }
 
         public static SuggestLanguageRequest ConstructQuery(TranslateAllEvent request, BlocksLanguageKey resourceKey,
-            Resource defaultResource, Resource missingResource, string languageName, List<Language> languageSetting)
+            Resource defaultResource, Resource missingResource, string languageName, List<Language> languageSetting, string? moduleDescription = null)
         {
             return new()
             {
                 Temperature = 0.1,
                 ElementDetailContext = resourceKey.Context,
+                ElementApplicationContext = moduleDescription,
                 SourceText = defaultResource?.Value,
                 DestinationLanguage = languageName,
                 CurrentLanguage = languageSetting?.FirstOrDefault(x => x.LanguageCode == request.DefaultLanguage).LanguageName,
@@ -1174,6 +1246,9 @@ namespace Eurolm.DomainService.Services
                 : throw new InvalidOperationException("A target project key is required to generate language files.");
             _logger.LogInformation("++ Started JsonOutputGeneratorService: GenerateAsync()...");
 
+            var uilmFilePublisher = UilmFilePublisher;
+            var session = await uilmFilePublisher.BeginAsync(projectKey, command.ForceUpload);
+
             List<Language> languageSetting = await _languageManagementService.GetLanguagesAsync();
 
             List<BlocksLanguageModule> applications = string.IsNullOrWhiteSpace(command.ModuleId)
@@ -1184,6 +1259,9 @@ namespace Eurolm.DomainService.Services
 
             var publishedKeys = new List<Key>();
             var failedKeys = new List<Key>();
+            var failedModules = new List<string>();
+            var uploadedFiles = 0;
+            var skippedFiles = 0;
 
             foreach (BlocksLanguageModule application in applications)
             {
@@ -1195,19 +1273,28 @@ namespace Eurolm.DomainService.Services
                     List<UilmFile> uilmfiles = ProcessUilmFile(command, languageSetting, resourceKeys, application);
 
                     _logger.LogInformation("++Saving {UilmfilesCount} UilmFiles for UilmApplication={ApplicationName}", uilmfiles.Count, application.ModuleName);
-                    await SaveUniqeFiles(uilmfiles);
+                    var result = await uilmFilePublisher.PublishModuleAsync(session, application.ModuleName, uilmfiles);
+                    if (result.Failed)
+                    {
+                        // An upload failed: the module keeps its previous files (spec C1).
+                        failedKeys.AddRange(resourceKeys);
+                        failedModules.Add(application.ModuleName);
+                        continue;
+                    }
 
+                    uploadedFiles += result.UploadedFiles;
+                    skippedFiles += result.SkippedFiles;
                     publishedKeys.AddRange(resourceKeys);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish keys for module {ModuleId}: {Error}", application.ItemId, ex.Message);
                     failedKeys.AddRange(resourceKeys);
+                    failedModules.Add(application.ModuleName);
                 }
             }
-            // Create history entry for this generation
-            var latestHistory = await _languageFileGenerationHistoryRepository.GetLatestLanguageFileGenerationHistory(command.ProjectKey ?? "");
-            var newVersion = (latestHistory?.Version ?? 0) + 1;
+            // Create history entry for this generation; its version was taken when the publish started.
+            var newVersion = session.Version;
 
             var historyEntry = new LanguageFileGenerationHistory
             {
@@ -1215,7 +1302,11 @@ namespace Eurolm.DomainService.Services
                 CreateDate = DateTime.UtcNow,
                 Version = newVersion,
                 ModuleId = command.ModuleId,
-                ProjectKey = command.ProjectKey ?? ""
+                ProjectKey = command.ProjectKey ?? "",
+                Status = PublishStatus(failedModules.Count, applications.Count),
+                UploadedFiles = uploadedFiles,
+                SkippedFiles = skippedFiles,
+                FailedModules = failedModules
             };
 
             await _languageFileGenerationHistoryRepository.SaveAsync(historyEntry);
@@ -1265,6 +1356,12 @@ namespace Eurolm.DomainService.Services
             return true;
         }
 
+        private static string PublishStatus(int failedModules, int modules)
+        {
+            if (failedModules == 0) return LanguageFileGenerationStatus.Success;
+            return failedModules == modules ? LanguageFileGenerationStatus.Failed : LanguageFileGenerationStatus.Partial;
+        }
+
         public List<UilmFile> ProcessUilmFile(GenerateUilmFilesEvent command, List<Language> languages, List<Key> resourceKeys, BlocksLanguageModule application)
         {
             var keyLang = new Language
@@ -1276,6 +1373,9 @@ namespace Eurolm.DomainService.Services
             {
                 languages.Add(keyLang);
             }
+            // Ordinal key order, so the same keys always produce the same bytes and hash (spec H11). The sort is
+            // stable, so a repeated KeyName still ends with the same value as before.
+            var orderedKeys = resourceKeys.OrderBy(k => k.KeyName, StringComparer.Ordinal).ToList();
             List<UilmFile> uilmfiles = new List<UilmFile>();
             foreach (Language language in languages)
             {
@@ -1290,7 +1390,7 @@ namespace Eurolm.DomainService.Services
                 }
                 else
                 {
-                    AssignResourceKeysToDictionary(resourceKeys, language, dictionary);
+                    AssignResourceKeysToDictionary(orderedKeys, language, dictionary);
                 }
                 UilmFile uilmFile = new UilmFile()
                 {
@@ -1506,7 +1606,8 @@ namespace Eurolm.DomainService.Services
                     {
                         Guid = request.Guid,
                         ProjectKey = BlocksContext.GetContext().TenantId??"",
-                        ModuleId = request.ModuleId
+                        ModuleId = request.ModuleId,
+                        ForceUpload = request.ForceUpload
                     }
                 }
             );

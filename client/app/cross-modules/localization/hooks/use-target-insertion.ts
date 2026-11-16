@@ -33,6 +33,9 @@ export const findWholeWord = (
   const pattern = isNoSpaceCulture(culture)
     ? escapeRegExp(trimmed)
     : String.raw`(?<![\p{L}\p{M}\p{N}])${escapeRegExp(trimmed)}(?![\p{L}\p{M}\p{N}])`;
+  // The pattern escapes `word` (escapeRegExp), so it matches it literally; RegExp is kept for the
+  // "iu" Unicode case folding and letter-class boundaries, which a plain string search would change.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const found = new RegExp(pattern, "iu").exec(text);
   return found ? { start: found.index, end: found.index + found[0].length } : undefined;
 };

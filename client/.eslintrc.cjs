@@ -1,3 +1,8 @@
+const {
+  noHardcodedTextRule,
+  hardcodedTextExemptFiles,
+} = require("@seliseblocks/genesis-os/eslint");
+
 module.exports = {
   root: true,
   env: {
@@ -48,6 +53,11 @@ module.exports = {
         caughtErrorsIgnorePattern: "^_",
       },
     ],
+    // No hard-coded user-facing text: JSX text and the placeholder/title/alt/aria-label attributes must come
+    // from an i18n key (useT/tStatic) in the owning module's .en.json. Other languages come from the
+    // localization service. Text needs two lowercase letters to match, so acronyms (SAST, OK) pass; a genuinely
+    // non-translatable token gets an eslint-disable-next-line with its reason.
+    "no-restricted-syntax": noHardcodedTextRule,
     // Naming conventions. Kept intentionally permissive to match the code that exists today
     // (see CONTRIBUTING.md for the target conventions); ratchet toward stricter formats over time.
     // Object/property/import names are left unchecked because they mirror server wire fields.
@@ -82,5 +92,12 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      // Tests, stories and test helpers may use literal text.
+      files: [...hardcodedTextExemptFiles],
+      rules: { "no-restricted-syntax": "off" },
+    },
+  ],
   ignorePatterns: ["node_modules/", "dist/"],
 };

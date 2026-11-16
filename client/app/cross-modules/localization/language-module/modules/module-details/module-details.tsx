@@ -27,7 +27,10 @@ import {
   getTargetLanguages,
   stripRuleMarker,
 } from "@blocks-localization/utils/glossary-rule-marker";
-import { isUnsupportedGlossaryNote, toGlossaryMeta } from "@blocks-localization/utils/glossary-display";
+import {
+  isUnsupportedGlossaryNote,
+  toGlossaryMeta,
+} from "@blocks-localization/utils/glossary-display";
 import { findCultureEntry } from "@blocks-localization/utils/glossary-text";
 import GlossaryRuleBadge from "@blocks-localization/components/glossary/glossary-rule-badge";
 import { useCurrentUser } from "@blocks-localization/hooks/use-user-lookup";
@@ -86,7 +89,9 @@ export const getGlossaryCoverage = (
   if (isUnsupportedGlossaryNote(glossary) || meta.rule !== "translate" || targets.length === 0) {
     return "—";
   }
-  const translated = targets.filter(({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim());
+  const translated = targets.filter(
+    ({ languageCode }) => !!findCultureEntry(meta.translations, languageCode)?.trim(),
+  );
   return t("MODULE_DETAILS.COVERAGE", { translated: translated.length, total: targets.length });
 };
 
@@ -177,20 +182,21 @@ function ModuleDetailsContent({
   module,
   moduleId,
   userMap,
-}: {
+}: Readonly<{
   module: {
     moduleName: string;
     createDate: string | null;
     lastUpdateDate: string | null;
     createdBy: string | null;
     lastUpdatedBy: string | null;
+    description?: string | null;
   };
   moduleId: string;
   userMap?: Record<
     string,
     { firstName: string; lastName: string; email: string; userName: string }
   >;
-}) {
+}>) {
   const { t } = useT("localization.modules");
   const [activeTab, setActiveTab] = useQueryState("moduleTab", {
     defaultValue: "details",
@@ -290,6 +296,20 @@ function ModuleDetailsContent({
                     {getUserDisplayNameById(module.lastUpdatedBy)}
                   </p>
                 </div>
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <h3 className="text-sm font-medium text-low-emphasis">
+                  {t("MODULE_DETAILS.DESCRIPTION")}
+                </h3>
+                {hasDisplayValue(module.description) ? (
+                  <p className="whitespace-pre-line text-base font-normal text-high-emphasis">
+                    {module.description}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t("MODULE_DETAILS.NO_DESCRIPTION")}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -339,6 +339,26 @@ namespace Eurolm.DomainService.Services
             }
         }
 
+        public async Task ApplyModuleContextAsync(SuggestLanguageRequest query)
+        {
+            ArgumentNullException.ThrowIfNull(query);
+            if (!string.IsNullOrWhiteSpace(query.ElementApplicationContext) || string.IsNullOrWhiteSpace(query.ModuleId))
+            {
+                return;
+            }
+
+            try
+            {
+                var module = await _moduleRepository.GetByIdAsync(BlocksContext.GetContext()?.TenantId ?? "", query.ModuleId);
+                query.ElementApplicationContext = module?.Description;
+            }
+            catch (Exception ex)
+            {
+                // The suggestion still runs, only without module context; the log carries no description text.
+                _logger.LogWarning(ex, "SuggestTranslation: module {ModuleId} lookup failed, continuing without module context", query.ModuleId);
+            }
+        }
+
         private async Task<BlocksLanguageModule> MappedIntoRepoModuleAsync(Module module)
         {
             BlocksLanguageModule? repoModule = null;
@@ -357,6 +377,11 @@ namespace Eurolm.DomainService.Services
             }
 
             repoModule.ModuleName = module.ModuleName;
+            if (module.Description != null)
+            {
+                var description = module.Description.Trim();
+                repoModule.Description = description.Length > 0 ? description : null;
+            }
             repoModule.LastUpdateDate = DateTime.UtcNow;
             repoModule.LastUpdatedBy = BlocksContext.GetContext().UserId;
 

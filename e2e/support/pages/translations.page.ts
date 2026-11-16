@@ -1304,9 +1304,10 @@ export class TranslationsPage {
   }
 
   glossaryTerm(scope: Locator | Page, surface: string) {
-    return scope.getByRole("button", {
-      name: new RegExp(`^Glossary ${escapeRegex(surface)}:`),
-    });
+    // The term button's accessible name is its aria-label (highlighted-source-text.tsx), so a
+    // prefix match on it keeps the "^Glossary <surface>:" check without building a RegExp.
+    const prefix = JSON.stringify(`Glossary ${surface}:`);
+    return scope.getByRole("button").and(scope.locator(`[aria-label^=${prefix}]`));
   }
 
   /** "Insert glossary" next to the Edit translation target field. */

@@ -120,8 +120,12 @@ export class GlossaryPage {
     await this.page.getByRole("option", { name: type }).click();
   }
 
+  /** The rule card's stretched label covers its radio (glossary-editor-sheet ChoiceCard), so click the label. */
   async setRule(rule: "Translate" | "Keep" | "Forbidden") {
-    await this.editorSheet.getByRole("radio", { name: rule }).click();
+    const radio = this.editorSheet.getByRole("radio", { name: rule });
+    const id = await radio.getAttribute("id");
+    await this.editorSheet.locator(`label[for="${id}"]`).click();
+    await expect(radio).toBeChecked();
   }
 
   /** Scope "Specific modules" tags the given modules, or the first available one. */
@@ -235,7 +239,8 @@ export class GlossaryPage {
   }
 
   async clickSaveButton() {
-    await this.editorSheet.getByRole("button", { name: "Save" }).click();
+    // Drift (e7570b47): the Add Glossary sheet also has "Save & add another".
+    await this.editorSheet.getByRole("button", { name: "Save", exact: true }).click();
   }
 
   async saveAndCapturePayload(): Promise<Record<string, unknown>> {

@@ -11,6 +11,7 @@ namespace XUnitTest
     public class AssistantControllerTests
     {
         private readonly Mock<IAssistantService> _assistantServiceMock;
+        private readonly Mock<IModuleManagementService> _moduleManagementServiceMock = new();
         private readonly AssistantController _controller;
 
         public AssistantControllerTests()
@@ -18,7 +19,7 @@ namespace XUnitTest
             _assistantServiceMock = new Mock<IAssistantService>();
 
             // Create a loose mock that allows any method calls without throwing
-            _controller = new AssistantController(_assistantServiceMock.Object)
+            _controller = new AssistantController(_assistantServiceMock.Object, _moduleManagementServiceMock.Object)
             {
                 ControllerContext = new ControllerContext()
             };
@@ -180,6 +181,23 @@ namespace XUnitTest
                 new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
 
             json.Should().Be("{\"content\":null,\"appliedTerms\":[],\"glossaryViolations\":[],\"missingGlossaryTranslations\":[]}");
+        }
+
+        [Fact]
+        public async Task GetTranslationSuggestion_AppliesModuleContextBeforeSuggesting()
+        {
+            var request = new SuggestLanguageRequest { SourceText = "Plan", ModuleId = "mod-1" };
+            var calls = new List<string>();
+            _moduleManagementServiceMock.Setup(x => x.ApplyModuleContextAsync(request))
+                .Callback(() => calls.Add("context"))
+                .Returns(Task.CompletedTask);
+            _assistantServiceMock.Setup(x => x.SuggestTranslation(request))
+                .Callback(() => calls.Add("suggest"))
+                .ReturnsAsync(new SuggestionResult { Content = "Tarif" });
+
+            await _controller.GetTranslationSuggestion(request);
+
+            calls.Should().Equal("context", "suggest");
         }
     }
 }

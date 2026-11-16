@@ -873,7 +873,7 @@ export default function ImportCommunicationsModal({
       });
 
       if (!res.isSuccess) {
-        throw res.errors || new Error("Failed to get pre-signed URL");
+        throw res.errors || new Error(tStatic(MODULE, "IMPORT_FILE_MODAL.PRESIGNED_URL_FAILED"));
       }
 
       const fileId = res.fileId;
@@ -885,7 +885,7 @@ export default function ImportCommunicationsModal({
           fileVersionId: res.fileVersionId ?? "",
         });
         if (completion.verificationStatus !== "Verified") {
-          throw new Error(completion.rejectionReason ?? "File failed verification");
+          throw new Error(completion.rejectionReason ?? tStatic(MODULE, "IMPORT_FILE_MODAL.FILE_VERIFICATION_FAILED"));
         }
       }
 

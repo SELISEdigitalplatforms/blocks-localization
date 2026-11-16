@@ -6,6 +6,7 @@ import { Button } from "@/components/ui-kits/button/button";
 import { Separator } from "@/components/ui-kits/separator/separator";
 import { Badge } from "@/components/ui-kits/badge/badge";
 import { useMemo, useState } from "react";
+import { useT } from "@seliseblocks/genesis-os/i18n";
 import { RadioGroup, RadioGroupItem } from "@/components/ui-kits/radio-group/radio-group";
 import { Label } from "@/components/ui-kits/label/label";
 import { Search } from "lucide-react";
@@ -26,6 +27,7 @@ export function Radio({ label, options, onChange, value }: MultiSelectProps) {
   const [search, setSearch] = useState("");
   const [buttonRef, popoverWidth] = usePopoverWidth();
   const isMobile = useIsMobile();
+  const { t } = useT("localization.shared");
 
   const selected = useMemo(
     () => options.find((item) => item.value === value) || null,
@@ -101,7 +103,7 @@ export function Radio({ label, options, onChange, value }: MultiSelectProps) {
             </RadioGroup>
           ) : (
             <div className="py-6 text-center text-sm text-popover-foreground!">
-              No results found.
+              {t("RADIO.NO_RESULTS")}
             </div>
           )}
         </>

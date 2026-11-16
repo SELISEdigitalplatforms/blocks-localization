@@ -14,6 +14,26 @@ const consoleHeading = (page: Page) =>
     name: /Your Blocks Projects|Welcome to SELISE Blocks/,
   })
 
+/**
+ * True when the genesis-os project guard shows that the session can no longer be used: "Your session has
+ * ended" (IAM refused the refresh token), "Couldn't return to the console" (the project session could not
+ * be stopped) or "Couldn't open <project>" (it could not be started). None of them recovers by itself;
+ * the caller needs a fresh login.
+ */
+export async function isSessionEndedScreen(page: Page): Promise<boolean> {
+  return page
+    .getByRole("heading", { name: /^(Your session has ended|Couldn't return to the console|Couldn't open .+)$/ })
+    .first()
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false)
+}
+
+/** Signs in again from scratch after the session ended: drops the dead cookies, then logs in. */
+export async function loginAfterSessionEnded(page: Page) {
+  await page.context().clearCookies()
+  await loginThroughOidc(page)
+}
+
 /** True when the page is the product login gate or OIDC credential form. */
 export async function isLoginSurface(page: Page): Promise<boolean> {
   if (
