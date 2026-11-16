@@ -3,6 +3,7 @@ using Blocks.Genesis;
 using BlocksTemplate.Api.Controllers;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Validation;
 using FluentAssertions;
@@ -19,6 +20,7 @@ namespace XUnitTest
         private readonly Mock<IKeyManagementService> _keyManagementServiceMock;
         private readonly Mock<IValidator<TranslateBlocksLanguageKeyRequest>> _validatorMock;
         private readonly Mock<IValidator<TranslateBlocksLanguageKeysRequest>> _validatorsMock;
+        private readonly Mock<IUilmFileReader> _uilmFileReaderMock = new();
         private readonly KeyController _controller;
 
         public KeyControllerTests()
@@ -1011,9 +1013,9 @@ namespace XUnitTest
             context.Response.Body = new MemoryStream();
             _controller.ControllerContext.HttpContext = context;
 
-            _keyManagementServiceMock.Setup(x => x.GetUilmFile(request)).ReturnsAsync((string)null);
+            _uilmFileReaderMock.Setup(x => x.ReadAsync(request, It.IsAny<string?>())).ReturnsAsync(UilmFileReadResult.NoFile);
 
-            await _controller.GetCloudUilmFile(request);
+            await _controller.GetCloudUilmFile(request, _uilmFileReaderMock.Object);
 
             context.Response.StatusCode.Should().Be(200);
             context.Response.ContentType.Should().Be("application/json");
@@ -1128,9 +1130,10 @@ namespace XUnitTest
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
             _controller.ControllerContext.HttpContext = context;
-            _keyManagementServiceMock.Setup(x => x.GetUilmFile(request)).ReturnsAsync("{\"k\":1}");
+            _uilmFileReaderMock.Setup(x => x.ReadAsync(request, It.IsAny<string?>()))
+                .ReturnsAsync(new UilmFileReadResult(UilmFileReadKind.Content, "{\"k\":1}"));
 
-            await _controller.GetUilmFile(request);
+            await _controller.GetUilmFile(request, _uilmFileReaderMock.Object);
 
             context.Response.ContentType.Should().Be("application/json");
             context.Response.Body.Seek(0, SeekOrigin.Begin);

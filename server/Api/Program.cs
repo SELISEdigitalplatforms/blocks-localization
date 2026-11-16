@@ -65,37 +65,32 @@ services.Configure<GzipCompressionProviderOptions>(options => options.Level = Co
 
 var app = builder.Build();
 
+// Browser security headers and the CSP for the SPA and the API (ZAP DAST bar). The CSP origins
+// come from configuration (FrontendRuntime + Csp:*), not from a compiled-in host list -- see
+// BlocksTemplate.Api.Security.ContentSecurityPolicy.
+var contentSecurityPolicy = BlocksTemplate.Api.Security.ContentSecurityPolicy.Build(app.Configuration);
+app.UseMiddleware<BlocksTemplate.Api.Middleware.SecurityHeadersMiddleware>(
+    contentSecurityPolicy, BlocksTemplate.Api.Security.StyleNonce.CreateWithRandomKey());
+
 app.UseResponseCompression();
-app.UseDefaultFiles();
-app.UseStaticFiles();
-var indexHtml = Path.Combine(app.Environment.WebRootPath ?? "", "index.html");
-if (File.Exists(indexHtml))
+
+// The SPA shell carries the response's style nonce (meta[name=csp-nonce]), so it is rendered
+// rather than sent verbatim (BlocksTemplate.Api.Middleware.SpaShell). Read after
+// ApplyFrontendRuntimeSettings filled the runtime placeholders.
+var indexHtmlTemplate = await BlocksTemplate.Api.Middleware.SpaShell.ReadTemplateAsync(app.Environment.WebRootPath).ConfigureAwait(false);
+if (indexHtmlTemplate is not null)
 {
-
-    app.MapFallback(async context =>
-    {
-
-        //context.Response.Cookies.Append("x-blocks-key", tenant.TenantId, new CookieOptions
-        //{
-        //    Domain = tenant.CookieDomain,
-        //    HttpOnly = true,
-        //    Secure = true,
-        //    SameSite = SameSiteMode.None,
-        //    Path = "/"
-        //});
-        context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.SendFileAsync(indexHtml);
-
-    });
-
-    // x-blocks-key cookie
-    // check if domain match
-    // get google captch key BLOCKS_GOOGLE_SITE_KEY
-    // Base Url
-    // Construct URL
-
+    app.Use((context, next) => BlocksTemplate.Api.Middleware.SpaShell.InvokeAsync(context, next, indexHtmlTemplate));
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// Fallback to the SPA shell for React routing (non-API, non-file routes).
+if (indexHtmlTemplate is not null)
+{
+    app.MapFallback(context => BlocksTemplate.Api.Middleware.SpaShell.WriteAsync(context, indexHtmlTemplate));
+}
 
 ApplicationConfigurations.ConfigureMiddleware(app);
 await app.RunAsync();
@@ -121,6 +116,9 @@ static void ApplyFrontendRuntimeSettings(IConfiguration configuration, string we
 {
     // Read frontend runtime values from the DB-backed "FrontendRuntime" config
     // section (populated by AddMongoDbConfiguration from the "Secrets" collection).
+    // The SPA reads them from /runtime-config.js (window.__BLOCKS_ENV__), one of the
+    // static files filled below; index.html keeps no inline script so the CSP can
+    // keep script-src 'self'.
     // Standard .NET config layering still applies, so env vars named
     // "FrontendRuntime__BLOCKS_*" override individual keys at deploy time.
     var section = configuration.GetSection("FrontendRuntime");

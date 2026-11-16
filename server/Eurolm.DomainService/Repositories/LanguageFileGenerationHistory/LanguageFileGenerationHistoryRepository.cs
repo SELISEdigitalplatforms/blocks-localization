@@ -32,6 +32,17 @@ namespace Eurolm.DomainService.Repositories
             return await collection.Find(filter).Sort(sort).FirstOrDefaultAsync();
         }
 
+        public async Task<int> GetHighestVersionAsync(string projectKey)
+        {
+            var collection = _dbContextProvider.GetDatabase(projectKey).GetCollection<LanguageFileGenerationHistory>(_collectionName);
+            var highest = await collection
+                .Find(Builders<LanguageFileGenerationHistory>.Filter.Empty)
+                .Sort(Builders<LanguageFileGenerationHistory>.Sort.Descending(h => h.Version))
+                .Limit(1)
+                .FirstOrDefaultAsync();
+            return highest?.Version ?? 0;
+        }
+
         public async Task<GetLanguageFileGenerationHistoryResponse> GetPaginatedAsync(GetLanguageFileGenerationHistoryRequest request)
         {
             var tenantId = BlocksContext.GetContext()?.TenantId

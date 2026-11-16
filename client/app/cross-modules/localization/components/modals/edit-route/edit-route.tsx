@@ -165,7 +165,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
             <p>
               {withNode(
                 t("EDIT_ROUTE.ADD_AFTER_HOSTNAME", { hostname: MARKER }),
-                <span className="font-semibold text-foreground">hostname/</span>,
+                <span className="font-semibold text-foreground">{t("EDIT_ROUTE.HOSTNAME_TOKEN")}</span>,
               )}
             </p>
             <p>
@@ -176,6 +176,7 @@ function EditRoute({ keyDetails, isOpen, onClose }: Readonly<EditRouteProps>) {
             </p>
             <p className="text-[11px]">
               {t("EDIT_ROUTE.EXAMPLE")}{" "}
+              {/* eslint-disable-next-line no-restricted-syntax -- route syntax example, typed as is; an i18n value would interpolate its {{ }} */}
               <span className="font-mono">release-note/{`{{ dynamic_routing }}`}</span>
             </p>
           </div>

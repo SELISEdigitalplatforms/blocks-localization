@@ -1,21 +1,29 @@
 import { Archive, CheckCircle2, LucideIcon, PencilLine } from "lucide-react";
+import { tStatic, useT } from "@seliseblocks/genesis-os/i18n";
 import { Badge, BadgeProps } from "@/components/ui-kits/badge/badge";
 import { cn } from "@/lib/utils";
 import { GlossaryStatus } from "@blocks-localization/models/language";
 
 const STATUS_DISPLAY: Record<
   GlossaryStatus,
-  { label: string; variant: BadgeProps["variant"]; Icon: LucideIcon }
+  { labelKey: string; variant: BadgeProps["variant"]; Icon: LucideIcon }
 > = {
-  approved: { label: "Approved", variant: "success", Icon: CheckCircle2 },
-  draft: { label: "Draft", variant: "outline", Icon: PencilLine },
-  deprecated: { label: "Deprecated", variant: "secondary", Icon: Archive },
+  approved: { labelKey: "GLOSSARY_STATUS_BADGE.APPROVED", variant: "success", Icon: CheckCircle2 },
+  draft: { labelKey: "GLOSSARY_STATUS_BADGE.DRAFT", variant: "outline", Icon: PencilLine },
+  deprecated: { labelKey: "GLOSSARY_STATUS_BADGE.DEPRECATED", variant: "secondary", Icon: Archive },
 };
 
+// Getters, so each label is translated when it is shown, not at import time.
 export const GLOSSARY_STATUS_LABELS: Record<GlossaryStatus, string> = {
-  approved: STATUS_DISPLAY.approved.label,
-  draft: STATUS_DISPLAY.draft.label,
-  deprecated: STATUS_DISPLAY.deprecated.label,
+  get approved() {
+    return tStatic("localization.glossary", STATUS_DISPLAY.approved.labelKey);
+  },
+  get draft() {
+    return tStatic("localization.glossary", STATUS_DISPLAY.draft.labelKey);
+  },
+  get deprecated() {
+    return tStatic("localization.glossary", STATUS_DISPLAY.deprecated.labelKey);
+  },
 };
 
 interface GlossaryStatusBadgeProps {
@@ -25,7 +33,8 @@ interface GlossaryStatusBadgeProps {
 
 /** Always icon + text, so the status never depends on colour alone. */
 const GlossaryStatusBadge = ({ status, className }: Readonly<GlossaryStatusBadgeProps>) => {
-  const { label, variant, Icon } = STATUS_DISPLAY[status];
+  const { t } = useT("localization.glossary");
+  const { labelKey, variant, Icon } = STATUS_DISPLAY[status];
   return (
     <Badge
       variant={variant}
@@ -36,7 +45,7 @@ const GlossaryStatusBadge = ({ status, className }: Readonly<GlossaryStatusBadge
       )}
     >
       <Icon className="h-3 w-3" aria-hidden="true" />
-      {label}
+      {t(labelKey)}
     </Badge>
   );
 };

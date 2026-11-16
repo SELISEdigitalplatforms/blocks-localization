@@ -123,6 +123,61 @@ describe("modals/edit-module", () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
+  it("should prefill the description and always send it, so clearing it is saved (SPEC16 H8)", async () => {
+    saveModuleAsync.mockResolvedValue({ success: true });
+    render(
+      withDialog(
+        <EditModule
+          module={{ itemId: "m1", moduleName: "UILM", description: "Billing screens" } as never}
+          onClose={vi.fn()}
+        />,
+      ),
+    );
+    const textarea = screen.getByLabelText("Description") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("Billing screens");
+    fireEvent.change(textarea, { target: { value: "   " } });
+    fireEvent.submit(textarea.closest("form")!);
+    await waitFor(() =>
+      expect(saveModuleAsync).toHaveBeenCalledWith({ itemId: "m1", moduleName: "UILM", description: "" }),
+    );
+  });
+
+  it("should send an empty description for a module that has none", async () => {
+    saveModuleAsync.mockResolvedValue({ success: true });
+    render(
+      withDialog(
+        <EditModule module={{ itemId: "m1", moduleName: "UILM", description: null } as never} onClose={vi.fn()} />,
+      ),
+    );
+    fireEvent.submit(screen.getByLabelText("Description").closest("form")!);
+    await waitFor(() =>
+      expect(saveModuleAsync).toHaveBeenCalledWith(expect.objectContaining({ description: "" })),
+    );
+  });
+
+  it("should block a description over 500 characters (SPEC16 C1)", async () => {
+    render(
+      withDialog(
+        <EditModule module={{ itemId: "m1", moduleName: "UILM" } as never} onClose={vi.fn()} />,
+      ),
+    );
+    const textarea = screen.getByLabelText("Description");
+    fireEvent.change(textarea, { target: { value: "a".repeat(501) } });
+    fireEvent.submit(textarea.closest("form")!);
+    expect(await screen.findByText("Description must be 500 characters or fewer")).toBeTruthy();
+    expect(saveModuleAsync).not.toHaveBeenCalled();
+  });
+
+  it("should link each label to its field", () => {
+    render(
+      withDialog(
+        <EditModule module={{ itemId: "m1", moduleName: "UILM" } as never} onClose={vi.fn()} />,
+      ),
+    );
+    expect((screen.getByLabelText("Module name") as HTMLInputElement).value).toBe("UILM");
+    expect(screen.getByLabelText("Description").tagName).toBe("TEXTAREA");
+  });
+
   it("should cancel", () => {
     const onClose = vi.fn();
     render(

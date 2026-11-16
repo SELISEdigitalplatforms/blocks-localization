@@ -1,0 +1,286 @@
+using Blocks.Genesis;
+using DomainService.Storage;
+using Eurolm.DomainService.Repositories;
+using Eurolm.DomainService.Repositories.UilmStorage;
+using Microsoft.Extensions.Logging;
+using StorageDriver;
+using System.Text.Json;
+
+namespace Eurolm.DomainService.Services.UilmStorage
+{
+    public class UilmMaintenanceService : IUilmMaintenanceService
+    {
+        public const string TaskName = "uilm-maintenance";
+        public const string RestoreContentTaskName = "uilm-restore-content";
+        private const string FileNotFound = "file_not_found";
+        private const int ReconcilePageSize = 500;
+
+        private readonly IUilmStoredFileRepository _storedFiles;
+        private readonly IUilmStorageSettingsRepository _settings;
+        private readonly IKeyRepository _keyRepository;
+        private readonly IStorageDriverService _storageDriver;
+        private readonly ITenants _tenants;
+        private readonly UilmStorageInfrastructure _infrastructure;
+        private readonly UilmStorageOptions _options;
+        private readonly UilmContentMigration _contentMigration;
+        private readonly ILogger<UilmMaintenanceService> _logger;
+
+        public UilmMaintenanceService(
+            IUilmStoredFileRepository storedFiles,
+            IUilmStorageSettingsRepository settings,
+            IKeyRepository keyRepository,
+            IStorageDriverService storageDriver,
+            ITenants tenants,
+            UilmStorageInfrastructure infrastructure,
+            ILogger<UilmMaintenanceService> logger)
+        {
+            _storedFiles = storedFiles;
+            _settings = settings;
+            _keyRepository = keyRepository;
+            _storageDriver = storageDriver;
+            _tenants = tenants;
+            _infrastructure = infrastructure;
+            _options = infrastructure.Options;
+            _contentMigration = new UilmContentMigration(keyRepository, storedFiles, settings, storageDriver, infrastructure, logger);
+            _logger = logger;
+        }
+
+        public async Task RunAsync(string? payload)
+        {
+            if (!TryParsePayload(payload, out var task, out var payloadTenantId))
+            {
+                // A retry can't fix a bad payload, so it is dropped rather than thrown (C12).
+                _logger.LogWarning("UILM maintenance ignored a schedule payload that is not a {TaskName} or {RestoreTaskName} task",
+                    TaskName, RestoreContentTaskName);
+                return;
+            }
+            Func<Task> runTenant = task == RestoreContentTaskName ? _contentMigration.RestoreContentAsync : () => RunTenantAsync();
+
+            List<string> tenantIds;
+            try
+            {
+                tenantIds = payloadTenantId != null
+                    ? [payloadTenantId]
+                    : _tenants.GetTenantDatabaseConnectionStrings().Keys.ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UILM maintenance could not list the tenants");
+                return;
+            }
+
+            foreach (var tenantId in tenantIds)
+            {
+                try
+                {
+                    // No user: the scheduler's context. ExecuteInContext restores the caller's context afterwards.
+                    await BlocksContext.ExecuteInContext(NoUserContext(tenantId), runTenant);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "UILM maintenance failed for tenant {TenantId}", tenantId);
+                }
+            }
+        }
+
+        /// <summary>True for a JSON object whose <c>task</c> is one of the two tasks; returns its optional <c>tenantId</c>.</summary>
+        public static bool TryParsePayload(string? payload, out string? tenantId) => TryParsePayload(payload, out _, out tenantId);
+
+        /// <summary>
+        /// True for a JSON object whose <c>task</c> is <see cref="TaskName"/> or <see cref="RestoreContentTaskName"/>
+        /// (trimmed, any case); returns that task's constant and the optional <c>tenantId</c>.
+        /// </summary>
+        public static bool TryParsePayload(string? payload, out string task, out string? tenantId)
+        {
+            task = string.Empty;
+            tenantId = null;
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return false;
+            }
+            try
+            {
+                using var document = JsonDocument.Parse(payload);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object
+                    || !root.TryGetProperty("task", out var taskElement)
+                    || taskElement.ValueKind != JsonValueKind.String)
+                {
+                    return false;
+                }
+                var name = taskElement.GetString()?.Trim();
+                task = Array.Find([TaskName, RestoreContentTaskName], known => string.Equals(name, known, StringComparison.OrdinalIgnoreCase))
+                    ?? string.Empty;
+                if (task.Length == 0)
+                {
+                    return false;
+                }
+                if (root.TryGetProperty("tenantId", out var tenant) && tenant.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(tenant.GetString()))
+                {
+                    tenantId = tenant.GetString()!.Trim();
+                }
+                return true;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// One tenant's <see cref="TaskName"/> run, in the #349 order: backfill and content removal (only while the tenant
+        /// publishes to Storage, C6; removal only with <c>KeepContent: false</c>), then the due deletes and the reconcile.
+        /// </summary>
+        private async Task<int> RunTenantAsync()
+        {
+            var mode = await _settings.GetModeAsync();
+            if (mode.PublishToStorage)
+            {
+                // A failed step leaves the rows as they are and the next run continues; the later steps still run.
+                await RunStepAsync("backfill", _contentMigration.BackfillAsync);
+                if (!mode.KeepContent)
+                {
+                    await RunStepAsync("content removal", _contentMigration.RemoveContentAsync);
+                }
+            }
+
+            var now = UtcNow();
+            var deleted = 0;
+            for (var claimed = 0; claimed < _options.MaintenanceBatchSize; claimed++)
+            {
+                var file = await _storedFiles.ClaimDueAsync(now, now + _options.MaintenanceLease);
+                if (file == null)
+                {
+                    break;
+                }
+                if (await DeleteDueFileAsync(file, now))
+                {
+                    deleted++;
+                }
+            }
+
+            if (await _settings.TryStartReconcileAsync(now, _options.ReconcileInterval))
+            {
+                await ReconcileAsync(now);
+            }
+            return deleted;
+        }
+
+        private async Task RunStepAsync(string step, Func<Task> run)
+        {
+            try
+            {
+                await run();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UILM {Step} failed for tenant {TenantId}", step, BlocksContext.GetContext()?.TenantId);
+            }
+        }
+
+        private async Task<bool> DeleteDueFileAsync(UilmStoredFile file, DateTime now)
+        {
+            // A pointer switched back to this file (or a race with a publish): it is in use, so it stays.
+            if ((await _keyRepository.GetReferencedUilmFileIdsAsync([file.Id])).Count > 0)
+            {
+                await _storedFiles.MarkLiveAsync([file.Id]);
+                return false;
+            }
+
+            if (await DeleteFromStorageAsync(file.Id))
+            {
+                await _storedFiles.RemoveAsync(file.Id);
+                return true;
+            }
+
+            var attempts = await _storedFiles.RecordFailedDeleteAsync(file.Id, now);
+            if (attempts >= _options.StuckDeleteAttempts)
+            {
+                _logger.LogError("UilmFileDeleteStuck: file {FileId} of module {ModuleName} language {Language} failed to delete {Attempts} times",
+                    file.Id, file.ModuleName, file.Language, attempts);
+            }
+            return false;
+        }
+
+        private async Task<bool> DeleteFromStorageAsync(string fileId)
+        {
+            try
+            {
+                var response = await _storageDriver.DeleteFileAsync(new DeleteFileRequest { FileId = fileId, Permanent = true });
+                if (response?.IsSuccess == true || response?.Errors?.ContainsKey(FileNotFound) == true)
+                {
+                    return true;
+                }
+                _logger.LogWarning("UILM maintenance could not delete file {FileId}: {Errors}",
+                    fileId, response?.Errors == null ? "no response" : string.Join(", ", response.Errors.Keys));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "UILM maintenance could not delete file {FileId}", fileId);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Retires ledger rows that no pointer uses: uploads that never switched a pointer (deleted on the next run) and
+        /// live files whose pointer is gone (deleted after <see cref="UilmStorageOptions.RetireDelay"/>). Both only when
+        /// older than <see cref="UilmStorageOptions.OrphanUploadAge"/>: a publish or backfill marks its files Live just
+        /// before it switches their pointers (#350 C11), so a young unreferenced file may be about to be used.
+        /// </summary>
+        private async Task ReconcileAsync(DateTime now)
+        {
+            var createdBefore = now - _options.OrphanUploadAge;
+            var orphans = await RetireUnreferencedAsync(UilmStoredFileState.Uploading, createdBefore, now);
+            var unused = await RetireUnreferencedAsync(UilmStoredFileState.Live, createdBefore, now + _options.RetireDelay);
+            if (orphans + unused > 0)
+            {
+                _logger.LogInformation("UILM reconcile retired {OrphanCount} abandoned uploads and {UnusedCount} unused files", orphans, unused);
+            }
+        }
+
+        private async Task<long> RetireUnreferencedAsync(string state, DateTime createdBefore, DateTime deleteAfter)
+        {
+            long retired = 0;
+            string? afterId = null;
+            while (true)
+            {
+                var ids = await _storedFiles.GetIdsAsync(state, createdBefore, afterId, ReconcilePageSize);
+                if (ids.Count == 0)
+                {
+                    break;
+                }
+                var referenced = await _keyRepository.GetReferencedUilmFileIdsAsync(ids);
+                var unreferenced = ids.Where(id => !referenced.Contains(id)).ToList();
+                retired += await _storedFiles.RetireFromStateAsync(unreferenced, state, deleteAfter);
+                if (ids.Count < ReconcilePageSize)
+                {
+                    break;
+                }
+                afterId = ids[^1];
+            }
+            return retired;
+        }
+
+        private BlocksContext NoUserContext(string tenantId) => BlocksContext.Create(
+            tenantId: tenantId,
+            roles: Array.Empty<string>(),
+            userId: "",
+            isAuthenticated: false,
+            requestUri: "",
+            organizationId: "",
+            expireOn: UtcNow().Add(_options.MaintenanceLease),
+            email: "",
+            permissions: Array.Empty<string>(),
+            userName: "",
+            phoneNumber: "",
+            displayName: "",
+            oauthToken: "",
+            originalTenantId: tenantId,
+            applicationDomain: "",
+            impersonated: false,
+            impersonationSessionId: "");
+
+        private DateTime UtcNow() => _infrastructure.UtcNow();
+    }
+}

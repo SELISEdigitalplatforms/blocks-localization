@@ -1,5 +1,7 @@
 using Blocks.Genesis;
+using Eurolm.DomainService.Repositories.UilmStorage;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.UilmStorage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
@@ -18,6 +20,9 @@ namespace Eurolm.DomainService.Repositories
         private const string KeyNameField = "KeyName";
         private const string CreateDateField = "CreateDate";
         private const string MatchStage = "$match";
+        private const string GroupStage = "$group";
+        private const string SortStage = "$sort";
+        private const string LimitStage = "$limit";
 
         public const int DefaultKeyPageSize = 10;
         public const int MaxKeyPageSize = 1000;
@@ -272,7 +277,7 @@ namespace Eurolm.DomainService.Repositories
                 { "ModuleId", new BsonDocument("$type", "string") },
                 { KeyNameField, new BsonDocument("$type", "string") },
             }),
-            new BsonDocument("$group", new BsonDocument
+            new BsonDocument(GroupStage, new BsonDocument
             {
                 { "_id", new BsonDocument { { "ModuleId", "$ModuleId" }, { KeyNameField, "$KeyName" } } },
                 { "count", new BsonDocument("$sum", 1) },
@@ -280,13 +285,13 @@ namespace Eurolm.DomainService.Repositories
             }),
             new BsonDocument(MatchStage, new BsonDocument("count", new BsonDocument("$gt", 1))),
             new BsonDocument("$unwind", "$members"),
-            new BsonDocument("$sort", new BsonDocument
+            new BsonDocument(SortStage, new BsonDocument
             {
                 { "_id.KeyName", 1 },
                 { "_id.ModuleId", 1 },
                 { "members.created", 1 },
             }),
-            new BsonDocument("$limit", limit),
+            new BsonDocument(LimitStage, limit),
             new BsonDocument("$project", new BsonDocument("_id", "$members.id")),
         };
 
@@ -643,15 +648,18 @@ namespace Eurolm.DomainService.Repositories
 
         public async Task<UilmFile> GetUilmFile(GetUilmFileRequest request)
         {
+            // The index on (ModuleName, Language, Version) is ensured by the publish that writes the rows.
             var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
             var project = Builders<BsonDocument>.Projection.As<UilmFile>();
             var filter = Builders<BsonDocument>.Filter.Eq("Language", request.Language) & Builders<BsonDocument>.Filter.Eq("ModuleName", request.ModuleName);
 
-            return await dataBase.GetCollection<BsonDocument>("UilmFiles")
+            return await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
                 .Find(filter)
+                .Sort(Builders<BsonDocument>.Sort.Descending(nameof(UilmFile.Version)))
                 .Project(project)
                 .FirstOrDefaultAsync();
         }
+
         public async Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request)
         {
             var dataBase = _dbContextProvider.GetDatabase(request.projectKey);
@@ -662,6 +670,299 @@ namespace Eurolm.DomainService.Repositories
                 .Find(filter)
                 .Project(project)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<UilmManifestRow>> GetUilmManifestRowsAsync(string? moduleName, string? language)
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            var match = new BsonDocument();
+            if (moduleName != null) match[nameof(UilmFile.ModuleName)] = moduleName;
+            if (language != null) match[nameof(UilmFile.Language)] = language;
+
+            // Same selection as GetUilmFile: per module and language, the highest Version first (legacy rows last), on
+            // the (ModuleName, Language, Version) index. Content is never returned.
+            var stages = new[]
+            {
+                new BsonDocument(MatchStage, match),
+                new BsonDocument(SortStage, new BsonDocument { { nameof(UilmFile.ModuleName), 1 }, { nameof(UilmFile.Language), 1 }, { nameof(UilmFile.Version), -1 } }),
+                new BsonDocument(GroupStage, new BsonDocument
+                {
+                    { IdField, new BsonDocument { { GroupModule, "$" + nameof(UilmFile.ModuleName) }, { GroupLanguage, "$" + nameof(UilmFile.Language) } } },
+                    { nameof(UilmManifestRow.ModuleName), GroupFirst(nameof(UilmFile.ModuleName)) },
+                    { nameof(UilmManifestRow.Language), GroupFirst(nameof(UilmFile.Language)) },
+                    { nameof(UilmManifestRow.FileId), GroupFirst(nameof(UilmFile.FileId)) },
+                    { nameof(UilmManifestRow.Url), GroupFirst(nameof(UilmFile.Url)) },
+                    { nameof(UilmManifestRow.ContentHash), GroupFirst(nameof(UilmFile.ContentHash)) },
+                    { nameof(UilmManifestRow.Size), GroupFirst(nameof(UilmFile.Size)) },
+                    { nameof(UilmManifestRow.Version), GroupFirst(nameof(UilmFile.Version)) }
+                }),
+                new BsonDocument(ProjectStage, new BsonDocument(IdField, 0))
+            };
+            using var cursor = await dataBase.GetCollection<BsonDocument>(UilmFilesCollection)
+                .AggregateAsync(PipelineDefinition<BsonDocument, UilmManifestRow>.Create(stages));
+            var rows = await cursor.ToListAsync();
+
+            // The ledger states of the pointed-at files in one read by _id (a $lookup per row measured about three times
+            // slower). It runs after the pointer read, so a file retired in between is not Live and gets no URL.
+            var fileIds = rows.Where(r => r.FileId != null).Select(r => r.FileId!).Distinct().ToList();
+            if (fileIds.Count == 0) return rows;
+            var states = (await dataBase.GetCollection<UilmStoredFile>(UilmStoredFileRepository.CollectionName)
+                    .Find(Builders<UilmStoredFile>.Filter.In(f => f.Id, fileIds))
+                    .Project(f => new { f.Id, f.State })
+                    .ToListAsync())
+                .ToDictionary(f => f.Id, f => f.State, StringComparer.Ordinal);
+            foreach (var row in rows)
+            {
+                row.LedgerState = row.FileId != null && states.TryGetValue(row.FileId, out var state) ? state : null;
+            }
+            return rows;
+        }
+
+        private static BsonDocument GroupFirst(string field) => new("$first", "$" + field);
+
+        private const string UilmFilesCollection = "UilmFiles";
+
+        private static readonly IReadOnlyList<CreateIndexModel<UilmFile>> UilmFileIndexes =
+        [
+            new(Builders<UilmFile>.IndexKeys.Ascending(f => f.ModuleName).Ascending(f => f.Language).Descending(f => f.Version),
+                new CreateIndexOptions { Name = "ModuleName_1_Language_1_Version_-1" })
+        ];
+
+        private IMongoCollection<UilmFile> UilmFiles()
+        {
+            var dataBase = _dbContextProvider.GetDatabase(BlocksContext.GetContext()?.TenantId ?? "");
+            _ = MongoIndexEnsurer.EnsureAsync(dataBase, UilmFilesCollection, UilmFileIndexes, _logger);
+            return dataBase.GetCollection<UilmFile>(UilmFilesCollection);
+        }
+
+        public Task<List<UilmFile>> GetUilmFilesOfModuleAsync(string moduleName) =>
+            UilmFiles().Find(f => f.ModuleName == moduleName).ToListAsync();
+
+        public async Task<UilmFilePointerWrite> ReplaceUilmFilePointerAsync(UilmFile pointer)
+        {
+            var collection = UilmFiles();
+            var filter = Builders<UilmFile>.Filter.Eq(f => f.Id, pointer.Id)
+                & (Builders<UilmFile>.Filter.Eq(f => f.Version, null) | Builders<UilmFile>.Filter.Lt(f => f.Version, pointer.Version));
+            var options = new FindOneAndReplaceOptions<UilmFile, UilmFile?> { IsUpsert = true, ReturnDocument = ReturnDocument.Before };
+            // A duplicate key means the upsert tried to insert a row that exists: either it has the same or a higher
+            // version, or a concurrent writer inserted it first. The second attempt sees that row and decides.
+            try
+            {
+                return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
+            }
+            catch (MongoException ex) when (IsDuplicateKeyError(ex))
+            {
+                try
+                {
+                    return new UilmFilePointerWrite(true, await collection.FindOneAndReplaceAsync(filter, pointer, options));
+                }
+                catch (MongoException retryEx) when (IsDuplicateKeyError(retryEx))
+                {
+                    return new UilmFilePointerWrite(false, null);
+                }
+            }
+        }
+
+        /// <summary>findAndModify reports a duplicate key as a command error, other writes as a write error.</summary>
+        private static bool IsDuplicateKeyError(MongoException ex) =>
+            DuplicateKeyRetry.IsDuplicateKey(ex) || ex is MongoCommandException { Code: 11000 };
+
+        public Task DeleteUilmFileDuplicatesAsync(string moduleName, string language, string keepId) =>
+            UilmFiles().DeleteManyAsync(f => f.ModuleName == moduleName && f.Language == language && f.Id != keepId);
+
+        public async Task<List<UilmFile>> DeleteUilmFilesOfOtherLanguagesAsync(string moduleName, IReadOnlyCollection<string> languages)
+        {
+            var collection = UilmFiles();
+            var filter = Builders<UilmFile>.Filter.Eq(f => f.ModuleName, moduleName) & Builders<UilmFile>.Filter.Nin(f => f.Language, languages);
+            var removed = await collection.Find(filter).ToListAsync();
+            if (removed.Count > 0)
+            {
+                await collection.DeleteManyAsync(Builders<UilmFile>.Filter.In(f => f.Id, removed.Select(f => f.Id)));
+            }
+            return removed;
+        }
+
+        public async Task<HashSet<string>> GetReferencedUilmFileIdsAsync(IReadOnlyCollection<string> fileIds)
+        {
+            if (fileIds.Count == 0) return new HashSet<string>(StringComparer.Ordinal);
+            var referenced = await UilmFiles()
+                .Find(Builders<UilmFile>.Filter.In(f => f.FileId, fileIds))
+                .Project(f => f.FileId)
+                .ToListAsync();
+            return referenced.Where(id => id != null).Select(id => id!).ToHashSet(StringComparer.Ordinal);
+        }
+
+        private const string LedgerField = "__ledger";
+        private const string IdField = "_id";
+        private const string NotEqual = "$ne";
+        private const string ProjectStage = "$project";
+        private const string GroupModule = "m";
+        private const string GroupLanguage = "l";
+        private const string HasFileKey = "f";
+        private const string HasContentKey = "c";
+
+        /// <summary>Joins each row's ledger entry (empty when the row has no <c>FileId</c> or the ledger doesn't know it).</summary>
+        private static readonly BsonDocument LedgerLookup = new("$lookup", new BsonDocument
+        {
+            { "from", UilmStoredFileRepository.CollectionName },
+            { "localField", nameof(UilmFile.FileId) },
+            { "foreignField", IdField },
+            { "as", LedgerField }
+        });
+
+        private static BsonDocument HasLedgerFile() => new("$gt", new BsonArray { new BsonDocument("$size", "$" + LedgerField), 0 });
+
+        public async Task<List<UilmFileGroup>> GetUilmBackfillGroupsAsync(int limit)
+        {
+            var pipeline = PipelineDefinition<UilmFile, BsonDocument>.Create(
+                new BsonDocument(MatchStage, new BsonDocument(nameof(UilmFile.Content), new BsonDocument(NotEqual, BsonNull.Value))),
+                // Content isn't needed past the filter.
+                new BsonDocument(ProjectStage, new BsonDocument
+                {
+                    { nameof(UilmFile.ModuleName), 1 }, { nameof(UilmFile.Language), 1 }, { nameof(UilmFile.FileId), 1 }
+                }),
+                LedgerLookup,
+                new BsonDocument(MatchStage, new BsonDocument(LedgerField, new BsonDocument("$size", 0))),
+                new BsonDocument(GroupStage, new BsonDocument(IdField, new BsonDocument
+                {
+                    { GroupModule, "$" + nameof(UilmFile.ModuleName) }, { GroupLanguage, "$" + nameof(UilmFile.Language) }
+                })),
+                new BsonDocument(SortStage, new BsonDocument(IdField, 1)),
+                new BsonDocument(LimitStage, limit)
+            );
+            var groups = await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
+            return groups
+                .Select(g => g[IdField].AsBsonDocument)
+                .Where(id => id.GetValue(GroupModule, BsonNull.Value).IsString && id.GetValue(GroupLanguage, BsonNull.Value).IsString)
+                .Select(id => new UilmFileGroup(id[GroupModule].AsString, id[GroupLanguage].AsString))
+                .ToList();
+        }
+
+        public async Task<bool> ReplaceUilmFileFromBackfillAsync(UilmFile served, UilmFile pointer)
+        {
+            var collection = UilmFiles();
+            var byPointerId = Builders<UilmFile>.Filter.Eq(f => f.Id, pointer.Id);
+            if (served.Id == pointer.Id)
+            {
+                // Eq(null) also matches a missing field.
+                var unchanged = byPointerId
+                    & Builders<UilmFile>.Filter.Eq(f => f.Version, served.Version)
+                    & Builders<UilmFile>.Filter.Eq(f => f.FileId, served.FileId);
+                return await collection.FindOneAndReplaceAsync<UilmFile?>(unchanged, pointer) != null;
+            }
+
+            // A legacy row with a random id: the pointer row may only replace a row with its id that has neither a
+            // version nor a file. A publish (or an overlapping backfill) wrote one with a version, and the upsert's
+            // insert then fails on the existing id.
+            var replaceable = byPointerId
+                & Builders<UilmFile>.Filter.Eq(f => f.Version, null)
+                & Builders<UilmFile>.Filter.Eq(f => f.FileId, null);
+            try
+            {
+                await collection.ReplaceOneAsync(replaceable, pointer, new ReplaceOptions { IsUpsert = true });
+            }
+            catch (MongoException ex) when (IsDuplicateKeyError(ex))
+            {
+                return false;
+            }
+
+            // The served row must still be there: a publish that dropped its language, or a copy that replaced the
+            // module's rows, deleted it during the upload. Then the pointer would serve stale content, so it goes.
+            var stillServed = Builders<UilmFile>.Filter.Eq(f => f.Id, served.Id)
+                & Builders<UilmFile>.Filter.Eq(f => f.Version, served.Version)
+                & Builders<UilmFile>.Filter.Eq(f => f.FileId, served.FileId);
+            if (await collection.CountDocumentsAsync(stillServed, new CountOptions { Limit = 1 }) > 0)
+            {
+                return true;
+            }
+            await collection.DeleteOneAsync(byPointerId & Builders<UilmFile>.Filter.Eq(f => f.FileId, pointer.FileId));
+            return false;
+        }
+
+        public async Task<UilmFileCounts> CountUilmFilesAsync()
+        {
+            var content = new BsonDocument(NotEqual, new BsonArray { new BsonDocument("$ifNull", new BsonArray { "$" + nameof(UilmFile.Content), BsonNull.Value }), BsonNull.Value });
+            var pipeline = PipelineDefinition<UilmFile, BsonDocument>.Create(
+                new BsonDocument(ProjectStage, new BsonDocument
+                {
+                    { nameof(UilmFile.FileId), 1 },
+                    { HasContentKey, content }
+                }),
+                LedgerLookup,
+                new BsonDocument(GroupStage, new BsonDocument
+                {
+                    { IdField, new BsonDocument { { HasFileKey, HasLedgerFile() }, { HasContentKey, "$" + HasContentKey } } },
+                    { "n", new BsonDocument("$sum", 1) }
+                })
+            );
+            var buckets = await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
+
+            long legacy = 0;
+            long withContent = 0;
+            long withoutContent = 0;
+            foreach (var bucket in buckets)
+            {
+                var key = bucket[IdField].AsBsonDocument;
+                var count = bucket["n"].ToInt64();
+                if (!key[HasFileKey].AsBoolean)
+                {
+                    legacy += count;
+                }
+                else if (key[HasContentKey].AsBoolean)
+                {
+                    withContent += count;
+                }
+                else
+                {
+                    withoutContent += count;
+                }
+            }
+            return new UilmFileCounts(legacy, withContent, withoutContent);
+        }
+
+        public async Task<List<UilmFile>> GetUilmFilesWithLiveFileAsync(bool withContent, string? afterId, int limit)
+        {
+            var match = new BsonDocument
+            {
+                { nameof(UilmFile.FileId), new BsonDocument(NotEqual, BsonNull.Value) },
+                { nameof(UilmFile.ContentHash), new BsonDocument(NotEqual, BsonNull.Value) },
+                { nameof(UilmFile.Content), withContent ? new BsonDocument(NotEqual, BsonNull.Value) : BsonNull.Value }
+            };
+            if (afterId != null)
+            {
+                match.Add(IdField, new BsonDocument("$gt", afterId));
+            }
+            var pipeline = PipelineDefinition<UilmFile, UilmFile>.Create(
+                new BsonDocument(MatchStage, match),
+                new BsonDocument(SortStage, new BsonDocument(IdField, 1)),
+                new BsonDocument(ProjectStage, new BsonDocument(nameof(UilmFile.Content), 0)),
+                LedgerLookup,
+                new BsonDocument(MatchStage, new BsonDocument(LedgerField + ".State", UilmStoredFileState.Live)),
+                new BsonDocument(LimitStage, limit),
+                new BsonDocument(ProjectStage, new BsonDocument(LedgerField, 0))
+            );
+            return await (await UilmFiles().AggregateAsync(pipeline)).ToListAsync();
+        }
+
+        private static FilterDefinition<UilmFile> SameFile(UilmFile row) =>
+            Builders<UilmFile>.Filter.Eq(f => f.Id, row.Id)
+            & Builders<UilmFile>.Filter.Eq(f => f.FileId, row.FileId)
+            & Builders<UilmFile>.Filter.Eq(f => f.ContentHash, row.ContentHash);
+
+        public async Task<bool> RemoveUilmFileContentAsync(UilmFile row)
+        {
+            var result = await UilmFiles().UpdateOneAsync(
+                SameFile(row) & Builders<UilmFile>.Filter.Ne(f => f.Content, null),
+                Builders<UilmFile>.Update.Unset(f => f.Content));
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> RestoreUilmFileContentAsync(UilmFile row, string content)
+        {
+            var result = await UilmFiles().UpdateOneAsync(
+                SameFile(row) & Builders<UilmFile>.Filter.Eq(f => f.Content, null),
+                Builders<UilmFile>.Update.Set(f => f.Content, content));
+            return result.ModifiedCount > 0;
         }
 
         public async Task DeleteAsync(string itemId)

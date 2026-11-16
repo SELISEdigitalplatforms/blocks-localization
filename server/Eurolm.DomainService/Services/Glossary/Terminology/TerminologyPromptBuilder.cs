@@ -15,6 +15,7 @@ namespace Eurolm.DomainService.Services
         public const string MeaningHeading = "Meaning (for disambiguation only):";
         public const string CorrectionHeading = "CORRECTION: Your previous answer broke these rules:";
         public const string CorrectionFooter = "Return only the corrected translation.";
+        public const string ModuleContextLabel = "Module context (background only; the key's own context and glossary rules take priority): ";
         public const int MaxPromptCharacters = 8000;
         public const int MaxPromptGlossaries = 50;
         public const int MaxValueCharacters = 200;
@@ -35,7 +36,7 @@ namespace Eurolm.DomainService.Services
 
             var ruleLines = CollectRuleLines(groups, target);
             var meaningLines = CollectMeaningLines(groups);
-            var context = RenderWithinLimit(baseText, ruleLines, meaningLines);
+            var context = RenderWithinLimit(baseText, ModuleContextLine(request.ElementApplicationContext), ruleLines, meaningLines);
 
             var ruleIds = ruleLines.Select(r => r.GlossaryId).Distinct(StringComparer.Ordinal).ToList();
             var groupById = groups.ToDictionary(g => g.Glossary.ItemId, StringComparer.Ordinal);
@@ -86,16 +87,28 @@ namespace Eurolm.DomainService.Services
             return meaningLines;
         }
 
-        /// <summary>Drops meaning lines, then rule lines, from the end until the context fits; the lists keep what was rendered.</summary>
-        private static string RenderWithinLimit(string baseText, List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
+        /// <summary>The module description as one prompt line, or null when it is blank once sanitized.</summary>
+        public static string? ModuleContextLine(string? applicationContext)
         {
-            var context = Render(baseText, ruleLines, meaningLines);
+            // Descriptions come from a textarea; a line break separates words, so it becomes a space.
+            var text = Sanitize(applicationContext?.ReplaceLineEndings(" "), ModuleValidator.MaxDescriptionLength);
+            return text.Length > 0 ? ModuleContextLabel + text : null;
+        }
+
+        /// <summary>
+        /// Drops the module line, then meaning lines, then rule lines, from the end until the context fits;
+        /// the lists keep what was rendered.
+        /// </summary>
+        private static string RenderWithinLimit(string baseText, string? moduleLine, List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
+        {
+            var context = Render(baseText, moduleLine, ruleLines, meaningLines);
             while (context.Length > MaxPromptCharacters)
             {
-                if (meaningLines.Count > 0) meaningLines.RemoveAt(meaningLines.Count - 1);
+                if (moduleLine != null) moduleLine = null;
+                else if (meaningLines.Count > 0) meaningLines.RemoveAt(meaningLines.Count - 1);
                 else if (ruleLines.Count > 0) ruleLines.RemoveAt(ruleLines.Count - 1);
                 else break;
-                context = Render(baseText, ruleLines, meaningLines);
+                context = Render(baseText, moduleLine, ruleLines, meaningLines);
             }
             return context;
         }
@@ -261,9 +274,10 @@ namespace Eurolm.DomainService.Services
             return IsUnchanged(term, value) ? KeepLine(value) : $"- Translate \"{term}\" as \"{value}\".";
         }
 
-        private static string Render(string baseText,List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
+        private static string Render(string baseText, string? moduleLine, List<(string GlossaryId, string Line)> ruleLines, List<string> meaningLines)
         {
             var lines = new List<string> { baseText };
+            if (moduleLine != null) lines.Add(moduleLine);
             if (ruleLines.Count > 0 || meaningLines.Count > 0) lines.Add("");
             if (ruleLines.Count > 0)
             {

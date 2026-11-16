@@ -14,6 +14,9 @@
     <None Include="appsettings.Development.json" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="XUnitTest" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="FluentValidation.AspNetCore" />
   </ItemGroup>
   <ItemGroup>

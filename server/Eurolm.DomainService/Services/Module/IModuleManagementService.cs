@@ -11,5 +11,7 @@ namespace Eurolm.DomainService.Services
         Task<List<BlocksLanguageModule>> GetModulesAsync(string projectKey,string? moduleId = null);
         Task<BaseMutationResponse> DeleteModuleAsync(DeleteModuleRequest request);
         Task<BaseMutationResponse> TagGlossaryAsync(TagGlossaryRequest request);
+        /// <summary>Fills a blank ElementApplicationContext from the description of the request's module.</summary>
+        Task ApplyModuleContextAsync(SuggestLanguageRequest query);
     }
 }

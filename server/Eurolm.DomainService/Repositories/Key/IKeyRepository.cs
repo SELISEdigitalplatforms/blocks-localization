@@ -1,4 +1,5 @@
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared.Entities;
 using System.Linq.Expressions;
 
@@ -32,8 +33,50 @@ namespace Eurolm.DomainService.Repositories
         Task<List<Key>> GetAllKeysByModuleAsync(string moduleId);
         Task<bool> SaveNewUilmFiles(List<UilmFile> uilmfiles);
         Task<long> DeleteOldUilmFiles(List<UilmFile> uilmfiles);
+        /// <summary>The module/language row to serve: the highest <c>Version</c> wins, legacy rows (no version) last.</summary>
         Task<UilmFile> GetUilmFile(GetUilmFileRequest request);
         Task<UilmFile> GetUilmFile(GetUilmFileRequestForClient request);
+        /// <summary>
+        /// For each module/language matching the optional exact filters, the row <see cref="GetUilmFile(GetUilmFileRequest)"/>
+        /// would serve, without its content, with its file's state in the <c>UilmStoredFiles</c> ledger. Unsorted.
+        /// </summary>
+        Task<List<UilmManifestRow>> GetUilmManifestRowsAsync(string? moduleName, string? language);
+        /// <summary>Every row of the module, legacy rows included.</summary>
+        Task<List<UilmFile>> GetUilmFilesOfModuleAsync(string moduleName);
+        /// <summary>
+        /// Replaces (or inserts) the row with the pointer's deterministic id, only when the stored row has no
+        /// version or a lower one.
+        /// </summary>
+        Task<UilmFilePointerWrite> ReplaceUilmFilePointerAsync(UilmFile pointer);
+        /// <summary>Deletes the module/language rows other than <paramref name="keepId"/> (legacy duplicates).</summary>
+        Task DeleteUilmFileDuplicatesAsync(string moduleName, string language, string keepId);
+        /// <summary>Deletes the module's rows whose language is not in <paramref name="languages"/> and returns them.</summary>
+        Task<List<UilmFile>> DeleteUilmFilesOfOtherLanguagesAsync(string moduleName, IReadOnlyCollection<string> languages);
+        /// <summary>The subset of <paramref name="fileIds"/> that some <c>UilmFiles</c> row still points at.</summary>
+        Task<HashSet<string>> GetReferencedUilmFileIdsAsync(IReadOnlyCollection<string> fileIds);
+        /// <summary>
+        /// Up to <paramref name="limit"/> module/language groups, in order, that have a row with <c>Content</c> and no
+        /// file in the tenant's <c>UilmStoredFiles</c> ledger (no <c>FileId</c>, or one the ledger doesn't know).
+        /// </summary>
+        Task<List<UilmFileGroup>> GetUilmBackfillGroupsAsync(int limit);
+        /// <summary>
+        /// Writes the backfill pointer only while <paramref name="served"/> is still what the reader serves: the same
+        /// row with the same <c>Version</c> and <c>FileId</c>, or, for a legacy row with another id, while no row with
+        /// the pointer's id has a version or a file. False when a publish or another run changed the group meanwhile.
+        /// </summary>
+        Task<bool> ReplaceUilmFileFromBackfillAsync(UilmFile served, UilmFile pointer);
+        /// <summary>The tenant's rows by state (#349 H10, H12).</summary>
+        Task<UilmFileCounts> CountUilmFilesAsync();
+        /// <summary>
+        /// Rows whose <c>FileId</c> is <c>Live</c> in the ledger and that have a <c>ContentHash</c>, with
+        /// (<paramref name="withContent"/>) or without <c>Content</c>, in id order after <paramref name="afterId"/>.
+        /// <c>Content</c> itself is not loaded.
+        /// </summary>
+        Task<List<UilmFile>> GetUilmFilesWithLiveFileAsync(bool withContent, string? afterId, int limit);
+        /// <summary>Removes <c>Content</c> while the row still has the same <c>FileId</c> and <c>ContentHash</c>.</summary>
+        Task<bool> RemoveUilmFileContentAsync(UilmFile row);
+        /// <summary>Writes <c>Content</c> while the row still has the same <c>FileId</c> and <c>ContentHash</c> and no content.</summary>
+        Task<bool> RestoreUilmFileContentAsync(UilmFile row, string content);
         Task<Key> GetByIdAsync(string itemId);
         Task DeleteAsync(string itemId);
         Task<bool> HasKeysInModuleAsync(string moduleId);

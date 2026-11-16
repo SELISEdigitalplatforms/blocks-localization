@@ -265,6 +265,9 @@
   "GLOSSARY_RULE_BADGE.FORBIDDEN": "Forbidden",
   "GLOSSARY_RULE_BADGE.KEEP": "Keep",
   "GLOSSARY_RULE_BADGE.TRANSLATE": "Translate",
+  "GLOSSARY_STATUS_BADGE.APPROVED": "Approved",
+  "GLOSSARY_STATUS_BADGE.DEPRECATED": "Deprecated",
+  "GLOSSARY_STATUS_BADGE.DRAFT": "Draft",
   "GLOSSARY_TABLE.ACTIONS_FOR_ARIA": "Actions for {{name}}",
   "GLOSSARY_TABLE.ALL_LANGUAGES": "All languages",
   "GLOSSARY_TABLE.ALL_RULES": "All rules",
@@ -381,5 +384,9 @@
   "TAG_GLOSSARY_MODAL.TITLE": "Tag Glossary",
   "TAG_GLOSSARY_MODAL.UPDATED": "Glossaries updated",
   "TAG_GLOSSARY_MODAL.UPDATE_FAILED": "Failed to update glossaries",
-  "TAG_GLOSSARY_MODAL.UPDATE_FAILED_RETRY": "Failed to update glossaries. Please try again."
+  "TAG_GLOSSARY_MODAL.UPDATE_FAILED_RETRY": "Failed to update glossaries. Please try again.",
+  "USE_GLOSSARY_BULK.NO_PROJECT_SELECTED": "No project selected",
+  "USE_GLOSSARY_BULK.SAVE_FAILED": "Save failed",
+  "USE_GLOSSARY_TERM_SUGGESTION.NO_SUGGESTION": "No suggestion for {{language}}.",
+  "USE_LANGUAGE_MANAGER.NO_PROJECT_SELECTED": "No project selected"
 }

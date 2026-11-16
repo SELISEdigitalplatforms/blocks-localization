@@ -14,6 +14,7 @@ using Xunit;
 using BlocksLanguageKey = Eurolm.DomainService.Repositories.BlocksLanguageKey;
 using KeyModel = Eurolm.DomainService.Services.Key;
 using KeyTimeline = Eurolm.DomainService.Services.KeyTimeline;
+using Eurolm.DomainService.Services.UilmStorage;
 
 namespace XUnitTest
 {
@@ -30,6 +31,7 @@ namespace XUnitTest
         private readonly Mock<IAssistantService> _assistantServiceMock;
         private readonly Mock<IStorageDriverService> _storageDriverServiceMock;
         private readonly Mock<INotificationService> _notificationServiceMock;
+        private readonly Mock<IUilmFilePublisher> _uilmFilePublisherMock = new();
         private readonly KeyManagementService _service;
 
         public KeyManagementServiceGenerateTimelineTests()
@@ -60,7 +62,7 @@ namespace XUnitTest
                 _assistantServiceMock.Object,
                 _storageDriverServiceMock.Object,
                 storageHelper,
-                Mock.Of<IServiceProvider>(),
+                Mock.Of<IServiceProvider>(p => p.GetService(typeof(IUilmFilePublisher)) == _uilmFilePublisherMock.Object),
                 _notificationServiceMock.Object,
                 Mock.Of<IGlossaryRepository>()
             );
@@ -215,10 +217,8 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.GetAllKeysByModuleAsync("mod-1"))
                 .ReturnsAsync(keys);
 
-            // Make SaveNewUilmFiles throw to simulate failure
-            _keyRepositoryMock.Setup(r => r.DeleteOldUilmFiles(It.IsAny<List<UilmFile>>()))
-                .ReturnsAsync(0L);
-            _keyRepositoryMock.Setup(r => r.SaveNewUilmFiles(It.IsAny<List<UilmFile>>()))
+            // Make the module's file write throw to simulate failure
+            _uilmFilePublisherMock.Setup(p => p.PublishModuleAsync(It.IsAny<UilmPublishSession>(), "auth", It.IsAny<IReadOnlyList<UilmFile>>()))
                 .ThrowsAsync(new Exception("Storage failure"));
 
             _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
@@ -298,19 +298,9 @@ namespace XUnitTest
             _keyRepositoryMock.Setup(r => r.GetAllKeysByModuleAsync("mod-2"))
                 .ReturnsAsync(keysModule2);
 
-            // Module 1 succeeds
-            var callCount = 0;
-            _keyRepositoryMock.Setup(r => r.DeleteOldUilmFiles(It.IsAny<List<UilmFile>>()))
-                .ReturnsAsync(0L);
-            _keyRepositoryMock.Setup(r => r.SaveNewUilmFiles(It.IsAny<List<UilmFile>>()))
-                .Returns(() =>
-                {
-                    callCount++;
-                    // Fail on second call (module 2)
-                    if (callCount > 1)
-                        throw new Exception("Storage failure");
-                    return Task.FromResult(true);
-                });
+            // Module 1 succeeds, the file write of module 2 fails
+            _uilmFilePublisherMock.Setup(p => p.PublishModuleAsync(It.IsAny<UilmPublishSession>(), "dashboard", It.IsAny<IReadOnlyList<UilmFile>>()))
+                .ThrowsAsync(new Exception("Storage failure"));
 
             _keyTimelineRepositoryMock.Setup(r => r.BulkSaveKeyTimelinesAsync(It.IsAny<List<KeyTimeline>>(), It.IsAny<string>()))
                 .Returns(Task.CompletedTask);

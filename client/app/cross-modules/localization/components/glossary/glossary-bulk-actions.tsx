@@ -309,6 +309,7 @@ const GlossaryBulkActions = ({
           <Button
             size="sm"
             variant="outline"
+            className="gap-2"
             disabled={isRunning}
             onClick={() => void execute({ kind: "status", status: "approved" })}
           >
@@ -318,21 +319,40 @@ const GlossaryBulkActions = ({
           <Button
             size="sm"
             variant="outline"
+            className="gap-2"
             disabled={isRunning}
             onClick={() => void execute({ kind: "status", status: "deprecated" })}
           >
             <Archive className="h-4 w-4" aria-hidden="true" />
             {t("GLOSSARY_BULK.DEPRECATE")}
           </Button>
-          <Button size="sm" variant="outline" disabled={isRunning} onClick={() => setDialog("tag-module")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            disabled={isRunning}
+            onClick={() => setDialog("tag-module")}
+          >
             <Tag className="h-4 w-4" aria-hidden="true" />
             {t("GLOSSARY_BULK.TAG_TO_MODULE")}
           </Button>
-          <Button size="sm" variant="outline" disabled={isRunning} onClick={() => setDialog("set-project")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            disabled={isRunning}
+            onClick={() => setDialog("set-project")}
+          >
             <Globe className="h-4 w-4" aria-hidden="true" />
             {t("GLOSSARY_BULK.SET_WHOLE_PROJECT")}
           </Button>
-          <Button size="sm" variant="destructive" disabled={isRunning} onClick={() => setDialog("delete")}>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-2"
+            disabled={isRunning}
+            onClick={() => setDialog("delete")}
+          >
             <Trash className="h-4 w-4" aria-hidden="true" />
             {t("GLOSSARY_BULK.DELETE")}
           </Button>

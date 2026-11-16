@@ -1,6 +1,7 @@
 using Blocks.Genesis;
 using Eurolm.DomainService.Repositories;
 using Eurolm.DomainService.Services;
+using Eurolm.DomainService.Services.UilmStorage;
 using Eurolm.DomainService.Shared;
 using Eurolm.DomainService.Utilities;
 using FluentValidation;
@@ -296,33 +297,85 @@ namespace BlocksTemplate.Api.Controllers
         /// Returns a JSON UILM file for a specified module and language.
         /// </summary>
         /// <param name="request">The request containing the project key, module, and language information.</param>
+        /// <param name="uilmFileReader">Resolves the published file (spec 6.7).</param>
         /// <returns>A JSON UILM file as a string.</returns>
         [HttpGet]
         [Authorize]
-        public async Task GetCloudUilmFile([FromQuery] GetUilmFileRequest request)
+        public async Task GetCloudUilmFile([FromQuery] GetUilmFileRequest request, [FromServices] IUilmFileReader uilmFileReader)
         {
-            if (request == null)
-            {
-                Response.StatusCode = 400;
-                return;
-            }
-            Response.ContentType = "application/json";
-
-            string result = await _keyManagementService.GetUilmFile(request);
-            await Response.WriteAsync(result ?? "");
+            await WriteUilmFileAsync(request, uilmFileReader);
         }
+
+        /// <summary>
+        /// Returns a JSON UILM file for a specified module and language, for anonymous callers with the project key.
+        /// A file published to Storage carries an <c>ETag</c>; a matching <c>If-None-Match</c> gets <c>304</c>.
+        /// </summary>
+        /// <param name="request">The module and language.</param>
+        /// <param name="uilmFileReader">Resolves the published file (spec 6.7).</param>
         [HttpGet]
-        public async Task GetUilmFile([FromQuery] GetUilmFileRequest request )
+        public async Task GetUilmFile([FromQuery] GetUilmFileRequest request, [FromServices] IUilmFileReader uilmFileReader)
+        {
+            await WriteUilmFileAsync(request, uilmFileReader);
+        }
+
+        /// <summary>
+        /// Lists the caller's published files with their public Storage URLs, for anonymous callers with the project key,
+        /// so a client can download the files directly from Storage. The response carries an <c>ETag</c> and
+        /// <c>Cache-Control: no-cache</c>; a matching <c>If-None-Match</c> gets <c>304</c> with an empty body.
+        /// Download each <c>url</c> without credentials. An entry whose <c>url</c>, <c>hash</c>, <c>size</c> and
+        /// <c>version</c> are <c>null</c> means "fall back to <c>GetUilmFile</c>" with the same module and language;
+        /// do the same when a download fails. The endpoint reads MongoDB only and never returns file content.
+        /// </summary>
+        /// <param name="request">Optional exact <c>ModuleName</c> and <c>Language</c> filters.</param>
+        /// <param name="uilmFileReader">Builds the manifest.</param>
+        [HttpGet]
+        public async Task GetUilmManifest([FromQuery] GetUilmManifestRequest request, [FromServices] IUilmFileReader uilmFileReader)
+        {
+            var result = await uilmFileReader.GetManifestAsync(request ?? new GetUilmManifestRequest(), Request.Headers.IfNoneMatch.ToString());
+            await WriteUilmReadResultAsync(result);
+        }
+
+        /// <summary>Writes the response for both read endpoints (spec 6.7).</summary>
+        private async Task WriteUilmFileAsync(GetUilmFileRequest request, IUilmFileReader uilmFileReader)
         {
             if (request == null)
             {
                 Response.StatusCode = 400;
                 return;
             }
-            Response.ContentType = "application/json";
 
-            string result = await _keyManagementService.GetUilmFile(request);
-            await Response.WriteAsync(result ?? "");
+            await WriteUilmReadResultAsync(await uilmFileReader.ReadAsync(request, Request.Headers.IfNoneMatch.ToString()));
+        }
+
+        private async Task WriteUilmReadResultAsync(UilmFileReadResult result)
+        {
+            switch (result.Kind)
+            {
+                case UilmFileReadKind.NotModified:
+                    Response.StatusCode = StatusCodes.Status304NotModified;
+                    SetFileCacheHeaders(result.ETag!);
+                    return;
+                case UilmFileReadKind.Unavailable:
+                    Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    Response.Headers.RetryAfter = "30";
+                    return;
+                case UilmFileReadKind.File:
+                    Response.ContentType = "application/json";
+                    SetFileCacheHeaders(result.ETag!);
+                    Response.ContentLength = result.Bytes!.Length;
+                    await Response.Body.WriteAsync(result.Bytes);
+                    return;
+                default:
+                    Response.ContentType = "application/json";
+                    await Response.WriteAsync(result.Content ?? "");
+                    return;
+            }
+        }
+
+        private void SetFileCacheHeaders(string etag)
+        {
+            Response.Headers.ETag = etag;
+            Response.Headers.CacheControl = "no-cache";
         }
 
         /// <summary>
@@ -335,7 +388,24 @@ namespace BlocksTemplate.Api.Controllers
         public async Task<IActionResult> GenerateUilmFile([FromBody] GenerateUilmRequest request)
         {
             if (request == null) return BadRequest(new BaseMutationResponse());
-            await _keyManagementService.SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest() { Guid=request.Guid,ModuleId=request.ModuleId});
+            await _keyManagementService.SendGenerateUilmFilesEvent(new GenerateUilmFilesRequest() { Guid=request.Guid,ModuleId=request.ModuleId,ForceUpload=request.ForceUpload});
+            return Ok(new BaseMutationResponse { IsSuccess = true });
+        }
+
+        /// <summary>
+        /// Queues a UILM Storage task for the caller's tenant only: <c>uilm-maintenance</c> (backfill, content removal,
+        /// retired file deletion and reconcile) or <c>uilm-restore-content</c>.
+        /// </summary>
+        /// <param name="request">Optional <c>{"task": ...}</c>; without a body or task, <c>uilm-maintenance</c> runs.</param>
+        /// <param name="uilmMaintenanceQueue">Queues the run.</param>
+        /// <returns><c>isSuccess: true</c> once the run is queued.</returns>
+        [HttpPost]
+        [ProtectedEndPoint($"{Constants.ServiceName}::key::runuilmmaintenance")]
+        public async Task<IActionResult> RunUilmMaintenance(
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] RunUilmMaintenanceRequest? request,
+            [FromServices] IUilmMaintenanceQueue uilmMaintenanceQueue)
+        {
+            await uilmMaintenanceQueue.QueueForCurrentTenantAsync(request?.Task);
             return Ok(new BaseMutationResponse { IsSuccess = true });
         }
 

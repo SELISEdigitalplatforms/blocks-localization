@@ -433,6 +433,11 @@ namespace Eurolm.DomainService.Services
         {
             var context = !string.IsNullOrWhiteSpace(request.ElementDetailContext) ? request.ElementDetailContext :
                 $"The requirement is to translate a user interface element of a webpage. Output only the translated text (no quotes, no explanation).";
+            var moduleLine = TerminologyPromptBuilder.ModuleContextLine(request.ElementApplicationContext);
+            if (moduleLine != null)
+            {
+                context += $"\n{moduleLine}\n";
+            }
             if (!string.IsNullOrWhiteSpace(glossaryContext))
             {
                 context += $"\n{glossaryContext}\n";

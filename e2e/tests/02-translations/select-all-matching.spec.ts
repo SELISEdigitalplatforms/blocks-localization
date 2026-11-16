@@ -28,7 +28,9 @@ test("Select all matching deletes the filtered target minus unticked rows", asyn
     await openAllForModule(page, moduleName, 935);
     await page.getByRole("button", { name: "Select all 935 keys matching these filters" }).click();
     await expect(page.getByText("All 935 keys matching these filters are selected.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Bulk edit" })).toBeDisabled();
+    // Drift (4a6d98f0): the disabled Bulk edit button has a sibling tooltip trigger named
+    // "Bulk edit works on loaded keys only.".
+    await expect(page.getByRole("button", { name: "Bulk edit", exact: true })).toBeDisabled();
 
     const rows = page.getByRole("checkbox", { name: "Select row" });
     await rows.nth(0).uncheck();
