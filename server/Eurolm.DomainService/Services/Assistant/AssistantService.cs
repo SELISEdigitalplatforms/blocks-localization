@@ -37,6 +37,7 @@ namespace Eurolm.DomainService.Services
         private readonly ILogger<AssistantService> _logger;
         private readonly IConfiguration _configuration;
         private readonly string _chatGptTemperature;
+        private readonly IChatCompletionClient? _chatClient;
         private readonly HttpClient _httpClient;
         private readonly ILocalizationSecret _localizationSecret;
         private readonly IGlossaryRepository _glossaryRepository;
@@ -55,13 +56,15 @@ namespace Eurolm.DomainService.Services
             ILocalizationSecret localizationSecret,
             IGlossaryRepository glossaryRepository,
             IGlossaryMatcherCache? matcherCache = null,
-            TimeProvider? timeProvider = null
+            TimeProvider? timeProvider = null,
+            IChatCompletionClient? chatClient = null
         )
         {
             _localizationSecret = localizationSecret;
             _logger = logger;
             _configuration = configuration;
-            _chatGptTemperature = _configuration["ChatGptTemperature"];
+            _chatGptTemperature = _configuration["Ai:Temperature"] ?? _configuration["ChatGptTemperature"];
+            _chatClient = chatClient;
             _httpClient = httpClient;
             _glossaryRepository = glossaryRepository;
             _matcherCache = matcherCache;
@@ -518,49 +521,49 @@ namespace Eurolm.DomainService.Services
                 double.TryParse(_chatGptTemperature, NumberStyles.Float, CultureInfo.InvariantCulture, out var temperature);
                 TemperatureValidator(temperature);
 
-                var encryptedSecret = GetEncryptedSecret();
-                if (string.IsNullOrEmpty(encryptedSecret))
+                var options = AiOptions.FromConfiguration(_configuration, AiProvider.AzureOpenAi, _localizationSecret?.AzureAIEndpoint);
+
+                // The key: Ai:ApiKeyReference when set, else the old encrypted Azure secret.
+                var apiKey = options.ResolveApiKey(_configuration);
+                if (string.IsNullOrEmpty(apiKey))
                 {
-                    throw new ArgumentException(
-                        "AzureOpenAIEncryptedSecret is not set. " +
-                        "Add it to Azure vault or to the blocks-secret-localization Mongo Secrets document.");
+                    var encryptedSecret = GetEncryptedSecret();
+                    if (string.IsNullOrEmpty(encryptedSecret))
+                    {
+                        throw new ArgumentException(
+                            "No AI API key: set Ai:ApiKeyReference, or AzureOpenAIEncryptedSecret in Azure vault or in the blocks-secret-localization Mongo Secrets document.");
+                    }
+
+                    apiKey = GetDecryptedSecret(encryptedSecret);
                 }
 
-                var secret = GetDecryptedSecret(encryptedSecret);
-                var endpoint = ResolveAzureEndpoint();
-                if (string.IsNullOrWhiteSpace(endpoint))
-                {
-                    throw new ArgumentException(
-                        "AzureAIEndpoint is not configured. " +
-                        "Add AzureAIEndpoint to the blocks-secret-localization Mongo Secrets document, " +
-                        "or set AiCompletionUrl for local override.");
-                }
+                var payload = new AiCompletionModel().ConstructCommand(request.Message, request.Temperature, options.Model);
+                var messages = payload.messages.Select(m => new ChatMessage(m.role, m.content)).ToList();
+                var client = _chatClient ?? ChatCompletionClients.Create(_httpClient, options, () => apiKey, _logger, _timeProvider);
 
-                var model = new AiCompletionModel();
-                var payload = model.ConstructCommand(request.Message, request.Temperature);
-
-                var httpRequest = PrepareHttpRequest(endpoint, HttpMethod.Post, JsonConvert.SerializeObject(payload));
-                var httpResponse = await MakeRequestAsync(httpRequest, secret, request.CancellationToken);
-
-                if (httpResponse != null && httpResponse.HttpStatusCode == HttpStatusCode.OK)
-                {
-                    ChatGptAiCompletionRequestResponse respone = JsonConvert.DeserializeObject<ChatGptAiCompletionRequestResponse>(httpResponse.ResponseData);
-                    var responeMessage = respone.choices?.FirstOrDefault()?.message?.content;
-                    return responeMessage;
-                }
-
-                if (httpResponse?.HttpStatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    request.RetryAfter = httpResponse.RetryAfter;
-                    NoteThrottled(httpResponse.RetryAfter ?? FailureRetryDelay);
-                    _logger.LogWarning("AiCompletion: Azure OpenAI throttled the request (429); Retry-After {RetryAfterMs} ms",
-                        (long?)httpResponse.RetryAfter?.TotalMilliseconds);
-                }
-
+                var result = await client.CompleteAsync(
+                    messages,
+                    new ChatCompletionOptions { Model = options.Model, Temperature = request.Temperature },
+                    request.CancellationToken);
+                return result.Text;
             }
             catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
             {
                 // Cancelled by the per-call or per-suggestion time limit: CallAiAsync logs that once, with no stack trace.
+            }
+            catch (ChatCompletionException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    request.RetryAfter = ex.RetryAfter;
+                    NoteThrottled(ex.RetryAfter ?? FailureRetryDelay);
+                    _logger.LogWarning("AiCompletion: the AI provider throttled the request (429); Retry-After {RetryAfterMs} ms",
+                        (long?)ex.RetryAfter?.TotalMilliseconds);
+                }
+                else
+                {
+                    _logger.LogWarning("AiCompletion: {Message}", ex.Message);
+                }
             }
             catch (Exception ex)
             {
@@ -740,21 +743,8 @@ namespace Eurolm.DomainService.Services
         }
 
         /// <summary>Azure's <c>retry-after-ms</c>, else the standard Retry-After (seconds or a date); null when absent.</summary>
-        public static TimeSpan? ReadRetryAfter(HttpResponseMessage response, DateTimeOffset now)
-        {
-            if (response.Headers.TryGetValues("retry-after-ms", out var values) &&
-                double.TryParse(values.FirstOrDefault(), NumberStyles.Float, CultureInfo.InvariantCulture, out var ms) && ms > 0)
-            {
-                return TimeSpan.FromMilliseconds(ms);
-            }
-
-            var retryAfter = response.Headers.RetryAfter;
-            if (retryAfter?.Delta is { } delta && delta > TimeSpan.Zero)
-                return delta;
-            if (retryAfter?.Date is { } date && date > now)
-                return date - now;
-            return null;
-        }
+        public static TimeSpan? ReadRetryAfter(HttpResponseMessage response, DateTimeOffset now) =>
+            ChatCompletionClientBase.ReadRetryAfter(response, now);
 
         public static void ApplyApiKeyHeader(HttpRequestMessage httpRequestMessage, string secret)
         {

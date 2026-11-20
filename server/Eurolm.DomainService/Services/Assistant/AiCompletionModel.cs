@@ -8,11 +8,12 @@ namespace Eurolm.DomainService.Services
         public List<Message> messages { get; set; }
         public double temperature { get; set; }
 
-        public AiCompletionModel ConstructCommand(string content, double temperature)
+        /// <summary>The request for one completion. <paramref name="model"/> comes from configuration (<c>Ai:Model</c>); null leaves it out, as Azure takes the deployment from the URL.</summary>
+        public AiCompletionModel ConstructCommand(string content, double temperature, string? model = null)
         {
             return new AiCompletionModel
             {
-                model = "gpt-4o-mini",
+                model = model,
                 messages = new List<Message>
                 {
                     new Message { role = "system", 

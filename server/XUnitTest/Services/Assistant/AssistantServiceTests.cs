@@ -1107,9 +1107,11 @@ namespace XUnitTest
         public void AiCompletionModel_ConstructCommand_SetsCorrectProperties()
         {
             var model = new AiCompletionModel();
-            var result = model.ConstructCommand("Translate hello to Spanish", 0.7);
+            var result = model.ConstructCommand("Translate hello to Spanish", 0.7, "configured-model");
 
-            result.model.Should().Be("gpt-4o-mini");
+            // I02-WP6: the model comes from configuration (Ai:Model); nothing is hard-coded.
+            result.model.Should().Be("configured-model");
+            model.ConstructCommand("x", 0.7).model.Should().BeNull();
             result.temperature.Should().Be(0.7);
             result.messages.Should().HaveCount(2);
             result.messages[0].role.Should().Be("system");
