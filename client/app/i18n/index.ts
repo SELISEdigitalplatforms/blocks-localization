@@ -8,11 +8,11 @@
 //   localization.language-table  language-module/language-table, components/language-table-toolbar   152
 //   localization.modules         language-module/modules, modals/{new-module,edit-module,
 //                                delete-module-modal,new-language,edit-route}                          97
-//   localization.shared          components, layout, hooks, lib, constants, router                      73
+//   localization.shared          components, layout, hooks, lib, constants, router                     104
 //   localization.tools           language-module/{configure,export-history,extension-guides,
 //                                wordpress-plugin-guide,timeline,localization-timeline,activity-log},
 //                                components/import-language-file, modals/export-key                   178
-//                                                                                          total      851
+//                                                                                          total      882
 import { registerTranslations } from "@seliseblocks/genesis-os/i18n";
 import glossary from "./localization.glossary.en.json";
 import keys from "./localization.keys.en.json";
